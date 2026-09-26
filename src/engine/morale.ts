@@ -60,7 +60,7 @@ const MLYNAR_EXTENDED_SKILLS = new Set([
 const CUSTOM_MOOD_SKILLS = new Set([
   '德才兼备', '异格者', '彩虹小队', '幕后指挥', '学生会会长', '坚毅随和',
   '潮汐守望', '公事公办', '巴别塔之帜', '孤光共照', '知我为我',
-  '演技的怪物', '互为半身', '生活的重压', '万里传书', '团队精神', '杯莫停',
+  '演技的怪物', '互为半身', '生活的重压', '万里传书', '跋山涉水', '春雷响，万物长', '团队精神', '杯莫停',
   '“未完的故事”', '羁绊相生', '成效优先', '英雄的骄傲·β',
 ])
 
@@ -326,11 +326,24 @@ function computeRates(
 
   const chimes = active.find((item) => item.operator.charId === 'char_4083_chimes' && item.roomType === 'trading')
   if (chimes) {
-    const delta = -0.1 - Math.floor(resourceValues.fireworks / 10) * 0.02
+    const isE2 = hasOperatorSkill(config, chimes.operator.charId, 'trade_cost&bd2[001]')
+    const rate = isE2 ? 0.02 : 0.01
+    const skillName = isE2 ? '万里传书' : '跋山涉水'
+    const delta = -0.1 - Math.floor(resourceValues.fireworks / 10) * rate
     addAll(
       active.filter((item) => item.roomId === chimes.roomId),
       delta,
-      `铎铃·万里传书：人间烟火 ${resourceValues.fireworks}，${delta.toFixed(2)}/h`,
+      `铎铃·${skillName}：人间烟火 ${resourceValues.fireworks}，${delta.toFixed(2)}/h`,
+    )
+  }
+
+  const shu = active.find((item) => item.operator.charId === 'char_2025_shu' && item.roomType === 'manufacture')
+  if (shu) {
+    const delta = -0.1
+    addAll(
+      active.filter((item) => item.roomId === shu.roomId),
+      delta,
+      `黍·春雷响，万物长：${delta.toFixed(2)}/h`,
     )
   }
 

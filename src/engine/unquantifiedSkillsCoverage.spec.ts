@@ -103,6 +103,30 @@ describe('quantification of remaining operator skills (1.2)', () => {
     expect(evaluateOperators(manuRoom, config).unquantifiedSkills).toContain('黍·春雷响，万物长')
   })
 
+  it('smoothly quantifies worked Shu and teamed Duo Ling without unquantified warnings', () => {
+    const config = createDefaultConfig()
+    const manuRoom = config.rooms.find(r => r.type === 'manufacture')!
+    const shuId = findOpId('黍')
+    manuRoom.operatorIds = [shuId]
+    config.efficiencyResources.worldlyFireworks = 15 // worked with fireworks
+
+    const manuRes = evaluateOperators(manuRoom, config)
+    expect(manuRes.unquantifiedSkills).toEqual([])
+    expect(manuRes.skillBonus).toBe(5) // 15 / 3 = 5%
+
+    // Check morale rate: Shu provides -0.1/h to manufacture room
+    const moraleRes = currentMoraleRates(config)
+    expect(moraleRes.unquantified).toEqual([])
+    // Base 1.0 - 0.1 = 0.9/h
+    expect(moraleRes.rates[shuId]).toBeCloseTo(0.9)
+
+    // Teamed Duo Ling (e.g. with Jaye or Texas)
+    const tradeRoom = config.rooms.find(r => r.type === 'trading')!
+    tradeRoom.operatorIds = [findOpId('德克萨斯'), findOpId('铎铃')]
+    const tradeRes = evaluateOperators(tradeRoom, config)
+    expect(tradeRes.unquantifiedSkills).toEqual([])
+  })
+
   it('quantifies trade order capacity and negotiation skills without unquantified warnings', () => {
     const config = createDefaultConfig()
     const tradeRoom = config.rooms.find(r => r.type === 'trading')!
