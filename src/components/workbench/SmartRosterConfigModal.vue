@@ -41,6 +41,22 @@
               data-test="trials-input"
             />
           </div>
+          <div class="field-item">
+            <label for="max-evals-input">
+              <span>单轮评估上限 (Evaluations)</span>
+              <small class="field-tip">每轮搜索最大访问状态 (500–10000)</small>
+            </label>
+            <input
+              id="max-evals-input"
+              v-model.number="form.maxStaticEvals"
+              type="number"
+              min="500"
+              max="10000"
+              step="500"
+              class="mower-num-input"
+              data-test="max-evals-input"
+            />
+          </div>
         </div>
       </fieldset>
 
@@ -101,19 +117,9 @@
             />
             <span class="checkbox-text">
               <strong>启用第三阶段深度微调搜索</strong>
-              <small class="checkbox-hint">先保留原有局部优化结果，再从领先方案继续探索；通过复核的更高分方案才会替换当前结果</small>
+              <small class="checkbox-hint">对仿真最优方案的替补与单工位进行局部遍历改进（推荐开启）</small>
             </span>
           </label>
-        </div>
-        <div class="field-row">
-          <div class="field-item">
-            <label for="search-budget-input"><span>追加候选预算</span><small class="field-tip">所有领先方案共享 0–200 个候选名额；含起点，最终复核另计。0 仅运行原有局部优化</small></label>
-            <input id="search-budget-input" v-model.number="form.searchBudget" :disabled="!form.enableDeepSearch" type="number" min="0" max="200" step="1" class="mower-num-input" data-test="search-budget-input" />
-          </div>
-          <div class="field-item">
-            <label for="refinement-topk-input"><span>深入优化方案数</span><small class="field-tip">选择评分领先的 1–5 套方案；更多方案和候选需要更长时间</small></label>
-            <input id="refinement-topk-input" v-model.number="form.refinementTopK" :disabled="!form.enableDeepSearch" type="number" min="1" max="5" step="1" class="mower-num-input" data-test="refinement-topk-input" />
-          </div>
         </div>
       </fieldset>
 
@@ -195,9 +201,7 @@
 <script lang="ts">
 export interface SmartRosterConfig {
   trials: number
-  maxStaticEvals?: number
-  searchBudget?: number
-  refinementTopK?: number
+  maxStaticEvals: number
   simulationTopK: number
   simulationSampleHours: number
   simulationWarmupHours: number
@@ -211,8 +215,7 @@ export const STORAGE_KEY_SMART_ROSTER = 'arcinc-smart-roster-options-v1'
 
 export const DEFAULT_CONFIG: SmartRosterConfig = {
   trials: 10,
-  searchBudget: 0,
-  refinementTopK: 3,
+  maxStaticEvals: 3000,
   simulationTopK: 10,
   simulationSampleHours: 72,
   simulationWarmupHours: 24,
@@ -261,10 +264,6 @@ function restoreRoom() {
 }
 
 
-function clampSetting(value: unknown, fallback: number, min: number, max: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.max(min,Math.min(max,Math.floor(value))) : fallback
-}
-
 const loadPersistedConfig = (): SmartRosterConfig => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_SMART_ROSTER)
@@ -272,8 +271,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
       const parsed = JSON.parse(raw)
       return {
         trials: 10,
-        searchBudget: clampSetting(parsed.searchBudget,0,0,200),
-        refinementTopK: clampSetting(parsed.refinementTopK,3,1,5),
+        maxStaticEvals: Math.max(500, Math.min(10000, Number(parsed.maxStaticEvals) || DEFAULT_CONFIG.maxStaticEvals)),
         simulationTopK: 10,
         simulationSampleHours: Math.max(24, Math.min(168, Number(parsed.simulationSampleHours) || DEFAULT_CONFIG.simulationSampleHours)),
         simulationWarmupHours: Math.max(6, Math.min(48, Number(parsed.simulationWarmupHours) || DEFAULT_CONFIG.simulationWarmupHours)),
@@ -337,8 +335,7 @@ const handleConfirm = () => {
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
     trials: 10,
-    searchBudget: clampSetting(form.value.searchBudget,0,0,200),
-    refinementTopK: clampSetting(form.value.refinementTopK,3,1,5),
+    maxStaticEvals: Math.max(500, Math.min(10000, Math.floor(form.value.maxStaticEvals) || 500)),
     simulationTopK: 10,
     simulationSampleHours: Math.max(24, Math.min(168, Math.floor(form.value.simulationSampleHours) || 24)),
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
@@ -369,8 +366,6 @@ const handleConfirm = () => {
   flex-direction: column;
   gap: 16px;
   color: #e2e8f0;
-  max-height: calc(100vh - 190px);
-  overflow-y: auto;
 }
 
 .modal-intro {

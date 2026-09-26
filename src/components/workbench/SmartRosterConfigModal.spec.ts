@@ -43,7 +43,7 @@ describe('SmartRosterConfigModal.vue', () => {
 
     expect(wrapper.find('[data-test="smart-roster-modal-body"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="trials-input"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="search-budget-input"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="max-evals-input"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="topk-input"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="sample-hours-input"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="enable-deep-search"]').exists()).toBe(true)
@@ -78,8 +78,7 @@ describe('SmartRosterConfigModal.vue', () => {
     const wrapper = mountModal({ open: true })
 
     expect(wrapper.find('[data-test="trials-input"]').attributes('disabled')).toBeDefined()
-    await wrapper.find<HTMLInputElement>('[data-test="search-budget-input"]').setValue(90)
-    await wrapper.find<HTMLInputElement>('[data-test="refinement-topk-input"]').setValue(5)
+    await wrapper.find<HTMLInputElement>('[data-test="max-evals-input"]').setValue(5000)
     expect(wrapper.find('[data-test="topk-input"]').attributes('disabled')).toBeDefined()
     await wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').setValue(48)
     await wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').setValue(false)
@@ -92,8 +91,7 @@ describe('SmartRosterConfigModal.vue', () => {
     const emittedConfig = wrapper.emitted('confirm')![0]![0] as SmartRosterConfig
     expect(emittedConfig).toEqual({
       trials: 10,
-      searchBudget: 90,
-      refinementTopK: 5,
+      maxStaticEvals: 5000,
       simulationTopK: 10,
       simulationSampleHours: 48,
       simulationWarmupHours: 24,
@@ -135,17 +133,6 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.find<HTMLInputElement>('[data-test="trials-input"]').element.value).toBe(String(DEFAULT_CONFIG.trials))
     expect(wrapper.find<HTMLInputElement>('[data-test="seed-input"]').element.value).toBe('-1')
     expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBeNull()
-  })
-
-  it('migrates old inert evaluation settings and clamps the real search budget', async () => {
-    localStorage.setItem(STORAGE_KEY_SMART_ROSTER,JSON.stringify({maxStaticEvals:10000,searchBudget:999,refinementTopK:99}))
-    const wrapper = mountModal()
-    expect(wrapper.find<HTMLInputElement>('[data-test="search-budget-input"]').element.value).toBe('200')
-    expect(wrapper.find<HTMLInputElement>('[data-test="refinement-topk-input"]').element.value).toBe('5')
-    await wrapper.find<HTMLInputElement>('[data-test="search-budget-input"]').setValue(0)
-    await wrapper.find('[data-test="confirm-btn"]').trigger('click')
-    expect(wrapper.emitted('confirm')![0]![0]).toMatchObject({searchBudget:0,refinementTopK:5})
-    expect(wrapper.emitted('confirm')![0]![0]).not.toHaveProperty('maxStaticEvals')
   })
 
   it('emits close when cancel button is clicked', async () => {
