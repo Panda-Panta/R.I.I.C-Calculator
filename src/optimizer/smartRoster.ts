@@ -177,7 +177,7 @@ function* smartRosterSteps(
     return result
   }
   const enableDeepSearch = options.enableDeepSearch ?? true
-  const searchBudget = options.searchBudget ?? 24
+  const searchBudget = options.searchBudget ?? 0
   const refinementTopK = options.refinementTopK ?? 3
   if (!Number.isSafeInteger(searchBudget) || searchBudget < 0 || searchBudget > 200 ||
       !Number.isSafeInteger(refinementTopK) || refinementTopK < 1 || refinementTopK > 5) {

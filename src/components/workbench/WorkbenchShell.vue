@@ -579,7 +579,7 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
       ? config.seed
       : (simSettings.value.seed < 0 ? (isVitest ? 42 : Math.floor(Math.random() * 0xffffffff)) : simSettings.value.seed),
     branchCount: isVitest ? 1 : 10,
-    searchBudget: config?.searchBudget ?? 24,
+    searchBudget: config?.searchBudget ?? 0,
     refinementTopK: config?.refinementTopK ?? 3,
 
     simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),

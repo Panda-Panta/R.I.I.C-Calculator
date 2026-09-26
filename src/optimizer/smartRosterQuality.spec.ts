@@ -30,6 +30,13 @@ function setup() {
   return {requests}
 }
 
+it('keeps additional exploration opt-in when no budget is requested', () => {
+  const {requests} = setup()
+  const result = runSmartRoster(createDefaultWorkspace(),inventory)
+  expect(requests.map(r=>r.mode)).toEqual(['hill-climb'])
+  expect(result.phases.refinements).toBeUndefined()
+})
+
 it('spends the added budget across distinct leading rosters while preserving the baseline result', () => {
   const {requests} = setup()
   const result = runSmartRoster(createDefaultWorkspace(),inventory,{searchBudget:12,refinementTopK:3} as SmartRosterOptions)

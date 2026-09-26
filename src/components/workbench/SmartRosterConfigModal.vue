@@ -211,7 +211,7 @@ export const STORAGE_KEY_SMART_ROSTER = 'arcinc-smart-roster-options-v1'
 
 export const DEFAULT_CONFIG: SmartRosterConfig = {
   trials: 10,
-  searchBudget: 24,
+  searchBudget: 0,
   refinementTopK: 3,
   simulationTopK: 10,
   simulationSampleHours: 72,
@@ -272,7 +272,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
       const parsed = JSON.parse(raw)
       return {
         trials: 10,
-        searchBudget: clampSetting(parsed.searchBudget,24,0,200),
+        searchBudget: clampSetting(parsed.searchBudget,0,0,200),
         refinementTopK: clampSetting(parsed.refinementTopK,3,1,5),
         simulationTopK: 10,
         simulationSampleHours: Math.max(24, Math.min(168, Number(parsed.simulationSampleHours) || DEFAULT_CONFIG.simulationSampleHours)),
@@ -337,7 +337,7 @@ const handleConfirm = () => {
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
     trials: 10,
-    searchBudget: clampSetting(form.value.searchBudget,24,0,200),
+    searchBudget: clampSetting(form.value.searchBudget,0,0,200),
     refinementTopK: clampSetting(form.value.refinementTopK,3,1,5),
     simulationTopK: 10,
     simulationSampleHours: Math.max(24, Math.min(168, Math.floor(form.value.simulationSampleHours) || 24)),
