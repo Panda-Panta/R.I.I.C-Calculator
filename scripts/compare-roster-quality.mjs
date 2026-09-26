@@ -83,6 +83,10 @@ const lines = [
   '- `node scripts/benchmark-roster-quality.mjs <新标签> "C:/Users/Panda-Panta/Downloads/干员练度表.xlsx"` 可测试当前源码；脚本拒绝覆盖同名汇总，baseline 只允许冻结旧引擎。',
   '- `node scripts/compare-roster-quality.mjs` 校验输入并重新生成本报告。',
   '- 完整输入、引擎快照、运行日志、before/after workspace 和报告均保存在同目录。', '',
+  '## 排班文件', '',
+  '- `roster-243.json` 和 `roster-252.json` 为 Mower 排班格式；`roster-*-building-levels.json` 单独记录测试建筑等级。',
+  '- Mower 格式不保存建筑等级。252 回读时应用会把办公室、加工站、训练室推断成三级，产生 80 电力赤字；使用本次测试的一等级配置后校验通过。使用 252 文件时必须同时恢复测试建筑等级，不能直接沿用导入推断值。',
+  '- `improved-*-workspace.json` 保存包含建筑等级在内的完整内部工作区，适用于核查和复现。', '',
 ]
 writeFileSync(resolve(directory,'comparison.md'),lines.join('\n'))
 console.log(JSON.stringify(comparisons,null,2))
