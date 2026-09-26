@@ -12,6 +12,7 @@ import { generateMolecularCandidates } from './molecularSynthesis'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
 import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
+import { compareIncome, summarizeIncome } from './incomeComparison'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -23,6 +24,9 @@ export interface SmartRosterOptions {
   simulationWarmupHours?: number
   simulationSampleHours?: number
   enableDeepSearch?: boolean
+  /** Additional distinct-candidate budget, shared by all finalists; 0 keeps legacy search. */
+  searchBudget?: number
+  refinementTopK?: number
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
 }
@@ -73,6 +77,7 @@ export interface SmartRosterResult {
     } | null
     search: {
       improved: boolean
+      /** Final same-request score delta from the roster immediately before neighborhood search. */
       gain: number
       result?: IncomeSearchResult
     } | null
@@ -80,6 +85,7 @@ export interface SmartRosterResult {
       swappedCount: number
       logs: string[]
     }
+    refinements?: { candidateId: string; budget: number; evaluated: number; accepted: boolean; score: number; minGain?: number; issues: string[] }[]
   }
 }
 
@@ -171,6 +177,13 @@ function* smartRosterSteps(
     return result
   }
   const enableDeepSearch = options.enableDeepSearch ?? true
+  const searchBudget = options.searchBudget ?? 24
+  const refinementTopK = options.refinementTopK ?? 3
+  if (!Number.isSafeInteger(searchBudget) || searchBudget < 0 || searchBudget > 200 ||
+      !Number.isSafeInteger(refinementTopK) || refinementTopK < 1 || refinementTopK > 5) {
+    result.diagnostics.push({code:'INVALID_SEARCH_OPTIONS',message:'追加搜索预算须为 0–200、深入优化方案数须为 1–5 的整数。'})
+    return result
+  }
   const droneTarget = options.droneTarget ?? 'gold'
 
   // 1. Inventory & Base validation
@@ -380,6 +393,7 @@ function* smartRosterSteps(
     finalScore = repResult.score
   }
 
+  const searchStartingScore = finalScore
   if (enableDeepSearch) {
     onProgress?.({
       phase: 'searching',
@@ -451,6 +465,76 @@ function* smartRosterSteps(
     }
   }
 
+  // Keep the legacy winner, then explore the other leading branches as independent starts.
+  // Only actual, same-request scores and a common holdout comparison may replace it.
+  if (enableDeepSearch && searchBudget > 0) {
+    const evaluate = (workspace: RosterWorkspace) => {
+      const job = simulationJob(workspace), cached = cache.get(job)
+      if (cached) return cached
+      const summary = simulateCandidate(job)
+      cache.remember(cache.key(job), summary)
+      return summary
+    }
+    const incumbent = evaluate(finalWorkspace)
+    if (incumbent.completed && Number.isFinite(incumbent.simScore) && incumbent.simScore > 0) {
+      finalScore = incumbent.simScore
+      const starts = [{id:bestSimCandidate.id,workspace:structuredClone(finalWorkspace)},
+        ...simCandidates.filter(c=>c.id!==bestSimCandidate.id && (c.simScore ?? 0)>0)]
+        .filter((c,index,all)=>all.findIndex(other=>cache.key(simulationJob(other.workspace))===cache.key(simulationJob(c.workspace)))===index)
+        .slice(0,refinementTopK)
+      result.phases.refinements = []
+      let remaining = searchBudget
+      for (const [index,start] of starts.entries()) {
+        const budget = Math.ceil(remaining / (starts.length-index))
+        if (budget < 1) continue
+        const record = {candidateId:start.id,budget,evaluated:0,accepted:false,score:finalScore,issues:[] as string[],minGain:undefined as number|undefined}
+        result.phases.refinements.push(record)
+        // Reserve budgets before invoking a search: a failed call cannot spend its allowance twice.
+        remaining -= budget
+        try {
+          const explored = runRosterIncomeSearch({
+            baseline:start.workspace,inventory:[...entries],mode:'multi-start',objective:'composite',
+            maxCandidates:budget,maxDepth:8,restarts:Math.min(20,Math.max(1,Math.ceil((budget-1)/8))),
+            searchSeed:(seed+Math.imul(index,0x9e3779b9))>>>0,
+            includeControlMains:true,includeProductionMains:true,lockedPositions:[...lockedPositions],
+            options:simulationJob(start.workspace).options,assumptions:simulationJob(start.workspace).assumptions,
+          }, progress=>onProgress?.({phase:'searching',phaseProgress:(searchBudget-remaining-budget+progress.completedCandidates)/searchBudget,
+            bestScore:finalScore,label:`追加寻优 ${index+1}/${starts.length}：${progress.label} (${progress.completedCandidates}/${budget})`}))
+          record.evaluated = explored.evaluatedCandidates
+          record.issues.push(...explored.issues ?? [])
+          const validation = explored.validation
+          if (!explored.bestCandidateId || validation?.status !== 'passed') continue
+          const candidate = explored.bestWorkspace
+          if (candidate.compatibility.backupPlans.length || validatePhysicalRoster(candidate).length) continue
+          const summary = evaluate(candidate)
+          if (!summary.completed || !Number.isFinite(summary.simScore) || summary.simScore <= finalScore) continue
+          const candidateCases = validation.candidates.find(c=>c.id===explored.bestCandidateId)?.cases
+          if (!candidateCases) continue
+          // The runner-up's local improvement is insufficient: compare against the current best
+          // using the same new seeds, 168+h window, inventory, drone policy and step sizes.
+          const incumbentCases = validation.seeds.flatMap(holdoutSeed=>validation.steps.map(step=>{
+            const response = runScheduleSimulationBridge(finalWorkspace,{
+              ...structuredClone(explored.settings.options),sampleHours:validation.sampleHours,warmupHours:validation.warmupHours,
+              maxStepHours:step,production:{...explored.settings.options.production,seed:holdoutSeed},
+            },structuredClone(explored.settings.assumptions))
+            if (!response.report) throw new Error(response.error ?? '保底方案复核失败')
+            return summarizeIncome(response.report)
+          }))
+          const comparison = compareIncome(incumbentCases,candidateCases,'composite')
+          record.minGain = comparison.minGain
+          if (comparison.status !== 'improved') {record.issues.push(...comparison.reasons);continue}
+          finalWorkspace = structuredClone(candidate)
+          finalScore = summary.simScore
+          record.accepted = true;record.score = finalScore
+          result.phases.search = {improved:true,gain:finalScore-searchStartingScore,result:explored}
+        } catch (error) {
+          record.issues.push(error instanceof Error ? error.message : String(error))
+          result.diagnostics.push({code:'REFINEMENT_FALLBACK',message:`${start.id} 追加搜索未完成，保留已验证方案：${record.issues[record.issues.length-1]}`})
+        }
+      }
+    }
+  }
+
   // The exported roster must be the one whose score was evaluated. Never fill or rewrite
   // dormitories/auxiliary seats after simulation; molecular synthesis already prepares them.
   if (finalWorkspace.compatibility.backupPlans.length) {
@@ -488,6 +572,10 @@ function* smartRosterSteps(
   result.status = 'draft'
   result.workspace = finalWorkspace
   result.score = finalScore
+  if (result.phases.search) {
+    result.phases.search.gain = finalScore-searchStartingScore
+    result.phases.search.improved = finalScore > searchStartingScore
+  }
 
   onProgress?.({
     phase: 'done',
