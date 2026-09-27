@@ -160,7 +160,6 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     // Explicit tasks can evict a resting primary. Keep its morale and queue a real
     // bed, rather than inventing capacity or silently forgetting that group member.
     const pendingRest = [...new Set([...(state.pendingRest ?? []), ...resting])].filter((id): id is string => Boolean(id) && primaries.includes(id!) && !Object.values(occupants).includes(id!) && !Object.values(beds).includes(id!))
-    unique(occupants, beds)
     const activeBackupBeds = new Set<string>()
     for (const [i, plan] of plans.entries()) {
       if (next[i] && Object.keys(plan.task).length) {
@@ -170,13 +169,17 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
               if (agent !== 'Current' && agent !== 'Free') {
                 activeBackupBeds.add(agent)
                 const key = `${room}_${index}`
-                if (config.beds.some(b => b.id === key) && !beds[key]) beds[key] = agent
+                if (config.beds.some(b => b.id === key) && !beds[key]) {
+                  remove(agent, occupants, beds)
+                  beds[key] = agent
+                }
               }
             })
           }
         }
       }
     }
+    unique(occupants, beds)
     state.backupBedOccupants = activeBackupBeds
     state.config = config; state.occupants = occupants; state.bedOccupants = beds; state.pendingRest = pendingRest
     state.returnDeadlines = {}; state.timingSignature = undefined

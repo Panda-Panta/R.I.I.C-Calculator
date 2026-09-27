@@ -9,6 +9,7 @@ import { EDITION } from '../domain/edition'
 import {
   MOWER_OUTPUT_ROOM_IDS,
   MOWER_ROOM_IDS,
+  mowerRoomToOutputRoomId,
   type MowerFacility,
   type MowerMainPlan,
   type MowerOutputRoomId,
@@ -121,7 +122,7 @@ export function compileMainPlanToAppConfig(
   // Deep clone existingConfig to ensure strict immutability of inputs
   const cloned = structuredClone(existingConfig)
 
-  // 1. Map 9 output rooms deterministically to B1..B9
+  // 1. Map 9 output rooms deterministically to B101..B303
   const rooms: OutputRoom[] = MOWER_OUTPUT_ROOM_IDS.map((roomId: MowerOutputRoomId, index: number) => {
     const facility: MowerFacility | undefined = mainPlan.facilities[roomId]
     const existingRoom = cloned.rooms?.[index]
@@ -161,7 +162,7 @@ export function compileMainPlanToAppConfig(
     }
 
     return {
-      id: `B${index + 1}`,
+      id: mowerRoomToOutputRoomId(roomId),
       type,
       level,
       operatorCount: validOperatorIds.length,

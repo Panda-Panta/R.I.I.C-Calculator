@@ -29,6 +29,18 @@ export function createRoom(id: string, type: RoomType): OutputRoom {
   }
 }
 
+export const OUTPUT_ROOM_IDS = [
+  'B101', 'B102', 'B103',
+  'B201', 'B202', 'B203',
+  'B301', 'B302', 'B303',
+] as const
+
+export function getOutputRoomId(index: number): string {
+  const floor = Math.floor(index / 3) + 1
+  const col = (index % 3) + 1
+  return `B${floor}0${col}`
+}
+
 export function createDefaultConfig(): AppConfig {
   const roomTypes: RoomType[] = [
     'manufacture',
@@ -46,7 +58,7 @@ export function createDefaultConfig(): AppConfig {
     schemaVersion: 7,
     planName: '243 标准方案',
     hours: 24,
-    rooms: roomTypes.map((type, index) => createRoom(`B${index + 1}`, type)),
+    rooms: roomTypes.map((type, index) => createRoom(getOutputRoomId(index), type)),
     facilities: {
       reception: 3,
       office: 3,

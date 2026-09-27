@@ -551,9 +551,17 @@
   .toolbar-scroll-container .mower-plan-toolbar {
     margin-left: 0;
     margin-right: 0;
+    width: 100%;
+    min-width: unset;
+    max-width: 980px;
   }
   .board-scroll-container {
     justify-content: flex-start;
+  }
+  .mower-facility-editor {
+    width: 100%;
+    min-width: unset;
+    max-width: 980px;
   }
 }
 
@@ -563,5 +571,48 @@
   .mower-global-replace-modal {
     max-width: 95vw !important;
     max-height: 85vh !important;
+  }
+
+  .mower-plan-toolbar {
+    width: 100% !important;
+    min-width: unset !important;
+    padding: 0 4px !important;
+  }
+
+  .mower-plan-toolbar .toolbar-actions {
+    gap: 6px !important;
+  }
+
+  .mower-plan-toolbar .mower-btn {
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .mower-facility-editor {
+    width: 100% !important;
+    min-width: unset !important;
+    padding: 6px 4px !important;
+  }
+
+  .mower-facility-editor .header-space table,
+  .mower-facility-editor .header-space tbody,
+  .mower-facility-editor .header-space tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mower-facility-editor .header-space td {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .mower-facility-editor .replacement-select {
+    min-width: 260px !important;
+  }
+
+  .mower-facility-editor .mower-replacement-list {
+    min-width: 260px !important;
   }
 }

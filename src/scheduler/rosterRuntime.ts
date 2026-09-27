@@ -224,7 +224,7 @@ function preemptMowerRest(s: RuntimeState, required: number, rates?: RuntimeRate
 }
 function fillIdleBeds(s: RuntimeState): void {
   const pool = [...new Set([...s.config.positions.flatMap(p=>p.candidates),...(s.config.runOrderPolicies?.flatMap(p=>p.orderedOperatorIds) ?? []),...(s.config.idleOperators ?? [])])]
-  const available = pool.filter(id => !s.config.freeBlacklist?.includes(id) && !s.config.positions.some(p => p.primary === id) && !Object.values(s.occupants).includes(id) && !Object.values(s.bedOccupants).includes(id)).sort((a,b) => s.morale[a]! - s.morale[b]!)
+  const available = pool.filter(id => !s.config.freeBlacklist?.includes(id) && !s.config.positions.some(p => p.primary === id) && !Object.values(s.occupants).includes(id) && !Object.values(s.bedOccupants).includes(id) && (s.morale[id] ?? 24) < 24 - MORALE_EPSILON).sort((a,b) => s.morale[a]! - s.morale[b]!)
   for (const bed of s.config.beds) if (!s.bedOccupants[bed.id] && available.length) s.bedOccupants[bed.id] = available.shift()!
 }
 /** Mower try_reorder: explicit list, then high/normal primaries, then substitutes. */

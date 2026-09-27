@@ -21,8 +21,8 @@ describe('base income calculator', () => {
 
   it('produces 20 gold bars per day at 100 percent efficiency', () => {
     const config = createDefaultConfig()
-    config.rooms[0] = { ...createRoom('B1', 'manufacture'), operatorCount: 0, product: 'gold' }
-    const result = calculate(config).manufacture.find((room) => room.roomId === 'B1')
+    config.rooms[0] = { ...createRoom('B101', 'manufacture'), operatorCount: 0, product: 'gold' }
+    const result = calculate(config).manufacture.find((room) => room.roomId === 'B101')
     expect(result?.count).toBeCloseTo(20)
     expect(result?.value).toBeCloseTo(10000)
   })
@@ -30,8 +30,8 @@ describe('base income calculator', () => {
   it('reports a daily average independently of the simulation horizon', () => {
     const config = createDefaultConfig()
     config.hours = 24 * 30
-    config.rooms[0] = { ...createRoom('B1', 'manufacture'), operatorCount: 0, product: 'gold' }
-    const result = calculate(config).manufacture.find((room) => room.roomId === 'B1')
+    config.rooms[0] = { ...createRoom('B101', 'manufacture'), operatorCount: 0, product: 'gold' }
+    const result = calculate(config).manufacture.find((room) => room.roomId === 'B101')
     expect(result?.count).toBeCloseTo(20)
     expect(result?.value).toBeCloseTo(10000)
   })
@@ -49,16 +49,16 @@ describe('base income calculator', () => {
 
   it('produces 8000 EXP per day at 100 percent efficiency', () => {
     const config = createDefaultConfig()
-    config.rooms[0] = { ...createRoom('B1', 'manufacture'), operatorCount: 0, product: 'exp' }
-    const result = calculate(config).manufacture.find((room) => room.roomId === 'B1')
+    config.rooms[0] = { ...createRoom('B101', 'manufacture'), operatorCount: 0, product: 'exp' }
+    const result = calculate(config).manufacture.find((room) => room.roomId === 'B101')
     expect(result?.count).toBeCloseTo(8)
     expect(result?.value).toBeCloseTo(8000)
   })
 
   it('produces 240 orundum from a level 3 source order post at 100 percent', () => {
     const config = createDefaultConfig()
-    config.rooms[4] = { ...createRoom('B5', 'trading'), operatorCount: 0, strategy: 'orundum' }
-    const result = calculate(config).trading.find((room) => room.roomId === 'B5')
+    config.rooms[4] = { ...createRoom('B202', 'trading'), operatorCount: 0, strategy: 'orundum' }
+    const result = calculate(config).trading.find((room) => room.roomId === 'B202')
     expect(result?.orders).toBeCloseTo(12)
     expect(result?.orundum).toBeCloseTo(240)
     expect(result?.fragmentsConsumed).toBeCloseTo(24)
@@ -66,7 +66,7 @@ describe('base income calculator', () => {
 
   it('blocks income when electricity is insufficient while retaining room results', () => {
     const config = createDefaultConfig()
-    config.rooms[8] = createRoom('B9', 'manufacture')
+    config.rooms[8] = createRoom('B303', 'manufacture')
     const report = calculate(config)
     expect(report.power.sufficient).toBe(false)
     expect(report.summary).toBeNull()

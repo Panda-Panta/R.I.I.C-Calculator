@@ -26,6 +26,7 @@ import SmartRosterConfigModal, { type SmartRosterConfig } from './SmartRosterCon
 import RiicSkillsBrowser from './RiicSkillsBrowser.vue'
 import BackupPlanEditor from './BackupPlanEditor.vue'
 import RosterPosterModal from './RosterPosterModal.vue'
+import MobileFacilityNav from './MobileFacilityNav.vue'
 import { NConfigProvider } from 'naive-ui'
 import { darkTheme, darkThemeOverrides } from '../../theme'
 import '../../workbench/styles.css'
@@ -332,6 +333,15 @@ function handleValidationFocus(payload: ValidationFocusPayload): void {
 
 function handleFocusRoom(roomId: string): void {
   store.selectRoom(roomId as MowerRoomId)
+  nextTick(() => {
+    if (facilityEditorSectionRef.value?.scrollIntoView) {
+      facilityEditorSectionRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+}
+
+function handleSelectRoomFromNav(roomId: MowerRoomId): void {
+  store.selectRoom(roomId)
   nextTick(() => {
     if (facilityEditorSectionRef.value?.scrollIntoView) {
       facilityEditorSectionRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -1003,6 +1013,11 @@ defineExpose({
           </div>
         </section>
 
+        <!-- Mobile & Responsive Facility Quick Navigation -->
+        <section class="mobile-facility-nav-section" data-test="mobile-facility-nav-section">
+          <MobileFacilityNav @select-room="handleSelectRoomFromNav" />
+        </section>
+
         <!-- Selected Facility Editor -->
         <section
           ref="facilityEditorSectionRef"
@@ -1379,6 +1394,58 @@ h1 small {
   }
   .board-scroll-container {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .workbench-topbar {
+    height: auto;
+    flex-direction: column;
+    padding: 10px 14px;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .brand {
+    justify-content: space-between;
+  }
+  .topbar-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    justify-content: flex-start;
+    padding: 4px 6px;
+  }
+  .nav-tab {
+    flex-shrink: 0;
+  }
+  .topbar-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .plan-name-input {
+    width: 100%;
+    max-width: 240px;
+  }
+  .workbench-main {
+    padding: 10px 8px 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .results-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .metric-card {
+    padding: 8px 10px !important;
+  }
+  .metric-num {
+    font-size: 16px !important;
+  }
+  .power-summary-badge {
+    font-size: 11px !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
   }
 }
 

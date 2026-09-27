@@ -733,6 +733,13 @@ export function evaluateOperators(
           facilityDetail = 'copied from other operators'
         } else if (skill.buffId === 'manu_cost_all[000]') {
           applied = 0
+        } else if (skill.buffId === 'manu_cost[000]') {
+          if (worldlyFireworks === 0 && activeOperators.length <= 1) {
+            applied = null
+          } else {
+            applied = 0
+            facilityDetail = '心情减免已由心情计算层结算'
+          }
         } else if (skill.buffId === 'manu_prod_spd_variable[000]') {
           applied = activeOperators.some((item) =>
             item.skills.some((itemSkill) => itemSkill.buffId === 'manu_prod_spd_variable3[000]'),
@@ -885,6 +892,14 @@ export function evaluateOperators(
           'trade_cost[000]',
         ].includes(skill.buffId)
         if (isTradeCapacityOrMoraleOnly) applied = 0 // Capacity/morale are evaluated in their own layers.
+        if (['trade_cost&bd2[000]', 'trade_cost&bd2[001]'].includes(skill.buffId)) {
+          if (activeOperators.length <= 1) {
+            applied = null
+          } else {
+            applied = 0
+            facilityDetail = '心情减免已由心情计算层结算'
+          }
+        }
         if (/高品质|特别订单|独占订单|违约订单|赤金交付数/.test(skill.description)) {
           applied = applied ?? 0
         }

@@ -15,6 +15,20 @@ export const MOWER_ROOM_IDS = [
 export type MowerRoomId = (typeof MOWER_ROOM_IDS)[number]
 export type MowerOutputRoomId = (typeof MOWER_OUTPUT_ROOM_IDS)[number]
 
+export function mowerRoomToOutputRoomId(roomId: MowerOutputRoomId | string): string {
+  const parts = roomId.split('_')
+  if (parts.length === 3 && parts[0] === 'room') {
+    return `B${parts[1]}0${parts[2]}`
+  }
+  const index = MOWER_OUTPUT_ROOM_IDS.findIndex(id => id === roomId)
+  if (index >= 0) {
+    const floor = Math.floor(index / 3) + 1
+    const col = (index % 3) + 1
+    return `B${floor}0${col}`
+  }
+  return roomId
+}
+
 export type MowerFacilityType =
   | 'manufacture'
   | 'trading'

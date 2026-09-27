@@ -160,7 +160,7 @@ describe('RIIC combination candidate evaluator probes', () => {
     value = candidate('trade-wuyou-duoling-fireworks'); config = applyAssignments(value); config.dormitoryOccupantCount = 20; room = targetRoom(config, value)
     // 2 base + Uyou: 55 fireworks; Duoling affects morale cost, not current efficiency.
     expect(evaluateOperators(room, config).efficiencyPercent).toBe(157)
-    expect(evaluateOperators(room, config).unquantifiedSkills).toContain('铎铃·万里传书')
+    expect(evaluateOperators(room, config).unquantifiedSkills).toEqual([])
 
     value = candidate('manu-exp-p3-makoto'); config = applyAssignments(value); room = targetRoom(config, value); room.product = 'gold'
     // 3 base + Makoto (20 + 4×5) + Gravel35 + Aroma(25 + warmed-up 20).

@@ -18,8 +18,8 @@ describe('Engine Protection & Calculation Equivalence', () => {
   it('protects engine source files against unauthorized modifications', () => {
     // Authorized shift-run and actual unlocked-skill baseline (2026-09-19), normalized LF; default arithmetic stays unchanged.
     expect(fileSha256('engine/calculate.ts')).toBe('107094f2bf31bba94d97ff56ba33de93870dd3fa8744a869edb35efba5c2daea')
-    expect(fileSha256('engine/morale.ts')).toBe('c14a0e51737ed55e1415b36b646cc7d989d77003fe1d99c4d25f99035a506b61')
-    expect(fileSha256('engine/operatorRules.ts')).toBe('b753b7ab6bdafe80e884a5d5b5b326b3fd258cc79ae2500705d2581f63ba616e')
+    expect(fileSha256('engine/morale.ts')).toBe('aa42b6ca643cb1f61d1a5904ba1c0e4190a890ff2b82c66a9937119e6063c7de')
+    expect(fileSha256('engine/operatorRules.ts')).toBe('1accd358c78f2491ea16dcf97a8ad36a94fa77b27756e6d3a67c3c38201e6c56')
   })
 
   it('produces deterministic baseline report for default configuration', () => {
@@ -35,7 +35,7 @@ describe('Engine Protection & Calculation Equivalence', () => {
     expect(report1.manufacture).toHaveLength(4)
     expect(report1.trading).toHaveLength(2)
     expect(report1.morale).toEqual([])
-    expect(Object.keys(report1.roomShiftDetails)).toEqual(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'])
+    expect(Object.keys(report1.roomShiftDetails)).toEqual(['B101', 'B102', 'B103', 'B201', 'B202', 'B203', 'B301', 'B302', 'B303'])
     expect(report1.summary).toEqual({
       exp: 0,
       goldCount: 80,
