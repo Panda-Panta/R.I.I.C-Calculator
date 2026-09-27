@@ -4,7 +4,7 @@ import type { AppConfig } from '../domain/types'
 import { currentMoraleRates } from '../engine/morale'
 import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
-import { MOWER_OUTPUT_ROOM_IDS, type MowerRoomId, type MowerSlot, type RosterWorkspace } from '../workbench/model'
+import { type MowerRoomId, type MowerSlot, type RosterWorkspace } from '../workbench/model'
 import { projectControlOutput } from './controlImpact'
 import { projectRosterConfig } from './rosterProjection'
 import { isSelfOnlyProductionFallback, productionRoomId, productionSingletonNames, singletonTheory } from './productionSingletons'
@@ -69,12 +69,11 @@ function assignmentContexts(workspace: RosterWorkspace, position: StaffingPositi
 
 function insertOperator(config: AppConfig, workspace: RosterWorkspace, position: StaffingPosition, insertionIndex: number, id: string) {
   const type = workspace.mainPlan.facilities[position.roomId].type
-  // The adapter preserves the fixed output-room order but renames its rooms B1..B9.
+  // The adapter preserves the fixed output-room order and names its rooms B101..B303.
   // Look up that ID, not the index in the filtered projection or the Mower room ID.
   if (['manufacture', 'trading', 'power'].includes(type)) {
-    const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
-    const room = config.rooms.find(r => r.id === `B${outputIndex + 1}`)
-    if (outputIndex < 0 || !room) throw new Error(`候选工位无法映射到计算设施：${position.roomId}`)
+    const room = config.rooms.find(r => r.id === productionRoomId(position.roomId))
+    if (!room) throw new Error(`候选工位无法映射到计算设施：${position.roomId}`)
     room.operatorIds.splice(insertionIndex, 0, id)
     room.operatorCount = room.operatorIds.length
     if (room.type === 'power') room.powerStaffed = true
@@ -89,9 +88,8 @@ function insertOperator(config: AppConfig, workspace: RosterWorkspace, position:
 function removeOperator(config: AppConfig, workspace: RosterWorkspace, position: StaffingPosition, insertionIndex: number, previousPowerStaffed = false) {
   const type = workspace.mainPlan.facilities[position.roomId].type
   if (['manufacture', 'trading', 'power'].includes(type)) {
-    const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
-    const room = config.rooms.find(r => r.id === `B${outputIndex + 1}`)
-    if (outputIndex < 0 || !room) return
+    const room = config.rooms.find(r => r.id === productionRoomId(position.roomId))
+    if (!room) return
     room.operatorIds.splice(insertionIndex, 1)
     room.operatorCount = room.operatorIds.length
     if (room.type === 'power') room.powerStaffed = previousPowerStaffed
@@ -147,8 +145,7 @@ export function rankStaffingCandidates(
     const neutral = (id: string) => options.allowNeutral && !records[id]?.skills.some(s => s.roomType === (type === 'manufacture' ? 'MANUFACTURE' : 'TRADING'))
     const cfg = context.config
     cfg.operatorRecords = records
-    const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
-    const targetRoom = outputIndex >= 0 ? cfg.rooms.find(r => r.id === `B${outputIndex + 1}`) : undefined
+    const targetRoom = cfg.rooms.find(r => r.id === productionRoomId(position.roomId))
     return [...new Set(candidates.map(resolveId))].filter(id => owned.has(id) &&
       (allowed.has(id) || isSelfOnlyProductionFallback(records[id]?.skills ?? [], type) || neutral(id))).flatMap(id => {
       insertOperator(cfg, workspace, position, context.insertionIndex, id)
@@ -170,8 +167,7 @@ export function rankStaffingCandidates(
   const baselines = contexts.map(({ config }) => quality(config))
   const ranked = [...new Set(candidates.map(resolveId))].map(id => {
     const deltas = contexts.map(({ config: contextCfg, insertionIndex }, index) => {
-      const outputIndex = MOWER_OUTPUT_ROOM_IDS.findIndex(roomId => roomId === position.roomId)
-      const room = outputIndex >= 0 ? contextCfg.rooms.find(r => r.id === `B${outputIndex + 1}`) : undefined
+      const room = contextCfg.rooms.find(r => r.id === productionRoomId(position.roomId))
       const prevPower = room?.powerStaffed ?? false
       insertOperator(contextCfg, workspace, position, insertionIndex, id)
       const value = quality(contextCfg), baseline = baselines[index]!

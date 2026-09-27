@@ -35,7 +35,7 @@ describe('Engine Protection & Calculation Equivalence', () => {
     expect(report1.manufacture).toHaveLength(4)
     expect(report1.trading).toHaveLength(2)
     expect(report1.morale).toEqual([])
-    expect(Object.keys(report1.roomShiftDetails)).toEqual(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'])
+    expect(Object.keys(report1.roomShiftDetails)).toEqual(['B101', 'B102', 'B103', 'B201', 'B202', 'B203', 'B301', 'B302', 'B303'])
     expect(report1.summary).toEqual({
       exp: 0,
       goldCount: 80,

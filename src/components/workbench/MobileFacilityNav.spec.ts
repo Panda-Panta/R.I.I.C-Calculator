@@ -21,8 +21,8 @@ describe('MobileFacilityNav.vue', () => {
     expect(tabs[2]!.text()).toContain('副设施')
 
     const chips = wrapper.findAll('.facility-chip')
-    expect(chips.length).toBe(9) // B1 ~ B9
-    expect(chips[0]!.text()).toContain('B1')
+    expect(chips.length).toBe(9) // B101 ~ B303
+    expect(chips[0]!.text()).toContain('B101')
   })
 
   it('switches categories when category tab is clicked', async () => {

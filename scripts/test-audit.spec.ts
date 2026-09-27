@@ -348,7 +348,9 @@ describeExternalAudit('Audit Test and Report Generator', () => {
       // Rooms
       excelMainConfig.rooms = block.rooms.map((er, idx) => {
         const { type, product } = excelCategoryToTypeProduct(er.category)
-        const room = createRoom(`B${idx + 1}`, type)
+        const floor = Math.floor(idx / 3) + 1
+        const col = (idx % 3) + 1
+        const room = createRoom(`B${floor}0${col}`, type)
         room.product = product
         room.operatorIds = er.excelMainOps.map(n => NAME_TO_CHAR_ID.get(n)!).filter(Boolean)
         return room

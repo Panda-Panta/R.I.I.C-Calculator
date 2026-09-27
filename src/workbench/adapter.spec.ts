@@ -52,7 +52,7 @@ describe('compileMainPlanToAppConfig', () => {
     expect(report.summary).not.toBeNull()
   })
 
-  it('deterministically maps 9 Mower output IDs (room_1_1..room_3_3) to B1..B9', () => {
+  it('deterministically maps 9 Mower output IDs (room_1_1..room_3_3) to B101..B303', () => {
     const ws = createDefaultWorkspace()
     const baseConfig = createDefaultConfig()
 
@@ -92,7 +92,9 @@ describe('compileMainPlanToAppConfig', () => {
     expect(config.rooms).toHaveLength(9)
     for (let i = 0; i < 9; i++) {
       const room = config.rooms[i]!
-      const expectedId = `B${i + 1}`
+      const floor = Math.floor(i / 3) + 1
+      const col = (i % 3) + 1
+      const expectedId = `B${floor}0${col}`
       const cfg = roomConfigTypes[i]!
 
       expect(room.id).toBe(expectedId)
@@ -395,7 +397,7 @@ describe('compileMainPlanToAppConfig', () => {
     // Non-layout calculation settings
     baseConfig.hours = 48
     baseConfig.dormitoryOccupantCount = 15
-    baseConfig.droneTarget = 'B2'
+    baseConfig.droneTarget = 'B102'
     baseConfig.operatorMorale = { char_002_amiya: 18, char_102_texas: 10 }
     baseConfig.zeroMoraleOperatorIds = ['char_106_franka']
     baseConfig.efficiencyResources.droneCapacity = 250
@@ -419,7 +421,7 @@ describe('compileMainPlanToAppConfig', () => {
 
     expect(config.hours).toBe(48)
     expect(config.dormitoryOccupantCount).toBe(15)
-    expect(config.droneTarget).toBe('B2')
+    expect(config.droneTarget).toBe('B102')
     expect(config.operatorMorale).toEqual({ char_002_amiya: 18, char_102_texas: 10 })
     expect(config.zeroMoraleOperatorIds).toEqual(['char_106_franka'])
     expect(config.efficiencyResources.droneCapacity).toBe(250)
@@ -492,7 +494,7 @@ describe('compileMainPlanToAppConfig', () => {
     legacy.zeroMoraleOperatorIds = ['char_103_angel']
     legacy.hours = 48
     legacy.dormitoryOccupantCount = 12
-    legacy.droneTarget = 'B3'
+    legacy.droneTarget = 'B103'
     legacy.efficiencyResources.droneCapacity = 260
     legacy.efficiencyResources.manufacturePerceptionInformation = 7
     legacy.efficiencyResources.extraWorkplaceOperatorIds = ['char_108_silent']
@@ -506,7 +508,7 @@ describe('compileMainPlanToAppConfig', () => {
     expect(compiled.zeroMoraleOperatorIds).toEqual(['char_103_angel'])
     expect(compiled.hours).toBe(48)
     expect(compiled.dormitoryOccupantCount).toBe(12)
-    expect(compiled.droneTarget).toBe('B3')
+    expect(compiled.droneTarget).toBe('B103')
     expect(compiled.efficiencyResources.droneCapacity).toBe(260)
     expect(compiled.efficiencyResources.manufacturePerceptionInformation).toBe(7)
     expect(compiled.efficiencyResources.extraWorkplaceOperatorIds).toEqual(['char_108_silent'])

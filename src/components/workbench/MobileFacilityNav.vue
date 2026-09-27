@@ -64,7 +64,7 @@ const emit = defineEmits<{
 const activeCategory = ref<'output' | 'central_dorm' | 'support'>('output')
 
 const categories = [
-  { key: 'output' as const, label: '产出 (B1~B9)' },
+  { key: 'output' as const, label: '产出 (B101~B303)' },
   { key: 'central_dorm' as const, label: '中枢与宿舍' },
   { key: 'support' as const, label: '副设施 (4间)' },
 ]
@@ -80,15 +80,15 @@ interface FacilityChipData {
 }
 
 const OUTPUT_ROOM_CODES: Record<string, string> = {
-  room_1_1: 'B1',
-  room_1_2: 'B2',
-  room_1_3: 'B3',
-  room_2_1: 'B4',
-  room_2_2: 'B5',
-  room_2_3: 'B6',
-  room_3_1: 'B7',
-  room_3_2: 'B8',
-  room_3_3: 'B9',
+  room_1_1: 'B101',
+  room_1_2: 'B102',
+  room_1_3: 'B103',
+  room_2_1: 'B201',
+  room_2_2: 'B202',
+  room_2_3: 'B203',
+  room_3_1: 'B301',
+  room_3_2: 'B302',
+  room_3_3: 'B303',
 }
 
 function getFacilityInfo(roomId: MowerRoomId, fac?: MowerFacility): FacilityChipData {

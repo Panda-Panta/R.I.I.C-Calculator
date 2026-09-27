@@ -66,6 +66,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
       const restToFull = Boolean(schedule.policies.rest_in_full?.includes(primary))
       const restingPriority = schedule.policies.resting_priority?.includes(primary) ? 'low' : 'high'
 
+      const isAuxiliary = (room.roomId === 'factory' || room.roomId === 'train') && !slot.groupId
       const position: RuntimePosition = {
         id: `${room.roomId}_${slot.slotIndex}`,
         roomId: room.roomId,
@@ -73,7 +74,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
         candidates,
         group: slot.groupId?.trim() ? slot.groupId.trim() : undefined,
         dormitory: isDorm,
-        permanent: (isDormKeeper && candidates.length === 0) || schedule.policies.workaholic?.includes(primary) || undefined,
+        permanent: (isDormKeeper && candidates.length === 0) || schedule.policies.workaholic?.includes(primary) || isAuxiliary || undefined,
         exhaustRequired: exhaustRequired || undefined,
         restToFull: restToFull || undefined,
         restingPriority,

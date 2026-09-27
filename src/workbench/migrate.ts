@@ -50,7 +50,7 @@ export function migrateAppConfigToWorkspace(config: AppConfig): RosterWorkspace 
   }
   ws.mainPlan.conf.workaholic = [...(config.workaholicOperatorIds ?? [])]
 
-  // 1. Map 9 output rooms (B1..B9)
+  // 1. Map 9 output rooms (B101..B303)
   for (let i = 0; i < 9 && i < config.rooms.length; i++) {
     const legacyRoom = config.rooms[i]
     const roomId = MOWER_OUTPUT_ROOM_IDS[i]

@@ -44,7 +44,11 @@ export function productionSingletonNames(workspace: RosterWorkspace, roomId: Mow
 }
 
 export function productionRoomId(roomId: MowerRoomId): string {
-  return `B${MOWER_OUTPUT_ROOM_IDS.findIndex(id => id === roomId) + 1}`
+  const index = MOWER_OUTPUT_ROOM_IDS.findIndex(id => id === roomId)
+  if (index < 0) return roomId
+  const floor = Math.floor(index / 3) + 1
+  const col = (index % 3) + 1
+  return `B${floor}0${col}`
 }
 
 /** Warm-up defaults to its theoretical cap. This is NOT a duty-cycle income estimate.
