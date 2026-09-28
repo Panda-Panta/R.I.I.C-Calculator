@@ -98,7 +98,7 @@ export function simulationReportToCalculationReport(
   return {
     ...legacyReport,
     summary,
-    drones: drones > 0 ? drones : legacyReport.drones,
+    drones: simReport.production ? drones : legacyReport.drones,
     validationMessages: simReport.diagnostics.map(d => d.message),
   }
 }

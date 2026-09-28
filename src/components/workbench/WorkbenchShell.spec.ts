@@ -427,6 +427,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(wrapper.find('[data-test="metric-exp"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="metric-drones"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="metric-drones-usage"]').text()).toContain('日均消耗')
+    expect(wrapper.find('[data-test="metric-drones-usage"]').text()).toContain('期末库存')
 
     const initialLmd = wrapper.find('[data-test="metric-lmd"]').text()
 

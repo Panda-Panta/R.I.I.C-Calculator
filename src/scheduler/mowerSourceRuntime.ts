@@ -597,7 +597,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
      const todoState:MowerTodoTaskState={
       queue,flags:source.runFlags!,enableParty:settings?.enableParty??true,
       get lastClueMicros(){return source.lastClueMicros??null},set lastClueMicros(value){source.lastClueMicros=value},
-      get droneRoom(){return s.config.mowerDroneRoom??null},get runOrderRooms(){return Object.keys(getMowerSourceRuntime(s).data.runOrderRooms)},
+      get droneRoom(){return s.config.mowerDroneRoom??null},get runOrderRooms(){return s.config.mowerRunOrderWakeOnly?[]:Object.keys(getMowerSourceRuntime(s).data.runOrderRooms)},
       get droneTimeMicros(){return source.droneTimeMicros??null},set droneTimeMicros(value){source.droneTimeMicros=value},
       droneIntervalHours:settings?.droneIntervalHours??3,reloadRooms:settings?.reloadRooms??null,
       get reloadTimeMicros(){return source.reloadTimeMicros??null},set reloadTimeMicros(value){source.reloadTimeMicros=value},

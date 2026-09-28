@@ -18,6 +18,27 @@ const options:ScheduleSimulationOptions={sampleHours:2,recordSegments:true,produ
 const selected=(r:ReturnType<typeof simulateSchedule>,type:string)=>r.production!.events.filter(e=>e.type===type)
 
 describe('run-order integration after natural mode removal',()=>{
+ it('accelerates a selected trade room even when ideal run-order candidates are configured',()=>{
+  const schedule=base()
+  const production={outputMode:'potential' as const,runOrderMode:'ideal' as const,seed:42,initialResources:{drone:235}}
+  const natural=simulateSchedule(schedule,{sampleHours:4,production:{...production,droneTarget:'none'}})
+  const accelerated=simulateSchedule(schedule,{sampleHours:4,production:{...production,droneTarget:'trading',droneRoomId:'room_1_1'}})
+  expect(accelerated.success).toBe(true)
+  expect(accelerated.production!.events.some(e=>e.type==='native-trade-drone'&&e.roomId==='room_1_1')).toBe(true)
+  expect(accelerated.production!.drones.consumed).toBeGreaterThan(0)
+  expect(accelerated.production!.sample.completed.orderLmd).toBeGreaterThan(natural.production!.sample.completed.orderLmd)
+ },15000)
+ it('spends naturally charged drones on an ideal run-order trade room',()=>{
+  const schedule=base()
+  const production={outputMode:'potential' as const,runOrderMode:'ideal' as const,seed:42}
+  const natural=simulateSchedule(schedule,{sampleHours:16,production:{...production,droneTarget:'none'}})
+  const result=simulateSchedule(schedule,{sampleHours:16,production:{...production,droneTarget:'trading',droneRoomId:'room_1_1'}})
+  expect(result.success).toBe(true)
+  expect(result.production!.drones.initial).toBe(0)
+  expect(result.production!.drones.consumed).toBeGreaterThan(0)
+  expect(result.production!.events.some(e=>e.type==='native-trade-drone'&&e.roomId==='room_1_1')).toBe(true)
+  expect(result.production!.sample.completed.orderLmd).toBeGreaterThan(natural.production!.sample.completed.orderLmd)
+ },20000)
  it.each(['potential','settled'])('rejects legacy natural mode for %s output before scheduling',outputMode=>{
   const production=JSON.parse(JSON.stringify({...options.production,runOrderMode:'natural',outputMode}))
   expect(()=>simulateSchedule(base(),{...options,production})).toThrow(/自然跑单.*禁用/)
