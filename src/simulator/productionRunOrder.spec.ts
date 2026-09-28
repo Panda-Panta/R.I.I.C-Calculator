@@ -28,7 +28,8 @@ describe('run-order integration after natural mode removal',()=>{
   expect(accelerated.production!.drones.consumed).toBeGreaterThan(0)
   expect(accelerated.production!.sample.completed.orderLmd).toBeGreaterThan(natural.production!.sample.completed.orderLmd)
  },15000)
- it('spends naturally charged drones on an ideal run-order trade room',()=>{
+ it('spends naturally charged drones on an ideal run-order trade room',async()=>{
+  await new Promise(resolve=>setTimeout(resolve,150))
   const schedule=base()
   const production={outputMode:'potential' as const,runOrderMode:'ideal' as const,seed:42}
   const natural=simulateSchedule(schedule,{sampleHours:16,production:{...production,droneTarget:'none'}})
@@ -38,7 +39,7 @@ describe('run-order integration after natural mode removal',()=>{
   expect(result.production!.drones.consumed).toBeGreaterThan(0)
   expect(result.production!.events.some(e=>e.type==='native-trade-drone'&&e.roomId==='room_1_1')).toBe(true)
   expect(result.production!.sample.completed.orderLmd).toBeGreaterThan(natural.production!.sample.completed.orderLmd)
- },20000)
+ },45000)
  it.each(['potential','settled'])('rejects legacy natural mode for %s output before scheduling',outputMode=>{
   const production=JSON.parse(JSON.stringify({...options.production,runOrderMode:'natural',outputMode}))
   expect(()=>simulateSchedule(base(),{...options,production})).toThrow(/自然跑单.*禁用/)

@@ -28,14 +28,14 @@ export function admitCombinationCandidates(inventory: OperatorInventory): Candid
 
 export interface ScheduleInventoryDiagnostic {code:string;message:string;operatorName?:string}
 /** Validate ownership and input stages; skill selection belongs to each simulation. */
-export function validateScheduleInventory(schedule: CompiledSchedule, inventory: OperatorInventory, resources?: Partial<EfficiencyResources>) {
+export function validateScheduleInventory(schedule: CompiledSchedule, inventory: OperatorInventory, resources?: Partial<EfficiencyResources>, scope: 'all' | 'efficiency-resources' = 'all') {
   const diagnostics: ScheduleInventoryDiagnostic[] = inventory.diagnostics.map(d=>({code:'INVENTORY_INVALID',message:d.message}))
-  const runtime=compiledScheduleToRuntimeConfig(schedule)
+  const runtime=scope==='all'?compiledScheduleToRuntimeConfig(schedule):undefined
   const references=new Set([
-    ...runtime.positions.flatMap(p=>[p.primary,...p.candidates]),
-    ...(runtime.runOrderPolicies?.flatMap(p=>p.orderedOperatorIds)??[]),
-    ...(runtime.fiammetta?[runtime.fiammetta.operatorId,...runtime.fiammetta.orderedTargets]:[]),
-    ...(runtime.idleOperators??[]),
+    ...(runtime?.positions.flatMap(p=>[p.primary,...p.candidates])??[]),
+    ...(runtime?.runOrderPolicies?.flatMap(p=>p.orderedOperatorIds)??[]),
+    ...(runtime?.fiammetta?[runtime.fiammetta.operatorId,...runtime.fiammetta.orderedTargets]:[]),
+    ...(runtime?.idleOperators??[]),
     ...(resources?.extraWorkplaceOperatorIds??[]),...(resources?.trainingOperatorIds??[]),
   ])
   const owned=new Map(inventory.operators.map(o=>[o.charId,o]))

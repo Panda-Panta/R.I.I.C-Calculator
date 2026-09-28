@@ -7,6 +7,7 @@ import {createProductionTimeline,assertRunOrderMode,type ProductionOptions,type 
 import {createDefaultConfig,createRoom} from '../domain/defaults'
 import {OPERATORS,OPERATOR_MAP} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
+import {validateScheduleInventory} from '../optimizer/inventoryAdmission'
 import type {AppConfig,EfficiencyResources} from '../domain/types'
 import {currentMoraleRates} from '../engine/morale'
 import {evaluateDormitoryRecovery} from '../engine/dormitoryRecovery'
@@ -123,6 +124,11 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  const inventory=options.operatorInventory===undefined?undefined:compileOperatorInventory(options.operatorInventory)
  const operatorRecords=inventory?inventoryOperatorRecords(inventory):undefined
  if(inventory&&!inventory.valid){for(const issue of inventory.diagnostics)diagnostic('INVENTORY_INVALID',issue.message);return report}
+ if(inventory){
+  // Imported inventories may contain only idle cards; staffed rooms come from the schedule.
+  const admission=validateScheduleInventory(schedule,inventory,options.efficiencyResources,'efficiency-resources')
+  if(!admission.valid){for(const issue of admission.diagnostics)diagnostic(issue.code,issue.message);return report}
+ }
  if(schedule.assumptions.elitePhase!==2){diagnostic('SKILL_STAGE_UNSUPPORTED','当前动态模拟使用已校对的最高基建技能；较低精英阶段尚未编译');return report}
  if(schedule.assumptions.operationDurationHours!==0){diagnostic('OPERATION_DURATION_UNSUPPORTED','当前模拟仅支持忽略换人操作耗时');return report}
  if(schedule.runOrderPolicies.length&&!options.production)diagnostic('ORDER_LIFECYCLE_NOT_SIMULATED','保留跑单配置；本报告统计日常班组效率，尚未模拟每单插入干员、收单与资源结算')

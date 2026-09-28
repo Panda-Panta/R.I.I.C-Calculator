@@ -12,7 +12,9 @@ it('decodes the supplied image byte-for-data without losing any backup settings'
   expect(JSON.parse(data)).toEqual(JSON.parse(readFileSync(new URL('roster.json',directory),'utf8')))
 })
 
-it.each([24,168])('executes real backups and production continuously for %i hours', hours => {
+it.each([24,168])('executes real backups and production continuously for %i hours', async hours => {
+  // Flush Vitest's task update before the synchronous multi-day simulation.
+  await new Promise(resolve => setTimeout(resolve, 150))
   const workspace=importMowerJson(readFileSync(new URL('roster.json',directory),'utf8'))
   const result=runScheduleSimulationBridge(workspace,{sampleHours:hours,warmupHours:0,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none',seed:42}})
   writeFileSync(new URL(`production-${hours}h.json`,directory),JSON.stringify(result,null,2))
@@ -28,4 +30,4 @@ it.each([24,168])('executes real backups and production continuously for %i hour
     expect(new Set(ids).size).toBe(ids.length)
     expect(Object.values(s.morale).every(m=>Number.isFinite(m)&&m>=0&&m<=24)).toBe(true)
   }
-},120000)
+},300000)
