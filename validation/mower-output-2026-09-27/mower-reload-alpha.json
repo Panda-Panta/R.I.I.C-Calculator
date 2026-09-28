@@ -1,0 +1,3251 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "cycleProven": false,
+  "nativeAssertionsPassed": true,
+  "sourceSha256": "7dff0665033f69d9b254e9e2dd844f14ed7cb024552c6d846b183e45bbc07d6d",
+  "actualAst": {
+    "reload": [
+      7985,
+      8015
+    ],
+    "decorators": []
+  },
+  "scope": "Full actual reload. Explicit enter/tap/scene/waiting/navigation/record/update/back I/O observations. Tap/back elapsed use stated native intervals for controlled fixtures, not complete page transition/pixel parity. Original thrown exception identities are retained.",
+  "cases": [
+    {
+      "name": "empty-room-list-still-records-now",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "reloadTimeMicros": 20000000000,
+        "trace": []
+      }
+    },
+    {
+      "name": "single-room-five-taps-and-navigation-update-return-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 20001750000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "two-rooms-return-clock-after-all",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1",
+          "room_2_2"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS",
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20003500000,
+        "reloadTimeMicros": 20003500000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_2_2"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20002000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20002250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20002500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20003000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20003500000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20003500000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20003500000
+          }
+        ]
+      }
+    },
+    {
+      "name": "explicit-nondefault-resolution-scales-coordinates",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1280,
+        "height": 720,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 20001750000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                64.0,
+                684.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                64.0,
+                684.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                64.0,
+                684.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                960.0,
+                216.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                960.0,
+                648.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "waiting-True-continues-and-records-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 20001750000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": true,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "waiting-False-returns-before-navigation-or-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING"
+        ],
+        "waitingResults": [
+          false
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": false,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": false,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "waiting-None-returns-before-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING"
+        ],
+        "waitingResults": [
+          null
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "waiting-empty-container-is-falsy",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING"
+        ],
+        "waitingResults": [
+          []
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": [],
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": [],
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "early-wait-return-retains-null-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": null,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING"
+        ],
+        "waitingResults": [
+          false
+        ],
+        "faults": [],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": false,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": null,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": false,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "enter-recognition-error-recovered-main-keeps-old-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_MAIN"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "enter-room",
+            "at": 1,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-enter-room",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_MAIN",
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-enter-room"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_MAIN",
+            "nowMicros": 20000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "tap-error-recovered-two-backs-keeps-old-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS",
+          "INFRA_DETAILS",
+          "INFRA_MAIN"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "tap",
+            "at": 2,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-tap",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_MAIN",
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20002500000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-tap"
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001500000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001500000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20002500000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_MAIN",
+            "nowMicros": 20002500000
+          }
+        ]
+      }
+    },
+    {
+      "name": "tap-error-three-backs-recovers-before-fourth",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS",
+          "INFRA_DETAILS",
+          "INFRA_DETAILS",
+          "INFRA_MAIN"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "tap",
+            "at": 1,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-tap",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_MAIN",
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20003250000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-tap"
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20002250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20002250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20003250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_MAIN",
+            "nowMicros": 20003250000
+          }
+        ]
+      }
+    },
+    {
+      "name": "tap-error-fourth-back-rethrows-original-identity",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS",
+          "INFRA_DETAILS",
+          "INFRA_DETAILS",
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "tap",
+            "at": 1,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-tap",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "type": "RecognizeError",
+          "message": "controlled-tap",
+          "id": 1
+        },
+        "nowMicros": 20004250000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-tap"
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20002250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20002250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20003250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20003250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20004250000
+          }
+        ]
+      }
+    },
+    {
+      "name": "first-room-error-followed-by-success-does-not-record-time",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1",
+          "room_2_2"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_MAIN",
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "enter-room",
+            "at": 1,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-enter-room",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_MAIN",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-enter-room"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_MAIN",
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_2_2"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "late-navigation-error-uses-same-recovery",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS",
+          "INFRA_MAIN"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "navigate",
+            "at": 1,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "navigate",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-navigate",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_MAIN",
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "navigate",
+            "request": {
+              "scene": "INFRA_MAIN"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-navigate"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_MAIN",
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "waiting-solver-error-is-caught-and-recovers",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING",
+          "INFRA_MAIN"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "waiting-solver",
+            "at": 1,
+            "type": "RecognizeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": true,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-waiting-solver",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_MAIN",
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": true,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-waiting-solver"
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_MAIN",
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "MowerExit-propagates-no-record-update-or-back",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "enter-room",
+            "at": 1,
+            "type": "MowerExit"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "MowerExit",
+              "message": "controlled-enter-room",
+              "id": 1
+            }
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "type": "MowerExit",
+          "message": "controlled-enter-room",
+          "id": 1
+        },
+        "nowMicros": 20000000000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "MowerExit-from-waiting-solver-propagates",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "CONNECTING"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "waiting-solver",
+            "at": 1,
+            "type": "MowerExit"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "scene",
+            "value": "CONNECTING",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "waiting-solver",
+            "value": true,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "MowerExit",
+              "message": "controlled-waiting-solver",
+              "id": 1
+            }
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "type": "MowerExit",
+          "message": "controlled-waiting-solver",
+          "id": 1
+        },
+        "nowMicros": 20001750000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000750000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                324.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001250000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                1440.0,
+                972.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "CONNECTING",
+            "nowMicros": 20001750000
+          },
+          {
+            "kind": "waiting-solver",
+            "request": {},
+            "value": true,
+            "nowMicros": 20001750000
+          }
+        ]
+      }
+    },
+    {
+      "name": "exception-recorder-error-propagates-second-identity",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "enter-room",
+            "at": 1,
+            "type": "RecognizeError"
+          },
+          {
+            "kind": "save-exception",
+            "at": 1,
+            "type": "RuntimeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-enter-room",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RuntimeError",
+              "message": "controlled-save-exception",
+              "id": 2
+            }
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "type": "RuntimeError",
+          "message": "controlled-save-exception",
+          "id": 2
+        },
+        "nowMicros": 20000000000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-enter-room"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "back-recovery-error-propagates-second-identity",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [
+          "INFRA_DETAILS"
+        ],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "tap",
+            "at": 1,
+            "type": "RecognizeError"
+          },
+          {
+            "kind": "back",
+            "at": 1,
+            "type": "RuntimeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-tap",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "scene",
+            "value": "INFRA_DETAILS",
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "back",
+            "value": null,
+            "elapsedMicros": 1000000,
+            "error": {
+              "type": "RuntimeError",
+              "message": "controlled-back",
+              "id": 2
+            }
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "type": "RuntimeError",
+          "message": "controlled-back",
+          "id": 2
+        },
+        "nowMicros": 20001250000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-tap"
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "scene",
+            "request": {},
+            "value": "INFRA_DETAILS",
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "back",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001250000
+          }
+        ]
+      }
+    },
+    {
+      "name": "update-recovery-error-propagates-second-identity",
+      "input": {
+        "nowMicros": 20000000000,
+        "rooms": [
+          "room_1_1"
+        ],
+        "reloadTimeMicros": 18000000000,
+        "width": 1920,
+        "height": 1080,
+        "waitingScenes": [
+          "CONNECTING",
+          "UNKNOWN"
+        ],
+        "scenes": [],
+        "waitingResults": [
+          true
+        ],
+        "faults": [
+          {
+            "kind": "tap",
+            "at": 1,
+            "type": "RecognizeError"
+          },
+          {
+            "kind": "update",
+            "at": 1,
+            "type": "RuntimeError"
+          }
+        ],
+        "elapsedByKind": {},
+        "observations": [
+          {
+            "kind": "enter-room",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap",
+            "value": null,
+            "elapsedMicros": 250000,
+            "error": {
+              "type": "RecognizeError",
+              "message": "controlled-tap",
+              "id": 1
+            }
+          },
+          {
+            "kind": "save-exception",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "update",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": {
+              "type": "RuntimeError",
+              "message": "controlled-update",
+              "id": 2
+            }
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "type": "RuntimeError",
+          "message": "controlled-update",
+          "id": 2
+        },
+        "nowMicros": 20000250000,
+        "reloadTimeMicros": 18000000000,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000000000
+          },
+          {
+            "kind": "tap",
+            "request": {
+              "target": [
+                96.0,
+                1026.0
+              ],
+              "intervalSeconds": 0.25
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "save-exception",
+            "request": {
+              "errorType": "RecognizeError",
+              "message": "controlled-tap"
+            },
+            "value": null,
+            "nowMicros": 20000250000
+          },
+          {
+            "kind": "update",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000250000
+          }
+        ]
+      }
+    }
+  ]
+}

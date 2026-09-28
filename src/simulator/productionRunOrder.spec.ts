@@ -22,13 +22,13 @@ describe('run-order integration after natural mode removal',()=>{
   const production=JSON.parse(JSON.stringify({...options.production,runOrderMode:'natural',outputMode}))
   expect(()=>simulateSchedule(base(),{...options,production})).toThrow(/自然跑单.*禁用/)
  })
- it('uses the same physical native temporary staffing and restoration for both income modes',()=>{
-  const run=(runOrderMode:'ideal'|'drone')=>simulateSchedule(base(),{...options,production:{runOrderMode,inventoryMode:'finite',droneTarget:'none',initialResources:{gold:100,drone:20}}})
-  const ideal=run('ideal'),r=run('drone')
-  expect(r.success&&r.production!.success&&ideal.success&&ideal.production!.success).toBe(true)
-  expect(r.segments).toHaveLength(ideal.segments.length)
+ it('uses the same physical native temporary staffing and restoration for Grandet and legacy drone modes',()=>{
+  const run=(runOrderMode:'grandet'|'drone')=>simulateSchedule(base(),{...options,production:{runOrderMode,inventoryMode:'finite',droneTarget:'none',initialResources:{gold:100,drone:20}}})
+  const grandet=run('grandet'),r=run('drone')
+  expect(r.success&&r.production!.success&&grandet.success&&grandet.production!.success).toBe(true)
+  expect(r.segments).toHaveLength(grandet.segments.length)
   for(const [index,segment] of r.segments.entries()){
-   const other=ideal.segments[index]!
+   const other=grandet.segments[index]!
    expect(segment.occupants).toEqual(other.occupants);expect(segment.bedOccupants).toEqual(other.bedOccupants)
    expect(segment.efficiencyPercent).toEqual(other.efficiencyPercent)
    expect(Math.abs(segment.start-other.start)).toBeLessThan(1/3_600_000_000)
@@ -40,20 +40,20 @@ describe('run-order integration after natural mode removal',()=>{
   expect(r.segments[r.segments.length-1]!.occupants[position]).toBe(id('芬'))
   expect(r.operators.find(operator=>operator.operatorId===id('但书'))!.workHours).toBeGreaterThan(0)
   expect(selected(r,'order-completed')).toHaveLength(1)
-  expect(r.production!.drones.consumed).toBe(ideal.production!.drones.consumed)
+  expect(r.production!.drones.consumed).toBe(grandet.production!.drones.consumed)
   expect(r.production!.drones.initial+r.production!.drones.generated-r.production!.drones.consumed-r.production!.drones.overflow).toBeCloseTo(r.production!.drones.stock,8)
   expect(r.production!.ledger.outflows.gold).toBe(4)
   expect(r.production!.ledger.inflows.lmd).toBe(2000)
  })
- it('retains ideal reward conversion while native temporary staffing changes completion timing',()=>{
+ it('retains ideal reward conversion without native temporary staffing',()=>{
   const r=simulateSchedule(base(),options)
   expect(r.success&&r.production!.success).toBe(true)
   expect(selected(r,'run-order-ideal')).toHaveLength(1)
   expect(selected(r,'order-completed')).toHaveLength(1)
   expect(selected(r,'order-completed')[0]!.order).toMatchObject({goldCost:4,lmdReward:2000})
-  expect(selected(r,'order-completed')[0]!.time).toBeGreaterThan(144/1.31/60)
+  expect(selected(r,'order-completed')[0]!.time).toBeCloseTo(144/1.31/60,6)
   expect(r.production!.drones.consumed).toBe(0)
-  expect(r.operators.find(o=>o.operatorId===id('但书'))!.workHours).toBeGreaterThan(0)
+  expect(r.operators.find(o=>o.operatorId===id('但书'))!.workHours).toBe(0)
   expect(r.segments[r.segments.length-1]!.occupants.room_1_1_0).toBe(id('芬'))
  })
  it('retains captured special costs while an unfunded queue fills and blocks acquisition',()=>{

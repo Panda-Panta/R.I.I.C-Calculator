@@ -16,15 +16,16 @@ function fixture(){
  return compileRosterSchedule(workspace,{idleOperators:['斑点','空爆','梓兰','克洛丝'].map(id)})
 }
 describe('full simulation supplies concrete order observations to Mower tasks',()=>{
- it('runs real entry and restoration even with ideal income conversion',()=>{
-  const report=simulateSchedule(fixture(),{sampleHours:8,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none',seed:42}})
+ it('runs real entry and restoration with Grandet scheduling',()=>{
+  const report=simulateSchedule(fixture(),{sampleHours:8,recordSegments:true,production:{outputMode:'potential',runOrderMode:'grandet',droneTarget:'none',seed:42}})
   expect(report.success,JSON.stringify(report.diagnostics)).toBe(true)
   expect(report.diagnostics.some(d=>d.code==='mower-run-order-io-unavailable')).toBe(false)
   const runner=report.operators.find(o=>o.operatorId===id('但书'))!
   expect(runner.workHours).toBeGreaterThan(0)
   expect(report.segments.some(segment=>segment.occupants.room_3_1_0===id('但书'))).toBe(true)
   expect(report.segments.filter(segment=>segment.occupants.room_3_1_0===id('芬')).length).toBeGreaterThan(1)
-  expect(report.production!.events.some(e=>e.type==='run-order-ideal')).toBe(true)
+  expect(report.production!.events.some(e=>e.type==='run-order-ideal')).toBe(false)
+  expect(report.production!.events.some(e=>e.type==='order-completed'&&e.order?.kind==='proviso')).toBe(true)
   expect(report.production!.events.filter(e=>e.type==='order-completed').length).toBeGreaterThan(1)
   expect(report.operators.filter(o=>o.operatorId!==id('芬')).every(o=>o.exhaustedHours===0)).toBe(true)
  })
@@ -52,7 +53,7 @@ describe('full simulation supplies concrete order observations to Mower tasks',(
  it('executes the native drone branch against actual generated stock and preserves its ledger',()=>{
   const schedule=fixture()
   schedule.assumptions.runOrderGrandet=false
-  const report=simulateSchedule(schedule,{sampleHours:5,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none',seed:42,initialResources:{drone:50}}})
+  const report=simulateSchedule(schedule,{sampleHours:5,production:{outputMode:'potential',runOrderMode:'drone',droneTarget:'none',seed:42,initialResources:{drone:50}}})
   expect(report.success,JSON.stringify(report.diagnostics)).toBe(true)
   const drones=report.production!.drones
   expect(drones.consumed).toBeGreaterThan(0)

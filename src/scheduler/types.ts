@@ -30,6 +30,10 @@ export interface SimulationAssumptions {
   reloadRooms?: string[] | null
   maaGapHours?: number
   runOrderBufferSeconds?: number
+  /** Simulation-only choice; preserved when backup plans recompile the runtime. */
+  runOrderSimulationMode?: 'ideal' | 'grandet' | 'drone'
+  /** Ideal mode retains order task scheduling; false reproduces the old no-wake comparison. */
+  idealRunOrderWakeOnly?: boolean
   idleOperators?: string[]
   fiammettaFool?: boolean
   fiammettaThreshold?: number

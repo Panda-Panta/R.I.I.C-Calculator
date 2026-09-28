@@ -26,6 +26,7 @@ export type MowerTaskPlan=Record<string,string[]>
 export interface MowerTaskOptions {time?:number;type?:MowerTaskType|string|null;plan?:MowerTaskPlan;metadata?:string;adjusted?:boolean;strictMoodLimit?:boolean;moodLimit?:number}
 export class MowerTask {
  timeMicros:number;type:MowerTaskType;plan:MowerTaskPlan;metadata:string;adjusted:boolean;strictMoodLimit:boolean;moodLimit:number|undefined
+ observedOrderDueMicros?:number;wakeOnlyCompletion=false
  productShiftLocked=false
  dormRecoveryRestore:string[]=[]
  constructor(options:MowerTaskOptions={},now=0){this.timeMicros=toMowerMicros(options.time??now);this.type=setMowerTaskType(options.type);this.plan=options.plan??{};this.metadata=options.metadata??'';this.adjusted=options.adjusted??false;this.strictMoodLimit=options.strictMoodLimit??false;this.moodLimit=options.moodLimit}

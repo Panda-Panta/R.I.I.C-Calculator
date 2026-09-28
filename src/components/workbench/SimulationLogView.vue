@@ -226,6 +226,7 @@ function exportJson(mode: ExportReportMode = 'summary'): void {
                 <th>设施名称</th>
                 <th>平均总效率</th>
                 <th>在岗驻留时长</th>
+                <th>采样完成件数（经验按份）</th>
                 <th>经历轮换组合数</th>
               </tr>
             </thead>
@@ -234,6 +235,7 @@ function exportJson(mode: ExportReportMode = 'summary'): void {
                 <td>{{ getRoomDisplayName(room.roomId, room.roomType) }}</td>
                 <td><strong>{{ number(room.averageEfficiencyPercent) }}%</strong></td>
                 <td>{{ number(room.occupiedHours) }} 小时</td>
+                <td>{{ room.roomType==='manufacture' && report.production ? number(report.production.manufacturing.find(item=>item.roomId===room.roomId)?.sampleCompletedItems) : '—' }}</td>
                 <td>{{ room.teams.length }} 组</td>
               </tr>
             </tbody>

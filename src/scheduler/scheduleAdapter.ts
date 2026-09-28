@@ -158,6 +158,9 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
   const sourceList=(key:string)=>{const raw=(schedule.policies as Record<string,unknown>)[key];return (Array.isArray(raw)?raw:typeof raw==='string'?raw.split(','):[]).map(String).filter(Boolean).map(resolveOperatorCharId)}
   return {
     mowerDroneRoom:schedule.assumptions.droneRoom??null,
+    // Preserve source candidate metadata in both modes; excludedCandidates below blocks ordinary shift use.
+    mowerRunOrderEnabled:schedule.assumptions.runOrderSimulationMode!=='ideal'||schedule.assumptions.idealRunOrderWakeOnly!==false,
+    mowerRunOrderWakeOnly:schedule.assumptions.runOrderSimulationMode==='ideal'&&schedule.assumptions.idealRunOrderWakeOnly!==false,
     mowerServices:{enableParty:false,leifengMode:schedule.assumptions.leifengMode??true,droneIntervalHours:schedule.assumptions.droneIntervalHours??3,reloadRooms:schedule.assumptions.reloadRooms===null?null:schedule.assumptions.reloadRooms??[],maaGapHours:schedule.assumptions.maaGapHours??3},
     mowerRunOrderFinishing:{bufferSeconds:schedule.assumptions.runOrderGrandet===false?-1:schedule.assumptions.runOrderBufferSeconds??15,droneCountLimit:schedule.assumptions.droneCountLimit??100,waitingScenes:[]},
     mowerDeviceTiming:{roomReturnMicros:500_000},

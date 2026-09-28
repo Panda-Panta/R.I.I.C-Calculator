@@ -94,6 +94,20 @@ describe('SimulationLogView.vue', () => {
     expect(wrapper.find('[data-test="export-full-btn"]').exists()).toBe(true)
   })
 
+  it('shows sampled manufacturing completions rather than lifetime totals', () => {
+    const report = createSampleReport()
+    report.production = {
+      success: false,
+      sample: { opening: {}, inflows: {}, outflows: {}, net: {}, closing: {} },
+      manufacturing: [{ roomId: 'room_1_1', completedItems: 999, sampleCompletedItems: 7 }],
+    } as ScheduleSimulationReport['production']
+    const wrapper = mount(SimulationLogView, { props: { report } })
+    const facilityTable = wrapper.findAll('.log-section').find(section => section.text().includes('设施平均效率统计'))
+    expect(facilityTable?.text()).toContain('采样完成件数')
+    expect(facilityTable?.text()).toContain('7')
+    expect(facilityTable?.text()).not.toContain('999')
+  })
+
   it('triggers lightweight summary export and full debug export on button clicks', async () => {
     const report = createSampleReport()
     const wrapper = mount(SimulationLogView, {

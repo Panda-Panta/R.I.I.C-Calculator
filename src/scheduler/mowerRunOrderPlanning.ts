@@ -16,6 +16,7 @@ export interface RunOrderPlanningState {
   queue:MowerTaskQueue
   configuredDelayMinutes:number
   droneRoom:string|null
+  wakeOnly?:boolean
   /** These three flags are intentionally independent. */
   flags:{planned:boolean;todoTask:boolean;collectNotification:boolean}
 }
@@ -90,6 +91,7 @@ export function* planDefaultRunOrder(
   const timeMicros=yield* observeNativeRunOrderTime(state,seam,room)
   const task=new MowerTask({type:T.RUN_ORDER,metadata:room,plan:{[room]:names}})
   task.timeMicros=timeMicros
+  task.observedOrderDueMicros=timeMicros+toMowerMicros(state.configuredDelayMinutes/60)
   state.queue.tasks.push(task)
   return task
 }
@@ -132,6 +134,7 @@ export function* runDefaultTradeSegment(
     if(valid){
       for(const room of state.runOrderRooms)yield* planDefaultRunOrder(state,seam,room)
       let conflict=schedule(state,seam),maxExecution=3
+      if(state.wakeOnly)return {tailShouldRun:true,reason:'completed',droneCount:0}
       if(state.runOrderRooms.length>=3){
         const n=state.runOrderRooms.length,dp:number[]=[0,0,1]
         for(let i=3;i<=n;i++)dp[i]=3*dp[i-1]!+2*dp[i-2]!

@@ -26,6 +26,10 @@ export interface RuntimeBed { id: string; roomId: string; vip: boolean; managedR
 export interface RuntimeConfig {
   positions: RuntimePosition[]; beds: RuntimeBed[]; initialMorale?: Record<string, number>
   mowerSourcePlan?: Record<string,{agent:string;group:string;replacement:string[]}[]>
+  /** Disable order tasks only for the old no-wake comparison. */
+  mowerRunOrderEnabled?: boolean
+  /** Retain order task deadlines and planning wakes; skip physical runner arrangements. */
+  mowerRunOrderWakeOnly?: boolean
   /** Source device back(0.5); absent for pure, frozen-clock decision fixtures. */
   mowerDeviceTiming?: {roomReturnMicros:number}
   /** Explicit headless outer-clock adapter, never used to alter task timestamps. */

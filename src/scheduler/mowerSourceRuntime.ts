@@ -65,8 +65,8 @@ function makeData(s:RuntimeState,previous?:MowerSourceRuntime):MowerSchedulingDa
   const record=OPERATOR_MAP.get(op.name),skills=record?.skillSlots?.flat()??record?.skills??[]
   op.singleRecoveryManager=managerNames.has(op.name)&&skills.some(skill=>skill.description.replace(/<[^>]*>/g,'').includes('进驻宿舍时，使该宿舍内除自身以外心情未满的某个干员每小时恢复'))
  }
- const runOrderRooms=previous?.data.runOrderRooms??{}
- for(const [room,slots] of Object.entries(source))if(room.startsWith('room')&&slots.some(slot=>slot.replacement.some(name=>['但书','龙舌兰','佩佩','可露希尔'].includes(OPERATOR_MAP.get(name)?.name??name))))runOrderRooms[room]={}
+ const runOrderRooms=config.mowerRunOrderEnabled===false?{}:previous?.data.runOrderRooms??{}
+ if(config.mowerRunOrderEnabled!==false)for(const [room,slots] of Object.entries(source))if(room.startsWith('room')&&slots.some(slot=>slot.replacement.some(name=>['但书','龙舌兰','佩佩','可露希尔'].includes(OPERATOR_MAP.get(name)?.name??name))))runOrderRooms[room]={}
  const dorms=previous?.data.dorms??config.beds.filter(b=>b.managedRecovery!==false).sort((a,b)=>Number(b.vip)-Number(a.vip)).map(b=>new MowerDormState([b.roomId,slotIndex(b.id)]))
  return new MowerSchedulingData({plan:Object.fromEntries(Object.entries(source).map(([room,slots])=>[room,slots.map(p=>p.agent)])),operators,dorms,runOrderRooms,nowMicros:toMowerMicros(s.time),policy:{restingThreshold:config.mowerPolicy!.restingThreshold,rescueThreshold:config.mowerPolicy?.rescueThreshold??.75},freeRoom:config.mowerPolicy?.freeRoom,groupRestInFullOnMoodGap:config.mowerPolicy?.groupRestInFullOnMoodGap,groupMoodGapMaxExtraWaitHours:config.mowerPolicy?.groupMoodGapMaxExtraWaitHours,mergeIntervalMinutes:config.mowerPolicy?.mergeIntervalMinutes,powerPlantCount:config.mowerPolicy?.powerPlantCount,planConditions:previous?.data.planConditions,partyTime:config.mowerServices?.enableParty===false?undefined:previous?.data.partyTime,restingPriorityNames:config.mowerPolicy?.opeRestingPriority,freeBlacklist:config.freeBlacklist,excludedCandidates:new Set(config.excludedCandidates)})
 }
@@ -95,7 +95,7 @@ function physicalRate(s:RuntimeState,rates:RuntimeRates,name:string,room:string)
 function currentRoomChanged(s:RuntimeState,op:MowerOperatorState):void {
  const source=getMowerSourceRuntime(s),{data,queue}=source
  if(source.firstInit||data.operators[op.name]!==op)return
- if(op.refreshOrderRooms[0])for(const room of op.refreshOrderRooms[1].length?op.refreshOrderRooms[1]:Object.keys(data.runOrderRooms))refreshMowerRunOrderTime(queue,data.nowMicros,room)
+ if(s.config.mowerRunOrderEnabled!==false&&op.refreshOrderRooms[0])for(const room of op.refreshOrderRooms[1].length?op.refreshOrderRooms[1]:Object.keys(data.runOrderRooms))refreshMowerRunOrderTime(queue,data.nowMicros,room)
  if(!s.config.mowerSourceRules!.refreshDrained.includes(op.name))return
  const solved=new Set<string>()
  for(const exhaust of Object.values(data.operators).filter(o=>o.exhaustRequire)){
@@ -352,6 +352,7 @@ export function mowerRunOrderContext(s:RuntimeState):[RunOrderPlanningState,RunO
   runOrderRooms:Object.keys(source.data.runOrderRooms),queue:source.queue,
   configuredDelayMinutes:s.config.mowerTaskScheduling?.configuredDelayMinutes??3,
   droneRoom:s.config.mowerDroneRoom??null,flags:source.runFlags!,
+  wakeOnly:s.config.mowerRunOrderWakeOnly===true,
  }
  const seam:RunOrderPlanningSeam={
   nowMicros:()=>toMowerMicros(s.time),nativeName:id=>OPERATOR_MAP.get(id)?.name??id,
@@ -455,6 +456,16 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
     while(!next.done&&next.value.delayMicros===0)next=steps.next()
     if(!next.done){source.execution={task,steps,wakeMicros:data.nowMicros+next.value.delayMicros,intent:running?.intent??{},data:running?.data??data};break}
     delete source.execution
+   }else if(!running&&task.type===T.RUN_ORDER&&s.config.mowerRunOrderWakeOnly){
+    // Keep the native pre-order wake, then recheck at the observed completion time.
+    // The queued task suppresses repeated reads of this still-pending order.
+    if(task.wakeOnlyCompletion)queue.consume(task)
+    else {
+     if(task.observedOrderDueMicros===undefined)throw new Error('Wake-only order has no observed completion deadline')
+     task.wakeOnlyCompletion=true;task.plan={}
+     task.timeMicros=Math.max(data.nowMicros+1,task.observedOrderDueMicros)
+     queue.sort()
+    }
    }else if(!running&&task.type===T.FIAMMETTA&&!Object.keys(task.plan).length){
     const fia=s.config.fiammetta,target=fia?selectMowerFiaTarget(data,fia.orderedTargets,fia.fool??true,(fia.threshold??21.6)/24):undefined
     if(target&&fia){

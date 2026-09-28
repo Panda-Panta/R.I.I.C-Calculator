@@ -15,7 +15,7 @@ it.each(scenarios)('records screenshot steady-window scenario: $droneTarget / $a
   // Vitest throttles task updates by 100ms. Drain their RPC before the long
   // synchronous calculation; keep each scenario a separate reported test.
   await new Promise(resolve => setTimeout(resolve, 150))
-  const result = runScheduleSimulationBridge(workspace, { warmupHours: 168, sampleHours: process.env.MOWER_PARITY_LONG ? 672 : 168, recordSegments: false, production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget, seed: Number(process.env.MOWER_PARITY_SEED ?? 42) } }, assumptions)
+  const result = runScheduleSimulationBridge(workspace, { warmupHours: 168, sampleHours: process.env.MOWER_PARITY_LONG ? 672 : 168, recordSegments: false, production: { outputMode: 'potential', runOrderMode: 'grandet', droneTarget, seed: Number(process.env.MOWER_PARITY_SEED ?? 42) } }, assumptions)
   if (!result.report?.success) writeFileSync(new URL('screenshot-failure.json',root),JSON.stringify(result,null,2))
   expect(result.report?.success, result.error ?? JSON.stringify(result.report?.diagnostics)).toBe(true)
   const r = result.report!

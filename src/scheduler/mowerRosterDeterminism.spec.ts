@@ -8,7 +8,7 @@ it('replays physical Mower task decisions and production exactly for the same or
   const root = new URL('../../validation/mower-backup-2026-09-22/', import.meta.url)
   const workspace = importMowerJson(readFileSync(new URL('roster.json', root), 'utf8'))
   const reports = [42, 42].map(seed => runScheduleSimulationBridge(workspace,
-    { warmupHours: 0, sampleHours: Number(process.env.MOWER_DETERMINISM_HOURS ?? 168), production: { runOrderMode: 'ideal', outputMode: 'potential', droneTarget: 'exp', seed } },
+    { warmupHours: 0, sampleHours: Number(process.env.MOWER_DETERMINISM_HOURS ?? 168), production: { runOrderMode: 'grandet', outputMode: 'potential', droneTarget: 'exp', seed } },
     { restingThreshold: .65, fiammettaFool: false }).report!)
   expect(reports.every(r => r.success)).toBe(true)
   const events = reports.map(r => r.events)

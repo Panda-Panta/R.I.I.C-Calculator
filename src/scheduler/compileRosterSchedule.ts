@@ -34,6 +34,7 @@ export function compileRosterSchedule(workspace: RosterWorkspace, options: Parti
   const diagnostics: CompiledSchedule['diagnostics'] = []
   const invalid = (path: string, message: string) => diagnostics.push({ code: 'INVALID_ASSUMPTION', severity: 'error', path, message })
   if (!Number.isFinite(assumptions.runOrderDelayMinutes)) invalid('assumptions.runOrderDelayMinutes', 'run_order_delay must be finite')
+  if(assumptions.runOrderSimulationMode!==undefined&&!['ideal','grandet','drone'].includes(assumptions.runOrderSimulationMode))invalid('assumptions.runOrderSimulationMode','Invalid simulation run-order mode')
   for (const key of ['enableMastery','runOrderGrandet','enableParty','leifengMode'] as const) if (typeof assumptions[key] !== 'boolean') invalid('assumptions.'+key, 'Native scheduling switch must be boolean')
   for(const key of ['droneIntervalHours','maaGapHours'] as const)if(!Number.isFinite(assumptions[key])||assumptions[key]!<0)invalid('assumptions.'+key,'Native service interval must be nonnegative and finite')
   if(!Number.isInteger(assumptions.droneCountLimit)||assumptions.droneCountLimit!<0)invalid('assumptions.droneCountLimit','Native drone reserve must be a nonnegative integer')
