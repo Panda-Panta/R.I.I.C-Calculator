@@ -14,7 +14,7 @@ on:
       prerelease:
         description: 'Mark as pre-release'
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -93,5 +93,5 @@ jobs:
             artifacts/SHA256SUMS.txt
           generate_release_notes: true
           draft: false
-          prerelease: ${{ inputs.prerelease || false }}
+          prerelease: ${{ github.event_name == 'push' || inputs.prerelease }}
           token: ${{ secrets.GITHUB_TOKEN }}
