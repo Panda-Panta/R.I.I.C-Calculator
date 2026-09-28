@@ -28,24 +28,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11.19.0
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'pnpm'
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
@@ -59,6 +59,21 @@ jobs:
         shell: pwsh
         run: |
           pwsh -ExecutionPolicy Bypass -File scripts/pack-release.ps1 -OutputDir artifacts
+
+      - name: Verify release package
+        shell: pwsh
+        run: |
+          $expectedZip = 'R.I.I.C-Calculator-Windows-x64-Portable.zip'
+          $zips = @(Get-ChildItem -LiteralPath artifacts -File -Filter '*.zip')
+          if ($zips.Count -ne 1 -or $zips[0].Name -ne $expectedZip) {
+            throw "Expected exactly one release ZIP named $expectedZip; found: $($zips.Name -join ', ')"
+          }
+          $hash = (Get-FileHash -LiteralPath "artifacts/$expectedZip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedSum = "$hash  $expectedZip"
+          $actualSum = (Get-Content -LiteralPath artifacts/SHA256SUMS.txt -Raw).Trim()
+          if ($actualSum -ne $expectedSum) {
+            throw 'SHA256SUMS.txt does not match the release ZIP'
+          }
 
       - name: Resolve Release Tag
         id: resolve_tag
@@ -77,18 +92,17 @@ jobs:
           Write-Host "Resolved release tag: $tag"
 
       - name: Upload Release Artifacts to Workflow Run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-artifacts
           path: |
             artifacts/R.I.I.C-Calculator-Windows-x64-Portable.zip
-            artifacts/ArcIncCalc-Windows-x64-Portable.zip
             artifacts/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Tag the pushed commit
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         with:
@@ -110,13 +124,12 @@ jobs:
             }
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_TAG }}
           files: |
             artifacts/R.I.I.C-Calculator-Windows-x64-Portable.zip
-            artifacts/ArcIncCalc-Windows-x64-Portable.zip
             artifacts/SHA256SUMS.txt
           generate_release_notes: true
           draft: false
