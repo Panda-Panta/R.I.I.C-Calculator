@@ -1,0 +1,6097 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "find_next_task",
+    "_sync_run_order_tasks",
+    "plan_run_order",
+    "get_run_order_time",
+    "get_run_order_adjust_room",
+    "run_order_solver",
+    "infra_main",
+    "skip",
+    "TaskTypes",
+    "set_type_enum",
+    "SchedulerTask",
+    "find_next_task",
+    "scheduling",
+    "_schedule_run_orders",
+    "adjust_run_order_for_maintenance",
+    "_support_swap_gap",
+    "protect_support_swaps",
+    "_avoid_swap_with_orders",
+    "_defer_work_before_swap",
+    "_ordinary_task_minutes",
+    "_merge_deferred_dorm_schedules",
+    "estimate_dorm_minutes"
+  ],
+  "sourceSha256": {
+    "validation\\mower-fix-2026-09-27\\mower-alpha\\arknights_mower\\solvers\\base_schedule.py": "7dff0665033f69d9b254e9e2dd844f14ed7cb024552c6d846b183e45bbc07d6d",
+    "validation\\mower-fix-2026-09-27\\mower-alpha\\arknights_mower\\utils\\scheduler_task.py": "6ac7829ce38501bd3a04db87536b67ddc05e8b615ea81267ef92372a27d34ac1",
+    "validation\\mower-output-2026-09-27\\alpha-operation_timing.py": "8cb09181d2e18be69d1a84c93ea14b8f1bc7d53fedcfc32d1ebeeb2cec0e0a12",
+    "validation\\mower-fix-2026-09-27\\mower-alpha\\arknights_mower\\utils\\operators.py": "a4d3e6f152bd3c2943c97996a1936e24983c4a4c7bb771493187628c7e657408"
+  },
+  "sourceFunctionLines": {
+    "find_next_task": {
+      "start": 308,
+      "end": 323
+    },
+    "_sync_run_order_tasks": {
+      "start": 2412,
+      "end": 2431
+    },
+    "plan_run_order": {
+      "start": 2433,
+      "end": 2462
+    },
+    "get_run_order_time": {
+      "start": 4226,
+      "end": 4242
+    },
+    "get_run_order_adjust_room": {
+      "start": 2660,
+      "end": 2704
+    },
+    "run_order_solver": {
+      "start": 2464,
+      "end": 2657
+    },
+    "infra_main": {
+      "start": 931,
+      "end": 1275
+    },
+    "skip": {
+      "start": 7972,
+      "end": 7980
+    }
+  },
+  "helperDomainCases": [
+    "replacement suffix case tests literal native substring matching, not init_and_validate acceptance",
+    "prefix_dormitory_suffix tests literal native key substring gating, not accepted desktop room IDs"
+  ],
+  "scope": "DEFAULT actual AST plan_run_order/get_run_order_time/get_run_order_adjust_room/full run_order_solver and actual infra_main REFRESH_TIME branch. Actual scheduling AST, default arg5/config3. Explicit observed absolute deadline and entry/interface/read/return/drone clock/mutation seams. Fia disabled and exhaust iterable empty but tail entry traced. No order acceptance, native drone internals, room occupant selection, income or complete-cycle assertion.",
+  "seams": [
+    "absoluteDueMicros is the observed native double_read_time result, not fitted remaining time or ideal income",
+    "entry/interface/read/return timings explicitly advance observed wall clock; interval=1 is logged, no invented duration",
+    "drone result and task-time mutations are explicit observed seams; full native drone/adjust_order_time not executed",
+    "REFRESH_TIME uses actual full infra_main with only its selected branch reached; no scene-machine emulation",
+    "check_fia disabled and empty exhaust iterator trace whether native tails are reached; no Fia/exhaust behavior proven",
+    "Python native task identity retained; originalIndex tracks object identity"
+  ],
+  "cases": [
+    {
+      "name": "plan-substring-selects-first-not-matching-index-and-global-delay3",
+      "input": {
+        "action": "plan",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "芬",
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "香草"
+              ]
+            },
+            {
+              "replacement": [
+                "佩佩后缀"
+              ]
+            },
+            {
+              "replacement": [
+                "龙舌兰",
+                "米格鲁"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 900123456,
+              "enterMicros": 100000,
+              "interfaceMicros": 200000,
+              "readMicros": 300000,
+              "returnMicros": 500000
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "room": "room_1_1"
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 1100000,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 720123456,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "芬",
+                "Current",
+                "佩佩后缀",
+                "龙舌兰"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 100000
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 300000
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 600000,
+            "absoluteDueMicros": 900123456
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 1100000
+          }
+        ]
+      }
+    },
+    {
+      "name": "plan-existing-task-no-read-no-duplicate",
+      "input": {
+        "action": "plan",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [
+          {
+            "seconds": 500,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          }
+        ],
+        "droneRoom": null,
+        "droneSteps": [],
+        "room": "room_1_1"
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 500000000,
+            "metadata": "room_1_1",
+            "plan": {},
+            "originalIndex": 0
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "plan-native-metadata-substring-also-suppresses",
+      "input": {
+        "action": "plan",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [
+          {
+            "seconds": 500,
+            "type": "RUN_ORDER",
+            "metadata": "prefix-room_1_1-suffix",
+            "plan": {}
+          }
+        ],
+        "droneRoom": null,
+        "droneSteps": [],
+        "room": "room_1_1"
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 500000000,
+            "metadata": "prefix-room_1_1-suffix",
+            "plan": {},
+            "originalIndex": 0
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "refresh-actual-infra-dispatch-plans-and-skips-only-todo-notify",
+      "input": {
+        "action": "refresh",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 900000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 500000
+            }
+          ]
+        },
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "REFRESH_TIME",
+            "metadata": "room_1_1",
+            "plan": {}
+          }
+        ],
+        "droneRoom": null,
+        "droneSteps": [],
+        "room": "room_1_1"
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 500000,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 720000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": true,
+          "collectNotification": true
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 900000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 500000
+          }
+        ]
+      }
+    },
+    {
+      "name": "refresh-existing-order-still-skip-and-consume-refresh",
+      "input": {
+        "action": "refresh",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "REFRESH_TIME",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 500,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          }
+        ],
+        "droneRoom": null,
+        "droneSteps": [],
+        "room": "room_1_1"
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 500000000,
+            "metadata": "room_1_1",
+            "plan": {},
+            "originalIndex": 1
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": true,
+          "collectNotification": true
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "solver-dorm-none-skips-trade-but-runs-tails",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": null
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-dorm-four-skips-trade-but-runs-tails",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-dorm-six-skips-trade-but-runs-tails",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-native-dorm-key-substring-gate-helper-domain",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "prefix_dormitory_suffix": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ],
+          "prefix_dormitory_suffix": null
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-unplanned-short-dorm-does-not-gate",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ],
+          "dormitory_2": [
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": -80000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 20000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 200000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": null
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-no-runorder-room-runs-tails",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ]
+        },
+        "runOrderRooms": [],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {},
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-gap-240s-distinguishes-arg5-from-config3",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1240000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": false,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1060000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 1,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1240000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": false,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-gap-300s-distinguishes-arg5-from-config3",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1300000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": false,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1120000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1300000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": null
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-persistent-conflict-2rooms-dp-inclusive-cap",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 4,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-persistent-conflict-3rooms-dp-inclusive-cap",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_3": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2",
+          "room_1_3"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_3": [
+            {
+              "absoluteDueMicros": 1200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1020000000,
+            "metadata": "room_1_3",
+            "plan": {
+              "room_1_3": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 4,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_3",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1200000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-persistent-conflict-4rooms-dp-inclusive-cap",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_3": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_2_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2",
+          "room_1_3",
+          "room_2_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_3": [
+            {
+              "absoluteDueMicros": 1200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_2_1": [
+            {
+              "absoluteDueMicros": 1300000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1020000000,
+            "metadata": "room_1_3",
+            "plan": {
+              "room_1_3": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1120000000,
+            "metadata": "room_2_1",
+            "plan": {
+              "room_2_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 14,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_3",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1200000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_2_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1300000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-persistent-conflict-5rooms-dp-inclusive-cap",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_3": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_2_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_2_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2",
+          "room_1_3",
+          "room_2_1",
+          "room_2_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_3": [
+            {
+              "absoluteDueMicros": 1200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_2_1": [
+            {
+              "absoluteDueMicros": 1300000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_2_2": [
+            {
+              "absoluteDueMicros": 1400000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          },
+          {
+            "result": true,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1020000000,
+            "metadata": "room_1_3",
+            "plan": {
+              "room_1_3": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1120000000,
+            "metadata": "room_2_1",
+            "plan": {
+              "room_2_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 1220000000,
+            "metadata": "room_2_2",
+            "plan": {
+              "room_2_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 16,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_3",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1200000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_2_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1300000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_2_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1400000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-drone-none-continues-four-times-and-runs-tails",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": null,
+            "elapsedMicros": 0
+          },
+          {
+            "result": null,
+            "elapsedMicros": 0
+          },
+          {
+            "result": null,
+            "elapsedMicros": 0
+          },
+          {
+            "result": null,
+            "elapsedMicros": 0
+          },
+          {
+            "result": null,
+            "elapsedMicros": 0
+          },
+          {
+            "result": null,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 4,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": null,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": null,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": null,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": null,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-drone-false-early-return-skips-both-tails",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": false,
+            "elapsedMicros": 500000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 500000,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 1,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": false,
+            "nowMicros": 500000
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 500000,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-drone-updated-observed-time-resolves-conflict",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [
+          {
+            "result": true,
+            "elapsedMicros": 100000,
+            "updates": {
+              "room_1_2": 2000000000
+            }
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 100000,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 2000000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 1,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_1",
+            "adjustTime": true,
+            "result": true,
+            "nowMicros": 100000
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 100000,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": null
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 100000
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 100000
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-adjust-none-from-unmarked-orders-early-return",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "",
+            "plan": {}
+          },
+          {
+            "seconds": 5000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          }
+        ],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 100000000,
+            "metadata": "",
+            "plan": {},
+            "originalIndex": 0
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 200000000,
+            "metadata": "",
+            "plan": {},
+            "originalIndex": 1
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 5000000000,
+            "metadata": "room_1_1",
+            "plan": {},
+            "originalIndex": 2
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": ""
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": ""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-grandet-disabled-no-drone",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": false,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": []
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": true,
+          "exhaust": true
+        },
+        "droneCount": 0,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": null
+          },
+          {
+            "kind": "fia-tail",
+            "nowMicros": 0
+          },
+          {
+            "kind": "exhaust-tail",
+            "nowMicros": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "solver-preferred-drone-room-selected",
+      "input": {
+        "action": "solver",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 1000000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 1100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": "room_1_2",
+        "droneSteps": [
+          {
+            "result": false,
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 820000000,
+            "metadata": "room_1_1",
+            "plan": {
+              "room_1_1": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          },
+          {
+            "type": "RUN_ORDER",
+            "timeMicros": 920000000,
+            "metadata": "room_1_2",
+            "plan": {
+              "room_1_2": [
+                "但书"
+              ]
+            },
+            "originalIndex": null
+          }
+        ],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 1,
+        "trace": [
+          {
+            "kind": "enter-room",
+            "room": "room_1_1",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1000000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "enter-room",
+            "room": "room_1_2",
+            "nowMicros": 0
+          },
+          {
+            "kind": "wait-interface",
+            "requestedIntervalMicros": 1000000,
+            "nowMicros": 0
+          },
+          {
+            "kind": "read-order",
+            "observedAtMicros": 0,
+            "absoluteDueMicros": 1100000000
+          },
+          {
+            "kind": "return-main",
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          },
+          {
+            "kind": "drone",
+            "room": "room_1_2",
+            "adjustTime": true,
+            "result": false,
+            "nowMicros": 0
+          },
+          {
+            "kind": "scheduling",
+            "nowMicros": 0,
+            "argDelayMinutes": 5,
+            "configuredDelayMinutes": 3,
+            "conflict": [
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_1"
+              },
+              {
+                "type": "RUN_ORDER",
+                "metadata": "room_1_2"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "adjust-room-level-1-then-3",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_1",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-room-level-3-then-1",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_2",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-room-level-3-then-2",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_1",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-room-level-2-then-3",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_1",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-room-level-2-then-1",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_2",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-room-level-1-then-2",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            },
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_1",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-one-order-one-handoff-only-order-target",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "SWAP_SUPPORT",
+            "metadata": "support",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": "room_1_1",
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-no-order-target-none",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": [
+          {
+            "seconds": 100,
+            "type": "SWAP_SUPPORT",
+            "metadata": "support",
+            "plan": {}
+          },
+          {
+            "seconds": 200,
+            "type": "SELF_CORRECTION",
+            "metadata": "other",
+            "plan": {}
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    },
+    {
+      "name": "adjust-none-tuple-native-TypeError-caught",
+      "input": {
+        "action": "adjust",
+        "nowMicros": 0,
+        "configuredDelayMinutes": 3,
+        "enableMastery": true,
+        "grandet": true,
+        "plan": {
+          "dormitory_1": [
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            },
+            {
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ],
+          "room_1_2": [
+            {
+              "replacement": [
+                "但书"
+              ]
+            }
+          ]
+        },
+        "runOrderRooms": [
+          "room_1_1",
+          "room_1_2"
+        ],
+        "dorms": {
+          "dormitory_1": [
+            "D",
+            "D",
+            "D",
+            "D",
+            "D"
+          ]
+        },
+        "readings": {
+          "room_1_1": [
+            {
+              "absoluteDueMicros": 100000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ],
+          "room_1_2": [
+            {
+              "absoluteDueMicros": 200000000,
+              "enterMicros": 0,
+              "interfaceMicros": 0,
+              "readMicros": 0,
+              "returnMicros": 0
+            }
+          ]
+        },
+        "tasks": [],
+        "droneRoom": null,
+        "droneSteps": [],
+        "pair": null
+      },
+      "output": {
+        "result": null,
+        "nowMicros": 0,
+        "tasks": [],
+        "flags": {
+          "planned": false,
+          "todoTask": false,
+          "collectNotification": false
+        },
+        "tailReached": {
+          "fia": false,
+          "exhaust": false
+        },
+        "droneCount": 0,
+        "trace": []
+      }
+    }
+  ]
+}

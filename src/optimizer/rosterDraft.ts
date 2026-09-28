@@ -7,7 +7,7 @@ import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {MOWER_ROOM_IDS,MOWER_OUTPUT_ROOM_IDS,type MowerFacilityType,type MowerProduct,type MowerRoomId,type RosterWorkspace} from '../workbench/model'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import {validateRosterWorkspace} from '../workbench/validate'
-import {admitCombinationCandidates,validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
+import {admitCombinationCandidates} from './inventoryAdmission'
 import type {CandidateAvailability,CandidateRoom} from './combinationCandidates'
 import {rankStaffingCandidates} from './staffingQuality'
 
@@ -107,8 +107,8 @@ export function generateRosterDraft(base:RosterWorkspace,entries:readonly OwnedO
  if(!inventory.valid){result.diagnostics.push(...inventory.diagnostics);return result}
  result.diagnostics.push(...validatePhysicalRoster(base))
  if(result.diagnostics.length)return result
- const baselineAdmission=validateScheduleInventory(compileRosterSchedule(base),inventory)
- result.diagnostics.push(...baselineAdmission.diagnostics)
+ const baselineSchedule=compileRosterSchedule(base)
+ result.diagnostics.push(...baselineSchedule.diagnostics.filter(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR'))
  const admitted=new Map(admitCombinationCandidates(inventory).map(a=>[a.candidate.id,a]))
  const contracts:LayoutContract[]=[]
  for(const candidateId of new Set(candidateIds)){
@@ -185,8 +185,9 @@ export function generateRosterDraft(base:RosterWorkspace,entries:readonly OwnedO
  result.placements=solved.placements
  const validation=validateRosterWorkspace(draft)
  if(!validation.isValid){result.diagnostics.push(...validation.criticalErrors.map(d=>({code:d.code,message:d.message})));return result}
- const admission=validateScheduleInventory(compileRosterSchedule(draft),inventory)
- if(!admission.valid){result.diagnostics.push(...admission.diagnostics);return result}
+ const compiled=compileRosterSchedule(draft)
+ const invalid=compiled.diagnostics.filter(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR')
+ if(invalid.length){result.diagnostics.push(...invalid);return result}
  if(result.restResources.missingReplacementIds.length||result.restResources.freeBeds<result.restResources.minimumFreeBedsForNewGroup)result.diagnostics.push({code:'REST_RESOURCES_INCOMPLETE',message:'新增主班存在候补或Free床位不足；仅物理可放置，须补足并模拟工休'})
  result.diagnostics.push({code:'CONDITIONAL_DRAFT',message:'这是固定布局草案；普通候补按主替混班和跨站条件筛选，静态筛选不代表长期工休已验证'})
  result.status='draft';result.workspace=draft

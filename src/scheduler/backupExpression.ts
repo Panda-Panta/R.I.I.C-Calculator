@@ -3,8 +3,10 @@
 import { OPERATOR_MAP } from '../domain/operators'
 import { resolveOperatorCharId } from '../workbench/compat/mowerJson'
 import type { RuntimeState } from './rosterRuntime'
+import type {MowerDateTimeValue} from './mowerSchedulingData'
+import {toMowerMicros} from './mowerTaskQueue'
 
-type Value = string | number | boolean | null
+type Value = string | number | boolean | null | MowerDateTimeValue
 type Expression = (state: RuntimeState) => Value
 type Token = { text: string; kind: 'operator' | 'value' | 'worker' | 'external'; value?: Value; name?: string; member?: string }
 const roomName = /^(?:room_[1-3]_[1-3]|dormitory_[1-4]|central|meeting|factory|contact|train)$/
@@ -62,14 +64,19 @@ export function compileBackupExpression(source: unknown, participants: Set<strin
   let cursor = 0, nesting = 0
   const peek = () => tokens[cursor]?.text
   const take = (text: string) => peek() === text ? (++cursor, true) : false
-  const numeric = (value: Value) => typeof value === 'number' ? value : fail('比较/算术运算需要数字')
+  const numeric = (value: Value) => typeof value === 'number' ? value : typeof value === 'boolean' ? Number(value) : fail('比较/算术运算需要数字')
   const binary = (left: Expression, right: Expression, op: string): Expression => state => {
     const a = left(state)
     if (op === 'and') return a ? right(state) : a
     if (op === 'or') return a ? a : right(state)
     const b = right(state)
-    if (op === '==' || op === 'is') return a === b
-    if (op === '!=' || op === 'is not') return a !== b
+    if (op === 'is' || op === 'is not') return op === 'is' ? a === b : a !== b
+    if (op === '==' || op === '!=') {
+      const numbers=(typeof a==='boolean'||typeof a==='number')&&(typeof b==='boolean'||typeof b==='number')
+      const dates=a!==null&&b!==null&&typeof a==='object'&&typeof b==='object'
+      const equal=numbers?numeric(a)===numeric(b):dates?a.timeMicros===b.timeMicros:a===b
+      return op==='=='?equal:!equal
+    }
     if (op === 'in' || op === 'not in') {
       if (typeof a !== 'string' || typeof b !== 'string') return fail('成员比较仅支持字符串')
       return op === 'in' ? b.includes(a) : !b.includes(a)
@@ -96,16 +103,18 @@ export function compileBackupExpression(source: unknown, participants: Set<strin
       if (take('-')) { const expr = atom(); return state => -numeric(expr(state)) }
       const token = tokens[cursor++]
       if (token?.kind === 'value') return () => token.value!
-      if (token?.kind === 'external') return () => true
+      if (token?.kind === 'external') return state => state.mowerSource?.data.partyTime ?? null
       if (token?.kind === 'worker') {
         const id = resolveOperatorCharId(token.name!)
         if (!OPERATOR_MAP.has(id)) return fail(`未知干员 ${token.name}`)
         participants.add(id)
         return state => {
-          const room = actualRoom(state, id)
+          const observed=state.mowerSource?.data.operators[id]
+          const room = observed?.currentRoom??actualRoom(state, id)
           if (token.member === 'is_resting()') return room.startsWith('dormitory_')
           if (token.member === 'is_working()') return roomName.test(room) && !room.startsWith('dormitory_')
           if (token.member === 'current_room') return room
+          if(observed)return observed.currentMood(toMowerMicros(state.time))
           return state.morale[id] ?? fail(`缺少 ${token.name} 的心情`)
         }
       }

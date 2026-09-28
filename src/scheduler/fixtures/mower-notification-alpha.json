@@ -1,0 +1,2113 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "sourceHashes": {
+    "base_schedule.py": "7dff0665033f69d9b254e9e2dd844f14ed7cb024552c6d846b183e45bbc07d6d",
+    "scheduler_task.py": "6ac7829ce38501bd3a04db87536b67ddc05e8b615ea81267ef92372a27d34ac1"
+  },
+  "actualAst": {
+    "notificationBranch": [
+      1266,
+      1273
+    ],
+    "todoList": [
+      4244,
+      4265
+    ],
+    "flagReset": [
+      400,
+      402
+    ],
+    "noPendingTask": [
+      7982,
+      7983
+    ],
+    "findNextTask": [
+      60,
+      109
+    ]
+  },
+  "cycleProven": false,
+  "scope": "Actual selected AST paths; explicit observations and durations; no full scene/device or production parity claim.",
+  "cases": [
+    {
+      "name": "overdue-task-suppresses",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 999999999
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "overdue-task-suppresses"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "current-task-suppresses",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "current-task-suppresses"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "one-microsecond-inside-minute-suppresses",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 1059999999
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "one-microsecond-inside-minute-suppresses"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "exact-one-minute-permits",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 1060000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 650000
+          }
+        ],
+        "name": "exact-one-minute-permits"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000650000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000650000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "one-microsecond-after-minute-permits",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 1060000001
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 650000
+          }
+        ],
+        "name": "one-microsecond-after-minute-permits"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000650000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000650000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "no-task-notification-found",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "no-task-notification-found"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "none-then-found-single-one-second-wait",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "none-then-found-single-one-second-wait"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1001500000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 1
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "none-twice-still-flags-collected",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "detect-notification",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "none-twice-still-flags-collected"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1001000000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 1
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": null,
+            "nowMicros": 1001000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "false-detection-is-not-None",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "false-detection-is-not-None"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": false
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "no-deadline-recheck-after-notification-wait",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 1060500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 1000000
+          },
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 700000
+          }
+        ],
+        "name": "no-deadline-recheck-after-notification-wait"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1002200000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 1
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1002200000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "unsorted-queue-any-type-task-suppresses",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 2000000000
+          },
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 1050000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "unsorted-queue-any-type-task-suppresses"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "detect-exception-flags-not-set",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0,
+            "error": "controlled-detect-notification-failure"
+          }
+        ],
+        "name": "detect-exception-flags-not-set"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-detect-notification-failure"
+        },
+        "nowMicros": 1000000000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "notification-tap-exception-flags-not-set",
+      "input": {
+        "mode": "notification",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "detect-notification",
+            "value": [
+              1840,
+              140
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-notification",
+            "value": null,
+            "elapsedMicros": 500000,
+            "error": "controlled-tap-notification-failure"
+          }
+        ],
+        "name": "notification-tap-exception-flags-not-set"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-tap-notification-failure"
+        },
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "detect-notification",
+            "request": {},
+            "value": [
+              1840,
+              140
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-notification",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-all-three-one-tap-each-native-order",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": [
+              10,
+              10
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000
+          },
+          {
+            "kind": "find-collect",
+            "value": [
+              20,
+              20
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000
+          },
+          {
+            "kind": "find-collect",
+            "value": [
+              30,
+              30
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000
+          }
+        ],
+        "name": "todo-all-three-one-tap-each-native-order"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000840000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": [
+              10,
+              10
+            ],
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "bill",
+              "target": [
+                10,
+                10
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000280000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": [
+              20,
+              20
+            ],
+            "nowMicros": 1000290000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "factory",
+              "target": [
+                20,
+                20
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000560000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": [
+              30,
+              30
+            ],
+            "nowMicros": 1000570000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "trust",
+              "target": [
+                30,
+                30
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000840000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 1000840000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-only-bill-no-close",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": [
+              10,
+              10
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          }
+        ],
+        "name": "todo-only-bill-no-close"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000300000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": [
+              10,
+              10
+            ],
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "bill",
+              "target": [
+                10,
+                10
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000280000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": null,
+            "nowMicros": 1000290000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 1000300000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-empty-updates-last-before-close",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-close-todo",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "todo-empty-updates-last-before-close"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000530000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": null,
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": null,
+            "nowMicros": 1000020000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": null,
+            "nowMicros": 1000030000
+          },
+          {
+            "kind": "tap-close-todo",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000530000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": 1000030000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-falsy-detectors-no-collection",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": false,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": [],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": {},
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-close-todo",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "todo-falsy-detectors-no-collection"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000530000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": false,
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": [],
+            "nowMicros": 1000020000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": {},
+            "nowMicros": 1000030000
+          },
+          {
+            "kind": "tap-close-todo",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000530000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": 1000030000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-rate-limit-exact-fifteen-minutes",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 100000000,
+        "observations": [
+          {
+            "kind": "tap-close-todo",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "todo-rate-limit-exact-fifteen-minutes"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "tap-close-todo",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 100000000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-just-beyond-fifteen-minutes-eligible",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 99999999,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": [
+              20,
+              20
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          }
+        ],
+        "name": "todo-just-beyond-fifteen-minutes-eligible"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000300000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": null,
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": [
+              20,
+              20
+            ],
+            "nowMicros": 1000020000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "factory",
+              "target": [
+                20,
+                20
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000290000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 1000300000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-recent-suppresses-all-finds",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 100000001,
+        "observations": [
+          {
+            "kind": "tap-close-todo",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "todo-recent-suppresses-all-finds"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "tap-close-todo",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 100000001,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-future-last-still-close",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 2000000000,
+        "observations": [
+          {
+            "kind": "tap-close-todo",
+            "value": null,
+            "elapsedMicros": 500000
+          }
+        ],
+        "name": "todo-future-last-still-close"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "tap-close-todo",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 2000000000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-overdue-task-does-not-gate-scene-handler",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "timeMicros": 900000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": [
+              10,
+              10
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          }
+        ],
+        "name": "todo-overdue-task-does-not-gate-scene-handler"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000300000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": [
+              10,
+              10
+            ],
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "bill",
+              "target": [
+                10,
+                10
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000280000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": null,
+            "nowMicros": 1000290000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 1000300000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-collection-exception-does-not-update-last",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": [
+              10,
+              10
+            ],
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-collect",
+            "value": null,
+            "elapsedMicros": 270000,
+            "error": "controlled-tap-collect-failure"
+          }
+        ],
+        "name": "todo-collection-exception-does-not-update-last"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-tap-collect-failure"
+        },
+        "nowMicros": 1000280000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": [
+              10,
+              10
+            ],
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "tap-collect",
+            "request": {
+              "resource": "bill",
+              "target": [
+                10,
+                10
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000280000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "todo-close-exception-last-updated-but-flag-not-set",
+      "input": {
+        "mode": "todo",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "find-collect",
+            "value": null,
+            "elapsedMicros": 10000
+          },
+          {
+            "kind": "tap-close-todo",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": "controlled-close-failure"
+          }
+        ],
+        "name": "todo-close-exception-last-updated-but-flag-not-set"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-close-failure"
+        },
+        "nowMicros": 1000030000,
+        "trace": [
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "bill",
+              "name": "infra_collect_bill"
+            },
+            "value": null,
+            "nowMicros": 1000010000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "factory",
+              "name": "infra_collect_factory"
+            },
+            "value": null,
+            "nowMicros": 1000020000
+          },
+          {
+            "kind": "find-collect",
+            "request": {
+              "resource": "trust",
+              "name": "infra_collect_trust"
+            },
+            "value": null,
+            "nowMicros": 1000030000
+          },
+          {
+            "kind": "tap-close-todo",
+            "request": {
+              "target": [
+                1840,
+                140
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000030000
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": 1000030000,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-0",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-0"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-1",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-1"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-2",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": true,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-2"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-3",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-3"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-4",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-4"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-5",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-5"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-6",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-6"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "run-reset-all-flags-7",
+      "input": {
+        "mode": "reset",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": true,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [],
+        "name": "run-reset-all-flags-7"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": false
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    }
+  ]
+}

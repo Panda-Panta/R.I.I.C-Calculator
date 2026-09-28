@@ -1,0 +1,5061 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "sourceHashes": {
+    "base_schedule.py": "7dff0665033f69d9b254e9e2dd844f14ed7cb024552c6d846b183e45bbc07d6d",
+    "scheduler_task.py": "6ac7829ce38501bd3a04db87536b67ddc05e8b615ea81267ef92372a27d34ac1"
+  },
+  "actualAst": {
+    "function": "accept_order",
+    "line": 7752,
+    "endLine": 7783
+  },
+  "cycleProven": false,
+  "scope": "Actual selected AST paths; explicit observations and durations; no full scene/device or production parity claim.",
+  "cases": [
+    {
+      "name": "empty-call-seven-half-second-waits",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "empty-call-seven-half-second-waits"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1003500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1002000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1002000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1002000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1002500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1002500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1002500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1003000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1003000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1003000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1003500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "stable-ready-one-order",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "stable-ready-one-order"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "stable-three-orders-only-first-snapshot",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "stable-three-orders-only-first-snapshot"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1001500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "order-disappears-between-wait-and-accept",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "order-disappears-between-wait-and-accept"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000000000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "ready-after-two-polls",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "ready-after-two-polls"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1001500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "ready-at-second-loop-after-seven-poll-limit",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "ready-at-second-loop-after-seven-poll-limit"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1004000000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1001000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1001500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1002000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1002000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1002000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1002500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1002500000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1002500000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1003000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1003000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1003000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1003500000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1004000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1004000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "false-is-not-None-helper-domain",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "false-is-not-None-helper-domain"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "runorder-task-caches-current-trade-page",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": "RUN_ORDER",
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "cache-trade-page",
+            "value": null,
+            "elapsedMicros": 50000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "runorder-task-caches-current-trade-page"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000550000,
+        "trace": [
+          {
+            "kind": "cache-trade-page",
+            "request": {
+              "room": "room_1_1",
+              "facility": "trade"
+            },
+            "value": null,
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000050000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000550000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000550000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "runorder-empty-metadata-does-not-cache",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": "RUN_ORDER",
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "runorder-empty-metadata-does-not-cache"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "other-task-does-not-cache",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": "FIAMMETTA",
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "other-task-does-not-cache"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "first-debounce-distinct-short-circuits-stable",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              3,
+              4
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "first-debounce-distinct-short-circuits-stable"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000650000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              3,
+              4
+            ],
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000650000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000650000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "first-debounce-stable-breaks",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              3,
+              4
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "is-stable-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "first-debounce-stable-breaks"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000650000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              3,
+              4
+            ],
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "is-stable-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ],
+              "newScores": [
+                3,
+                4
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000650000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000650000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "second-debounce-distinct",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              3,
+              4
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "is-stable-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              5,
+              6
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "second-debounce-distinct"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000800000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              3,
+              4
+            ],
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "is-stable-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ],
+              "newScores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              5,
+              6
+            ],
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                5,
+                6
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000800000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000800000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "second-debounce-compares-updated-previous-scores",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              3,
+              4
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "is-stable-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              5,
+              6
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "is-stable-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "second-debounce-compares-updated-previous-scores"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000800000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              3,
+              4
+            ],
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "is-stable-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ],
+              "newScores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              5,
+              6
+            ],
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                5,
+                6
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "is-stable-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ],
+              "newScores": [
+                5,
+                6
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000800000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000800000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "two-unstable-samples-still-snapshot",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              3,
+              4
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "is-stable-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 150000
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              5,
+              6
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "is-stable-buff",
+            "value": false,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "two-unstable-samples-still-snapshot"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000800000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              3,
+              4
+            ],
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "is-stable-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ],
+              "newScores": [
+                3,
+                4
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000150000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.15
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              5,
+              6
+            ],
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                5,
+                6
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "is-stable-buff",
+            "request": {
+              "scores": [
+                3,
+                4
+              ],
+              "newScores": [
+                5,
+                6
+              ]
+            },
+            "value": false,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000300000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000800000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000800000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "floating-screen-quarter-targets",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 2497,
+        "height": 1405,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "floating-screen-quarter-targets"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                624.25,
+                351.25
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "external-tap-overhead-is-observed-not-guessed",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 830000
+          },
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          }
+        ],
+        "name": "external-tap-overhead-is-observed-not-guessed"
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 1000830000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000830000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000830000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "cache-exception-propagates",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": "RUN_ORDER",
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "cache-trade-page",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": "controlled-cache-trade-page-failure"
+          }
+        ],
+        "name": "cache-exception-propagates"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-cache-trade-page-failure"
+        },
+        "nowMicros": 1000000000,
+        "trace": [
+          {
+            "kind": "cache-trade-page",
+            "request": {
+              "room": "room_1_1",
+              "facility": "trade"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "poll-sleep-exception-propagates",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "recog-update",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "sleep",
+            "value": null,
+            "elapsedMicros": 500000,
+            "error": "controlled-sleep-failure"
+          }
+        ],
+        "name": "poll-sleep-exception-propagates"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-sleep-failure"
+        },
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "recog-update",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "sleep",
+            "request": {
+              "seconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "snapshot-exception-before-collection",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0,
+            "error": "controlled-save-order-image-failure"
+          }
+        ],
+        "name": "snapshot-exception-before-collection"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-save-order-image-failure"
+        },
+        "nowMicros": 1000000000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "tap-exception-stops-further-reads",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-screencap",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "save-order-image",
+            "value": null,
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "tap-accept-order",
+            "value": null,
+            "elapsedMicros": 500000,
+            "error": "controlled-tap-accept-order-failure"
+          }
+        ],
+        "name": "tap-exception-stops-further-reads"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-tap-accept-order-failure"
+        },
+        "nowMicros": 1000500000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-screencap",
+            "request": {
+              "category": "run_order"
+            },
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "save-order-image",
+            "request": {},
+            "value": null,
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "tap-accept-order",
+            "request": {
+              "target": [
+                480.0,
+                270.0
+              ],
+              "intervalSeconds": 0.5
+            },
+            "value": null,
+            "nowMicros": 1000500000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    },
+    {
+      "name": "predicate-exception-stops-before-tap",
+      "input": {
+        "mode": "accept",
+        "nowMicros": 1000000000,
+        "taskType": null,
+        "metadata": "room_1_1",
+        "width": 1920,
+        "height": 1080,
+        "tasks": [],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "observations": [
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "find-order-ready",
+            "value": [
+              480,
+              270
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "read-buff-scores",
+            "value": [
+              1,
+              2
+            ],
+            "elapsedMicros": 0
+          },
+          {
+            "kind": "has-distinct-buff",
+            "value": true,
+            "elapsedMicros": 0,
+            "error": "controlled-has-distinct-buff-failure"
+          }
+        ],
+        "name": "predicate-exception-stops-before-tap"
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-has-distinct-buff-failure"
+        },
+        "nowMicros": 1000000000,
+        "trace": [
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "find-order-ready",
+            "request": {
+              "name": "order_ready",
+              "scope": [
+                [
+                  450,
+                  675
+                ],
+                [
+                  600,
+                  750
+                ]
+              ]
+            },
+            "value": [
+              480,
+              270
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "read-buff-scores",
+            "request": {},
+            "value": [
+              1,
+              2
+            ],
+            "nowMicros": 1000000000
+          },
+          {
+            "kind": "has-distinct-buff",
+            "request": {
+              "scores": [
+                1,
+                2
+              ]
+            },
+            "value": true,
+            "nowMicros": 1000000000
+          }
+        ],
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "lastTodoMicros": null,
+        "taskRetained": true,
+        "queueRetained": true
+      }
+    }
+  ]
+}

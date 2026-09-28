@@ -29,7 +29,7 @@ describe('roster draft preview',()=>{
   expect(w.text()).not.toContain('物理摆放已生成')
   expect(w.emitted('invalidate')!.length).toBeGreaterThan(0)
   await w.setProps({inventory:{...inventory,enabled:false}})
-  expect(w.get('[data-test=generate-draft]').attributes('disabled')).toBeDefined()
+  expect(w.get('[data-test=generate-draft]').attributes('disabled')).toBeUndefined()
   w.unmount()
  })
 })
@@ -60,6 +60,15 @@ describe('automatic empty layout generation UI',()=>{
   await w.get('[data-test=draft-mode]').setValue('automatic')
   return {w,workspace}
  }
+ it('uses the full catalog for automatic drafts when no library is imported',async()=>{
+  vi.stubGlobal('Worker',FakeWorker)
+  const workspace=createDefaultWorkspace(),w=mount(RosterDraftPanel,{props:{workspace,inventory:{enabled:false,valid:true,entries:[]}}})
+  await w.get('[data-test=draft-mode]').setValue('automatic')
+  expect(w.get('[data-test=generate-automatic]').attributes('disabled')).toBeUndefined()
+  await w.get('[data-test=generate-automatic]').trigger('click')
+  expect(workers[0].postMessage.mock.calls[0][0].entries).toHaveLength(429)
+  w.unmount()
+ })
  const completed=(workspace:any)=>({status:'draft',draft:{status:'draft',workspace,placements:[],diagnostics:[],statesVisited:1,uncheckedConditions:[{kind:'morale',text:'工休未验证'}],restResources:{freeBeds:3,minimumFreeBedsForNewGroup:3,missingReplacementIds:[]}},diagnostics:[],trials:[{seed:42,status:'draft',staticScore:120000,complete:true,candidateIds:[],diagnostics:[]}],selectedTrial:0})
  it('sends reproducible parameters without changing source, and displays static results separately',async()=>{
   const {w,workspace}=await mountAuto(),before=JSON.stringify(workspace)

@@ -107,3 +107,13 @@ describe('compiledScheduleToRuntimeConfig adapter', () => {
     expect(isShiftRunOperator('德克萨斯')).toBe(false)
   })
 })
+
+it('adds low-type workaholic replacements to the native Free blacklist',()=>{
+ const workspace=createDefaultWorkspace()
+ const schedule=compileRosterSchedule(workspace)
+ schedule.policies.workaholic=['char_2026_yu']
+ schedule.policies.free_blacklist=['char_010_chen']
+ const before=structuredClone(schedule)
+ expect(compiledScheduleToRuntimeConfig(schedule).freeBlacklist).toEqual(['char_010_chen','char_2026_yu'])
+ expect(schedule).toEqual(before)
+})

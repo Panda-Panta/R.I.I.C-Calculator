@@ -91,8 +91,20 @@ describe('Mower source contract: policy projection and ideal operations', () => 
   const w=createDefaultWorkspace();w.mainPlan.facilities.room_1_1.slots[0]={occupant:{kind:'operator',operatorId:'砾'},groupId:null,replacements:['芬','香草']};const c=compiledScheduleToRuntimeConfig(compileRosterSchedule(w,{initialMorale:12,idleOperators:['斑点'],operatorMorale:{[id('芬')]:3}}));const s=createRosterRuntime(c);expect(s.morale[id('砾')]).toBe(12);expect(s.morale[id('芬')]).toBe(3);expect(s.morale[id('香草')]).toBe(12);expect(s.morale[id('斑点')]).toBe(12)
  })
 
- it('a physical recovery-rate change advances the deadline but still waits for full recovery',()=>{
-  const c=cfg();c.mowerPolicy!.taskBuffers=true;c.positions[0]!.restToFull=true;const s=createRosterRuntime(c);const slow={workRate:()=>1,recoveryRate:()=>1};settleRoster(s,slow);advanceRoster(s,1,slow);const fast={workRate:()=>1,recoveryRate:()=>100};expect(nextRosterActionHours(s,fast)).toBeCloseTo(.08);settleRoster(s,fast);expect(s.occupants.p).toBe('B');advanceRoster(s,.08,fast);settleRoster(s,fast);expect(s.occupants.p).toBe('A');expect(nextRosterActionHours(s,fast)).toBeGreaterThan(0)
+ it('a physical recovery-rate change applies the native lead time and permits a positive-mood early full-rest return',()=>{
+  const c=cfg();c.mowerPolicy!.taskBuffers=true;c.positions[0]!.restToFull=true;const s=createRosterRuntime(c);const slow={workRate:()=>1,recoveryRate:()=>1};settleRoster(s,slow);advanceRoster(s,1,slow);const fast={workRate:()=>1,recoveryRate:()=>100};expect(nextRosterActionHours(s,fast)).toBe(0);settleRoster(s,fast);expect(s.occupants.p).toBe('A');expect(s.morale.A).toBe(16);expect(nextRosterActionHours(s,fast)).toBeGreaterThan(0)
  })
 
+})
+
+// Fixed alpha handle_error keeps an already queued NOT_SPECIFIC task.
+describe('Mower queued fallback planning clock',()=>{
+  const idleConfig:RuntimeConfig={positions:[],beds:[],mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[],freeRoom:false}}
+  const idleRates={workRate:()=>0,recoveryRate:()=>0}
+  it('retains an earlier queued scan after another task completes',()=>{
+    const s=createRosterRuntime(idleConfig);settleRoster(s,idleRates);expect(s.nextPlanningTime).toBe(2.5);s.time=2;settleRoster(s,idleRates);expect(s.nextPlanningTime).toBe(2.5)
+  })
+  it('schedules a fresh fallback only after consuming the due scan',()=>{
+    const s=createRosterRuntime(idleConfig);s.nextPlanningTime=2.5;s.time=2.5;settleRoster(s,idleRates);expect(s.nextPlanningTime).toBe(5)
+  })
 })

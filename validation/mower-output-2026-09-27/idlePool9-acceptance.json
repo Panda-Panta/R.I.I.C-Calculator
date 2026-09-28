@@ -1,0 +1,21 @@
+{
+  "referenceSource": "Mower Test 12-30 to 01-05 screenshots",
+  "sourceReport": "idlePool9.json",
+  "candidatePool": "No imported library: full 429-operator catalog; registered idle operators also eligible under Mower rules",
+  "sampleDays": 9,
+  "warmupDays": 7,
+  "referenceMower82PerDay": 108928.57142857143,
+  "computedMower82PerDay": 108666.66666693828,
+  "compositeErrorPercent": 0.24043715822059836,
+  "maxCompositeErrorPercent": 0.5,
+  "numericAccepted": true,
+  "ordinaryZeroMoraleEntries": 0,
+  "ordinaryZeroMoraleEpisodes": 0,
+  "auditViolations": {},
+  "completedSimulation": true,
+  "fullNativeLogicParityProven": false,
+  "remainingLimits": [
+    "The Mower Test roster produced identical operator, room and output records with the old explicit empty extra-idle pool; an independent Free-selection regression exercises the corrected unregistered-card path.",
+    "Equal numeric output does not establish account-specific screen tie order or the full native task-generation chain."
+  ]
+}

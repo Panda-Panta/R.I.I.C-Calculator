@@ -14,6 +14,7 @@ export interface SimulationSettings {
   jayeElite0?: boolean
   fiammettaFool?: boolean
   restingThreshold?: number
+  freeRoom?: boolean
 }
 
 const props = defineProps<{
@@ -62,6 +63,14 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
         <label class="control-item">
           <span class="control-label">休息阈值（%）</span>
           <input class="control-input" data-test="resting-threshold" type="number" min="0" max="100" step="1" :value="(settings.restingThreshold ?? .65) * 100" @input="updateField('restingThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+        </label>
+        <label class="control-item">
+          <span class="control-label">满心情闲人离宿</span>
+          <select class="control-select" data-test="free-room" :value="String(settings.freeRoom ?? false)" @change="updateField('freeRoom', ($event.target as HTMLSelectElement).value === 'true')">
+            <option value="false">关闭（Mower 默认）</option>
+            <option value="true">开启（恢复后腾出床位）</option>
+          </select>
+          <span class="control-hint">对应 Mower 全局 free_room；排班图片不包含此选项。</span>
         </label>
         <!-- 采样天数 -->
         <label class="control-item">
@@ -113,7 +122,7 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
         <span class="locked-tag">锁定规则</span>
         <span>暖机增长: <strong>整小时跳变</strong></span>
         <span class="dot">·</span>
-        <span>跑单方式: <strong>理想跑单（无损耗）</strong></span>
+        <span>跑单方式: <strong>理想收益（换人参与排班）</strong></span>
         <span class="dot">·</span>
         <span>产出口径: <strong>直观产出（忽略库存阻塞）</strong></span>
       </div>

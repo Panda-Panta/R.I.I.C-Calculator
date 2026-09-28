@@ -4,7 +4,7 @@ import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import {type MowerFacility,type MowerRoomId,type RosterWorkspace} from '../workbench/model'
-import {admitCombinationCandidates,validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
+import {admitCombinationCandidates} from './inventoryAdmission'
 import {sampleCombinationTemplates} from './templateSampling'
 import {CROSS_ROOM_TEMPLATES,applyCrossRoomTemplate,crossRoomTemplateIssues,type CrossRoomPlacement} from './crossRoomTemplates'
 import {projectRosterOutput as project} from './rosterProjection'
@@ -29,6 +29,7 @@ export interface AutomaticRosterResult {
 const facilityTypes={manufacture:'MANUFACTURE',trading:'TRADING',power:'POWER',central:'CONTROL'} as const
 const capacity=(r:MowerFacility)=>r.type==='central'?5:r.type==='power'?1:r.level
 const mutable=(r:MowerFacility)=>r.type in facilityTypes
+const scheduleIssues=(workspace:RosterWorkspace)=>compileRosterSchedule(workspace).diagnostics.filter(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR')
 const occupied=(w:RosterWorkspace)=>new Set(Object.values(w.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[
  ...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId),
 ])))
@@ -55,8 +56,8 @@ export function generateAutomaticRoster(base:RosterWorkspace,entries:readonly Ow
  if(!rooms.some(r=>r.type==='manufacture'||r.type==='trading'))return fail('NO_PRODUCTION_ROOM','至少需要一个制造站或贸易站。')
  if(rooms.some(r=>r.slots.some(s=>s.occupant.kind!=='empty')))return fail('AUTOMATIC_OCCUPIED_OUTPUT','生产设施与中枢必须为空；现有辅助干员及宿舍 Free 会保留。')
  if(rooms.some(r=>r.product==='fragment'||r.product==='orundum'))return fail('UNSUPPORTED_PRODUCT','当前 82 初筛仅支持作战记录、赤金和龙门币订单。')
- const admission=validateScheduleInventory(compileRosterSchedule(base),inventory)
- if(!admission.valid){result.diagnostics.push(...admission.diagnostics);return result}
+ const admission=scheduleIssues(base)
+ if(admission.length){result.diagnostics.push(...admission);return result}
  const eligible=inventory.operators.filter(o=>o.matchesMaximumSkills&&!isShiftRunOperator(o.charId)&&o.name!=='菲亚梅塔')
  const templates=admitCombinationCandidates(inventory).filter(a=>a.status==='needs-context').map(a=>a.candidate).filter(c=>{
   const contract=compileCandidateLayout(c),target=contract.assignments[0]!
@@ -168,7 +169,7 @@ export function generateAutomaticRoster(base:RosterWorkspace,entries:readonly Ow
   for(const room of Object.values(workspace.mainPlan.facilities).filter(r=>r.type==='dormitory'))for(const slot of room.slots){
    if(slot.occupant.kind==='empty'&&!slot.replacements.length&&!slot.groupId&&!Object.keys(slot.metadata??{}).length){slot.occupant={kind:'free'};rest.freeBeds++;const present=workspace.compatibility.importedPresentRooms;if(present&&!present.includes(room.roomId))present.push(room.roomId)}
   }
-  const errors=[...validatePhysicalRoster(workspace),...validateScheduleInventory(compileRosterSchedule(workspace),inventory).diagnostics]
+  const errors=[...validatePhysicalRoster(workspace),...scheduleIssues(workspace)]
   if(rest.missingReplacementIds.length)errors.push({code:'REST_RESOURCES_INCOMPLETE',message:'无法为全部新增主班配置独立候补；不返回半成品。'})
   if(errors.length){trial.diagnostics.push(...errors.map(d=>d.message));continue}
   if(maxStates-states<4){trial.diagnostics.push('预算不足以比较完整主替班快照。');continue}

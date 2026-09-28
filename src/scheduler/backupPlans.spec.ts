@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { importMowerJson, resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import { compileRosterSchedule } from './compileRosterSchedule'
 import { compiledScheduleToRuntimeConfig, createRosterRuntime } from './rosterRuntime'
-import { actualRoom, createBackupPlanController, evaluateBackupExpression } from './backupPlans'
+import { createBackupPlanController, evaluateBackupExpression } from './backupPlans'
 import { simulateSchedule } from '../simulator/scheduleSimulation'
 
 const source = readFileSync(new URL('../../validation/mower-backup-2026-09-22/roster.json', import.meta.url), 'utf8')
@@ -14,6 +14,29 @@ function setup() {
   return { schedule, state, controller }
 }
 describe('Mower backup source contract', () => {
+  it.each([undefined,0,1000])('preserves dorm atmosphere provenance across backup activation and exit: %s', (dormAtmosphere) => {
+    const workspace=importMowerJson(source)
+    workspace.compatibility.backupPlans=[{trigger:"op_data.operators['阿罗玛'].current_mood() < 10",conf:{exhaust_require:['焰尾']}}]
+    const options=dormAtmosphere===undefined?{}:{dormAtmosphere}
+    const schedule=compileRosterSchedule(workspace,options),state=createRosterRuntime(compiledScheduleToRuntimeConfig(schedule))
+    const controller=createBackupPlanController(schedule,state)
+    const baseDefaults=[...schedule.assumptions.defaultsApplied]
+    state.morale[id('阿罗玛')]=1
+    controller.evaluate('END')
+    expect(controller.active).toEqual([true])
+    expect(controller.schedule.assumptions.defaultsApplied).toEqual(baseDefaults)
+    expect(controller.schedule.assumptions.dormAtmosphere).toBe(schedule.assumptions.dormAtmosphere)
+    expect(controller.schedule.assumptions.defaultsApplied.includes('dormAtmosphere')).toBe(dormAtmosphere===undefined)
+    state.morale[id('阿罗玛')]=24
+    controller.evaluate('END')
+    expect(controller.active).toEqual([false])
+    expect(controller.schedule.assumptions.defaultsApplied).toEqual(baseDefaults)
+    state.morale[id('阿罗玛')]=1
+    controller.evaluate('END')
+    expect(controller.active).toEqual([true])
+    expect(controller.schedule.assumptions.defaultsApplied).toEqual(baseDefaults)
+  })
+
   it('allows a backup to introduce Fiammetta when the main plan had none', () => {
     const workspace=importMowerJson(source)
     const dorm=Object.values(workspace.mainPlan.facilities).find(room=>room.slots.some(slot=>slot.occupant.kind==='operator'&&id(slot.occupant.operatorId)===id('菲亚梅塔')))!
@@ -33,11 +56,11 @@ describe('Mower backup source contract', () => {
     const schedule=compileRosterSchedule(workspace),state=createRosterRuntime(compiledScheduleToRuntimeConfig(schedule)),controller=createBackupPlanController(schedule,state)
     state.morale[id('阿罗玛')]=1;state.morale[id('远牙')]=1
     controller.evaluate('END')
-    expect(state.occupants.dormitory_1_0).toBe(id('香草'))
+    expect(state.config.positions.find(p=>p.id==='dormitory_1_0')?.primary).toBe(id('香草'))
     state.morale[id('远牙')]=24;controller.evaluate('END')
-    expect(state.occupants.dormitory_1_0).toBe(id('芬'))
+    expect(state.config.positions.find(p=>p.id==='dormitory_1_0')?.primary).toBe(id('芬'))
     state.morale[id('阿罗玛')]=24;controller.evaluate('END')
-    expect(state.occupants.dormitory_1_0).toBe(schedule.rooms.find(r=>r.roomId==='dormitory_1')!.slots[0]!.primaryOperatorId)
+    expect(state.config.positions.find(p=>p.id==='dormitory_1_0')?.primary).toBe(schedule.rooms.find(r=>r.roomId==='dormitory_1')!.slots[0]!.primaryOperatorId)
   })
   it('rejects non-finite arithmetic without committing a changed activation', () => {
     const workspace=importMowerJson(source)
@@ -76,13 +99,14 @@ describe('Mower backup source contract', () => {
     if(index===5)state.morale[id('薇薇安娜')]=1
     if(index===6||index===7)move('娜斯提','factory_0',false)
     if(index===8)move('歌蕾蒂娅','dormitory_1_4',true)
-    const morale={...state.morale}
+    const morale={...state.morale},occupants={...state.occupants},beds={...state.bedOccupants}
     controller.evaluate('END')
     expect(controller.active).toEqual([true])
     expect(state.morale).toEqual(morale)
-    for(const [room, agents] of Object.entries(raw.task) as [string,string[]][]){
-      agents.forEach((agent,slot)=>{if(agent!=='Current'&&agent!=='Free')expect(state.occupants[`${room}_${slot}`]??state.bedOccupants[`${room}_${slot}`]).toBe(id(agent))})
-    }
+    // Native backup_plan_solver generates tasks; agent_arrange executes them in a later run.
+    expect(state.occupants).toEqual(occupants);expect(state.bedOccupants).toEqual(beds)
+    const generated=state.mowerBackupGenerated??[]
+    if(Object.keys(raw.task).length)expect(generated.map(t=>t.plan)).toContainEqual(Object.fromEntries((Object.entries(raw.task) as [string,string[]][]).map(([room,names])=>[room,names.map(name=>name==='Current'||name==='Free'?name:id(name))])))
     const conf=controller.schedule.policies
     for(const key of ['exhaust_require','resting_priority','workaholic','free_blacklist']){
       for(const name of (raw.conf[key] as string).split(',').filter(Boolean))expect(conf[key]).toContain(id(name))
@@ -91,15 +115,16 @@ describe('Mower backup source contract', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('does not undo a forced task when only a policy-only plan changes', () => {
+  it('does not rewrite a generated forced task when only a policy-only plan changes', () => {
     const { state, controller }=setup()
     const p=state.config.positions.find(p=>p.primary===id('薇薇安娜'))!
     delete state.occupants[p.id];state.bedOccupants.dormitory_1_4=p.primary
     controller.evaluate('END')
-    expect(actualRoom(state,id('多萝西'))).toMatch(/^dormitory_/)
+    const forced=(state.mowerBackupGenerated??[]).find(t=>Object.values(t.plan).flat().includes(id('多萝西')))!
+    expect(forced).toBeDefined();const plan=structuredClone(forced.plan)
     state.morale[id('远牙')]=1
     controller.evaluate('END')
-    expect(actualRoom(state,id('多萝西'))).toMatch(/^dormitory_/)
+    expect(forced.plan).toEqual(plan)
   })
   it('reads actual position and mood, rejects executable text', () => {
     const { state } = setup()
@@ -129,8 +154,7 @@ describe('Mower backup source contract', () => {
     state.morale[id('苍苔')] = 7
     controller.evaluate('BEFORE_PLANNING')
     expect(controller.active[1]).toBe(true)
-    expect(state.bedOccupants.dormitory_3_3).toBe(id('苍苔'))
-    expect(state.bedOccupants.dormitory_3_4).toBe(id('引星棘刺'))
+    expect(state.mowerBackupGenerated?.[0]?.plan.dormitory_3).toEqual(['Current','Current','Current',id('苍苔'),id('引星棘刺')])
     expect(state.morale[id('苍苔')]).toBe(7)
     const count = state.events.length
     controller.evaluate('BEFORE_PLANNING')

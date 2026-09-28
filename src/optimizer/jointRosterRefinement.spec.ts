@@ -15,6 +15,14 @@ describe('joint main and backup roster refinement',()=>{
   expect(r.workspace.mainPlan.facilities.room_1_1.slots[0]).toEqual(slot('砾','斑点'))
   expect(JSON.stringify(w)).toBe(before);expect(r.evaluations).toBeLessThanOrEqual(20)
  })
+ it('keeps assigned workers even when the imported library contains only idle candidates',()=>{
+  const w=fixture(),r=refineJointRoster(w,own(['香草']),{maxEvaluations:20})
+  expect(r.diagnostics).not.toContain('SOURCE_NOT_ADMITTED')
+  expect(r.before).not.toBeNull()
+  expect(r.changes.some(change=>change.kind==='main-backup-swap')).toBe(true)
+  const slot=r.workspace.mainPlan.facilities.room_1_1.slots[0]!
+  expect(new Set([slot.occupant.kind==='operator'?slot.occupant.operatorId:'',...slot.replacements])).toEqual(new Set([id('斑点'),id('砾')]))
+ })
  it('reassigns existing main workers across different products without borrowing someone else',()=>{
   const w=createDefaultWorkspace();w.mainPlan.facilities.room_1_2.product='exp'
   w.mainPlan.facilities.room_1_1.slots[0]=slot('断罪者','Castle-3','A')
@@ -58,11 +66,11 @@ describe('joint main and backup roster refinement',()=>{
   const locked=refineJointRoster(fixture(),all,{maxEvaluations:60,lockedPositions:['room_1_1:0']})
   expect(locked.workspace).toEqual(fixture())
  })
- it('rejects unowned, low-stage, conflicting candidates and unhandled strategies atomically',()=>{
+ it('accepts on-duty workers outside the idle library and ignores low-stage idle candidates',()=>{
   const w=fixture()
-  expect(refineJointRoster(w,own(['斑点'])).before).toBeNull()
+  expect(refineJointRoster(w,own(['斑点'])).before).not.toBeNull()
   const low=own(['斑点','砾']).map(o=>o.operator==='砾'?{...o,elitePhase:0,level:1}:o)
-  expect(refineJointRoster(w,low).before).toBeNull()
+  expect(refineJointRoster(w,low).before).not.toBeNull()
   w.compatibility.backupPlans.push({trigger:'unhandled'})
   expect(refineJointRoster(w,all).workspace).toEqual(w)
  })

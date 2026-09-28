@@ -12,33 +12,44 @@ import type {RosterWorkspace} from '../../workbench/model'
 import type {ScheduleSimulationReport} from '../../simulator/scheduleSimulation'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 const props=defineProps<{workspace:RosterWorkspace}>()
-const sampleDays=ref(14),warmupDays=ref(7),step=ref(.25),warmupModel=ref<'continuous'|'hourly'>('continuous'),idleNames=ref('')
+const sampleDays=ref(14),warmupDays=ref(7),step=ref(.25),warmupModel=ref<'continuous'|'hourly'>('continuous')
+const settingsKey='riic-mower-simulation-settings-v1'
+const savedSettings=(()=>{try{const value=JSON.parse(localStorage.getItem(settingsKey)??'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch{return {}}})()
+const restingPercent=ref(typeof savedSettings.restingPercent==='number'&&Number.isFinite(savedSettings.restingPercent)&&savedSettings.restingPercent>=0&&savedSettings.restingPercent<=100?savedSettings.restingPercent:65)
+const fiammettaFool=ref(typeof savedSettings.fiammettaFool==='boolean'?savedSettings.fiammettaFool:true),freeRoom=ref(typeof savedSettings.freeRoom==='boolean'?savedSettings.freeRoom:false)
 const runOrderMode=ref<'ideal'>('ideal'),droneTarget=ref<'gold'|'exp'|'none'>('gold')
 const initialGold=ref(0),initialLmd=ref(0),initialOrirock=ref(0),initialDevice=ref(0),initialDrone=ref(0),seed=ref(1),collectionIntervalHours=ref(0)
+const inventoryMode=ref<'unlimited'|'finite'>('unlimited')
 const outputMode=ref<'potential'|'settled'>('potential')
-const productionInputs=[outputMode,runOrderMode,droneTarget,initialGold,initialLmd,initialOrirock,initialDevice,initialDrone,seed,collectionIntervalHours]
+const productionInputs=[outputMode,inventoryMode,runOrderMode,droneTarget,initialGold,initialLmd,initialOrirock,initialDevice,initialDrone,seed,collectionIntervalHours]
 const draftForSearch=ref<RosterDraftResult|null>(null)
-const searchOptions=computed(()=>({maxStepHours:step.value,warmupModel:warmupModel.value,production:{runOrderMode:runOrderMode.value,droneTarget:droneTarget.value,initialResources:{gold:initialGold.value,lmd:initialLmd.value,orirock:initialOrirock.value,device:initialDevice.value,drone:initialDrone.value},seed:seed.value,collectionIntervalHours:collectionIntervalHours.value}}))
-const searchAssumptions=computed(()=>({restingThreshold:.65,operationDurationHours:0,idleOperators:idleNames.value.split(/[,，\n]/).map(s=>s.trim()).filter(Boolean)}))
+const searchOptions=computed(()=>({maxStepHours:step.value,warmupModel:warmupModel.value,production:{inventoryMode:inventoryMode.value,runOrderMode:runOrderMode.value,droneTarget:droneTarget.value,initialResources:{gold:initialGold.value,lmd:initialLmd.value,orirock:initialOrirock.value,device:initialDevice.value,drone:initialDrone.value},seed:seed.value,collectionIntervalHours:collectionIntervalHours.value}}))
+const searchAssumptions=computed(()=>({restingThreshold:restingPercent.value/100,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value,operationDurationHours:0}))
 const simulationProduction=computed(()=>({...searchOptions.value.production,outputMode:outputMode.value,...(outputMode.value==='potential'?{initialResources:{drone:initialDrone.value},collectionIntervalHours:0}:{})}))
 const reportBasis=ref('当前排班')
 const running=ref(false),report=ref<ScheduleSimulationReport|null>(null),error=ref('')
 const completedOutput=computed(()=>{const r=report.value,c=r?.production?.sample.completed;return c&&r.observedHours>0?scoreProduction(c,r.observedHours):null})
-const productionComplete=computed(()=>report.value?.success===true&&report.value?.production?.success===true)
+const rosterDeferred=computed(()=>report.value?.diagnostics.some(d=>d.code==='group-blocked')??false)
+const productionComplete=computed(()=>report.value?.success===true&&report.value?.production?.success===true&&!rosterDeferred.value)
 const inventory=ref<{enabled:boolean;valid:boolean;entries:OwnedOperatorInput[]}>({enabled:false,valid:true,entries:[]})
 function updateInventory(value:typeof inventory.value){inventory.value=value;clear()}
 let worker:Worker|undefined
 function cancel(){worker?.terminate();worker=undefined;running.value=false}
 function clear(){cancel();report.value=null;error.value=''}
 watch(()=>props.workspace,clear,{deep:true})
-watch([sampleDays,warmupDays,step,warmupModel,idleNames,...productionInputs],clear)
+watch([sampleDays,warmupDays,step,warmupModel,...productionInputs],clear)
+watch([restingPercent,fiammettaFool,freeRoom],()=>{
+ try{localStorage.setItem(settingsKey,JSON.stringify({restingPercent:restingPercent.value,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value}))}catch{}
+ clear()
+})
 onBeforeUnmount(cancel)
 function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班'){
  clear()
  reportBasis.value=basis
  if(inventory.value.enabled&&!inventory.value.valid){error.value='请先修正干员库中的输入错误';return}
+ if(!Number.isFinite(restingPercent.value)||restingPercent.value<0||restingPercent.value>100){error.value='休息阈值须为 0–100%';return}
  if(!Number.isFinite(sampleDays.value)||sampleDays.value<=0||!Number.isFinite(warmupDays.value)||warmupDays.value<0){error.value='采样天数应大于 0，预热天数不能为负';return}
- if((outputMode.value==='potential'?[initialDrone]:[initialGold,initialLmd,initialOrirock,initialDevice,initialDrone]).some(n=>!Number.isFinite(n.value)||n.value<0)){error.value='初始库存须为不小于 0 的数值';return}
+ if((outputMode.value==='potential'||inventoryMode.value==='unlimited'?[initialDrone]:[initialGold,initialLmd,initialOrirock,initialDevice,initialDrone]).some(n=>!Number.isFinite(n.value)||n.value<0)){error.value='初始库存须为不小于 0 的数值';return}
  if(!Number.isSafeInteger(seed.value)||seed.value<0||seed.value>4294967295||(outputMode.value==='settled'&&(!Number.isFinite(collectionIntervalHours.value)||collectionIntervalHours.value<0))){error.value='随机种子须为 0–4294967295 的整数，收取间隔不能为负';return}
  running.value=true
  try{
@@ -46,8 +57,7 @@ function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班
   const currentWorker=worker
   worker.onmessage=event=>{if(worker!==currentWorker)return;report.value=event.data.report??null;error.value=event.data.error??'';cancel()}
   worker.onerror=event=>{if(worker!==currentWorker)return;error.value=event.message||'模拟执行失败';cancel()}
-  const names=idleNames.value.split(/[,，\n]/).map(s=>s.trim()).filter(Boolean)
-  worker.postMessage({workspace:JSON.parse(JSON.stringify(targetWorkspace)),options:{...(inventory.value.enabled?{operatorInventory:JSON.parse(JSON.stringify(inventory.value.entries))}:{}),sampleHours:sampleDays.value*24,warmupHours:warmupDays.value*24,maxStepHours:step.value,warmupModel:warmupModel.value,recordSegments:true,production:JSON.parse(JSON.stringify(simulationProduction.value))},assumptions:{restingThreshold:.65,operationDurationHours:0,...(names.length?{idleOperators:names}:{})}})
+  worker.postMessage({workspace:JSON.parse(JSON.stringify(targetWorkspace)),options:{...(inventory.value.enabled?{operatorInventory:JSON.parse(JSON.stringify(inventory.value.entries))}:{}),sampleHours:sampleDays.value*24,warmupHours:warmupDays.value*24,maxStepHours:step.value,warmupModel:warmupModel.value,recordSegments:true,production:JSON.parse(JSON.stringify(simulationProduction.value))},assumptions:{...searchAssumptions.value}})
  }catch(e){error.value=e instanceof Error?e.message:String(e);cancel()}
 }
 function download(){if(!report.value)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report.value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='心情与产出模拟.json';a.click();URL.revokeObjectURL(url)}
@@ -58,7 +68,7 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
 <template>
  <section class="schedule-simulation" aria-labelledby="schedule-simulation-title">
   <h2 id="schedule-simulation-title">心情与产出模拟</h2>
-  <p>按实际主替班、休息床位及暖机时间计算效率，默认计算不受库存和缺金限制的直观产出。换班阈值 0.65、宿舍满氛围、操作耗时为零。</p>
+  <p>按实际主替班、休息床位及暖机时间计算效率，默认计算不受库存和缺金限制的直观产出。线索交流固定关闭。休息阈值可调整；宿舍满氛围，换人、跑单和收取的原版等待计入模拟。</p>
   <OperatorInventoryPanel @change="updateInventory" />
   <RosterDraftPanel :workspace="workspace" :inventory="inventory" @invalidate="clear" @draft-change="draftForSearch=$event" @simulate="draft=>run(draft,'组合草案')" />
   <div class="simulation-controls">
@@ -68,27 +78,38 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
    <button type="button" data-test="simulate-schedule" :disabled="running" @click="run()">{{running?'正在模拟…':'运行模拟'}}</button>
    <button v-if="running" type="button" @click="cancel">取消模拟</button>
   </div>
+  <div class="simulation-controls mower-settings">
+   <label>休息阈值（%）<input v-model.number="restingPercent" data-test="resting-threshold" type="number" min="0" max="100" step="0.5" /></label>
+   <label><input v-model="fiammettaFool" data-test="fiammetta-fool" type="checkbox" />菲亚梅塔防呆</label>
+   <label><input v-model="freeRoom" data-test="free-room" type="checkbox" />满心情闲人离宿</label>
+  </div>
   <div class="simulation-controls production-controls">
-   <label>产出口径<select v-model="outputMode" data-test="output-mode"><option value="potential">直观产出（忽略库存）</option><option value="settled">实际收支（含库存约束）</option></select></label>
-   <label>跑单方式<select v-model="runOrderMode" data-test="run-order-mode" disabled><option value="ideal">理想跑单（无冲突、无等待）</option></select></label>
-   <label>余量无人机<select v-model="droneTarget" data-test="drone-target"><option value="gold">加速赤金</option><option value="exp">加速作战记录</option><option value="none">不用</option></select></label>
+   <label>产出口径<select v-model="outputMode" data-test="output-mode"><option value="potential">完成产出</option><option value="settled">收取记录</option></select></label>
+   <label>材料库存<select v-model="inventoryMode" data-test="inventory-mode" :disabled="outputMode==='potential'"><option value="unlimited">无限（默认）</option><option value="finite">有限</option></select></label>
+   <label>跑单方式<select v-model="runOrderMode" data-test="run-order-mode" disabled><option value="ideal">理想收益</option></select></label>
+   <label>待办无人机设施<select v-model="droneTarget" data-test="drone-target"><option value="gold">加速赤金</option><option value="exp">加速作战记录</option><option value="none">不用</option></select></label>
   </div>
   <p class="simulation-note" data-test="simulation-controls-scope">以上设置用于“运行模拟”，不影响旧版快速估算；更改后需要重新运行。</p>
-  <p class="simulation-note">理想跑单在订单完成瞬间应用但书／龙舌兰效果，不临时进驻、不增加等待、不消耗跑单心情或无人机；常驻阵容照常获取订单。</p>
+  <p class="simulation-note">理想收益在订单完成时应用已配置的但书／龙舌兰效果；跑单换人、心情消耗、等待与恢复仍参与排班模拟。</p>
   <details class="simulation-idle production-settings"><summary>随机种子、无人机与可选库存设置</summary>
-   <p v-if="outputMode==='potential'">直观产出仅使用随机种子和初始无人机。其他库存与收取设置仅用于实际收支口径。</p><p v-else>库存从预热开始计入，采样只统计采样期间的到账与支出。收取间隔为 0 时，完成后及时收取。</p>
+   <p v-if="outputMode==='potential'">材料默认无限；初始无人机和随机种子参与计算。收取由 Mower 任务决定，设施容量仍有限。</p><p v-else>默认材料库存无限。选择有限库存后，初始材料从预热开始计入；收取时间由 Mower 任务决定。</p>
    <div class="simulation-controls">
-    <label>赤金（件）<input v-model.number="initialGold" data-test="initial-gold" :disabled="outputMode==='potential'" type="number" min="0" step="1" /></label>
-    <label>龙门币<input v-model.number="initialLmd" data-test="initial-lmd" :disabled="outputMode==='potential'" type="number" min="0" step="1" /></label>
-    <label>固源岩（件）<input v-model.number="initialOrirock" data-test="initial-orirock" :disabled="outputMode==='potential'" type="number" min="0" step="1" /></label>
-    <label>装置（件）<input v-model.number="initialDevice" data-test="initial-device" :disabled="outputMode==='potential'" type="number" min="0" step="1" /></label>
+    <label>赤金（件）<input v-model.number="initialGold" data-test="initial-gold" :disabled="outputMode==='potential'||inventoryMode==='unlimited'" type="number" min="0" step="1" /></label>
+    <label>龙门币<input v-model.number="initialLmd" data-test="initial-lmd" :disabled="outputMode==='potential'||inventoryMode==='unlimited'" type="number" min="0" step="1" /></label>
+    <label>固源岩（件）<input v-model.number="initialOrirock" data-test="initial-orirock" :disabled="outputMode==='potential'||inventoryMode==='unlimited'" type="number" min="0" step="1" /></label>
+    <label>装置（件）<input v-model.number="initialDevice" data-test="initial-device" :disabled="outputMode==='potential'||inventoryMode==='unlimited'" type="number" min="0" step="1" /></label>
     <label>无人机（架）<input v-model.number="initialDrone" data-test="initial-drone" type="number" min="0" max="235" step="1" /></label>
     <label>随机种子<input v-model.number="seed" data-test="production-seed" type="number" min="0" max="4294967295" step="1" /></label>
-    <label>收取间隔（小时）<input v-model.number="collectionIntervalHours" data-test="collection-interval" :disabled="outputMode==='potential'" type="number" min="0" step="0.25" /></label>
+    <label>收取间隔（Mower 自动）<input v-model.number="collectionIntervalHours" data-test="collection-interval" disabled type="number" min="0" step="0.25" /></label>
    </div>
    <p>相同种子可复现同一组订单抽样。碎片默认使用固源岩配方；装置库存仅在选择对应配方时消耗。</p>
   </details>
-  <details class="simulation-idle"><summary>补充可入住宿舍的闲置干员</summary><p>用中文逗号或换行分隔。Mower 会从这些实际拥有的闲置干员中填充 Free；未提供时，仅统计已知占位，宿舍人数联动可能偏低。</p><textarea v-model="idleNames" rows="3" aria-label="闲置干员名单" placeholder="安比尔，杜林，桃金娘" /></details>
+  <details class="simulation-idle" data-test="scheduling-external-conditions"><summary>影响跑单与排班的外部条件</summary>
+   <p>线索交流固定关闭，Party Time 为空。材料库存默认无限，设施容量和无人机数量按实际规则计算。</p>
+   <p>当前条件：初始心情 24，宿舍按等级满氛围；未导入干员库时从全体干员中选择闲置候选，导入后以库内名单为闲置候选。原排班干员下班后仍可参与 Free 选人。休息阈值、菲亚梅塔防呆、满心情闲人离宿，以及无人机目标和数量均按上方设置。</p>
+   <p>待办无人机检查间隔 3 小时、使用门槛 100 架；跑单提前 3 分钟、葛朗台缓冲 15 秒。主副表的候补顺序、绑组、用尽、回满、优先级和黑名单影响换班。</p>
+   <p>本次不注入维护停服、加工、专精或其他外部任务。换人、跑单、收取按原版显式等待；稳定页面与识别零耗时为模拟输入。初始在岗状态、预热、暖机规则和订单随机种子会影响长期结果。</p>
+  </details>
   <p class="simulation-note">效率包含基本效率 100%。直观产出按采样完成数计分，实际收支口径另计到账；预热长度及步长可调整，用于检查结果是否稳定。</p>
   <ControlImpactPanel :workspace="workspace" :inventory="inventory" />
   <RosterIncomeSearchPanel :workspace="workspace" :inventory="inventory" :options="searchOptions" :assumptions="searchAssumptions" :draft="draftForSearch" />
@@ -96,6 +117,7 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   <template v-if="report">
    <p class="simulation-note">正在查看：{{reportBasis}}</p>
    <p role="status">{{report.success?'模拟窗口已完成':'模拟未完成'}} · 实际采样 {{number(report.observedHours/24)}} 天 <button type="button" @click="download">导出明细 JSON</button></p>
+   <p v-if="rosterDeferred" data-test="roster-deferred" class="simulation-error">仍有换班延后未恢复，请查看诊断；此结果不能作为稳定日均结论。</p>
    <ScheduleTimelineGantt :report="report" @request-simulate="run()" />
    <details v-if="(report.events??[]).some(e=>e.type==='backup-plan')" data-test="backup-plan-events">
     <summary>副表切换记录（{{(report.events??[]).filter(e=>e.type==='backup-plan').length}} 次）</summary>
@@ -105,9 +127,9 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
     </tbody></table>
    </details>
    <section v-if="report.production" aria-label="采样产出与库存" class="production-results">
-    <p :class="{'simulation-error':!report.production.success}" data-test="production-status">{{report.production.success?'产出策略已完整执行':'产出策略未完整执行'}}<span v-if="!report.production.success">，原因见下方假设与待核实项。</span></p>
+    <p :class="{'simulation-error':!report.production.success}" data-test="production-status">{{report.production.success?'产出计算窗口已完成':'产出策略未完整执行'}}<span v-if="!report.production.success">，原因见下方假设与待核实项。</span></p>
     <template v-if="report.production.assumptions?.outputMode==='potential'&&completedOutput">
-     <p data-test="completed-production-score">{{productionComplete?'每日综合产出':'未完成采样的折算值（不可作为日均结论）'}}：{{number(completedOutput.total)}} = {{number(completedOutput.exp)}} EXP + 0.8 × {{number(completedOutput.goldValue)}} 赤金价值 + 0.2 × {{number(completedOutput.orderValue)}} 订单面值</p>
+     <p data-test="completed-production-score">{{productionComplete?'每日综合产出':rosterDeferred?'换班延后的折算值（不可作为稳定日均结论）':'未完成采样的折算值（不可作为日均结论）'}}：{{number(completedOutput.total)}} = {{number(completedOutput.exp)}} EXP + 0.8 × {{number(completedOutput.goldValue)}} 赤金价值 + 0.2 × {{number(completedOutput.orderValue)}} 订单面值</p>
      <p class="simulation-note">按采样完成产物折算每日，预热不计入。忽略库存、缺金及存仓/收取阻塞，不扣赤金交易成本。原始完成数量与测算明细可导出。</p>
     </template>
     <template v-else>
@@ -125,5 +147,5 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
  </section>
 </template>
 <style scoped>
-.schedule-simulation{margin:1.4rem 0;padding:1.5rem;border:1px solid #41505d;border-radius:12px;scroll-margin-top:90px;background:#17212a;color:#e3ebf2}.schedule-simulation h2{margin:0 0 .6rem}.schedule-simulation p{line-height:1.6}.simulation-controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.production-controls{margin-top:1rem}.simulation-controls label{display:grid;gap:6px;font-size:.85rem}.simulation-controls input{width:100px}.schedule-simulation input,.schedule-simulation select,.schedule-simulation textarea{color:inherit;background:#101922;border:1px solid #63717d;padding:9px;border-radius:5px}.schedule-simulation button{padding:10px 15px;border-radius:5px;border:1px solid #95ab67;background:#c7e49b;color:#16210d;cursor:pointer}.schedule-simulation button:disabled{opacity:.5;cursor:wait}.simulation-table{overflow:auto;max-height:440px;margin:1rem 0}.simulation-table table{width:100%;border-collapse:collapse;white-space:nowrap}.simulation-table th,.simulation-table td{text-align:right;padding:9px;border-bottom:1px solid #3a4651}.simulation-table th:first-child,.simulation-table td:first-child{text-align:left}.simulation-table caption{text-align:left;padding:10px 0;font-weight:600}.simulation-table thead{position:sticky;top:0;background:#17212a}.simulation-error{color:#ffb4ab}.simulation-note,.simulation-idle{color:#b6c6d1;font-size:.9rem}.simulation-idle{margin-top:1rem}.simulation-idle textarea{width:min(100%,600px);box-sizing:border-box}.schedule-simulation summary{cursor:pointer}.schedule-simulation li{line-height:1.7;margin:.4rem 0}
+.schedule-simulation{margin:1.4rem 0;padding:1.5rem;border:1px solid #41505d;border-radius:12px;scroll-margin-top:90px;background:#17212a;color:#e3ebf2}.schedule-simulation h2{margin:0 0 .6rem}.schedule-simulation p{line-height:1.6}.simulation-controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.production-controls{margin-top:1rem}.simulation-controls label{display:grid;gap:6px;font-size:.85rem}.simulation-controls input{width:100px}.schedule-simulation input,.schedule-simulation select,.schedule-simulation textarea{color:inherit;background:#101922;border:1px solid #63717d;padding:9px;border-radius:5px}.schedule-simulation button{padding:10px 15px;border-radius:5px;border:1px solid #95ab67;background:#c7e49b;color:#16210d;cursor:pointer}.schedule-simulation button:disabled{opacity:.5;cursor:wait}.simulation-table{overflow:auto;max-height:440px;margin:1rem 0}.simulation-table table{width:100%;border-collapse:collapse;white-space:nowrap}.simulation-table th,.simulation-table td{text-align:right;padding:9px;border-bottom:1px solid #3a4651}.simulation-table th:first-child,.simulation-table td:first-child{text-align:left}.simulation-table caption{text-align:left;padding:10px 0;font-weight:600}.simulation-table thead{position:sticky;top:0;background:#17212a}.simulation-error{color:#ffb4ab}.simulation-note,.simulation-idle{color:#b6c6d1;font-size:.9rem}.simulation-idle{margin-top:1rem}.simulation-idle textarea{width:min(100%,600px);box-sizing:border-box}.schedule-simulation input[type=checkbox]{width:auto}.mower-settings label{align-items:center}.schedule-simulation summary{cursor:pointer}.schedule-simulation li{line-height:1.7;margin:.4rem 0}
 </style>

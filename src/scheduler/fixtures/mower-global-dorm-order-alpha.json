@@ -1,0 +1,94 @@
+{
+  "upstream": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "source": "validation\\mower-fix-2026-09-27\\mower-alpha\\arknights_mower\\utils\\operators.py",
+  "nativeLines": [
+    547,
+    562
+  ],
+  "cases": [
+    {
+      "name": "default",
+      "order": "",
+      "initial": [
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_3",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "output": [
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_3",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "error": null
+    },
+    {
+      "name": "reversed",
+      "order": "dormitory_2_4,dormitory_2_3,dormitory_1_4,dormitory_1_3,dormitory_2_2,dormitory_1_2",
+      "initial": [
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_3",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "output": [
+        "dormitory_2_4",
+        "dormitory_2_3",
+        "dormitory_1_4",
+        "dormitory_1_3",
+        "dormitory_2_2",
+        "dormitory_1_2"
+      ],
+      "error": null
+    },
+    {
+      "name": "duplicates",
+      "order": "dormitory_1_3,dormitory_1_3,dormitory_1_2,dormitory_2_2,dormitory_1_4,dormitory_2_3,dormitory_2_4",
+      "initial": [
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_3",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "output": [
+        "dormitory_1_3",
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "error": null
+    },
+    {
+      "name": "invalid",
+      "order": "dormitory_1_2",
+      "initial": [
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_3",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "output": [
+        "dormitory_1_2",
+        "dormitory_2_2",
+        "dormitory_1_3",
+        "dormitory_1_4",
+        "dormitory_2_3",
+        "dormitory_2_4"
+      ],
+      "error": "宿舍优先级和当前宿舍不匹配，请清除优先级自动排序或者自己更正"
+    }
+  ]
+}

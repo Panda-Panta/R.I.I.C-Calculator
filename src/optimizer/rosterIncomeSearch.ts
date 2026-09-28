@@ -62,8 +62,8 @@ function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
  // Every case uses the same explicit extra idle roster; registered backups remain part of its schedule.
  const assumptions:Partial<SimulationAssumptions>={...structuredClone(request.assumptions)}
  assumptions.idleOperators=assumptions.idleOperators===undefined?[]:[...assumptions.idleOperators].map(resolveId)
- const owned=new Set(inventory.operators.filter(o=>o.matchesMaximumSkills).map(o=>o.charId))
- if(assumptions.idleOperators.some(id=>!owned.has(id)))throw new Error('闲置干员须已拥有且解锁当前最高技能')
+ const owned=new Set(inventory.operators.map(o=>o.charId))
+ if(assumptions.idleOperators.some(id=>!owned.has(id)))throw new Error('闲置干员须在导入的干员库中')
  assumptions.idleOperators=[...new Set(assumptions.idleOperators)]
  for(const [key,min,max] of [['sampleHours',1,2160],['warmupHours',0,2160],['maxEvents',1,200000]] as const){const n=options[key]!;if(!Number.isFinite(n)||n<min||n>max||(key==='maxEvents'&&!Number.isSafeInteger(n)))throw new Error(`无效的比较设置 ${key}`)}
  options.production={runOrderMode:'ideal',...options.production}

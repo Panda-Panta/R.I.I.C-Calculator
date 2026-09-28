@@ -1,0 +1,191 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualAst": {
+    "agent_arrange_room": [
+      7404,
+      7750
+    ],
+    "agent_arrange": [
+      7785,
+      7970
+    ],
+    "refresh_current_room": [
+      7164,
+      7169
+    ]
+  },
+  "sourceHashes": {
+    "validation\\mower-fix-2026-09-27\\mower-alpha\\arknights_mower\\solvers\\base_schedule.py": "7dff0665033f69d9b254e9e2dd844f14ed7cb024552c6d846b183e45bbc07d6d",
+    "validation\\mower-output-2026-09-27\\base-solver-alpha.py": "5b2673138c55b0ac244d7cfe04c97b29379b9c3bdc2b205288ef86465f7188ee",
+    "validation\\mower-fix-2026-09-27\\mower-alpha\\arknights_mower\\utils\\operators.py": "a4d3e6f152bd3c2943c97996a1936e24983c4a4c7bb771493187628c7e657408",
+    "validation\\mower-output-2026-09-27\\alpha-operation_timing.py": "8cb09181d2e18be69d1a84c93ea14b8f1bc7d53fedcfc32d1ebeeb2cec0e0a12"
+  },
+  "scope": "Actual unchanged whole agent_arrange_room; successful selection/room observations are zero-time inputs. Compare preselection deadline, missed return and elapsed time; does not prove pixels or full cycle.",
+  "cases": [
+    {
+      "name": "preselection-0-seconds-adjusted-False",
+      "input": {
+        "name": "preselection-0-seconds-adjusted-False",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          0
+        ],
+        "adjusted": false
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 0,
+        "maySelect": false
+      }
+    },
+    {
+      "name": "preselection-0-seconds-adjusted-True",
+      "input": {
+        "name": "preselection-0-seconds-adjusted-True",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          0
+        ],
+        "adjusted": true
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 1000000,
+        "maySelect": true
+      }
+    },
+    {
+      "name": "preselection--1-seconds-adjusted-False",
+      "input": {
+        "name": "preselection--1-seconds-adjusted-False",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          -1
+        ],
+        "adjusted": false
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 0,
+        "maySelect": false
+      }
+    },
+    {
+      "name": "preselection--1-seconds-adjusted-True",
+      "input": {
+        "name": "preselection--1-seconds-adjusted-True",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          -1
+        ],
+        "adjusted": true
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 1000000,
+        "maySelect": true
+      }
+    },
+    {
+      "name": "preselection-780-seconds-adjusted-False",
+      "input": {
+        "name": "preselection-780-seconds-adjusted-False",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          780
+        ],
+        "adjusted": false
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 0,
+        "maySelect": false
+      }
+    },
+    {
+      "name": "preselection-780-seconds-adjusted-True",
+      "input": {
+        "name": "preselection-780-seconds-adjusted-True",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          780
+        ],
+        "adjusted": true
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 1000000,
+        "maySelect": true
+      }
+    },
+    {
+      "name": "preselection-strict-upper-below780",
+      "input": {
+        "name": "preselection-strict-upper-below780",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          779.999999
+        ]
+      },
+      "expected": {
+        "deadline": 599999999,
+        "timeMicros": 1000000,
+        "maySelect": true
+      }
+    },
+    {
+      "name": "single-RUN-positive-buffer-exact-cache-stays-in-Details",
+      "input": {
+        "name": "single-RUN-positive-buffer-exact-cache-stays-in-Details",
+        "current": "但书",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15
+      },
+      "expected": {
+        "deadline": 0,
+        "timeMicros": 0,
+        "maySelect": true
+      }
+    },
+    {
+      "name": "single-RUN-positive-buffer-changing-staff-calibrates-before-selection",
+      "input": {
+        "name": "single-RUN-positive-buffer-changing-staff-calibrates-before-selection",
+        "current": "芬",
+        "target": "但书",
+        "runner": true,
+        "buffer": 15,
+        "remaining": [
+          120
+        ]
+      },
+      "expected": {
+        "deadline": -60000000,
+        "timeMicros": 1000000,
+        "maySelect": true
+      }
+    }
+  ]
+}

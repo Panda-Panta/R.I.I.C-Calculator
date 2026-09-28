@@ -4,7 +4,7 @@ import type {RosterWorkspace} from '../../workbench/model'
 import {getRoomDisplayName} from '../../workbench/operatorHelpers'
 import {exportMowerJson} from '../../workbench/compat/mowerJson'
 import {OPERATOR_MAP} from '../../domain/operators'
-import {compileOperatorInventory,type OwnedOperatorInput} from '../../domain/operatorInventory'
+import {compileOperatorInventory,fullCatalogIdleInventory,type OwnedOperatorInput} from '../../domain/operatorInventory'
 import {admitCombinationCandidates} from '../../optimizer/inventoryAdmission'
 import {generateRosterDraft,type RosterDraftResult} from '../../optimizer/rosterDraft'
 import type {AutomaticRosterResult} from '../../optimizer/automaticRoster'
@@ -18,9 +18,10 @@ function stopGeneration(){worker?.terminate();worker=undefined;running.value=fal
 function invalidate(){stopGeneration();if(result.value){emit('invalidate');emit('draftChange',null)};result.value=null;automaticResult.value=null;automaticInput.value=null;generationError.value=''}
 onBeforeUnmount(stopGeneration)
 const selected=ref<string[]>([]),maxStates=ref(2000),result=ref<RosterDraftResult|null>(null)
-const available=computed(()=>props.inventory.valid?admitCombinationCandidates(compileOperatorInventory(props.inventory.entries)).filter(c=>c.status==='needs-context').map(c=>c.candidate):[])
+const idleEntries=computed(()=>props.inventory.enabled?props.inventory.entries:fullCatalogIdleInventory())
+const available=computed(()=>!props.inventory.enabled||props.inventory.valid?admitCombinationCandidates(compileOperatorInventory(idleEntries.value)).filter(c=>c.status==='needs-context').map(c=>c.candidate):[])
 const names=computed(()=>new Map(available.value.map(c=>[c.id,c.name])))
-const enabled=computed(()=>props.inventory.enabled&&props.inventory.valid)
+const enabled=computed(()=>!props.inventory.enabled||props.inventory.valid)
 watch([()=>props.workspace,()=>props.inventory,selected,maxStates,generationMode,seed,trials,mainDutyPercent],invalidate,{deep:true})
 const operatorName=(id:string)=>OPERATOR_MAP.get(id)?.name??id
 const rosterRows=computed(()=>Object.values(result.value?.workspace?.mainPlan.facilities??{}).flatMap(room=>room.slots.flatMap((slot,index)=>slot.occupant.kind==='operator'?[{
@@ -34,7 +35,7 @@ function generateAutomatic(){
  if(!Number.isFinite(mainDutyPercent.value)||mainDutyPercent.value<75||mainDutyPercent.value>80){generationError.value='普通主班参考占比须为75%–80%';return}
  if(!Number.isInteger(seed.value)||seed.value<0||seed.value>4294967295||!Number.isInteger(trials.value)||trials.value<1||trials.value>8||!Number.isInteger(maxStates.value)||maxStates.value<1||maxStates.value>100000){generationError.value='种子须为0–4294967295整数；生成次数1–8；尝试预算1–100000';return}
  try{
-  const input=JSON.parse(JSON.stringify({base:props.workspace,entries:props.inventory.entries,options:{seed:seed.value,trials:trials.value,maxStates:maxStates.value,mainDutyRatio:mainDutyPercent.value/100}}))
+  const input=JSON.parse(JSON.stringify({base:props.workspace,entries:idleEntries.value,options:{seed:seed.value,trials:trials.value,maxStates:maxStates.value,mainDutyRatio:mainDutyPercent.value/100}}))
   automaticInput.value=input
   worker=new Worker(new URL('../../optimizer/automaticRosterWorker.ts',import.meta.url),{type:'module'})
   const current=worker;running.value=true
@@ -59,7 +60,7 @@ function exportGeneration(){
 function generate(){
  if(!enabled.value)return
  generationError.value=''
- try{result.value=generateRosterDraft(structuredClone(toRaw(props.workspace)),props.inventory.entries,selected.value,{maxStates:maxStates.value})}
+ try{result.value=generateRosterDraft(structuredClone(toRaw(props.workspace)),idleEntries.value,selected.value,{maxStates:maxStates.value})}
  catch(error){result.value=null;generationError.value=error instanceof Error?error.message:String(error)}
  emit('draftChange',result.value)
 }
@@ -74,7 +75,7 @@ function download(){
   <summary>组合排班草案</summary>
   <p data-test="main-plan-only">自动生成只使用主表及普通候补，不带入副表；原始导入排班保持不变。</p>
   <p>选择成员和技能齐备的组合，在当前布局的空位中摆放，并尝试分配普通候补。原主班、原候补、已有分组和 Free 床位会保留。</p>
-  <p v-if="!enabled">先在上方录入并启用干员库检查。</p>
+  <p v-if="!enabled">请先修正干员库中的输入错误。</p><p v-else-if="!inventory.enabled">未导入干员库：按全体干员可用生成草案。</p>
   <label>生成方式<select v-model="generationMode" data-test="draft-mode"><option value="manual">手动选择组合</option><option value="automatic">空布局自动组队</option></select></label>
   <p v-if="generationMode==='automatic'">按当前布局和干员库优先选择高效主班与替班组合。普通岗位按75%–80%主班占比作参考，歌蕾蒂娅及有心情消耗技能的干员工休比待定；本阶段暂不以疲劳筛选。</p>
   <fieldset v-if="generationMode==='manual'" :disabled="!enabled" class="draft-candidates"><legend>选择组合（已选 {{selected.length}} 项）</legend>

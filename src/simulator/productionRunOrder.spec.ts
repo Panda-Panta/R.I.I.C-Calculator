@@ -22,28 +22,42 @@ describe('run-order integration after natural mode removal',()=>{
   const production=JSON.parse(JSON.stringify({...options.production,runOrderMode:'natural',outputMode}))
   expect(()=>simulateSchedule(base(),{...options,production})).toThrow(/自然跑单.*禁用/)
  })
- it('keeps explicit drone swaps, spending and restoration',()=>{
-  const r=simulateSchedule(base(),{...options,production:{runOrderMode:'drone',droneTarget:'none',initialResources:{gold:100,drone:20}}})
-  expect(r.success&&r.production!.success).toBe(true)
-  const insertion=144/1.31/60-180/3600
-  expect(selected(r,'run-order-inserted')[0]!.time).toBeCloseTo(insertion,8)
-  expect(selected(r,'order-completed')[0]!.time).toBeCloseTo(insertion,8)
-  expect(selected(r,'run-order-restored')[0]!.time).toBeCloseTo(insertion,8)
-  expect(r.production!.drones.consumed).toBe(2)
+ it('uses the same physical native temporary staffing and restoration for both income modes',()=>{
+  const run=(runOrderMode:'ideal'|'drone')=>simulateSchedule(base(),{...options,production:{runOrderMode,inventoryMode:'finite',droneTarget:'none',initialResources:{gold:100,drone:20}}})
+  const ideal=run('ideal'),r=run('drone')
+  expect(r.success&&r.production!.success&&ideal.success&&ideal.production!.success).toBe(true)
+  expect(r.segments).toHaveLength(ideal.segments.length)
+  for(const [index,segment] of r.segments.entries()){
+   const other=ideal.segments[index]!
+   expect(segment.occupants).toEqual(other.occupants);expect(segment.bedOccupants).toEqual(other.bedOccupants)
+   expect(segment.efficiencyPercent).toEqual(other.efficiencyPercent)
+   expect(Math.abs(segment.start-other.start)).toBeLessThan(1/3_600_000_000)
+   expect(Math.abs(segment.end-other.end)).toBeLessThan(1/3_600_000_000)
+   for(const [operator,mood] of Object.entries(segment.morale))expect(mood).toBeCloseTo(other.morale[operator]!,7)
+  }
+  const position='room_1_1_0'
+  expect(r.segments.some(segment=>segment.occupants[position]===id('但书'))).toBe(true)
+  expect(r.segments[r.segments.length-1]!.occupants[position]).toBe(id('芬'))
+  expect(r.operators.find(operator=>operator.operatorId===id('但书'))!.workHours).toBeGreaterThan(0)
+  expect(selected(r,'order-completed')).toHaveLength(1)
+  expect(r.production!.drones.consumed).toBe(ideal.production!.drones.consumed)
+  expect(r.production!.drones.initial+r.production!.drones.generated-r.production!.drones.consumed-r.production!.drones.overflow).toBeCloseTo(r.production!.drones.stock,8)
   expect(r.production!.ledger.outflows.gold).toBe(4)
   expect(r.production!.ledger.inflows.lmd).toBe(2000)
  })
- it('keeps ideal rewards virtual with no waiting or drone spending',()=>{
+ it('retains ideal reward conversion while native temporary staffing changes completion timing',()=>{
   const r=simulateSchedule(base(),options)
   expect(r.success&&r.production!.success).toBe(true)
-  expect(selected(r,'run-order-inserted')).toHaveLength(0)
   expect(selected(r,'run-order-ideal')).toHaveLength(1)
-  expect(selected(r,'order-completed')[0]!.time).toBeCloseTo(144/1.31/60,8)
+  expect(selected(r,'order-completed')).toHaveLength(1)
+  expect(selected(r,'order-completed')[0]!.order).toMatchObject({goldCost:4,lmdReward:2000})
+  expect(selected(r,'order-completed')[0]!.time).toBeGreaterThan(144/1.31/60)
   expect(r.production!.drones.consumed).toBe(0)
-  expect(r.operators.some(o=>o.operatorId===id('但书'))).toBe(false)
+  expect(r.operators.find(o=>o.operatorId===id('但书'))!.workHours).toBeGreaterThan(0)
+  expect(r.segments[r.segments.length-1]!.occupants.room_1_1_0).toBe(id('芬'))
  })
  it('retains captured special costs while an unfunded queue fills and blocks acquisition',()=>{
-  const r=simulateSchedule(base(),{...options,sampleHours:20,consumptionOverrides:{[id('芬')]:0,[id('但书')]:0},production:{droneTarget:'none',initialResources:{gold:0},collectionIntervalHours:0}})
+  const r=simulateSchedule(base(),{...options,sampleHours:12,consumptionOverrides:{[id('芬')]:0,[id('但书')]:0},production:{inventoryMode:'finite',droneTarget:'none',initialResources:{gold:0},collectionIntervalHours:0}})
   expect(r.success).toBe(true)
   const trade=r.production!.trading[0]!
   expect(trade.pendingOrders).toHaveLength(6);expect(trade.collectedOrders).toBe(0);expect(trade.remainingBaseMinutes).toBeNull()
@@ -51,7 +65,7 @@ describe('run-order integration after natural mode removal',()=>{
   expect(trade.blockedHours).toBeGreaterThan(0);expect(r.production!.ledger.inflows.lmd??0).toBe(0)
  })
  it('preserves highest-phase Jaye cancellation as completed orders accumulate',()=>{
-  const r=simulateSchedule(base('孑',[]),{...options,sampleHours:4.1,consumptionOverrides:{[id('孑')]:0},production:{droneTarget:'none',initialResources:{gold:0},collectionIntervalHours:0}})
+  const r=simulateSchedule(base('孑',[]),{...options,sampleHours:4.1,consumptionOverrides:{[id('孑')]:0},production:{inventoryMode:'finite',droneTarget:'none',initialResources:{gold:0},collectionIntervalHours:0}})
   expect(r.success).toBe(true)
   // E2 Jaye: limit 6, no partners; 6 * 4% + 1% staff. The +4% per queued
   // order cancels the first skill loss, so both 144-minute orders take 1.92 h.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { OPERATORS } from './operators'
-import { compileOperatorInventory, parseOperatorInventory, selectUnlockedSkills } from './operatorInventory'
+import { compileOperatorInventory, fullCatalogIdleInventory, parseOperatorInventory, selectUnlockedSkills } from './operatorInventory'
 
 const op = (name: string) => OPERATORS.find(o => o.name === name)!
 describe('owned operator skill stages', () => {
@@ -35,6 +35,10 @@ describe('owned operator skill stages', () => {
   })
   it('reproduces all 429 maximum snapshots from the full slot catalog without mutation', () => {
     const before = JSON.stringify(OPERATORS)
+    const full=compileOperatorInventory(fullCatalogIdleInventory())
+    expect(full.valid).toBe(true)
+    expect(full.operators).toHaveLength(429)
+    expect(full.operators.every(operator=>operator.matchesMaximumSkills)).toBe(true)
     for (const operator of OPERATORS) {
       const max = operator.rarity <= 2 ? [0,30] : operator.rarity === 3 ? [1,55] : [2,70 + (operator.rarity - 4)*10]
       expect(selectUnlockedSkills(operator,max[0]!,max[1]!).map(s => s.buffId),operator.name).toEqual(operator.skills.map(s => s.buffId))

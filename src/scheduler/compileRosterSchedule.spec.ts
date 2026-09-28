@@ -30,7 +30,7 @@ describe('lossless roster compiler', () => {
     workspace.mainPlan.facilities.room_1_1.slots[0] = { occupant: { kind: 'operator', operatorId: '但书' }, groupId: ' g ', replacements: ['龙舌兰', 'Tequila', '但书'] }
     workspace.mainPlan.facilities.room_1_2.slots[0]!.occupant = { kind: 'operator', operatorId: '龙舌兰' }
     const result = compileRosterSchedule(workspace)
-    const slot = result.rooms[0]!.slots[0]!
+    const slot = result.rooms.find(room => room.roomId === 'room_1_1')!.slots[0]!
     expect(slot.primaryOperatorId).toBe(resolveOperatorCharId('但书'))
     expect(slot.orderedCandidates).toEqual(['龙舌兰', '龙舌兰', '但书'].map(resolveOperatorCharId))
     expect(slot.groupId).toBe(' g ')
@@ -41,8 +41,8 @@ describe('lossless roster compiler', () => {
     workspace.mainPlan.conf.custom_policy = { future: true }
     workspace.mainPlan.conf.workaholic = ['但书']
     const result = compileRosterSchedule(workspace)
-    expect(result.rooms[0]!.slots[0]!.occupant.kind).toBe('current')
-    expect(result.rooms[0]!.slots[0]!.primaryOperatorId).toBeNull()
+    expect(result.rooms.find(room => room.roomId === 'room_1_1')!.slots[0]!.occupant.kind).toBe('current')
+    expect(result.rooms.find(room => room.roomId === 'room_1_1')!.slots[0]!.primaryOperatorId).toBeNull()
     expect(result.policies.custom_policy).toEqual({ future: true })
     expect(result.rawConf.workaholic).toEqual(['但书'])
     expect(result.policies.workaholic).toEqual([resolveOperatorCharId('但书')])
@@ -54,7 +54,7 @@ describe('lossless roster compiler', () => {
     workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'current' }
     workspace.mainPlan.facilities.room_1_1.slots[1]!.replacements = ['future_operator']
     const result = compileRosterSchedule(workspace, { currentOccupants: { room_1_1: ['但书'] } })
-    expect(result.rooms[0]!.slots[0]!.primaryOperatorId).toBe(resolveOperatorCharId('但书'))
+    expect(result.rooms.find(room => room.roomId === 'room_1_1')!.slots[0]!.primaryOperatorId).toBe(resolveOperatorCharId('但书'))
     expect(result.diagnostics.map(item => item.code)).toContain('UNKNOWN_OPERATOR')
     expect(result.diagnostics.map(item => item.code)).not.toContain('CURRENT_STATE_REQUIRED')
   })

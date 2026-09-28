@@ -1,0 +1,339 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "scope": "Actual extracted default queue functions with fixed clock. No device durations or gameplay mechanisms inferred. Execution/maintenance/mastery external services are deterministic inert fixtures.",
+  "cases": {
+    "stable_equal_time": [
+      {
+        "input": [
+          "SHIFT_ON",
+          "FIAMMETTA",
+          "EXHAUST_OFF"
+        ],
+        "output": [
+          "SHIFT_ON",
+          "FIAMMETTA",
+          "EXHAUST_OFF"
+        ]
+      },
+      {
+        "input": [
+          "EXHAUST_OFF",
+          "FIAMMETTA",
+          "SHIFT_ON"
+        ],
+        "output": [
+          "EXHAUST_OFF",
+          "FIAMMETTA",
+          "SHIFT_ON"
+        ]
+      }
+    ],
+    "run_order_conflict": [
+      {
+        "type": "RUN_ORDER",
+        "hours": 0.016666666666666666,
+        "plan": {
+          "room_2_1": [
+            "Z"
+          ]
+        },
+        "meta": ""
+      },
+      {
+        "type": "SHIFT_OFF",
+        "hours": 0.016944444444444446,
+        "plan": {
+          "room_1_1": [
+            "X"
+          ],
+          "room_1_2": [
+            "Y"
+          ]
+        },
+        "meta": ""
+      }
+    ],
+    "fallback_any_task": [
+      {
+        "queuedType": "SHIFT_ON",
+        "queuedHours": 1,
+        "fallbackHours": []
+      },
+      {
+        "queuedType": "FIAMMETTA",
+        "queuedHours": 1,
+        "fallbackHours": []
+      },
+      {
+        "queuedType": "EXHAUST_OFF",
+        "queuedHours": 1,
+        "fallbackHours": []
+      },
+      {
+        "queuedType": "SHIFT_ON",
+        "queuedHours": 2.5,
+        "fallbackHours": [
+          2.5
+        ]
+      },
+      {
+        "queuedType": "SHIFT_ON",
+        "queuedHours": 3,
+        "fallbackHours": [
+          2.5
+        ]
+      }
+    ],
+    "metadata_retention": {
+      "before": [
+        {
+          "type": "NOT_SPECIFIC",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "NOT_SPECIFIC"
+        },
+        {
+          "type": "FIAMMETTA",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "FIAMMETTA"
+        },
+        {
+          "type": "EXHAUST_OFF",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "EXHAUST_OFF"
+        },
+        {
+          "type": "SHIFT_OFF",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SHIFT_OFF"
+        },
+        {
+          "type": "SELF_CORRECTION",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SELF_CORRECTION"
+        },
+        {
+          "type": "RE_ORDER",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "RE_ORDER"
+        },
+        {
+          "type": "SWITCH_PRODUCT",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SWITCH_PRODUCT"
+        },
+        {
+          "type": "SHIFT_ON",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SHIFT_ON"
+        },
+        {
+          "type": "RELEASE_DORM",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "RELEASE_DORM"
+        }
+      ],
+      "after": [
+        {
+          "type": "NOT_SPECIFIC",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "NOT_SPECIFIC"
+        },
+        {
+          "type": "FIAMMETTA",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "FIAMMETTA"
+        },
+        {
+          "type": "EXHAUST_OFF",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "EXHAUST_OFF"
+        },
+        {
+          "type": "SHIFT_OFF",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SHIFT_OFF"
+        },
+        {
+          "type": "SELF_CORRECTION",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SELF_CORRECTION"
+        },
+        {
+          "type": "RE_ORDER",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "RE_ORDER"
+        },
+        {
+          "type": "SWITCH_PRODUCT",
+          "hours": 2.0,
+          "plan": {},
+          "meta": "SWITCH_PRODUCT"
+        }
+      ],
+      "sameObjects": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    "active_backup_return_target": [
+      {
+        "activeBackup": false,
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "hours": 0.8666666666666667,
+            "plan": {
+              "room_new": [
+                "H"
+              ]
+            },
+            "meta": ""
+          }
+        ]
+      },
+      {
+        "activeBackup": true,
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "hours": 0.8666666666666667,
+            "plan": {
+              "room_old": [
+                "H"
+              ]
+            },
+            "meta": ""
+          }
+        ]
+      }
+    ],
+    "consume_by_identity": {
+      "remainingCount": 1,
+      "preservedSecondObject": true,
+      "activeTaskCleared": true
+    },
+    "before_dorm_deferred_resume": {
+      "originalTaskRetainedAfterDeferral": true,
+      "remainingDormPlanAfterDeferral": {
+        "dormitory_1": [
+          "A",
+          "L"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "BEFORE_WORK",
+          "physical": {},
+          "remainingPlan": {
+            "room_1_1": [
+              "R"
+            ],
+            "room_1_2": [
+              "Y"
+            ],
+            "dormitory_1": [
+              "A",
+              "L"
+            ]
+          }
+        },
+        {
+          "phase": "BEFORE_DORM",
+          "physical": {
+            "room_1_1": [
+              "R"
+            ],
+            "room_1_2": [
+              "Y"
+            ]
+          },
+          "remainingPlan": {
+            "dormitory_1": [
+              "A",
+              "L"
+            ]
+          }
+        },
+        {
+          "phase": "BEFORE_WORK",
+          "physical": {
+            "room_1_1": [
+              "R"
+            ],
+            "room_1_2": [
+              "Y"
+            ]
+          },
+          "remainingPlan": {
+            "room_extra": [
+              "Q"
+            ]
+          }
+        },
+        {
+          "phase": "BEFORE_DORM",
+          "physical": {
+            "room_1_1": [
+              "R"
+            ],
+            "room_1_2": [
+              "Y"
+            ],
+            "room_extra": [
+              "Q"
+            ]
+          },
+          "remainingPlan": {
+            "dormitory_1": [
+              "A",
+              "L"
+            ]
+          }
+        },
+        {
+          "phase": "BEFORE_PLANNING",
+          "physical": {
+            "room_1_1": [
+              "R"
+            ],
+            "room_1_2": [
+              "Y"
+            ],
+            "room_extra": [
+              "Q"
+            ],
+            "dormitory_1": [
+              "A",
+              "L"
+            ]
+          },
+          "remainingPlan": {}
+        },
+        {
+          "metadata": "rebuilt"
+        }
+      ],
+      "allTasksConsumedAfterResume": true
+    }
+  }
+}

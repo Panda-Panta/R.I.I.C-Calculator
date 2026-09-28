@@ -66,7 +66,7 @@ export interface MowerFacility {
 }
 
 export interface MowerMainConf {
-  ling_xi: 1 | 2 | 3
+  ling_xi: 0 | 1 | 2 | 3
   exhaust_require: string[]
   rest_in_full: string[]
   resting_priority: string[]

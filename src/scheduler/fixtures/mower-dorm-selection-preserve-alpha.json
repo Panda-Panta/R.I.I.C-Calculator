@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "prepare_dorm_selection",
+    "has_rest_mood_limit",
+    "rest_mood_complete",
+    "is_dorm_replacement_for_slot",
+    "Operator constructor",
+    "current_mood"
+  ],
+  "scope": "Actual default preparation with preserve_dorm_occupants=True. Source personal limit recognition and completion are actual AST; no screen selection or timing. Preserve only suppresses ordinary full release; duplicate/cap branches still run.",
+  "cases": [
+    {
+      "input": {
+        "id": "preserve-duplicates-still-become-free",
+        "names": [
+          "H",
+          "H"
+        ],
+        "mood": 10,
+        "upper": 24,
+        "lingMode": 0,
+        "preserve": true
+      },
+      "output": {
+        "names": [
+          "H",
+          "Free"
+        ],
+        "depletionRate": 3
+      }
+    },
+    {
+      "input": {
+        "id": "preserve-personal-cap-still-becomes-free",
+        "names": [
+          "令"
+        ],
+        "mood": 12,
+        "upper": 12,
+        "lingMode": 1,
+        "preserve": true
+      },
+      "output": {
+        "names": [
+          "Free"
+        ],
+        "depletionRate": 0
+      }
+    },
+    {
+      "input": {
+        "id": "preserve-ordinary-full-stays",
+        "names": [
+          "H"
+        ],
+        "mood": 24,
+        "upper": 24,
+        "lingMode": 0,
+        "preserve": true
+      },
+      "output": {
+        "names": [
+          "H"
+        ],
+        "depletionRate": 3
+      }
+    }
+  ]
+}

@@ -33,7 +33,7 @@
         </template>
         <div class="ling-xi-control">
           <n-radio-group
-            :value="conf.ling_xi"
+            :value="conf.ling_xi === 0 ? 3 : conf.ling_xi"
             class="ling-xi-radios"
             data-test="ling-xi-radio-group"
             @update:value="onLingXiChange"
@@ -48,7 +48,7 @@
           <select
             class="ling-xi-select visually-hidden-select"
             data-test="ling-xi-select"
-            :value="conf.ling_xi"
+            :value="conf.ling_xi === 0 ? 3 : conf.ling_xi"
             aria-label="令夕模式"
             @change="onNativeLingXiChange"
           >

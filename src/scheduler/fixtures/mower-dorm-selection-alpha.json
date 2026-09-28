@@ -1,0 +1,204 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "prepare_dorm_selection",
+    "is_dorm_replacement_for_slot"
+  ],
+  "scope": "Actual default selection preparation. Limit/dynamic capability supplied explicitly; no screen selection or device timing.",
+  "cases": [
+    {
+      "id": "duplicate-real-name",
+      "room": "room_A",
+      "names": [
+        "A",
+        "A"
+      ],
+      "ops": {
+        "A": {
+          "room": "room_A",
+          "mood": 10,
+          "upper": 24
+        }
+      },
+      "output": {
+        "names": [
+          "A",
+          "Free"
+        ],
+        "rates": {
+          "A": 3
+        }
+      }
+    },
+    {
+      "id": "repeat-placeholders",
+      "room": "dormitory_1",
+      "names": [
+        "Current",
+        "Current",
+        "Free",
+        "Free",
+        "",
+        ""
+      ],
+      "ops": {},
+      "output": {
+        "names": [
+          "Current",
+          "Current",
+          "Free",
+          "Free",
+          "",
+          ""
+        ],
+        "rates": {}
+      }
+    },
+    {
+      "id": "full-low",
+      "room": "dormitory_1",
+      "names": [
+        "R"
+      ],
+      "ops": {
+        "R": {
+          "room": "",
+          "mood": 24,
+          "upper": 24
+        }
+      },
+      "output": {
+        "names": [
+          "Free"
+        ],
+        "rates": {
+          "R": 0
+        }
+      }
+    },
+    {
+      "id": "full-work-primary",
+      "room": "dormitory_1",
+      "names": [
+        "A"
+      ],
+      "ops": {
+        "A": {
+          "room": "room_A",
+          "mood": 24,
+          "upper": 24
+        }
+      },
+      "output": {
+        "names": [
+          "Free"
+        ],
+        "rates": {
+          "A": 0
+        }
+      }
+    },
+    {
+      "id": "native-dorm-keeper",
+      "room": "dormitory_1",
+      "names": [
+        "K"
+      ],
+      "ops": {
+        "K": {
+          "room": "dormitory_1",
+          "mood": 24,
+          "upper": 24
+        }
+      },
+      "output": {
+        "names": [
+          "K"
+        ],
+        "rates": {
+          "K": 3
+        }
+      }
+    },
+    {
+      "id": "group-dorm-replacement",
+      "room": "dormitory_1",
+      "names": [
+        "R"
+      ],
+      "ops": {
+        "K": {
+          "room": "dormitory_1",
+          "mood": 24,
+          "upper": 24
+        },
+        "R": {
+          "room": "",
+          "mood": 24,
+          "upper": 24
+        }
+      },
+      "slot": {
+        "agent": "K",
+        "group": "G",
+        "replacement": [
+          "R"
+        ]
+      },
+      "output": {
+        "names": [
+          "R"
+        ],
+        "rates": {
+          "K": 3,
+          "R": 3
+        }
+      }
+    },
+    {
+      "id": "capped-complete",
+      "room": "dormitory_1",
+      "names": [
+        "A"
+      ],
+      "ops": {
+        "A": {
+          "room": "room_A",
+          "mood": 12,
+          "upper": 12,
+          "limited": true
+        }
+      },
+      "output": {
+        "names": [
+          "Free"
+        ],
+        "rates": {
+          "A": 0
+        }
+      }
+    },
+    {
+      "id": "below-full",
+      "room": "dormitory_1",
+      "names": [
+        "A"
+      ],
+      "ops": {
+        "A": {
+          "room": "room_A",
+          "mood": 23,
+          "upper": 24
+        }
+      },
+      "output": {
+        "names": [
+          "A"
+        ],
+        "rates": {
+          "A": 3
+        }
+      }
+    }
+  ]
+}

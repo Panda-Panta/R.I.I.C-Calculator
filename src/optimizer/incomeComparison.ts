@@ -11,7 +11,7 @@ export interface IncomeCase {
 }
 export interface IncomeComparison {status:'improved'|'conditional'|'rejected'|'unchanged'|'ineligible';minGain:number;maxGain:number;reasons:string[]}
 const EPS=1e-5
-const ALLOWED=new Set(['POTENTIAL_OUTPUT_MODEL','TIME_INTEGRATION_MODEL','SINGLE_RECOVERY_TARGET_ASSUMPTION','PRODUCTION_TIMING_ASSUMPTIONS','IDEAL_RUN_ORDER_ASSUMPTIONS','DRONE_ALLOCATION_POLICY','RUN_ORDER_SOURCE_BED_POLICY','PASSIVE_AUXILIARY_OCCUPANCY','SHIFT_DEFERRED_RECOVERED'])
+const ALLOWED=new Set(['POTENTIAL_OUTPUT_MODEL','TIME_INTEGRATION_MODEL','MOWER_IO_CLOCK_MODEL','MOWER_CLUE_OBSERVATION_MODEL','MOWER_ORDER_OBSERVATION_MODEL','SINGLE_RECOVERY_TARGET_ASSUMPTION','PRODUCTION_TIMING_ASSUMPTIONS','IDEAL_RUN_ORDER_ASSUMPTIONS','DRONE_ALLOCATION_POLICY','RUN_ORDER_SOURCE_BED_POLICY','PASSIVE_AUXILIARY_OCCUPANCY','SHIFT_DEFERRED_RECOVERED'])
 const amounts=(x:ResourceAmounts={}):Record<ResourceKind,number>=>Object.fromEntries(INCOME_RESOURCES.map(k=>[k,x[k]??0])) as Record<ResourceKind,number>
 function canonical(x:unknown):string {
  if(Array.isArray(x))return '['+x.map(canonical).join(',')+']'

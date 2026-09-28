@@ -1,0 +1,1957 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "TaskTypes",
+    "set_type_enum",
+    "SchedulerTask",
+    "find_next_task",
+    "plan_metadata",
+    "plan_mood_limit_releases",
+    "generate_plan_by_drom",
+    "rebalance_closing_dorm_slots",
+    "_arrangement_resources",
+    "_after_pending_arrangements",
+    "merge_release_dorm",
+    "_native_return",
+    "predict_exhaust",
+    "has_rest_mood_limit",
+    "is_planned_operator",
+    "rest_mood_complete",
+    "_can_standby",
+    "is_standby",
+    "all_dorms",
+    "is_dynamic_dorm_position",
+    "is_auto_free_dorm_slot",
+    "is_auto_free_dorm_operator",
+    "is_effective_free_slot",
+    "is_recovery_dorm",
+    "has_resting_mood",
+    "resting_mood"
+  ],
+  "scope": "Default metadata using observed fixed-clock operator moods and absolute source bed-completion timestamps. Busy set empty; no device read-time, resources, run-order duration or income fitting. Plan object key order is not an assertion for native set-based completed-idle group return. Operator current_mood fixture is the supplied observed mood at nowHours.",
+  "cases": [
+    {
+      "id": "ordinary-distinct-groups",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g1",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "J",
+            "room": "room_1_2",
+            "index": 0,
+            "group": "g2",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g1": [
+            "H"
+          ],
+          "g2": [
+            "J"
+          ]
+        },
+        "plan": {
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g1",
+              "replacement": []
+            }
+          ],
+          "room_1_2": [
+            {
+              "agent": "J",
+              "group": "g2",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 2
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "J",
+            "completedAtHours": 3
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 6720000000,
+            "plan": {
+              "room_1_1": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          },
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 10320000000,
+            "plan": {
+              "room_1_2": [
+                "J"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordinary-close-groups",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g1",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "J",
+            "room": "room_1_2",
+            "index": 0,
+            "group": "g2",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g1": [
+            "H"
+          ],
+          "g2": [
+            "J"
+          ]
+        },
+        "plan": {
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g1",
+              "replacement": []
+            }
+          ],
+          "room_1_2": [
+            {
+              "agent": "J",
+              "group": "g2",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 2
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "J",
+            "completedAtHours": 2.0833333333333335
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 6720000000,
+            "plan": {
+              "room_1_1": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          },
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 7020000000,
+            "plan": {
+              "room_1_2": [
+                "J"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "group-mood-gap",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "J",
+            "room": "room_1_2",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "H",
+            "J"
+          ]
+        },
+        "plan": {
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_2": [
+            {
+              "agent": "J",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 3
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "J",
+            "completedAtHours": 1
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 10272000000,
+            "plan": {
+              "room_1_1": [
+                "H"
+              ],
+              "room_1_2": [
+                "J"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "group-explicit-full",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": true,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "J",
+            "room": "room_1_2",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "H",
+            "J"
+          ]
+        },
+        "plan": {
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_2": [
+            {
+              "agent": "J",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 3
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "J",
+            "completedAtHours": 1
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 10272000000,
+            "plan": {
+              "room_1_1": [
+                "H"
+              ],
+              "room_1_2": [
+                "J"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "group-full-exhaust",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": true,
+            "exhaust_require": true,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "J",
+            "room": "room_1_2",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "H",
+            "J"
+          ]
+        },
+        "plan": {
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_2": [
+            {
+              "agent": "J",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 3
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "J",
+            "completedAtHours": 1
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 10800000000,
+            "plan": {
+              "room_1_1": [
+                "H"
+              ],
+              "room_1_2": [
+                "J"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordinary-rescue",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "A",
+            "room": "room_2_1",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 0,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "room_2_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {},
+        "plan": {
+          "room_2_1": [
+            {
+              "agent": "A",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 12
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 1320000000,
+            "plan": {
+              "room_1_1": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "low-free-room-false",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "A",
+            "room": "room_2_1",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 0,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "room_2_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "R",
+            "room": "",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "low",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {},
+        "plan": {
+          "room_2_1": [
+            {
+              "agent": "A",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "R",
+            "completedAtHours": 2
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": []
+      }
+    },
+    {
+      "id": "low-free-room-true",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": true,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "A",
+            "room": "room_2_1",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 0,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "room_2_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "R",
+            "room": "",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "low",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {},
+        "plan": {
+          "room_2_1": [
+            {
+              "agent": "A",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "R",
+            "completedAtHours": 2
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "RELEASE_DORM",
+            "timeMicros": 1810000000,
+            "plan": {
+              "dormitory_1": [
+                "Free"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "ling-strict-future",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 1,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 12,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": true,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "令",
+            "H"
+          ]
+        },
+        "plan": {
+          "central": [
+            {
+              "agent": "令",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "令",
+            "completedAtHours": 2
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "H",
+            "completedAtHours": 5
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 17472000000,
+            "plan": {
+              "central": [
+                "令"
+              ],
+              "room_1_1": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          },
+          {
+            "type": "RELEASE_DORM",
+            "timeMicros": 7200000000,
+            "plan": {
+              "dormitory_1": [
+                "Free",
+                "Current"
+              ]
+            },
+            "metadata": "令",
+            "strictMoodLimit": true,
+            "moodLimit": 12,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "ling-strict-complete",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 1,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 12,
+            "lower_limit": 0,
+            "upper_limit": 12,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": true,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "令",
+            "H"
+          ]
+        },
+        "plan": {
+          "central": [
+            {
+              "agent": "令",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            },
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "令",
+            "completedAtHours": 2
+          },
+          {
+            "position": [
+              "dormitory_1",
+              1
+            ],
+            "name": "H",
+            "completedAtHours": 5
+          }
+        ],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 17472000000,
+            "plan": {
+              "central": [
+                "令"
+              ],
+              "room_1_1": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          },
+          {
+            "type": "RELEASE_DORM",
+            "timeMicros": 0,
+            "plan": {
+              "dormitory_1": [
+                "Free",
+                "Current"
+              ]
+            },
+            "metadata": "令",
+            "strictMoodLimit": true,
+            "moodLimit": 12,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "existing-target-false",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_new",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": true,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {},
+        "plan": {
+          "room_new": [
+            {
+              "agent": "H",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "room_old": [
+            {
+              "agent": "Other",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 1
+          }
+        ],
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeHours": 4,
+            "plan": {
+              "room_old": [
+                "H"
+              ]
+            },
+            "metadata": ""
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 3120000000,
+            "plan": {
+              "room_new": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "existing-target-true",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          true
+        ],
+        "operators": [
+          {
+            "name": "H",
+            "room": "room_new",
+            "index": 0,
+            "group": "",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 8,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": true,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "dormitory_1",
+            "current_index": 0,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {},
+        "plan": {
+          "room_new": [
+            {
+              "agent": "H",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "dormitory_1": [
+            {
+              "agent": "Free",
+              "group": "",
+              "replacement": []
+            }
+          ],
+          "room_old": [
+            {
+              "agent": "Other",
+              "group": "",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [
+          {
+            "position": [
+              "dormitory_1",
+              0
+            ],
+            "name": "H",
+            "completedAtHours": 1
+          }
+        ],
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeHours": 4,
+            "plan": {
+              "room_old": [
+                "H"
+              ]
+            },
+            "metadata": ""
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 3120000000,
+            "plan": {
+              "room_old": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "completed-idle-group-known",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 1,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 12,
+            "lower_limit": 0,
+            "upper_limit": 12,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "",
+            "current_index": -1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 24,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "",
+            "current_index": -1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "W",
+            "room": "room_2_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 0,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": true,
+            "current_room": "",
+            "current_index": -1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "令",
+            "H",
+            "W"
+          ]
+        },
+        "plan": {
+          "central": [
+            {
+              "agent": "令",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_2_1": [
+            {
+              "agent": "W",
+              "group": "g",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [],
+        "tasks": []
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "SHIFT_ON",
+            "timeMicros": 0,
+            "plan": {
+              "central": [
+                "令"
+              ],
+              "room_2_1": [
+                "W"
+              ],
+              "room_1_1": [
+                "H"
+              ]
+            },
+            "metadata": "",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "completed-idle-group-unknown",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 1,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 12,
+            "lower_limit": 0,
+            "upper_limit": 12,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "",
+            "current_index": -1,
+            "observedAtHours": null,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "H",
+            "room": "room_1_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 24,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": false,
+            "current_room": "",
+            "current_index": -1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          },
+          {
+            "name": "W",
+            "room": "room_2_1",
+            "index": 0,
+            "group": "g",
+            "replacement": [],
+            "operator_type": "high",
+            "resting_priority": "high",
+            "mood": 0,
+            "lower_limit": 0,
+            "upper_limit": 24,
+            "rest_in_full": false,
+            "exhaust_require": false,
+            "workaholic": true,
+            "current_room": "",
+            "current_index": -1,
+            "observedAtHours": 0,
+            "exhaustAtHours": null,
+            "depletion_rate": 1
+          }
+        ],
+        "groups": {
+          "g": [
+            "令",
+            "H",
+            "W"
+          ]
+        },
+        "plan": {
+          "central": [
+            {
+              "agent": "令",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_1_1": [
+            {
+              "agent": "H",
+              "group": "g",
+              "replacement": []
+            }
+          ],
+          "room_2_1": [
+            {
+              "agent": "W",
+              "group": "g",
+              "replacement": []
+            }
+          ]
+        },
+        "dorm": [],
+        "tasks": []
+      },
+      "output": {
+        "tasks": []
+      }
+    },
+    {
+      "id": "preserve-future-nonderived",
+      "input": {
+        "nowHours": 0,
+        "config": {
+          "free_room": false,
+          "ling_xi": 0,
+          "operator_mood_limits": {},
+          "resting_threshold": 0.65
+        },
+        "globalConfig": {
+          "group_rest_in_full_on_mood_gap": true,
+          "group_mood_gap_max_extra_wait_hours": 0,
+          "merge_interval": 10
+        },
+        "powerPlantCount": 2,
+        "planCondition": [
+          false
+        ],
+        "operators": [],
+        "groups": {},
+        "plan": {},
+        "dorm": [],
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "NOT_SPECIFIC"
+          },
+          {
+            "type": "FIAMMETTA",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "FIAMMETTA"
+          },
+          {
+            "type": "EXHAUST_OFF",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "EXHAUST_OFF"
+          },
+          {
+            "type": "SHIFT_OFF",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "SHIFT_OFF"
+          },
+          {
+            "type": "SELF_CORRECTION",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "SELF_CORRECTION"
+          },
+          {
+            "type": "RE_ORDER",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "RE_ORDER"
+          },
+          {
+            "type": "SHIFT_ON",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "SHIFT_ON"
+          },
+          {
+            "type": "RELEASE_DORM",
+            "timeHours": 2,
+            "plan": {},
+            "metadata": "RELEASE_DORM"
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "type": "NOT_SPECIFIC",
+            "timeMicros": 7200000000,
+            "plan": {},
+            "metadata": "NOT_SPECIFIC",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": 0
+          },
+          {
+            "type": "FIAMMETTA",
+            "timeMicros": 7200000000,
+            "plan": {},
+            "metadata": "FIAMMETTA",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": 1
+          },
+          {
+            "type": "EXHAUST_OFF",
+            "timeMicros": 7200000000,
+            "plan": {},
+            "metadata": "EXHAUST_OFF",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": 2
+          },
+          {
+            "type": "SHIFT_OFF",
+            "timeMicros": 7200000000,
+            "plan": {},
+            "metadata": "SHIFT_OFF",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": 3
+          },
+          {
+            "type": "SELF_CORRECTION",
+            "timeMicros": 7200000000,
+            "plan": {},
+            "metadata": "SELF_CORRECTION",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": 4
+          },
+          {
+            "type": "RE_ORDER",
+            "timeMicros": 7200000000,
+            "plan": {},
+            "metadata": "RE_ORDER",
+            "strictMoodLimit": false,
+            "moodLimit": null,
+            "retainedInputIndex": 5
+          }
+        ]
+      }
+    }
+  ]
+}

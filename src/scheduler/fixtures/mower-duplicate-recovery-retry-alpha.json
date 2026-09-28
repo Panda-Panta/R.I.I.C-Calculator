@@ -1,0 +1,795 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "ensure_dorm_recovery_order",
+    "recovery_order_plan",
+    "recovery_target",
+    "prepare_dorm_selection",
+    "get_free_list",
+    "refresh_current_room",
+    "agent_arrange_room",
+    "agent_arrange",
+    "infra_main",
+    "handle_error",
+    "skip",
+    "Operator room/index setters",
+    "find_next_task"
+  ],
+  "scope": "Actual default retry/infra error flow for same-room duplicate target request. choose_agent screen I/O seam invokes actual prepare_dorm_selection with preserve=True and actual get_free_list, selects eligible explicit owned cards by cached mood, and confirms one unique room list; concrete reads update native coordinates. Screen scans/taps/recognizer have zero elapsed time. Not full choose_agent click/OCR trace, not an arbitrary retry delay or compatibility repair. Three supplied frozen clock positions prove strict error append/stale-clear semantics. A fourth case supplies the actual room-detail scene after entry, native back(interval=.5) moves to MAIN and advances requested time; three retry backs total 1.5s. Scene/read/selection transport time outside these explicit backs remains zero.",
+  "cases": [
+    {
+      "nowMicros": 0,
+      "uiRoomSceneOnEnter": false,
+      "initialPlan": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "H",
+          "Current",
+          "Current"
+        ]
+      },
+      "selections": [
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        }
+      ],
+      "afterTask": {
+        "result": null,
+        "error": true,
+        "currentTaskCleared": true,
+        "originalStillQueued": true,
+        "plan": {
+          "dormitory_1": [
+            "M0",
+            "M1",
+            "H",
+            "Q",
+            "H"
+          ]
+        },
+        "pending": [
+          "dormitory_1"
+        ],
+        "flags": {
+          "planned": true,
+          "todo": true,
+          "notification": true
+        },
+        "physical": [
+          "M0",
+          "M1",
+          "H",
+          "X",
+          "R"
+        ]
+      },
+      "afterHandleError": {
+        "result": true,
+        "nowMicros": 0,
+        "originalStillQueued": true,
+        "queue": [
+          {
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "dormitory_1": [
+                "M0",
+                "M1",
+                "H",
+                "Q",
+                "H"
+              ]
+            }
+          },
+          {
+            "timeMicros": 3600000000,
+            "type": "NOT_SPECIFIC",
+            "plan": {}
+          },
+          {
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {}
+          }
+        ]
+      },
+      "trace": [
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        }
+      ]
+    },
+    {
+      "nowMicros": 1,
+      "uiRoomSceneOnEnter": false,
+      "initialPlan": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "H",
+          "Current",
+          "Current"
+        ]
+      },
+      "selections": [
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        }
+      ],
+      "afterTask": {
+        "result": null,
+        "error": true,
+        "currentTaskCleared": true,
+        "originalStillQueued": true,
+        "plan": {
+          "dormitory_1": [
+            "M0",
+            "M1",
+            "H",
+            "Q",
+            "H"
+          ]
+        },
+        "pending": [
+          "dormitory_1"
+        ],
+        "flags": {
+          "planned": true,
+          "todo": true,
+          "notification": true
+        },
+        "physical": [
+          "M0",
+          "M1",
+          "H",
+          "X",
+          "R"
+        ]
+      },
+      "afterHandleError": {
+        "result": true,
+        "nowMicros": 1,
+        "originalStillQueued": true,
+        "queue": [
+          {
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "dormitory_1": [
+                "M0",
+                "M1",
+                "H",
+                "Q",
+                "H"
+              ]
+            }
+          },
+          {
+            "timeMicros": 3600000000,
+            "type": "NOT_SPECIFIC",
+            "plan": {}
+          }
+        ]
+      },
+      "trace": [
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        }
+      ]
+    },
+    {
+      "nowMicros": 900000001,
+      "uiRoomSceneOnEnter": false,
+      "initialPlan": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "H",
+          "Current",
+          "Current"
+        ]
+      },
+      "selections": [
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        }
+      ],
+      "afterTask": {
+        "result": null,
+        "error": true,
+        "currentTaskCleared": true,
+        "originalStillQueued": true,
+        "plan": {
+          "dormitory_1": [
+            "M0",
+            "M1",
+            "H",
+            "Q",
+            "H"
+          ]
+        },
+        "pending": [
+          "dormitory_1"
+        ],
+        "flags": {
+          "planned": true,
+          "todo": true,
+          "notification": true
+        },
+        "physical": [
+          "M0",
+          "M1",
+          "H",
+          "X",
+          "R"
+        ]
+      },
+      "afterHandleError": {
+        "result": true,
+        "nowMicros": 900000001,
+        "originalStillQueued": false,
+        "queue": [
+          {
+            "timeMicros": 900000001,
+            "type": "NOT_SPECIFIC",
+            "plan": {}
+          }
+        ]
+      },
+      "trace": [
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        }
+      ]
+    },
+    {
+      "nowMicros": 1,
+      "uiRoomSceneOnEnter": true,
+      "initialPlan": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "H",
+          "Current",
+          "Current"
+        ]
+      },
+      "selections": [
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Y"
+          ],
+          "preserve": true
+        },
+        {
+          "before": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "H"
+          ],
+          "prepared": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "Free"
+          ],
+          "selected": [
+            "M0",
+            "M1",
+            "H",
+            "X",
+            "R"
+          ],
+          "preserve": true
+        }
+      ],
+      "afterTask": {
+        "result": null,
+        "error": true,
+        "currentTaskCleared": true,
+        "originalStillQueued": true,
+        "plan": {
+          "dormitory_1": [
+            "M0",
+            "M1",
+            "H",
+            "Q",
+            "H"
+          ]
+        },
+        "pending": [
+          "dormitory_1"
+        ],
+        "flags": {
+          "planned": true,
+          "todo": true,
+          "notification": true
+        },
+        "physical": [
+          "M0",
+          "M1",
+          "H",
+          "X",
+          "R"
+        ]
+      },
+      "afterHandleError": {
+        "result": true,
+        "nowMicros": 1500001,
+        "originalStillQueued": true,
+        "queue": [
+          {
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "dormitory_1": [
+                "M0",
+                "M1",
+                "H",
+                "Q",
+                "H"
+              ]
+            }
+          },
+          {
+            "timeMicros": 3600000000,
+            "type": "NOT_SPECIFIC",
+            "plan": {}
+          }
+        ]
+      },
+      "trace": [
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "back": [],
+          "kwargs": {
+            "interval": 0.5
+          }
+        },
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "back": [],
+          "kwargs": {
+            "interval": 0.5
+          }
+        },
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "back": [],
+          "kwargs": {
+            "interval": 0.5
+          }
+        },
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        },
+        "selection-retry",
+        "recognizer-zero-time",
+        {
+          "error": "宿舍单回排序确认失败，保留原任务重试"
+        }
+      ]
+    }
+  ]
+}

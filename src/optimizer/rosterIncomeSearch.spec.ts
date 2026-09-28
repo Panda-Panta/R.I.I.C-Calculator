@@ -1,12 +1,14 @@
 import {describe,it,expect,vi} from 'vitest'
 import * as incomeComparison from './incomeComparison'
 import {OPERATORS} from '../domain/operators'
-import type {OwnedOperatorInput} from '../domain/operatorInventory'
+import {fullCatalogIdleInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {importMowerJson,resolveOperatorCharId as id} from '../workbench/compat/mowerJson'
 import fixture from '../workbench/compat/fixtures/mower-252-2gold.json'
 import {ordinaryBackupNeighbors,runRosterIncomeSearch,type IncomeSearchProgress} from './rosterIncomeSearch'
-const owned=(names:string[]):OwnedOperatorInput[]=>names.map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
+// The library is the idle-card pool, so controlled Free-bed cases need enough cards.
+const idleNames=['艾丽妮','白铁','百炼嘉维尔','仇白','嵯峨','归溟幽灵鲨']
+const owned=(names:string[]):OwnedOperatorInput[]=>[...new Set([...names,...idleNames])].map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
 const allOwned=owned(OPERATORS.map(o=>o.name))
 function simple(){
  const w=createDefaultWorkspace(),slot=w.mainPlan.facilities.room_1_1.slots[0]!
@@ -132,6 +134,6 @@ describe('bounded ordinary backup income search',()=>{
 })
 it('does not spend a candidate budget on a renamed copy of the same effective plan',()=>{
  const baseline=createDefaultWorkspace(),draft=structuredClone(baseline);draft.name='renamed';draft.mainPlan.name='renamed plan'
- const result=runRosterIncomeSearch({baseline,draft,inventory:[],maxCandidates:2,options:{sampleHours:1,warmupHours:0}})
+ const result=runRosterIncomeSearch({baseline,draft,inventory:fullCatalogIdleInventory(),maxCandidates:2,options:{sampleHours:1,warmupHours:0}})
  expect(result.candidates).toHaveLength(1);expect(result.evaluatedCandidates).toBe(1);expect(result.budgetExhausted).toBe(false)
 })

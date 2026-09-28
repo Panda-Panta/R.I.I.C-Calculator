@@ -1,6 +1,8 @@
+import {mowerPlanEntries} from './mowerPlanOrder'
 // Mower compatibility semantics: ArkMowers/arknights-mower (MIT, Copyright 2021 Nano).
 // See validation/mower-backup-2026-09-22/implementation-report.md for source contracts.
 import { OPERATOR_MAP } from '../domain/operators'
+import {MowerTask} from './mowerTaskQueue'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import type { MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { compileRosterSchedule } from './compileRosterSchedule'
@@ -10,10 +12,10 @@ import type { RuntimeState } from './rosterRuntime'
 import { compileBackupExpression } from './backupExpression'
 export { actualRoom } from './backupExpression'
 
-export const BACKUP_TIMINGS = { BEGINNING: 0, BEFORE_PLANNING: 300, AFTER_PLANNING: 600, END: 999 } as const
+export const BACKUP_TIMINGS = { BEGINNING: 0, BEFORE_WORK: 100, BEFORE_DORM: 200, BEFORE_PLANNING: 300, AFTER_PLANNING: 600, END: 999 } as const
 export type BackupTiming = keyof typeof BACKUP_TIMINGS
 type Expression = ReturnType<typeof compileBackupExpression>['evaluate']
-const lists = ['rest_in_full', 'exhaust_require', 'workaholic', 'resting_priority', 'free_blacklist', 'refresh_trading', 'refresh_drained', 'ope_resting_priority'] as const
+const lists = ['rest_in_full', 'exhaust_require', 'workaholic', 'resting_priority', 'resting_priority_replacement', 'free_room_exclusions', 'resting_standby', 'free_blacklist', 'refresh_trading', 'refresh_drained', 'ope_resting_priority'] as const
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
 const fail = (message: string): never => { throw new Error(`副表：${message}`) }
 function operator(value: unknown): string {
@@ -25,7 +27,7 @@ export function evaluateBackupExpression(source: unknown, state: RuntimeState) {
 }
 export interface BackupDiagnostic { code: string; message: string }
 interface BackupPlan {
-  name: string; timing: BackupTiming; condition: Expression
+  name: string; timing: BackupTiming; exitTiming: BackupTiming; condition: Expression
   slots: { room: MowerRoomId; index: number; agent: string; group: string | null; replacements: string[] }[]
   policies: Partial<Record<typeof lists[number], string[]>>
   task: Record<string, string[]>
@@ -40,12 +42,12 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
       const condition = compiledCondition.evaluate
       if (compiledCondition.skipped) {
         diagnostics.push({ code: 'BACKUP_EXTERNAL_CONDITION_SKIPPED', message: `副表 ${name}（#${index + 1}）：跳过依赖 ${compiledCondition.skipped} 的整张副表；未执行其岗位、策略与任务` })
-        return { name, timing: 'AFTER_PLANNING' as const, condition, slots: [], policies: {}, task: {} }
+        return { name, timing: 'AFTER_PLANNING' as const, exitTiming: 'AFTER_PLANNING' as const, condition, slots: [], policies: {}, task: {} }
       }
       const timing = typeof raw.trigger_timing === 'string' ? raw.trigger_timing.toUpperCase() : ''
       const slots: BackupPlan['slots'] = [], task: BackupPlan['task'] = {}, policies: BackupPlan['policies'] = {}
       if (raw.plan !== undefined && !record(raw.plan) || raw.task !== undefined && !record(raw.task) || raw.conf !== undefined && !record(raw.conf)) fail('plan/task/conf 格式错误')
-      for (const [room, data] of Object.entries(raw.plan ?? {})) {
+      for (const [room, data] of mowerPlanEntries(record(raw.plan) ? raw.plan : {})) {
         const facility = workspace.mainPlan.facilities[room as MowerRoomId]
         if (!facility || !record(data) || !Array.isArray(data.plans) || data.plans.length > facility.slots.length) fail(`计划房间/槽位错误 ${room}`)
         ;(data as { plans: unknown[] }).plans.forEach((slot, i) => {
@@ -60,13 +62,15 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
         const values = typeof value === 'string' ? value.replace(/，/g, ',').split(',').map(v => v.trim()).filter(Boolean) : Array.isArray(value) ? value : fail(`策略格式错误 ${key}`)
         policies[key] = values.map(known)
       }
-      for (const [room, values] of Object.entries(raw.task ?? {})) {
+      for (const [room, values] of mowerPlanEntries(record(raw.task) ? raw.task : {})) {
         const facility = workspace.mainPlan.facilities[room as MowerRoomId]
         if (!facility || !Array.isArray(values) || values.length > facility.slots.length) fail(`任务房间/槽位错误 ${room}`)
         task[room] = (values as unknown[]).map(value => value === 'Current' || value === 'Free' ? value : known(value))
         if (facility.type !== 'dormitory' && task[room]!.includes('Free')) fail(`任务 Free 只能用于宿舍 ${room}`)
       }
-      return { name, timing: timing in BACKUP_TIMINGS ? timing as BackupTiming : 'AFTER_PLANNING', condition, slots, policies, task }
+      const entry = timing in BACKUP_TIMINGS ? timing as BackupTiming : 'AFTER_PLANNING'
+      const exit = typeof raw.exit_trigger_timing === 'string' && raw.exit_trigger_timing ? raw.exit_trigger_timing.toUpperCase() : undefined
+      return { name, timing: entry, exitTiming: exit ? exit in BACKUP_TIMINGS ? exit as BackupTiming : 'AFTER_PLANNING' : entry, condition, slots, policies, task }
     } catch (error) { return fail(`${name}：${error instanceof Error ? error.message : String(error)}`) }
   })
 }
@@ -77,10 +81,12 @@ export function backupParticipants(workspace: RosterWorkspace): string[] {
 /** Keeps planned roles separate from physical occupancy; no morale/production reset. */
 export function createBackupPlanController(base: CompiledSchedule, state: RuntimeState, options: { virtualRunners?: boolean; canUseFiammetta?: (id: string) => boolean } = {}) {
   base = structuredClone(base)
+  const recoveryBeds = new Map(compiledScheduleToRuntimeConfig(base).beds.map(bed => [bed.id,bed]))
   const diagnostics: BackupDiagnostic[] = []
   const participants = new Set<string>(), plans = parsePlans(base.sourceWorkspace, participants, diagnostics)
   const active = plans.map(() => false)
   for (const id of participants) state.morale[id] ??= base.assumptions.operatorMorale[id] ?? base.assumptions.initialMorale
+  const displaced = new Set<string>()
   let effective = base
   const remove = (id: string, occupants: Record<string, string>, beds: Record<string, string>) => {
     for (const [key, value] of Object.entries(occupants)) if (value === id) delete occupants[key]
@@ -91,7 +97,10 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     if (new Set(ids).size !== ids.length) fail('任务造成重复占岗')
   }
   function evaluate(timing: BackupTiming): boolean {
-    const next = plans.map((p, i) => BACKUP_TIMINGS[p.timing] <= BACKUP_TIMINGS[timing] ? Boolean(p.condition(state)) : active[i]!)
+    const next = plans.map((p, i) => {
+      const enabled = Boolean(p.condition(state))
+      return BACKUP_TIMINGS[enabled ? p.timing : p.exitTiming] <= BACKUP_TIMINGS[timing] ? enabled : active[i]!
+    })
     if (next.every((value, i) => value === active[i])) return false
     const workspace = structuredClone(base.sourceWorkspace)
     workspace.compatibility.backupPlans = []
@@ -109,13 +118,56 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
       }
     })
     const compiled = compileRosterSchedule(workspace, base.assumptions)
+    // A backup changes the roster; resolved values keep their original input provenance.
+    compiled.assumptions.defaultsApplied = [...base.assumptions.defaultsApplied]
     if (compiled.diagnostics.some(d => d.severity === 'error' || d.code === 'UNKNOWN_OPERATOR')) fail(compiled.diagnostics.map(d => d.message).join('；'))
     const config = compiledScheduleToRuntimeConfig(compiled)
+    // Default alpha init_and_validate(update=True) keeps the original recovery pool.
+    // Newly exposed Free slots remain real idle positions, without a group timer.
+    for (const bed of config.beds) {
+      const original = recoveryBeds.get(bed.id)
+      bed.managedRecovery = Boolean(original)
+      bed.vip = original?.vip ?? false
+    }
     // Preserve exclusions applied by the simulator (virtual runners / locked skill stages).
     if (options.virtualRunners) config.runOrderPolicies = []
     if (config.fiammetta && options.canUseFiammetta && !options.canUseFiammetta(config.fiammetta.operatorId)) config.fiammetta = undefined
     const primaries = config.positions.map(p => p.primary)
     if (new Set(primaries).size !== primaries.length) fail(`激活组合 ${next.map((v, i) => v ? plans[i]!.name : '').filter(Boolean).join('、')} 重复主班`)
+    // alpha init validates the full group's effective Free-bed capacity.
+    const groups = new Map<string, number>()
+    for (const p of config.positions) if (p.group && !p.dormitory && !p.permanent) groups.set(p.group,(groups.get(p.group) ?? 0)+1)
+    for (const [group,count] of groups) if (count > config.beds.filter(b => b.managedRecovery !== false).length) fail(group+' 分组需要 '+count+' 个休息床位，副表仅提供 '+config.beds.filter(b => b.managedRecovery !== false).length+' 个')
+    if(state.config.mowerSourcePlan){
+      const generated:MowerTask[]=[],context=state.mowerBackupContext??{appendEmptyTask:true,restoreOnDeactivate:false}
+      const restored:Record<string,Set<number>>={}
+      for(const [i,plan] of plans.entries()){
+        if(next[i]===active[i])continue
+        if(next[i]&&Object.keys(plan.task).length){
+          const task=new MowerTask({time:state.time,plan:structuredClone(plan.task)})
+          if(context.customTimeMicros!==undefined)task.timeMicros=context.customTimeMicros
+          generated.push(task)
+        }else if(Object.keys(plan.task).length&&context.restoreOnDeactivate){
+          for(const [room,names] of Object.entries(plan.task))names.forEach((name,index)=>{if(name!=='Current')(restored[room]??=new Set()).add(index)})
+        }
+      }
+      const restore:Record<string,string[]>={}
+      for(const [room,indexes] of Object.entries(restored)){
+        const slots=config.mowerSourcePlan?.[room];if(!slots)continue
+        const names=slots.map(()=> 'Current');for(const index of indexes)if(slots[index])names[index]=slots[index]!.agent
+        if(names.some(name=>name!=='Current'))restore[room]=names
+      }
+      if(Object.keys(restore).length){const task=new MowerTask({time:state.time,plan:restore});if(context.customTimeMicros!==undefined)task.timeMicros=context.customTimeMicros;generated.push(task)}
+      state.config=config;effective=compiled
+      next.forEach((value,i)=>{
+        if(value!==active[i])state.events.push({time:state.time,type:'backup-plan',operators:[],backupIndex:i,backupName:plans[i]!.name,active:value,timing})
+        active[i]=value
+      })
+      if(state.mowerSource)state.mowerSource.data.planConditions=[...active]
+      if(context.appendEmptyTask&&!generated.length)state.mowerBackupGenerated=[new MowerTask({time:state.time})]
+      else state.mowerBackupGenerated=generated
+      return generated.length>0
+    }
     const previous = { ...state.occupants, ...state.bedOccupants }
     const resting = new Set([...Object.values(state.bedOccupants), ...state.config.positions.filter(p => p.dormitory).map(p => state.occupants[p.id]).filter(Boolean)])
     const occupants: Record<string, string> = {}, beds: Record<string, string> = {}
@@ -157,9 +209,12 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
       const candidate = p.candidates.find(id => !primaries.includes(id) && !Object.values(occupants).includes(id) && !config.excludedCandidates?.includes(id))
       if (candidate) { remove(candidate, occupants, beds); occupants[p.id] = candidate }
     }
-    // Explicit tasks can evict a resting primary. Keep its morale and queue a real
-    // bed, rather than inventing capacity or silently forgetting that group member.
-    const pendingRest = [...new Set([...(state.pendingRest ?? []), ...resting])].filter((id): id is string => Boolean(id) && primaries.includes(id!) && !Object.values(occupants).includes(id!) && !Object.values(beds).includes(id!))
+    // Tasks and plan changes may evict working or resting primaries. Preserve
+    // every displaced member and queue a real bed without inventing capacity.
+    const present = new Set([...Object.values(occupants), ...Object.values(beds)])
+    for (const id of [...Object.values(state.occupants), ...resting, ...(state.pendingRest ?? [])]) if (id && !present.has(id)) displaced.add(id)
+    for (const id of present) displaced.delete(id)
+    const pendingRest = [...new Set([...(state.pendingRest ?? []), ...resting, ...displaced])].filter((id): id is string => Boolean(id) && primaries.includes(id!) && !Object.values(occupants).includes(id!) && !Object.values(beds).includes(id!))
     const activeBackupBeds = new Set<string>()
     for (const [i, plan] of plans.entries()) {
       if (next[i] && Object.keys(plan.task).length) {

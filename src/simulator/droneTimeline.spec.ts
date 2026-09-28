@@ -21,4 +21,12 @@ describe('drone stock', () => {
     expect(() => createDroneState(236)).toThrow()
     expect(() => generateDrones(state, 1, NaN)).toThrow()
   })
+  it('settles an integer boundary despite sub-nanodrone accumulation error',()=>{
+    const s=createDroneState(5-1e-12)
+    const spent=spendDrones(s,5).state
+    expect(spent.stock).toBe(0);expect(spent.consumed).toBe(5)
+    expect(Math.abs(spent.initial+spent.generated-spent.overflow-spent.consumed-spent.stock)).toBeLessThan(1e-8)
+    expect(()=>spendDrones(createDroneState(5-1e-6),5)).toThrow()
+  })
+
 })

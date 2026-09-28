@@ -1,0 +1,3313 @@
+{
+  "name": "idlePool9",
+  "idleCandidatePool": "full operator catalog (no imported library)",
+  "sourceSha256": {
+    "src/scheduler/mowerRunSelection.ts": "53256f351f873c5b56ec9d96c7d9c7bdf3adef46b173a77f67ec8e49f052975e",
+    "src/scheduler/mowerReload.ts": "1cc2dbedc47946ffe502498ed19a1d86bad6ede91f08269dd691c1b468640aca",
+    "src/scheduler/mowerClueLifecycle.ts": "7ff0e412f0329bdee09cd893c4e692701363c52a6c2bdf4b13b7bcfde4f00c33",
+    "src/scheduler/mowerTodoTask.ts": "a739d8499d93277f33b42d38b92c1a5718f8b68f509bdf3ef598ad1aad766cc8",
+    "src/scheduler/mowerAcceptOrder.ts": "4f9d3f5ac70ee9eb18755cd3e8ccef4e717b15bbc8034133fb1d583598e97350",
+    "src/scheduler/mowerNotification.ts": "09c6f49530128864dd7c016204faf2b5de2449255fb52a7bb0bb78c7fc1f950e",
+    "src/scheduler/mowerDroneInterface.ts": "871b2b3226b7ea6049ba8aadf8e13203854e85f3c14b4bb3f4cbd79c0f1aff4c",
+    "src/scheduler/mowerNativeErrors.ts": "24538661fc9ad5bf6868aa4aa18ae13fae06bdf2065a38346c0d7f796d35d3f8",
+    "src/simulator/mowerNativeClueIO.ts": "57bb3c8a487496feacd00d9c931b4716f57109b1a30a811bb7a1571c2034e92a",
+    "src/scheduler/mowerRunOrderPlanning.ts": "c1fa9cbbc440d7fac88c9d4ed435e307ab002089f37e1f0f18f014ed1233321a",
+    "src/scheduler/mowerRunOrderFinishing.ts": "002406bc31f968bcf4006e2aaf7b3155b655b682b2af8ebfcb932677e5d4eec9",
+    "src/scheduler/mowerRunOrderDroneAdjustment.ts": "6ae3df305a583556a066ab8a523d6f7723ea12fb83bb7d5e2063d5a8dca54ab1",
+    "src/scheduler/mowerRunOrderBridge.ts": "115994ff8743b35369e8bcca913eebfedf720a526ecbf94570e746eb3f86cd2a",
+    "src/simulator/mowerNativeProductionIO.ts": "be29507293ad373bdf1f8aa3278b505ac16173e777933a80fa0df06b41796966",
+    "src/scheduler/mowerPlanOrder.ts": "ed926805e354c0e9dca96b8a8de8c1bc5cddea6ae9bc21988212f5900bf6ac0b",
+    "src/scheduler/mowerRunOrderRefresh.ts": "4c84dba980075155eb926ca855a3c9b5a4687b79a3794088d4a37bce32c5a927",
+    "src/scheduler/mowerTaskScheduling.ts": "3e4f31ebd489de755c0eea57388451e70238a9b7b11ce0a29700a2c7413b47b1",
+    "src/scheduler/mowerGlobalDormOrder.ts": "99e8de892e2c43976b3530d46f92b5c5d7ac7c641ca3aed90e280467116497f9",
+    "src/scheduler/compileRosterSchedule.ts": "07adf6e8984c8f9e509ce56dd20bc69fdd69c2b86a98c5bbf09b973e4e1ea999",
+    "src/scheduler/types.ts": "046185bc45ae80664f5a8f56311bdb93be7456964a4fe53e679baf28f18b6834",
+    "src/workbench/model.ts": "f2c4023d7fff7460e6026606c948f42b6c4f009e4a7e294a94d7e80f87c7ebbd",
+    "src/workbench/compat/mowerJson.ts": "cb2aad145af8a219ba9f97161bfb0d464b61bc9f41b51dfb5af2c5d6f3095737",
+    "src/scheduler/mowerArrangementError.ts": "9b74e3650230c4a4ea912a0de43554cd7c01ecb228d26c70026f8cff9defee6b",
+    "src/simulator/droneTimeline.ts": "a81a032e297dd57217c6a0359f8f88269535ebff692a6265721c976ce72edbce",
+    "src/simulator/manufacturingTimeline.ts": "231f5f13b628c56d4c33876899a84c3482743554133dce789b04acbf85cba822",
+    "src/scheduler/mowerDormRecovery.ts": "31302b7f4edf950add9d253ae4e0f76322e1d7ba157c9380952167c6b753251c",
+    "src/scheduler/mowerRunLifecycle.ts": "5c20f43a9bbc0daf3cab388268497a092261090ca90f0d52cb8bbf78df005dec",
+    "src/optimizer/incomeComparison.ts": "078fe61deb1a416f624d52f0e57167a4a66df4523865f4bc542e698663ed7174",
+    "src/scheduler/mowerTaskQueue.ts": "4d8369ed71401acc6993f7afa913bbbc158f926a2d364d34d6ef8a8711d2da21",
+    "src/scheduler/mowerTaskExecutor.ts": "9f7c22d6426f8a14f221a7bc568638d5c2b22bd92136aa50464c2ebef47481fe",
+    "src/scheduler/mowerOperatorState.ts": "de168cb7f102b1eb9fd26433a246cb7fbdbd5c5c9c09e47d88b033264e3be0a1",
+    "src/scheduler/mowerSchedulingData.ts": "f57ea6a1098f65160cbb0060afc3a0e095124d5133c27bd320f36d261665d9e4",
+    "src/scheduler/mowerDormAssignment.ts": "4861b1cd6ea1bf8404f5a63cf6b7124ce2197214fece4c5f91c6aabc0a59ea04",
+    "src/scheduler/mowerDormTasks.ts": "af070866d04ced0b2fc9f5925212be88babcd49149d94a1feb50229f314b2b63",
+    "src/scheduler/mowerMetadata.ts": "5d761ae2bf76c7665a994f4450bed1356c1762128796b2bca8a26c39fdb4d7c4",
+    "src/scheduler/mowerOrdinaryPlanning.ts": "d20253f868dfe20a4f780d689583f02e4606d367ef8101188d792189460eade9",
+    "src/scheduler/mowerObservations.ts": "2cfa8b4e79ffa509e1b54ff933de39c229aea31046e0d04b4d950989a16536e0",
+    "src/scheduler/mowerCorrection.ts": "d3010909750b532624e354aa09ca5a29b1113547a03c062ffdf5861809a1a6e1",
+    "src/scheduler/mowerExhaustPlanning.ts": "eee4aca5285476a887a2cd0a0a197d5dbbfce3c0eddce605fa8d031e3149ec70",
+    "src/scheduler/mowerFiammetta.ts": "b7b4ecba23a8da09b563ac7b4ae3e9c9cc98e622163c01500e86e201bdeca412",
+    "src/scheduler/mowerRelease.ts": "fdcbd0f29901f1569c8efdb3a6aab474dbe6045e5f3ac34fc1b7f6ea06cbd94a",
+    "src/scheduler/mowerSourceRuntime.ts": "cb9ebb19d7ab5c7eb981362b52bfb4cf98d7be2ab93194caf2e65e7f72aae768",
+    "src/scheduler/mowerSelection.ts": "08526ce3937c2d988f555b6123cbea8327b20ba03cea1a1b6d6866954913b136",
+    "src/scheduler/backupExpression.ts": "a4fc33d87c0cdd25b468cbbb99e2dcc0a63f9cad1e9210e5ff9ddb505025b58e",
+    "src/scheduler/rosterRuntime.ts": "ad9e8a646d285750410ed882c3e9685045ed6442009e908e41b8ccd068bdeea5",
+    "src/scheduler/scheduleAdapter.ts": "1e7372023deee6ff356719b67338b192636ec0c6eaf12e1fabcebe27e99149b2",
+    "src/scheduler/mowerLimitedRest.spec.ts": "5c259f6910ff9a932c0241a2a0536c0357ec4d0f9d25beb5d5f5700128ed138d",
+    "src/scheduler/mowerBedTakeover.spec.ts": "3846adee3c5d0216124a219a11a3498ad6c844b6482020170c5fa4cb9320e3d5",
+    "src/scheduler/backupPlans.ts": "52aa32f2297a629b9097b10df2ee7d4fdf6484ffd305be6792abf875b266e5c3",
+    "src/scheduler/mowerBedPool.spec.ts": "188d07509e7030c0aeca2257889d0ba6f013dcce3b735bb914d7b7031d8d677d",
+    "src/scheduler/mowerWorkaholicGroup.spec.ts": "0e5ab0381077aed373cd906ac39c01d8f5f202eeaa1f373ba7bd2b109a437b5b",
+    "src/scheduler/mowerExhaustSupport.spec.ts": "86dae13f3fa8f6c2ba7a03fca669cf9ba2fc0260e484b1e25cd3db2c99543015",
+    "src/scheduler/mowerTiming.ts": "25d88a87da08eb9406d0f22943f0c8bcd0dd374fb603a8db17cb370ba1ad7088",
+    "src/simulator/mowerEfficiencyCache.spec.ts": "e36e8a31893b8928dae0c5bcaa33ea663a2fe338ce9bda10bdc6b12914319e39",
+    "src/simulator/scheduleSimulation.ts": "6304022f92c538fc0f22718915187955b742185c36aa8ad952c9a3e078400296",
+    "src/engine/timeDependentSkills.ts": "256455a333f0d88aec263f91d02fc1151349b25c58f86a44c96b739706fa1e40",
+    "src/engine/globalContext.ts": "70c6bf1f0f4838e8053d0e728c6474564e36570e3672c219f12a085b6a2c2edb",
+    "src/engine/operatorRules.ts": "c7600d8c27b52acc52eec7a0bf947a7cc1da7571942bae9e76ba7a85c9b5c304",
+    "src/engine/dormitoryRecovery.ts": "b26468ce31bc4e5b7b56de8da0e86ad4e08c977015a9232e84fbaf0dfce191c5",
+    "src/engine/morale.ts": "5de6125ff17e9bd240898e551920c7c5cb65aac0fd1734d4d8e37d4fb0ce383d",
+    "src/simulator/productionTimeline.ts": "5601f7f618d6af0dcaf42f89a1c9e6fe426c963569ce205280064fb535274289",
+    "src/rules/orderRules.ts": "eabbbf0bd7ca68f3c9673cdddb791bebc754847e6d36f2524ec4d6073260458e"
+  },
+  "gitRevision": "e1baa57a4c97d01433d7cacc3c875bdfb1562d84",
+  "seconds": 612.1782335999999,
+  "success": true,
+  "elapsedHours": 384,
+  "observedHours": 215.9999999994601,
+  "inputUnchanged": true,
+  "assumptions": {
+    "sampleHours": 216,
+    "warmupHours": 168,
+    "maxStepHours": 0.25,
+    "warmupModel": "continuous",
+    "restingThreshold": 0.65,
+    "operationDurationHours": 0,
+    "dormAtmosphere": "各宿舍默认等级上限；可逐室覆盖",
+    "singleRecoveryTarget": "优先采用 Mower 已确认的入驻顺序；无有效确认时采用槽位顺序，允许显式覆盖"
+  },
+  "dataAssumptions": {
+    "schemaVersion": 1,
+    "initialMorale": 24,
+    "enableParty": false,
+    "leifengMode": true,
+    "droneIntervalHours": 3,
+    "droneCountLimit": 100,
+    "reloadRooms": [],
+    "maaGapHours": 3,
+    "runOrderBufferSeconds": 15,
+    "restingThreshold": 0.65,
+    "rescueThreshold": 0.75,
+    "freeRoom": false,
+    "dormOrder": "",
+    "groupRestInFullOnMoodGap": true,
+    "groupMoodGapMaxExtraWaitHours": 0,
+    "mergeIntervalMinutes": 10,
+    "runOrderDelayMinutes": 3,
+    "enableMastery": true,
+    "runOrderGrandet": true,
+    "fiammettaFool": false,
+    "fiammettaThreshold": 0.9,
+    "operatorMorale": {},
+    "dormAtmosphere": 0,
+    "initialGold": 0,
+    "initialFragments": 0,
+    "initialDrones": 0,
+    "collectionIntervalHours": 0,
+    "operationDurationHours": 0,
+    "horizonHours": 2160,
+    "elitePhase": 2,
+    "currentOccupants": {},
+    "dataVersion": "Stream://torappu-data/v076/rel76.0\nChange:119697 on 2026/07/30\nVersionControl:76.0.0; arkntools overlay src/data/arkntools-riic-source-manifest.json",
+    "compilerVersion": "1",
+    "levelSource": "workspace-inferred",
+    "importSource": "workspace",
+    "defaultsApplied": [
+      "schemaVersion",
+      "initialMorale",
+      "enableParty",
+      "leifengMode",
+      "droneIntervalHours",
+      "droneCountLimit",
+      "reloadRooms",
+      "maaGapHours",
+      "runOrderBufferSeconds",
+      "rescueThreshold",
+      "dormOrder",
+      "groupRestInFullOnMoodGap",
+      "groupMoodGapMaxExtraWaitHours",
+      "mergeIntervalMinutes",
+      "runOrderDelayMinutes",
+      "enableMastery",
+      "runOrderGrandet",
+      "fiammettaThreshold",
+      "operatorMorale",
+      "dormAtmosphere",
+      "initialGold",
+      "initialFragments",
+      "initialDrones",
+      "collectionIntervalHours",
+      "operationDurationHours",
+      "horizonHours",
+      "elitePhase",
+      "currentOccupants"
+    ],
+    "droneRoom": "room_3_1"
+  },
+  "options": {
+    "warmupHours": 168,
+    "warmupModel": "continuous",
+    "sampleHours": 216,
+    "maxStepHours": 0.25,
+    "maxEvents": 1000000,
+    "recordSegments": true,
+    "production": {
+      "outputMode": "potential",
+      "runOrderMode": "ideal",
+      "droneTarget": "exp",
+      "seed": 42
+    }
+  },
+  "configuredThreshold": 0.65,
+  "diagnostics": [
+    {
+      "code": "TIME_INTEGRATION_MODEL",
+      "message": "使用连续暖机，最大步长 0.25 h；复制取整等非线性效率采用区间中点数值积分，可缩小步长检查敏感性"
+    },
+    {
+      "code": "SINGLE_RECOVERY_TARGET_ASSUMPTION",
+      "message": "已按 Mower 确认流程固定的目标使用入驻顺序标记；未确认或目标已满时采用槽位顺序，后续游戏自动选取规则尚未实测"
+    },
+    {
+      "code": "MOWER_IO_CLOCK_MODEL",
+      "message": "Mower 每房返回 0.5 秒及无临近任务时的通知检查 1 秒已纳入时间线；识别与其他点击耗时按 0 处理。已完成 run 后仍有同刻任务时，外层单调时钟推进 1 微秒；该适配步长不改任务时刻。"
+    },
+    {
+      "code": "POTENTIAL_OUTPUT_MODEL",
+      "message": "直观产出模式：忽略材料库存不足，设施容量与收取按 Mower 排班执行，完成即计产出；账本为测算辅助，不代表实际到账。无人机仍按所选策略及实际生成量使用。"
+    },
+    {
+      "code": "IDEAL_RUN_ORDER_ASSUMPTIONS",
+      "message": "理想收益在完成时应用配置的但书/龙舌兰效果；跑单任务仍执行实际换人、等待、心情消耗和恢复，使用实际生成的无人机。收益转换假设独立于排班执行。"
+    },
+    {
+      "code": "DRONE_ALLOCATION_POLICY",
+      "message": "无人机完全由 Mower 的任务阶段使用：默认每 3 小时待办检查、100 架判断门槛；是否预留按原版跑单设施分支；跑单按原版独立分支执行。"
+    },
+    {
+      "code": "MOWER_CLUE_OBSERVATION_MODEL",
+      "message": "线索交流固定关闭，Party Time 为空，不执行线索待办及交流任务。"
+    },
+    {
+      "code": "MOWER_ORDER_OBSERVATION_MODEL",
+      "message": "跑单任务按 Mower alpha 执行，倒计时来自同一生产状态的连续秒数；页面成功与识别零耗时为明确模拟输入，点击采用原版显式等待。此输入适配不代表像素识别等价。"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "factory / 特克诺：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 褐果：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 桃金娘：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "factory / 年：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 夕：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 余：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "mower-task-exception",
+      "message": "Mower dorm recovery ordering observation failed {\"room\":\"dormitory_4\",\"expected\":[\"char_501_durin\",\"char_4047_pianst\",\"char_4048_doroth\",\"char_308_swire\",\"char_4048_doroth\"],\"current\":[\"char_501_durin\",\"char_4047_pianst\",\"char_4048_doroth\",\"char_308_swire\",\"char_4212_nasti\"]}"
+    },
+    {
+      "code": "mower-task-exception",
+      "message": "Mower dorm recovery ordering observation failed {\"room\":\"dormitory_4\",\"expected\":[\"char_501_durin\",\"char_4047_pianst\",\"char_4048_doroth\",\"char_4032_provs\",\"char_4048_doroth\"],\"current\":[\"char_501_durin\",\"char_4047_pianst\",\"char_4048_doroth\",\"char_4032_provs\",\"char_4212_nasti\"]}"
+    },
+    {
+      "code": "mower-task-exception",
+      "message": "Mower dorm recovery ordering observation failed {\"room\":\"dormitory_4\",\"expected\":[\"char_501_durin\",\"char_4047_pianst\",\"char_4048_doroth\",\"char_308_swire\",\"char_4048_doroth\"],\"current\":[\"char_501_durin\",\"char_4047_pianst\",\"char_4048_doroth\",\"char_308_swire\",\"char_4036_forcer\"]}"
+    },
+    {
+      "code": "SHIFT_DEFERRED_RECOVERED",
+      "message": "group:深海: insufficient available candidates or beds; original occupants retained; 26 次延后均已由后续完整分组下班事件确认恢复"
+    },
+    {
+      "code": "group-blocked",
+      "message": "slot:meeting_1: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "group-blocked",
+      "message": "slot:meeting_0: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "group-blocked",
+      "message": "group:感知: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "SHIFT_DEFERRED_RECOVERED",
+      "message": "group:红松: insufficient available candidates or beds; original occupants retained; 8 次延后均已由后续完整分组下班事件确认恢复"
+    },
+    {
+      "code": "group-blocked",
+      "message": "group:自动化: insufficient available candidates or beds; original occupants retained"
+    }
+  ],
+  "metrics": {
+    "exp": 23444.444444503046,
+    "goldValue": 87055.55555577316,
+    "orderLmd": 72555.55555573691,
+    "tequilaGoldValue": 1333.333333336666,
+    "mower82": 108666.66666693828,
+    "meanOrderValue": 2148.0263157894738,
+    "orderCount": 304,
+    "orderDistribution": {
+      "proviso": {
+        "count": 280,
+        "lmd": 593000
+      },
+      "tequila": {
+        "count": 24,
+        "lmd": 60000
+      }
+    }
+  },
+  "operators": [
+    {
+      "operatorId": "char_2023_ling",
+      "operatorName": "令",
+      "mainWorkHours": 172.53374451533625,
+      "substituteWorkHours": 0,
+      "workHours": 172.53374451533625,
+      "exhaustedHours": 0,
+      "restHours": 43.1947275398858,
+      "idleHours": 0.27152794415283044,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7987673357211459,
+      "workRestRatio": 3.9943241766259425,
+      "initialMorale": 24,
+      "finalMorale": 8.873853484955944
+    },
+    {
+      "operatorId": "char_2024_chyue",
+      "operatorName": "重岳",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 43.46625548403928,
+      "workHours": 43.46625548403928,
+      "exhaustedHours": 0,
+      "restHours": 81.51851737246868,
+      "idleHours": 91.01522714282504,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.20123266427846262,
+      "workRestRatio": 0.5332071397402424,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_474_glady",
+      "operatorName": "歌蕾蒂娅",
+      "mainWorkHours": 139.86181840751826,
+      "substituteWorkHours": 0,
+      "workHours": 139.86181840751826,
+      "exhaustedHours": 1.6736391644554927,
+      "restHours": 74.29997135797318,
+      "idleHours": 0.1645710693706633,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.6475084185549437,
+      "workRestRatio": 1.8823939747388556,
+      "initialMorale": 24,
+      "finalMorale": 1.8318193249936077
+    },
+    {
+      "operatorId": "char_2015_dusk",
+      "operatorName": "夕",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 157.43881944137988,
+      "workHours": 157.43881944137988,
+      "exhaustedHours": 0,
+      "restHours": 47.3359217292002,
+      "idleHours": 11.225258828760609,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7288834233415435,
+      "workRestRatio": 3.3259903618663516,
+      "initialMorale": 24,
+      "finalMorale": 21.613113478596514
+    },
+    {
+      "operatorId": "char_416_zumama",
+      "operatorName": "森蚺",
+      "mainWorkHours": 176.49211735631212,
+      "substituteWorkHours": 0,
+      "workHours": 176.49211735631212,
+      "exhaustedHours": 0,
+      "restHours": 39.50177153195922,
+      "idleHours": 0.006111111111111111,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8170931359108947,
+      "workRestRatio": 4.467954486889779,
+      "initialMorale": 24,
+      "finalMorale": 23.650345921640252
+    },
+    {
+      "operatorId": "char_420_flamtl",
+      "operatorName": "焰尾",
+      "mainWorkHours": 178.55075762293873,
+      "substituteWorkHours": 0,
+      "workHours": 178.55075762293873,
+      "exhaustedHours": 0,
+      "restHours": 37.392853486712035,
+      "idleHours": 0.05638888972224316,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8266238778860417,
+      "workRestRatio": 4.774996850304262,
+      "initialMorale": 24,
+      "finalMorale": 19.903976083038348
+    },
+    {
+      "operatorId": "char_308_swire",
+      "operatorName": "诗怀雅",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 37.44924237643411,
+      "workHours": 37.44924237643411,
+      "exhaustedHours": 0,
+      "restHours": 55.158324352988195,
+      "idleHours": 123.39243326988502,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.17337612211355422,
+      "workRestRatio": 0.678940899958744,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4098_vvana",
+      "operatorName": "薇薇安娜",
+      "mainWorkHours": 178.55075762293873,
+      "substituteWorkHours": 0,
+      "workHours": 178.55075762293873,
+      "exhaustedHours": 0,
+      "restHours": 37.35243682060105,
+      "idleHours": 0.0968055558333528,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8266238778860417,
+      "workRestRatio": 4.780163566850941,
+      "initialMorale": 24,
+      "finalMorale": 19.800950494337275
+    },
+    {
+      "operatorId": "char_1044_hsgma2",
+      "operatorName": "斩业星熊",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 37.44924237643411,
+      "workHours": 37.44924237643411,
+      "exhaustedHours": 0,
+      "restHours": 40.75024157324744,
+      "idleHours": 137.80051604962716,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.17337612211355422,
+      "workRestRatio": 0.9189943649565885,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_202_demkni",
+      "operatorName": "塞雷娅",
+      "mainWorkHours": 173.57623415393462,
+      "substituteWorkHours": 0,
+      "workHours": 173.57623415393462,
+      "exhaustedHours": 0,
+      "restHours": 42.416682511647025,
+      "idleHours": 0.0070833337824786815,
+      "permanentPrimaryOccupancyHours": 43.97648196891751,
+      "workFraction": 0.8035936766405948,
+      "workRestRatio": 4.092169021145702,
+      "initialMorale": 24,
+      "finalMorale": 16.013761810031678
+    },
+    {
+      "operatorId": "char_4036_forcer",
+      "operatorName": "见行者",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 42.42376584542949,
+      "workHours": 42.42376584542949,
+      "exhaustedHours": 0,
+      "restHours": 81.59134885357722,
+      "idleHours": 91.98488530033526,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.1964063233589608,
+      "workRestRatio": 0.5199542162437176,
+      "initialMorale": 24,
+      "finalMorale": 22.165149234136564
+    },
+    {
+      "operatorId": "char_134_ifrit",
+      "operatorName": "伊芙利特",
+      "mainWorkHours": 174.7398832766227,
+      "substituteWorkHours": 0,
+      "workHours": 174.7398832766227,
+      "exhaustedHours": 0,
+      "restHours": 41.253727832747316,
+      "idleHours": 0.006388890000000001,
+      "permanentPrimaryOccupancyHours": 43.97717641475083,
+      "workFraction": 0.8089809410974975,
+      "workRestRatio": 4.235735591824837,
+      "initialMorale": 24,
+      "finalMorale": 16.119165457773274
+    },
+    {
+      "operatorId": "char_010_chen",
+      "operatorName": "陈",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 41.26011672274731,
+      "workHours": 41.26011672274731,
+      "exhaustedHours": 0,
+      "restHours": 24.67844287159732,
+      "idleHours": 150.06144040498313,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.1910190589020854,
+      "workRestRatio": 1.6719092423061268,
+      "initialMorale": 24,
+      "finalMorale": 23.4965407315788
+    },
+    {
+      "operatorId": "char_4164_tecno",
+      "operatorName": "特克诺",
+      "mainWorkHours": 172.5366611820029,
+      "substituteWorkHours": 0,
+      "workHours": 172.5366611820029,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 43.46333881737264,
+      "permanentPrimaryOccupancyHours": 172.5366611820029,
+      "workFraction": 0.7987808388075655,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_2014_nian",
+      "operatorName": "年",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 43.46333881737264,
+      "workHours": 43.46333881737264,
+      "exhaustedHours": 0,
+      "restHours": 6.800271935072527,
+      "idleHours": 165.7363892469125,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.20121916119204294,
+      "workRestRatio": 6.391411877694136,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_436_whispr",
+      "operatorName": "絮雨",
+      "mainWorkHours": 172.5180500708916,
+      "substituteWorkHours": 0,
+      "workHours": 172.5180500708916,
+      "exhaustedHours": 0,
+      "restHours": 43.454727705534616,
+      "idleHours": 0.027222222949145374,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7986946762561241,
+      "workRestRatio": 3.9700639994786764,
+      "initialMorale": 24,
+      "finalMorale": 20.43947583629918
+    },
+    {
+      "operatorId": "char_473_mberry",
+      "operatorName": "桑葚",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 43.481949928483715,
+      "workHours": 43.481949928483715,
+      "exhaustedHours": 0,
+      "restHours": 31.10876125374486,
+      "idleHours": 141.40928881708004,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.20130532374348334,
+      "workRestRatio": 1.3977396777009041,
+      "initialMorale": 24,
+      "finalMorale": 23.54744273136404
+    },
+    {
+      "operatorId": "char_4041_chnut",
+      "operatorName": "褐果",
+      "mainWorkHours": 172.53263340422512,
+      "substituteWorkHours": 0,
+      "workHours": 172.53263340422512,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 43.46736659515041,
+      "permanentPrimaryOccupancyHours": 172.53263340422512,
+      "workFraction": 0.7987621916882239,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_151_myrtle",
+      "operatorName": "桃金娘",
+      "mainWorkHours": 172.53263340422512,
+      "substituteWorkHours": 0,
+      "workHours": 172.53263340422512,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 43.46736659515041,
+      "permanentPrimaryOccupancyHours": 172.53263340422512,
+      "workFraction": 0.7987621916882239,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_2026_yu",
+      "operatorName": "余",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 43.46736659515041,
+      "workHours": 43.46736659515041,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 172.53263340422512,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.20123780831138452,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4104_coldst",
+      "operatorName": "冰酿",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.98777776485014,
+      "idleHours": 0.012222234609926701,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_147_shining",
+      "operatorName": "闪灵",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.98777776485014,
+      "idleHours": 0.012222234609926701,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_300_phenxi",
+      "operatorName": "菲亚梅塔",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.9999999994601,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 18.076441279651217
+    },
+    {
+      "operatorId": "char_494_vendla",
+      "operatorName": "刺玫",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 94.59288309261493,
+      "idleHours": 121.40711690666566,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4042_lumen",
+      "operatorName": "流明",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.9999999994601,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_479_sleach",
+      "operatorName": "琴柳",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.9999999994601,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_245_cello",
+      "operatorName": "塑心",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 172.0242124682349,
+      "idleHours": 43.97578753113976,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_449_glider",
+      "operatorName": "蜜莓",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.9999999994601,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_501_durin",
+      "operatorName": "杜林",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.9999999994601,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4047_pianst",
+      "operatorName": "车尔尼",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 215.9999999994601,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_338_iris",
+      "operatorName": "爱丽丝",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 166.71977690852432,
+      "idleHours": 49.280223090843215,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4046_ebnhlz",
+      "operatorName": "黑键",
+      "mainWorkHours": 172.51207784866943,
+      "substituteWorkHours": 0,
+      "workHours": 172.51207784866943,
+      "exhaustedHours": 0,
+      "restHours": 43.460561039701275,
+      "idleHours": 0.02736111100470093,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7986670270791696,
+      "workRestRatio": 3.969393715168091,
+      "initialMorale": 24,
+      "finalMorale": 21.068424415374018
+    },
+    {
+      "operatorId": "char_427_vigil",
+      "operatorName": "伺夜",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 43.487922150705934,
+      "workHours": 43.487922150705934,
+      "exhaustedHours": 0,
+      "restHours": 62.080051578731755,
+      "idleHours": 110.43202626988324,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.2013329729204381,
+      "workRestRatio": 0.7005136278850101,
+      "initialMorale": 24,
+      "finalMorale": 23.495805554514046
+    },
+    {
+      "operatorId": "char_478_kirara",
+      "operatorName": "绮良",
+      "mainWorkHours": 165.88102229244126,
+      "substituteWorkHours": 0,
+      "workHours": 165.88102229244126,
+      "exhaustedHours": 0,
+      "restHours": 43.46069992859018,
+      "idleHours": 6.658277778318482,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7679676958002587,
+      "workRestRatio": 3.8168051265855962,
+      "initialMorale": 24,
+      "finalMorale": 20.967761139792223
+    },
+    {
+      "operatorId": "char_103_angel",
+      "operatorName": "能天使",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 41.52372770646828,
+      "workHours": 41.52372770646828,
+      "exhaustedHours": 0,
+      "restHours": 33.13318867718476,
+      "idleHours": 141.343083615656,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.19223948012301884,
+      "workRestRatio": 1.2532366899857474,
+      "initialMorale": 24,
+      "finalMorale": 23.525868054513865
+    },
+    {
+      "operatorId": "char_4055_bgsnow",
+      "operatorName": "鸿雪",
+      "mainWorkHours": 165.88102229244126,
+      "substituteWorkHours": 0,
+      "workHours": 165.88102229244126,
+      "exhaustedHours": 0,
+      "restHours": 43.211116428851355,
+      "idleHours": 6.907861278059944,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7679676958002587,
+      "workRestRatio": 3.83885064773946,
+      "initialMorale": 24,
+      "finalMorale": 20.571456637543104
+    },
+    {
+      "operatorId": "char_4193_lemuen",
+      "operatorName": "蕾缪安",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 41.52372770646828,
+      "workHours": 41.52372770646828,
+      "exhaustedHours": 0,
+      "restHours": 28.964230343415895,
+      "idleHours": 145.51204194943088,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.19223948012301884,
+      "workRestRatio": 1.4336209598577299,
+      "initialMorale": 24,
+      "finalMorale": 23.569599821934432
+    },
+    {
+      "operatorId": "char_402_tuye",
+      "operatorName": "图耶",
+      "mainWorkHours": 162.7629945158445,
+      "substituteWorkHours": 0,
+      "workHours": 162.7629945158445,
+      "exhaustedHours": 0,
+      "restHours": 43.465561039039315,
+      "idleHours": 9.771444444450923,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7535323820196821,
+      "workRestRatio": 3.744642669391894,
+      "initialMorale": 24,
+      "finalMorale": 20.635798734533118
+    },
+    {
+      "operatorId": "char_455_nothin",
+      "operatorName": "乌有",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 41.6484499286304,
+      "workHours": 41.6484499286304,
+      "exhaustedHours": 0,
+      "restHours": 44.23732998799845,
+      "idleHours": 130.11422008266365,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.1928168978182153,
+      "workRestRatio": 0.9414774793128244,
+      "initialMorale": 24,
+      "finalMorale": 23.436939499416734
+    },
+    {
+      "operatorId": "char_1027_greyy2",
+      "operatorName": "承曦格雷伊",
+      "mainWorkHours": 176.48753402297848,
+      "substituteWorkHours": 0,
+      "workHours": 176.48753402297848,
+      "exhaustedHours": 0,
+      "restHours": 39.50621597473701,
+      "idleHours": 0.006250001666666668,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8170719167750908,
+      "workRestRatio": 4.467335827248976,
+      "initialMorale": 24,
+      "finalMorale": 23.122747452459684
+    },
+    {
+      "operatorId": "char_249_mlyss",
+      "operatorName": "缪尔赛思",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 39.51246597640367,
+      "workHours": 39.51246597640367,
+      "exhaustedHours": 0,
+      "restHours": 40.482162357899426,
+      "idleHours": 136.00537166499896,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.1829280832245483,
+      "workRestRatio": 0.9760463294197885,
+      "initialMorale": 24,
+      "finalMorale": 23.0627113515017
+    },
+    {
+      "operatorId": "char_243_waaifu",
+      "operatorName": "槐琥",
+      "mainWorkHours": 172.50249450311406,
+      "substituteWorkHours": 0.0004166788888888889,
+      "workHours": 172.5029111820029,
+      "exhaustedHours": 0,
+      "restHours": 43.21819976146702,
+      "idleHours": 0.2788890559090229,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7986245888075652,
+      "workRestRatio": 3.9914413865939187,
+      "initialMorale": 24,
+      "finalMorale": 20.524164506276758
+    },
+    {
+      "operatorId": "char_4106_bryota",
+      "operatorName": "苍苔",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 155.30337356550828,
+      "workHours": 155.30337356550828,
+      "exhaustedHours": 0,
+      "restHours": 54.038804335266754,
+      "idleHours": 6.657822098567594,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7189970998421132,
+      "workRestRatio": 2.873923201593754,
+      "initialMorale": 24,
+      "finalMorale": 23.62191525833483
+    },
+    {
+      "operatorId": "char_391_rosmon",
+      "operatorName": "迷迭香",
+      "mainWorkHours": 172.50249450311406,
+      "substituteWorkHours": 0.0004166788888888889,
+      "workHours": 172.5029111820029,
+      "exhaustedHours": 0,
+      "restHours": 43.46833881747906,
+      "idleHours": 0.02874999989358983,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7986245888075652,
+      "workRestRatio": 3.9684725911963703,
+      "initialMorale": 24,
+      "finalMorale": 20.99878923769585
+    },
+    {
+      "operatorId": "char_1039_thorn2",
+      "operatorName": "引星棘刺",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 155.30337356550828,
+      "workHours": 155.30337356550828,
+      "exhaustedHours": 0,
+      "restHours": 56.01137607678967,
+      "idleHours": 4.685250357045049,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.7189970998421132,
+      "workRestRatio": 2.7727112676644956,
+      "initialMorale": 24,
+      "finalMorale": 23.62191525833483
+    },
+    {
+      "operatorId": "char_446_aroma",
+      "operatorName": "阿罗玛",
+      "mainWorkHours": 208.736317377079,
+      "substituteWorkHours": 0,
+      "workHours": 208.736317377079,
+      "exhaustedHours": 0,
+      "restHours": 7.262015953484471,
+      "idleHours": 0.001666668888888889,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.9663718397111145,
+      "workRestRatio": 28.74357736393058,
+      "initialMorale": 24,
+      "finalMorale": 18.841775535280593
+    },
+    {
+      "operatorId": "char_4212_nasti",
+      "operatorName": "娜斯提",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 121.24069102408127,
+      "workHours": 121.24069102408127,
+      "exhaustedHours": 0,
+      "restHours": 59.2742609505255,
+      "idleHours": 35.48504802471541,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.5612994954832607,
+      "workRestRatio": 2.0454188560069495,
+      "initialMorale": 24,
+      "finalMorale": 21.128137894491797
+    },
+    {
+      "operatorId": "char_263_skadi",
+      "operatorName": "斯卡蒂",
+      "mainWorkHours": 141.536985351748,
+      "substituteWorkHours": 0,
+      "workHours": 141.536985351748,
+      "exhaustedHours": 0,
+      "restHours": 51.860977452561464,
+      "idleHours": 22.60203719501113,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.6552638210745453,
+      "workRestRatio": 2.729161545040593,
+      "initialMorale": 24,
+      "finalMorale": 20.67942701596908
+    },
+    {
+      "operatorId": "char_4048_doroth",
+      "operatorName": "多萝西",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 113.9770084017144,
+      "workHours": 113.9770084017144,
+      "exhaustedHours": 0,
+      "restHours": 49.12957321713303,
+      "idleHours": 52.893418380495895,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.5276713351944412,
+      "workRestRatio": 2.3199266946199937,
+      "initialMorale": 24,
+      "finalMorale": 21.128137894491797
+    },
+    {
+      "operatorId": "char_143_ghost",
+      "operatorName": "幽灵鲨",
+      "mainWorkHours": 141.536985351748,
+      "substituteWorkHours": 0,
+      "workHours": 141.536985351748,
+      "exhaustedHours": 0,
+      "restHours": 51.77980333604719,
+      "idleHours": 22.683211311524776,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.6552638210745453,
+      "workRestRatio": 2.7334399946091565,
+      "initialMorale": 24,
+      "finalMorale": 20.59221835763594
+    },
+    {
+      "operatorId": "char_285_medic2",
+      "operatorName": "Lancet-2",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 176.48447846742272,
+      "restHours": 0,
+      "idleHours": 39.51552153195922,
+      "permanentPrimaryOccupancyHours": 176.48447846742272,
+      "workFraction": 0,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 0
+    },
+    {
+      "operatorId": "char_377_gdglow",
+      "operatorName": "澄闪",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 39.51552153195922,
+      "workHours": 39.51552153195922,
+      "exhaustedHours": 0,
+      "restHours": 31.957519522184864,
+      "idleHours": 144.52695894516765,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.1829422293150833,
+      "workRestRatio": 1.2365015221074216,
+      "initialMorale": 24,
+      "finalMorale": 21.36698974793814
+    },
+    {
+      "operatorId": "char_431_ashlok",
+      "operatorName": "灰毫",
+      "mainWorkHours": 178.49936873393082,
+      "substituteWorkHours": 0,
+      "workHours": 178.49936873393082,
+      "exhaustedHours": 0,
+      "restHours": 37.387159043219114,
+      "idleHours": 0.11347222222224097,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8263859663628564,
+      "workRestRatio": 4.7743496243613395,
+      "initialMorale": 24,
+      "finalMorale": 20.180671628922617
+    },
+    {
+      "operatorId": "char_1042_phatm2",
+      "operatorName": "酒神",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 37.500631265441,
+      "workHours": 37.500631265441,
+      "exhaustedHours": 0,
+      "restHours": 22.15375430456806,
+      "idleHours": 156.34561442932684,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.1736140336367349,
+      "workRestRatio": 1.692743846026515,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_496_wildmn",
+      "operatorName": "野鬃",
+      "mainWorkHours": 178.47159084934506,
+      "substituteWorkHours": 0.001388995555555555,
+      "workHours": 178.4729798449013,
+      "exhaustedHours": 0,
+      "restHours": 37.47077015419243,
+      "idleHours": 0.05625000027779871,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8262637955803119,
+      "workRestRatio": 4.762992036472268,
+      "initialMorale": 24,
+      "finalMorale": 20.093209469856475
+    },
+    {
+      "operatorId": "char_159_peacok",
+      "operatorName": "断罪者",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0.15833338722223853,
+      "workHours": 0.15833338722223853,
+      "exhaustedHours": 0,
+      "restHours": 14.223371368425482,
+      "idleHours": 201.6182952437755,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.0007330249408455291,
+      "workRestRatio": 0.011131916837503338,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_430_fartth",
+      "operatorName": "远牙",
+      "mainWorkHours": 178.47159084934506,
+      "substituteWorkHours": 0.001388995555555555,
+      "workHours": 178.4729798449013,
+      "exhaustedHours": 0,
+      "restHours": 37.2979922765119,
+      "idleHours": 0.22902787795884974,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8262637955803119,
+      "workRestRatio": 4.785055949440292,
+      "initialMorale": 24,
+      "finalMorale": 20.18823293255767
+    },
+    {
+      "operatorId": "char_241_panda",
+      "operatorName": "食铁兽",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0.15763894222223857,
+      "workHours": 0.15763894222223857,
+      "exhaustedHours": 0,
+      "restHours": 3.569827178549976,
+      "idleHours": 212.27253387868376,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.000729809917697373,
+      "workRestRatio": 0.044158704143843104,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_237_gravel",
+      "operatorName": "砾",
+      "mainWorkHours": 215.99708332696014,
+      "substituteWorkHours": 0,
+      "workHours": 215.99708332696014,
+      "exhaustedHours": 0,
+      "restHours": 0.0029166725,
+      "idleHours": 0,
+      "permanentPrimaryOccupancyHours": 215.99708332696014,
+      "workFraction": 0.9999864968865743,
+      "workRestRatio": 74055.99474296828,
+      "initialMorale": 24,
+      "finalMorale": 13.28146917197202
+    },
+    {
+      "operatorId": "char_141_nights",
+      "operatorName": "夜烟",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 215.9999999994601,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4145_ulpia",
+      "operatorName": "乌尔比安",
+      "mainWorkHours": 141.50087406161614,
+      "substituteWorkHours": 0.0016668458333333324,
+      "workHours": 141.50254090744846,
+      "exhaustedHours": 0,
+      "restHours": 52.61479502357927,
+      "idleHours": 21.88266406829366,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.6551043560546396,
+      "workRestRatio": 2.6894059141356386,
+      "initialMorale": 24,
+      "finalMorale": 20.474039962699518
+    },
+    {
+      "operatorId": "char_218_cuttle",
+      "operatorName": "安哲拉",
+      "mainWorkHours": 141.50087406161614,
+      "substituteWorkHours": 0.0016668458333333324,
+      "workHours": 141.50254090744846,
+      "exhaustedHours": 0,
+      "restHours": 50.34326990835528,
+      "idleHours": 24.154189183515033,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.6551043560546396,
+      "workRestRatio": 2.8107538736565822,
+      "initialMorale": 24,
+      "finalMorale": 21.392966997140622
+    },
+    {
+      "operatorId": "char_385_finlpp",
+      "operatorName": "清流",
+      "mainWorkHours": 176.4860062452006,
+      "substituteWorkHours": 0,
+      "workHours": 176.4860062452006,
+      "exhaustedHours": 0,
+      "restHours": 39.50941042084812,
+      "idleHours": 0.004583333333333333,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8170648437298228,
+      "workRestRatio": 4.466935961972072,
+      "initialMorale": 24,
+      "finalMorale": 23.592429038265173
+    },
+    {
+      "operatorId": "char_400_weedy",
+      "operatorName": "温蒂",
+      "mainWorkHours": 176.4860062452006,
+      "substituteWorkHours": 0,
+      "workHours": 176.4860062452006,
+      "exhaustedHours": 0,
+      "restHours": 39.50788264307034,
+      "idleHours": 0.006111111111111111,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.8170648437298228,
+      "workRestRatio": 4.467108699285259,
+      "initialMorale": 24,
+      "finalMorale": 23.592429038265173
+    },
+    {
+      "operatorId": "char_4032_provs",
+      "operatorName": "但书",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 20.183805555295073,
+      "workHours": 20.183805555295073,
+      "exhaustedHours": 0,
+      "restHours": 27.944677271176257,
+      "idleHours": 167.8715171728545,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.09344354423771076,
+      "workRestRatio": 0.7222772823400544,
+      "initialMorale": 24,
+      "finalMorale": 23.548588890446688
+    },
+    {
+      "operatorId": "char_486_takila",
+      "operatorName": "龙舌兰",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 8.595250000439044,
+      "workHours": 8.595250000439044,
+      "exhaustedHours": 0,
+      "restHours": 18.412511601595938,
+      "idleHours": 188.99223839735546,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.03979282407620615,
+      "workRestRatio": 0.46681572761067724,
+      "initialMorale": 24,
+      "finalMorale": 23.883751388818833
+    },
+    {
+      "operatorId": "char_4010_etlchi",
+      "operatorName": "隐德来希",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 43.97578753113976,
+      "idleHours": 172.0242124682349,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_1502_crosly",
+      "operatorName": "弑君者",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0.000694445,
+      "workHours": 0.000694445,
+      "exhaustedHours": 0,
+      "restHours": 2.1008619197143505,
+      "idleHours": 213.89844363474202,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0.0000032150231481561842,
+      "workRestRatio": 0.0003305524239757852,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_4019_ncdeer",
+      "operatorName": "九色鹿",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 215.9999999994601,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_1031_slent2",
+      "operatorName": "淬羽赫默",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 0,
+      "idleHours": 215.9999999994601,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": null,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_108_silent",
+      "operatorName": "赫默",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 121.39489467205584,
+      "idleHours": 94.60510532722479,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    },
+    {
+      "operatorId": "char_128_plosis",
+      "operatorName": "白面鸮",
+      "mainWorkHours": 0,
+      "substituteWorkHours": 0,
+      "workHours": 0,
+      "exhaustedHours": 0,
+      "restHours": 5.2938799969146535,
+      "idleHours": 210.7061200025405,
+      "permanentPrimaryOccupancyHours": 0,
+      "workFraction": 0,
+      "workRestRatio": 0,
+      "initialMorale": 24,
+      "finalMorale": 24
+    }
+  ],
+  "rooms": [
+    {
+      "roomId": "room_1_1",
+      "roomType": "trading",
+      "averageEfficiencyPercent": 210.50713336962707,
+      "efficiencyPercentHours": 45469.540807725796,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_4046_ebnhlz",
+            "char_4055_bgsnow",
+            "char_478_kirara"
+          ],
+          "hours": 165.88102229244126,
+          "fraction": 0.7679676958002587
+        },
+        {
+          "operatorIds": [
+            "char_4032_provs",
+            "char_4046_ebnhlz",
+            "char_486_takila"
+          ],
+          "hours": 6.631055556202707,
+          "fraction": 0.03069933127879297
+        },
+        {
+          "operatorIds": [
+            "char_103_angel",
+            "char_4193_lemuen",
+            "char_427_vigil"
+          ],
+          "hours": 41.52372770646828,
+          "fraction": 0.19223948012301884
+        },
+        {
+          "operatorIds": [
+            "char_4032_provs",
+            "char_427_vigil",
+            "char_486_takila"
+          ],
+          "hours": 1.9641944442368844,
+          "fraction": 0.009093492797415713
+        }
+      ]
+    },
+    {
+      "roomId": "room_1_2",
+      "roomType": "trading",
+      "averageEfficiencyPercent": 183.51973021713673,
+      "efficiencyPercentHours": 39640.26172680245,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_402_tuye"
+          ],
+          "hours": 162.7629945158445,
+          "fraction": 0.7535323820196821
+        },
+        {
+          "operatorIds": [
+            "char_4032_provs"
+          ],
+          "hours": 11.588555554861356,
+          "fraction": 0.05365072016152927
+        },
+        {
+          "operatorIds": [
+            "char_455_nothin"
+          ],
+          "hours": 41.6484499286304,
+          "fraction": 0.1928168978182153
+        }
+      ]
+    },
+    {
+      "roomId": "room_1_3",
+      "roomType": "power",
+      "averageEfficiencyPercent": 128.36564204601365,
+      "efficiencyPercentHours": 27726.97868186964,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_1027_greyy2"
+          ],
+          "hours": 176.48753402297848,
+          "fraction": 0.8170719167750908
+        },
+        {
+          "operatorIds": [
+            "char_249_mlyss"
+          ],
+          "hours": 39.51246597640367,
+          "fraction": 0.1829280832245483
+        }
+      ]
+    },
+    {
+      "roomId": "room_2_1",
+      "roomType": "manufacture",
+      "averageEfficiencyPercent": 256.2783899008239,
+      "efficiencyPercentHours": 55356.1322184396,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_243_waaifu",
+            "char_391_rosmon",
+            "char_446_aroma"
+          ],
+          "hours": 166.7032491334942,
+          "fraction": 0.7717743015458838
+        },
+        {
+          "operatorIds": [
+            "char_1039_thorn2",
+            "char_4106_bryota",
+            "char_446_aroma"
+          ],
+          "hours": 0.02847222964226754,
+          "fraction": 0.00013181587797379032
+        },
+        {
+          "operatorIds": [
+            "char_446_aroma"
+          ],
+          "hours": 0.004027777777777778,
+          "fraction": 0.000018647119341610395
+        },
+        {
+          "operatorIds": [
+            "char_218_cuttle",
+            "char_4145_ulpia",
+            "char_446_aroma"
+          ],
+          "hours": 42.00056823606797,
+          "fraction": 0.19444707516746737
+        },
+        {
+          "operatorIds": [
+            "char_243_waaifu",
+            "char_391_rosmon",
+            "char_4212_nasti"
+          ],
+          "hours": 5.2908244384135035,
+          "fraction": 0.024494557585308926
+        },
+        {
+          "operatorIds": [
+            "char_218_cuttle",
+            "char_4145_ulpia",
+            "char_4212_nasti"
+          ],
+          "hours": 1.972858183960001,
+          "fraction": 0.009133602703541353
+        }
+      ]
+    },
+    {
+      "roomId": "room_2_2",
+      "roomType": "manufacture",
+      "averageEfficiencyPercent": 180.1677976774468,
+      "efficiencyPercentHours": 38916.244298231235,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_4048_doroth",
+            "char_4212_nasti"
+          ],
+          "hours": 74.4630146475728,
+          "fraction": 0.34473617892480984
+        },
+        {
+          "operatorIds": [
+            "char_143_ghost",
+            "char_263_skadi"
+          ],
+          "hours": 141.536985351748,
+          "fraction": 0.6552638210745453
+        }
+      ]
+    },
+    {
+      "roomId": "room_2_3",
+      "roomType": "power",
+      "averageEfficiencyPercent": 104.57355573285074,
+      "efficiencyPercentHours": 22587.8880382393,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_285_medic2"
+          ],
+          "hours": 176.48447846742272,
+          "fraction": 0.8170577706845549
+        },
+        {
+          "operatorIds": [
+            "char_377_gdglow"
+          ],
+          "hours": 39.51552153195922,
+          "fraction": 0.1829422293150833
+        }
+      ]
+    },
+    {
+      "roomId": "room_3_1",
+      "roomType": "manufacture",
+      "averageEfficiencyPercent": 227.60049539044223,
+      "efficiencyPercentHours": 49161.70700421264,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_430_fartth",
+            "char_431_ashlok",
+            "char_496_wildmn"
+          ],
+          "hours": 178.38231306206376,
+          "fraction": 0.8258440419560631
+        },
+        {
+          "operatorIds": [
+            "char_1042_phatm2",
+            "char_159_peacok",
+            "char_241_panda"
+          ],
+          "hours": 0.15763894222223857,
+          "fraction": 0.000729809917697373
+        },
+        {
+          "operatorIds": [
+            "char_1042_phatm2",
+            "char_218_cuttle",
+            "char_4145_ulpia"
+          ],
+          "hours": 37.34299232321926,
+          "fraction": 0.17288422371903983
+        },
+        {
+          "operatorIds": [
+            "char_218_cuttle",
+            "char_4145_ulpia",
+            "char_431_ashlok"
+          ],
+          "hours": 0.11636122686570056,
+          "fraction": 0.0005387093836388492
+        },
+        {
+          "operatorIds": [
+            "char_1502_crosly",
+            "char_159_peacok",
+            "char_431_ashlok"
+          ],
+          "hours": 0.000694445,
+          "fraction": 0.0000032150231481561842
+        }
+      ]
+    },
+    {
+      "roomId": "room_3_2",
+      "roomType": "manufacture",
+      "averageEfficiencyPercent": 224.4209358623724,
+      "efficiencyPercentHours": 48474.92214615127,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_1039_thorn2",
+            "char_237_gravel",
+            "char_4106_bryota"
+          ],
+          "hours": 155.27254022003262,
+          "fraction": 0.7188543528723182
+        },
+        {
+          "operatorIds": [
+            "char_218_cuttle",
+            "char_237_gravel",
+            "char_4145_ulpia"
+          ],
+          "hours": 60.06920538071173,
+          "fraction": 0.2780981730595457
+        },
+        {
+          "operatorIds": [
+            "char_237_gravel"
+          ],
+          "hours": 0.05583333318866571,
+          "fraction": 0.00025848765365187623
+        },
+        {
+          "operatorIds": [
+            "char_237_gravel",
+            "char_430_fartth",
+            "char_496_wildmn"
+          ],
+          "hours": 0.09066678283657646,
+          "fraction": 0.00041975362424445873
+        },
+        {
+          "operatorIds": [
+            "char_1039_thorn2",
+            "char_4106_bryota"
+          ],
+          "hours": 0.0023611158333333333,
+          "fraction": 0.000010931091821014977
+        },
+        {
+          "operatorIds": [
+            "char_237_gravel",
+            "char_243_waaifu",
+            "char_391_rosmon"
+          ],
+          "hours": 0.5088376100756049,
+          "fraction": 0.002355729676281837
+        },
+        {
+          "operatorIds": [
+            "char_218_cuttle",
+            "char_4145_ulpia"
+          ],
+          "hours": 0.0005555566666666667,
+          "fraction": 0.0000025720216049447006
+        }
+      ]
+    },
+    {
+      "roomId": "room_3_3",
+      "roomType": "manufacture",
+      "averageEfficiencyPercent": 210.20218584995376,
+      "efficiencyPercentHours": 45403.67214347653,
+      "occupiedHours": 215.9999999994601,
+      "teams": [
+        {
+          "operatorIds": [
+            "char_385_finlpp",
+            "char_400_weedy"
+          ],
+          "hours": 176.4860062452006,
+          "fraction": 0.8170648437298228
+        },
+        {
+          "operatorIds": [
+            "char_4048_doroth",
+            "char_4212_nasti"
+          ],
+          "hours": 39.51399375418145,
+          "fraction": 0.18293515626981582
+        }
+      ]
+    }
+  ],
+  "production": {
+    "success": true,
+    "ledger": {
+      "initial": {
+        "gold": 0,
+        "fragment": 0,
+        "drone": 0,
+        "lmd": 0,
+        "exp": 0,
+        "orundum": 0,
+        "orirock": 0,
+        "device": 0
+      },
+      "balances": {
+        "gold": 2776,
+        "fragment": 0,
+        "drone": 116.68765130612205,
+        "lmd": 1152000,
+        "exp": 372000,
+        "orundum": 0,
+        "orirock": 0,
+        "device": 0
+      },
+      "inflows": {
+        "drone": 5153.687651309078,
+        "gold": 2776,
+        "fragment": 0,
+        "lmd": 1152000,
+        "orundum": 0,
+        "exp": 372000
+      },
+      "outflows": {
+        "drone": 5037
+      }
+    },
+    "sample": {
+      "completed": {
+        "exp": 211000,
+        "gold": 1567,
+        "orderLmd": 653000
+      },
+      "opening": {
+        "gold": 1210,
+        "fragment": 0,
+        "drone": 104.2009792908187,
+        "lmd": 499000,
+        "exp": 162000,
+        "orundum": 0,
+        "orirock": 0,
+        "device": 0
+      },
+      "closing": {
+        "gold": 2776,
+        "fragment": 0,
+        "drone": 116.68765130612205,
+        "lmd": 1152000,
+        "exp": 372000,
+        "orundum": 0,
+        "orirock": 0,
+        "device": 0
+      },
+      "inflows": {
+        "gold": 1566,
+        "lmd": 653000,
+        "exp": 210000,
+        "fragment": 0,
+        "orundum": 0,
+        "drone": 2871.4866720176465,
+        "orirock": 0,
+        "device": 0
+      },
+      "outflows": {
+        "gold": 0,
+        "lmd": 0,
+        "exp": 0,
+        "fragment": 0,
+        "orundum": 0,
+        "drone": 2859,
+        "orirock": 0,
+        "device": 0
+      },
+      "net": {
+        "gold": 1566,
+        "lmd": 653000,
+        "exp": 210000,
+        "fragment": 0,
+        "orundum": 0,
+        "drone": 12.486672015303355,
+        "orirock": 0,
+        "device": 0
+      }
+    },
+    "materialsConsumed": {
+      "gold": 2257,
+      "fragment": 0
+    },
+    "drones": {
+      "capacity": 235,
+      "initial": 0,
+      "stock": 116.68765130612205,
+      "generated": 5153.687651308495,
+      "overflow": 0,
+      "consumed": 5037
+    },
+    "assumptions": {
+      "outputMode": "potential",
+      "inventoryMode": "unlimited",
+      "seed": 42,
+      "runOrderMode": "ideal",
+      "runOrderLeadSeconds": 0,
+      "droneTarget": "exp",
+      "droneReserve": 0,
+      "collectionIntervalHours": 0,
+      "orderSnapshotPolicy": "acquisition-start-v1: basic draw/workload at start; special conversion at completion; payment at collection; simultaneous facilities use schedule order"
+    },
+    "manufacturing": [
+      {
+        "roomId": "room_2_1",
+        "product": "gold",
+        "completedItems": 816,
+        "pendingItems": 1,
+        "remainingBaseMinutes": 19.850376472984944,
+        "blockedHours": 0,
+        "blockedMaterialHours": 0
+      },
+      {
+        "roomId": "room_2_2",
+        "product": "gold",
+        "completedItems": 577,
+        "pendingItems": 0,
+        "remainingBaseMinutes": 8.503842254138581,
+        "blockedHours": 0,
+        "blockedMaterialHours": 0
+      },
+      {
+        "roomId": "room_3_1",
+        "product": "exp",
+        "completedItems": 373,
+        "pendingItems": 1,
+        "remainingBaseMinutes": 160.65982977391045,
+        "blockedHours": 0,
+        "blockedMaterialHours": 0
+      },
+      {
+        "roomId": "room_3_2",
+        "product": "gold",
+        "completedItems": 718,
+        "pendingItems": 1,
+        "remainingBaseMinutes": 36.29451952671536,
+        "blockedHours": 0,
+        "blockedMaterialHours": 0
+      },
+      {
+        "roomId": "room_3_3",
+        "product": "gold",
+        "completedItems": 668,
+        "pendingItems": 1,
+        "remainingBaseMinutes": 34.223417960681296,
+        "blockedHours": 0,
+        "blockedMaterialHours": 0
+      }
+    ],
+    "trading": [
+      {
+        "roomId": "room_1_1",
+        "completedOrders": 239,
+        "collectedOrders": 239,
+        "pendingOrders": [],
+        "remainingBaseMinutes": 78.76480885810345,
+        "blockedHours": 0
+      },
+      {
+        "roomId": "room_1_2",
+        "completedOrders": 296,
+        "collectedOrders": 296,
+        "pendingOrders": [],
+        "remainingBaseMinutes": 61.162929883227854,
+        "blockedHours": 0
+      }
+    ]
+  },
+  "shiftDeferrals": [
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 8.683085533477993,
+      "resolvedAt": 9.048327326388899
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 20.65860410266986,
+      "resolvedAt": 24.329270725007895
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 32.165732537777835,
+      "resolvedAt": 35.9610570241521
+    },
+    {
+      "key": "slot:meeting_1",
+      "operatorIds": [
+        "char_134_ifrit"
+      ],
+      "blockedAt": 32.165732537777835,
+      "resolvedAt": 75.52841561553544
+    },
+    {
+      "key": "slot:meeting_0",
+      "operatorIds": [
+        "char_202_demkni"
+      ],
+      "blockedAt": 32.165732537777835,
+      "resolvedAt": 75.11549045934618
+    },
+    {
+      "key": "group:感知",
+      "operatorIds": [
+        "char_2023_ling",
+        "char_436_whispr",
+        "char_4046_ebnhlz",
+        "char_478_kirara",
+        "char_4055_bgsnow",
+        "char_402_tuye",
+        "char_243_waaifu",
+        "char_391_rosmon"
+      ],
+      "blockedAt": 35.96008480165208
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 35.99702389887437,
+      "resolvedAt": 38.362426307087155
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 44.31279328608513,
+      "resolvedAt": 47.18998876526279
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 64.96808801499023,
+      "resolvedAt": 65.76187199194433
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 64.96808801499023,
+      "resolvedAt": 65.75923310055552
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 69.52598204472105,
+      "resolvedAt": 69.86551408498181
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 75.08232379212399,
+      "resolvedAt": 76.31145259189815
+    },
+    {
+      "key": "group:自动化",
+      "operatorIds": [
+        "char_416_zumama",
+        "char_1027_greyy2",
+        "char_385_finlpp",
+        "char_400_weedy"
+      ],
+      "blockedAt": 76.16318681221705
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 96.42211855885267,
+      "resolvedAt": 97.00414379349236
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 114.60500153514678,
+      "resolvedAt": 116.04527991847175
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 116.04277991791626,
+      "resolvedAt": 126.48417522748974
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 152.72546598083343,
+      "resolvedAt": 154.08018230027784
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 166.42406150309785,
+      "resolvedAt": 166.5991276271533
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 177.67843407166677,
+      "resolvedAt": 178.70130823208942
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 183.69142671665222,
+      "resolvedAt": 184.6792060385813
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 184.67670603802563,
+      "resolvedAt": 188.74119825689687
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 194.27860526972236,
+      "resolvedAt": 195.05071345846284
+    },
+    {
+      "key": "slot:meeting_1",
+      "operatorIds": [
+        "char_134_ifrit"
+      ],
+      "blockedAt": 194.27860526972236,
+      "resolvedAt": 195.90648434266006
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 209.63208910555568,
+      "resolvedAt": 212.67341623805564
+    },
+    {
+      "key": "slot:meeting_0",
+      "operatorIds": [
+        "char_202_demkni"
+      ],
+      "blockedAt": 209.63208910555568,
+      "resolvedAt": 223.17765424578664
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 212.7302095703274,
+      "resolvedAt": 219.53940345215895
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 228.91726517109586,
+      "resolvedAt": 232.14526737191534
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 232.27159370305554,
+      "resolvedAt": 244.90104797270342
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 255.91134057706688,
+      "resolvedAt": 256.6185813277359
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 261.2955785011113,
+      "resolvedAt": 262.4457956588392
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 262.44329565828343,
+      "resolvedAt": 264.10685658704233
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 264.10616214232004,
+      "resolvedAt": 266.2146042239363
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 274.4277934425002,
+      "resolvedAt": 283.1783279181241
+    },
+    {
+      "key": "slot:meeting_0",
+      "operatorIds": [
+        "char_202_demkni"
+      ],
+      "blockedAt": 282.00099651272177
+    },
+    {
+      "key": "slot:meeting_1",
+      "operatorIds": [
+        "char_134_ifrit"
+      ],
+      "blockedAt": 282.00099651272177
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 299.4814422377013,
+      "resolvedAt": 300.61731867899897
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 301.1878101019248,
+      "resolvedAt": 301.7200798571972
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 329.2113923466669,
+      "resolvedAt": 332.796417102695
+    },
+    {
+      "key": "group:红松",
+      "operatorIds": [
+        "char_420_flamtl",
+        "char_4098_vvana",
+        "char_431_ashlok",
+        "char_496_wildmn",
+        "char_430_fartth"
+      ],
+      "blockedAt": 329.2113923466669,
+      "resolvedAt": 329.6164685757144
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 339.12540471384483,
+      "resolvedAt": 339.56881181111123
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 346.71836460598524,
+      "resolvedAt": 373.09318180000633
+    },
+    {
+      "key": "group:深海",
+      "operatorIds": [
+        "char_474_glady",
+        "char_263_skadi",
+        "char_143_ghost",
+        "char_4145_ulpia",
+        "char_218_cuttle"
+      ],
+      "blockedAt": 380.01617121698007,
+      "resolvedAt": 383.4190256111114
+    }
+  ],
+  "audit": {
+    "violationCounts": {},
+    "violations": [],
+    "segmentCount": 84818,
+    "maxDormOccupants": 20,
+    "backupActivations": {
+      "1": 191,
+      "2": 11,
+      "3": 22,
+      "4": 190,
+      "5": 0,
+      "6": 11,
+      "7": 32,
+      "8": 5,
+      "9": 22
+    },
+    "fiammettaTargets": {
+      "char_474_glady": 17,
+      "char_237_gravel": 21,
+      "char_446_aroma": 6
+    },
+    "ordinaryZeroMoraleEntries": [],
+    "ordinaryZeroMoraleEpisodes": [],
+    "zeroMoraleProductionEntries": [
+      {
+        "time": 182.32776590625775,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 207.71028736043738,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 226.68074978444446,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 244.8997979721478,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 260.04022528250005,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 277.6168310141667,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 292.12361974353354,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 327.5848671161111,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 346.7201701620965,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 364.6688021986111,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      },
+      {
+        "time": 383.41763672138904,
+        "operator": "char_285_medic2",
+        "slot": "room_2_3_0",
+        "morale": 0
+      }
+    ],
+    "productionExhaustedEpisodes": [
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 168,
+        "end": 179.44688707305534
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 182.32776590625775,
+        "end": 203.0895653061112
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 207.71028736043738,
+        "end": 223.17779313550884
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 226.68074978444446,
+        "end": 241.6363077697091
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 244.8997979721478,
+        "end": 257.2669593514915
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 260.04022528250005,
+        "end": 274.427793442778
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 277.6168310141667,
+        "end": 289.41532731321513
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 292.12361974353354,
+        "end": 321.15937133388917
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 327.5848671161111,
+        "end": 343.1856770116125
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 346.7201701620965,
+        "end": 361.4533787750002
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 364.6688021986111,
+        "end": 380.01617121725786
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 383.41763672138904,
+        "end": 384
+      }
+    ],
+    "longestExhaustedEpisodes": [
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 292.12361974353354,
+        "end": 321.15937133388917
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 182.32776590625775,
+        "end": 203.0895653061112
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 327.5848671161111,
+        "end": 343.1856770116125
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 207.71028736043738,
+        "end": 223.17779313550884
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 364.6688021986111,
+        "end": 380.01617121725786
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 226.68074978444446,
+        "end": 241.6363077697091
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 346.7201701620965,
+        "end": 361.4533787750002
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 260.04022528250005,
+        "end": 274.427793442778
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 244.8997979721478,
+        "end": 257.2669593514915
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 277.6168310141667,
+        "end": 289.41532731321513
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 168,
+        "end": 179.44688707305534
+      },
+      {
+        "operator": "char_474_glady",
+        "room": "central_1",
+        "start": 381.74441422442663,
+        "end": 383.4180533888891
+      },
+      {
+        "operator": "char_285_medic2",
+        "room": "room_2_3_0",
+        "start": 383.41763672138904,
+        "end": 384
+      }
+    ],
+    "daily": {
+      "0": {
+        "exp": 25000,
+        "gold": 174,
+        "orderLmd": 71500,
+        "tequila": 2000,
+        "occupancy": {
+          "char_431_ashlok": 17.622400791341278,
+          "char_496_wildmn": 17.62226190245238,
+          "char_430_fartth": 17.62226190245238,
+          "char_202_demkni": 16.852474197518433,
+          "char_134_ifrit": 19.263777914156805,
+          "char_4164_tecno": 19.784034281550134,
+          "char_436_whispr": 19.78292317043895,
+          "char_4041_chnut": 19.783756503772338,
+          "char_151_myrtle": 19.783756503772338,
+          "char_243_waaifu": 19.781534281549966,
+          "char_391_rosmon": 19.781534281549966,
+          "char_446_aroma": 22.341084355135678,
+          "char_4046_ebnhlz": 19.782506503772254,
+          "char_478_kirara": 19.049645392432097,
+          "char_4055_bgsnow": 19.049645392432097,
+          "char_1027_greyy2": 21.11939894457538,
+          "char_285_medic2": 21.119121166797584,
+          "char_385_finlpp": 21.119260055686482,
+          "char_400_weedy": 21.119260055686482,
+          "char_2023_ling": 19.783756503772338,
+          "char_2015_dusk": 14.319562371334825,
+          "char_416_zumama": 21.119815611242075,
+          "char_420_flamtl": 17.62226190245238,
+          "char_4098_vvana": 17.62226190245238,
+          "char_4048_doroth": 10.104013319503139,
+          "char_4212_nasti": 11.762928964367461,
+          "char_237_gravel": 23.999722221666673,
+          "char_4106_bryota": 17.817949412853864,
+          "char_1039_thorn2": 17.817949412853864,
+          "char_402_tuye": 18.714700948174823,
+          "char_4032_provs": 2.1961388890729268,
+          "char_486_takila": 0.9297222223231927,
+          "char_474_glady": 16.776865513650762,
+          "char_263_skadi": 16.77672662481038,
+          "char_143_ghost": 16.77672662481038,
+          "char_4145_ulpia": 16.775754402588092,
+          "char_218_cuttle": 16.775754402588092,
+          "char_308_swire": 6.3777380975476206,
+          "char_1044_hsgma2": 6.3777380975476206,
+          "char_1042_phatm2": 6.377599208658722,
+          "char_159_peacok": 0.0013888894445130973,
+          "char_241_panda": 0.0013888894445130973,
+          "char_4036_forcer": 7.147525802481567,
+          "char_010_chen": 4.736222085843195,
+          "char_473_mberry": 4.2170768295610515,
+          "char_427_vigil": 4.217493496227746,
+          "char_103_angel": 4.02063238524471,
+          "char_4193_lemuen": 4.02063238524471,
+          "char_455_nothin": 4.018882385075443,
+          "char_2024_chyue": 4.216243496227662,
+          "char_2014_nian": 4.215965718449866,
+          "char_2026_yu": 4.216243496227662,
+          "char_377_gdglow": 2.8808788332024164,
+          "char_249_mlyss": 2.88060105542462
+        },
+        "exhausted": {
+          "char_285_medic2": 21.119121166797584
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.28993820121173,
+          "room_1_2": 185.15024675298534,
+          "room_1_3": 128.23989383792485,
+          "room_2_1": 258.60545350961183,
+          "room_2_2": 181.28821354950628,
+          "room_2_3": 103.00091545124046,
+          "room_3_1": 226.8726058186683,
+          "room_3_2": 224.67346283614296,
+          "room_3_3": 212.99554999389056
+        }
+      },
+      "1": {
+        "exp": 23000,
+        "gold": 176,
+        "orderLmd": 73000,
+        "tequila": 1000,
+        "occupancy": {
+          "char_1027_greyy2": 19.37955572345163,
+          "char_285_medic2": 19.379277945673834,
+          "char_385_finlpp": 19.379416834562733,
+          "char_400_weedy": 19.379416834562733,
+          "char_4164_tecno": 18.584319264682904,
+          "char_436_whispr": 18.58154148690494,
+          "char_4041_chnut": 18.584041486905107,
+          "char_151_myrtle": 18.584041486905107,
+          "char_263_skadi": 14.709404983596528,
+          "char_143_ghost": 14.709404983596528,
+          "char_2023_ling": 18.58390259801621,
+          "char_474_glady": 14.709266094429864,
+          "char_416_zumama": 19.379972390118326,
+          "char_308_swire": 3.6289662346188436,
+          "char_1044_hsgma2": 3.6289662346188436,
+          "char_1042_phatm2": 3.678271790295895,
+          "char_4145_ulpia": 14.683432761517253,
+          "char_218_cuttle": 14.683432761517253,
+          "char_237_gravel": 23.999722221666673,
+          "char_4106_bryota": 18.240797492704786,
+          "char_1039_thorn2": 18.240797492704786,
+          "char_202_demkni": 20.379816751271107,
+          "char_134_ifrit": 17.63572325544129,
+          "char_402_tuye": 17.501180375892545,
+          "char_4046_ebnhlz": 18.58140259801604,
+          "char_478_kirara": 17.89529148728556,
+          "char_4055_bgsnow": 17.89529148728556,
+          "char_243_waaifu": 18.58056926468265,
+          "char_391_rosmon": 18.58056926468265,
+          "char_446_aroma": 24,
+          "char_4032_provs": 2.2277222218217787,
+          "char_420_flamtl": 20.371033765381156,
+          "char_4098_vvana": 20.371033765381156,
+          "char_431_ashlok": 20.321728209704105,
+          "char_496_wildmn": 20.297005987339986,
+          "char_430_fartth": 20.297005987339986,
+          "char_473_mberry": 5.418458513095061,
+          "char_455_nothin": 5.219986290966688,
+          "char_427_vigil": 5.418597401983959,
+          "char_103_angel": 5.155819624033427,
+          "char_4193_lemuen": 5.155819624033427,
+          "char_2024_chyue": 5.416097401983791,
+          "char_2014_nian": 5.415680735317096,
+          "char_2015_dusk": 19.32658113938004,
+          "char_2026_yu": 5.415958513094893,
+          "char_486_takila": 0.9488888886810116,
+          "char_4048_doroth": 13.91117818184074,
+          "char_4212_nasti": 13.91117818184074,
+          "char_010_chen": 6.364276744558708,
+          "char_377_gdglow": 4.620722054326166,
+          "char_249_mlyss": 4.620444276548369,
+          "char_4036_forcer": 3.6201832487288925,
+          "char_159_peacok": 0.14763893834106057,
+          "char_241_panda": 0.14763893834106057
+        },
+        "exhausted": {
+          "char_285_medic2": 19.379277945673834
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.99830340513628,
+          "room_1_2": 182.66200435879202,
+          "room_1_3": 128.38486341187755,
+          "room_2_1": 255.05561804483236,
+          "room_2_2": 180.47275028905491,
+          "room_2_3": 104.81325213990311,
+          "room_3_1": 227.6884105229211,
+          "room_3_2": 224.8620641673001,
+          "room_3_3": 209.75221480916292
+        }
+      },
+      "2": {
+        "exp": 23000,
+        "gold": 170,
+        "orderLmd": 73500,
+        "tequila": 500,
+        "occupancy": {
+          "char_1027_greyy2": 20.497321128842174,
+          "char_285_medic2": 20.497043351064377,
+          "char_385_finlpp": 20.497182239953275,
+          "char_400_weedy": 20.497182239953275,
+          "char_431_ashlok": 20.773942245569458,
+          "char_496_wildmn": 20.77380335668056,
+          "char_430_fartth": 20.77380335668056,
+          "char_263_skadi": 13.492587112731968,
+          "char_143_ghost": 13.492587112731968,
+          "char_455_nothin": 4.273588102421485,
+          "char_473_mberry": 4.471310324706849,
+          "char_2024_chyue": 4.4693658802622735,
+          "char_474_glady": 13.492448223565304,
+          "char_416_zumama": 20.49773779550887,
+          "char_420_flamtl": 20.774220023347254,
+          "char_4098_vvana": 20.774220023347254,
+          "char_427_vigil": 4.471171435817951,
+          "char_103_angel": 4.27408810266968,
+          "char_4193_lemuen": 4.27408810266968,
+          "char_2014_nian": 4.469088102484477,
+          "char_2015_dusk": 18.479179860910335,
+          "char_2026_yu": 4.469504769151172,
+          "char_237_gravel": 23.999722221666673,
+          "char_4106_bryota": 18.205058743905454,
+          "char_1039_thorn2": 18.205058743905454,
+          "char_202_demkni": 19.191192125976528,
+          "char_134_ifrit": 20.273562260363775,
+          "char_4145_ulpia": 13.49161489050968,
+          "char_218_cuttle": 13.49161489050968,
+          "char_446_aroma": 23.128302233229846,
+          "char_4032_provs": 2.273500000134419,
+          "char_486_takila": 0.9881944445198201,
+          "char_2023_ling": 19.530634119737726,
+          "char_4164_tecno": 19.530911897515523,
+          "char_436_whispr": 19.52868967529315,
+          "char_4041_chnut": 19.530495230848828,
+          "char_151_myrtle": 19.530495230848828,
+          "char_4046_ebnhlz": 19.52882856418205,
+          "char_478_kirara": 18.7377174528105,
+          "char_4055_bgsnow": 18.7377174528105,
+          "char_402_tuye": 18.441106341963916,
+          "char_391_rosmon": 19.527578564181965,
+          "char_243_waaifu": 19.527578564181965,
+          "char_4048_doroth": 14.010230647314756,
+          "char_4212_nasti": 14.88192841408491,
+          "char_4036_forcer": 4.808807874023472,
+          "char_377_gdglow": 3.5029566489356228,
+          "char_249_mlyss": 3.5026788711578263,
+          "char_1042_phatm2": 3.226057754430542,
+          "char_159_peacok": 0.0008333336111547851,
+          "char_241_panda": 0.0008333336111547851,
+          "char_308_swire": 3.2257799766527455,
+          "char_1044_hsgma2": 3.2257799766527455,
+          "char_010_chen": 3.726437739636225
+        },
+        "exhausted": {
+          "char_285_medic2": 20.497043351064377
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.21563424451773,
+          "room_1_2": 183.6369161391986,
+          "room_1_3": 128.29166421140275,
+          "room_2_1": 255.9041992738754,
+          "room_2_2": 180.21042814452866,
+          "room_2_3": 103.64891317595804,
+          "room_3_1": 227.92414972962203,
+          "room_3_2": 225.21743610711093,
+          "room_3_3": 211.56474150807944
+        }
+      },
+      "3": {
+        "exp": 23000,
+        "gold": 177,
+        "orderLmd": 73000,
+        "tequila": 1500,
+        "occupancy": {
+          "char_1027_greyy2": 17.963799422108337,
+          "char_285_medic2": 17.963243866552745,
+          "char_385_finlpp": 17.96352164433054,
+          "char_400_weedy": 17.96352164433054,
+          "char_431_ashlok": 21.262525286965314,
+          "char_496_wildmn": 21.262247509187517,
+          "char_430_fartth": 21.262247509187517,
+          "char_263_skadi": 17.921881771154546,
+          "char_143_ghost": 17.921881771154546,
+          "char_202_demkni": 20.428394353139538,
+          "char_134_ifrit": 21.121716508252433,
+          "char_4145_ulpia": 17.92077066004336,
+          "char_218_cuttle": 17.92077066004336,
+          "char_446_aroma": 24,
+          "char_455_nothin": 5.26688915623447,
+          "char_473_mberry": 5.530778045024022,
+          "char_237_gravel": 23.99958333249998,
+          "char_4106_bryota": 14.348176541904309,
+          "char_1039_thorn2": 14.348176541904309,
+          "char_2024_chyue": 5.529805822801734,
+          "char_474_glady": 17.92160399337675,
+          "char_416_zumama": 17.964632755441727,
+          "char_420_flamtl": 21.262525286965314,
+          "char_4098_vvana": 21.262525286965314,
+          "char_2014_nian": 5.529250267246141,
+          "char_2015_dusk": 17.643707962872156,
+          "char_2026_yu": 5.529944711690632,
+          "char_427_vigil": 5.532305822801902,
+          "char_103_angel": 5.269528045278264,
+          "char_4193_lemuen": 5.269528045278264,
+          "char_4032_provs": 2.279999999524648,
+          "char_486_takila": 0.9328611105075595,
+          "char_2023_ling": 18.470194177198266,
+          "char_4164_tecno": 18.47074973275386,
+          "char_436_whispr": 18.46922195497598,
+          "char_4041_chnut": 18.470055288309368,
+          "char_151_myrtle": 18.470055288309368,
+          "char_4046_ebnhlz": 18.467694177198098,
+          "char_478_kirara": 17.797610844214176,
+          "char_4055_bgsnow": 17.797610844214176,
+          "char_402_tuye": 17.38597195474844,
+          "char_391_rosmon": 18.466166399420217,
+          "char_243_waaifu": 18.466166399420217,
+          "char_377_gdglow": 6.0367561334472555,
+          "char_249_mlyss": 6.0362005778916625,
+          "char_4048_doroth": 12.114596584514914,
+          "char_4212_nasti": 12.114596584514914,
+          "char_4036_forcer": 3.571605646860462,
+          "char_308_swire": 2.737474713034686,
+          "char_1044_hsgma2": 2.737474713034686,
+          "char_1042_phatm2": 2.737474713034686,
+          "char_159_peacok": 0.0013888894445130973,
+          "char_241_panda": 0.0013888894445130973,
+          "char_010_chen": 2.878283491747567
+        },
+        "exhausted": {
+          "char_285_medic2": 17.963243866552745
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.5153808595787,
+          "room_1_2": 182.10288575360127,
+          "room_1_3": 128.50268685361195,
+          "room_2_1": 257.9448362247517,
+          "room_2_2": 181.0710023006031,
+          "room_2_3": 106.2882876390038,
+          "room_3_1": 228.0861774099334,
+          "room_3_2": 225.13640393162726,
+          "room_3_3": 207.28051902411724
+        }
+      },
+      "4": {
+        "exp": 23000,
+        "gold": 173,
+        "orderLmd": 72500,
+        "tequila": 1000,
+        "occupancy": {
+          "char_431_ashlok": 17.863797115443845,
+          "char_496_wildmn": 17.863658226554946,
+          "char_430_fartth": 17.863658226554946,
+          "char_202_demkni": 20.934980274722648,
+          "char_134_ifrit": 20.798109790562137,
+          "char_1027_greyy2": 20.81124020638913,
+          "char_285_medic2": 20.810962428611333,
+          "char_385_finlpp": 20.81110131750023,
+          "char_400_weedy": 20.81110131750023,
+          "char_4164_tecno": 19.841496520057376,
+          "char_436_whispr": 19.839413186723903,
+          "char_4041_chnut": 19.84107985339068,
+          "char_151_myrtle": 19.84107985339068,
+          "char_243_waaifu": 19.837885408946022,
+          "char_391_rosmon": 19.837885408946022,
+          "char_446_aroma": 22.685608085930824,
+          "char_2023_ling": 19.841496520057376,
+          "char_2015_dusk": 15.699860137214841,
+          "char_416_zumama": 20.811656873055824,
+          "char_420_flamtl": 17.863936004332743,
+          "char_4098_vvana": 17.863936004332743,
+          "char_4048_doroth": 11.541495546161116,
+          "char_4212_nasti": 12.855887460230292,
+          "char_237_gravel": 23.999583332499924,
+          "char_4106_bryota": 18.649803227604707,
+          "char_1039_thorn2": 18.649803227604707,
+          "char_4046_ebnhlz": 19.83885763116831,
+          "char_478_kirara": 19.107413186679594,
+          "char_4055_bgsnow": 19.107413186679594,
+          "char_402_tuye": 18.825718742684444,
+          "char_474_glady": 15.647264247171961,
+          "char_263_skadi": 15.647403136338653,
+          "char_143_ghost": 15.647403136338653,
+          "char_4145_ulpia": 15.646292025227467,
+          "char_218_cuttle": 15.646292025227467,
+          "char_1042_phatm2": 6.136202884556155,
+          "char_159_peacok": 0.0013888894445699407,
+          "char_241_panda": 0.0013888894445699407,
+          "char_308_swire": 6.136063995667257,
+          "char_1044_hsgma2": 6.136063995667257,
+          "char_4032_provs": 2.2071388884341445,
+          "char_486_takila": 0.994000000014637,
+          "char_4036_forcer": 3.0650197252773523,
+          "char_010_chen": 3.201890209437863,
+          "char_473_mberry": 4.1605868132760975,
+          "char_455_nothin": 3.9611423688960485,
+          "char_427_vigil": 4.16114236883169,
+          "char_103_angel": 3.8985868133057693,
+          "char_4193_lemuen": 3.8985868133057693,
+          "char_2024_chyue": 4.158503479942624,
+          "char_2014_nian": 4.158503479942624,
+          "char_2026_yu": 4.158920146609319,
+          "char_377_gdglow": 3.189037571388667,
+          "char_249_mlyss": 3.1887597936108705
+        },
+        "exhausted": {
+          "char_285_medic2": 20.810962428611333
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.163813021596,
+          "room_1_2": 185.37690248102678,
+          "room_1_3": 128.26555637162792,
+          "room_2_1": 255.19618945862885,
+          "room_2_2": 181.0230410593166,
+          "room_2_3": 103.32191413685503,
+          "room_3_1": 226.9531522779588,
+          "room_3_2": 224.89583983347617,
+          "room_3_3": 212.45174283418564
+        }
+      },
+      "5": {
+        "exp": 24000,
+        "gold": 175,
+        "orderLmd": 75000,
+        "tequila": 1000,
+        "occupancy": {
+          "char_202_demkni": 17.899202377588495,
+          "char_134_ifrit": 17.824537054688847,
+          "char_1027_greyy2": 21.291985347459388,
+          "char_285_medic2": 21.29170756968159,
+          "char_385_finlpp": 21.29184645857049,
+          "char_400_weedy": 21.29184645857049,
+          "char_263_skadi": 14.148687068268828,
+          "char_143_ghost": 14.148687068268828,
+          "char_4164_tecno": 18.646979342669567,
+          "char_436_whispr": 18.6444793426694,
+          "char_4041_chnut": 18.646423787113974,
+          "char_151_myrtle": 18.646423787113974,
+          "char_243_waaifu": 18.642257120447027,
+          "char_391_rosmon": 18.642257120447027,
+          "char_446_aroma": 23.467730244449797,
+          "char_1042_phatm2": 3.2937674861107666,
+          "char_4145_ulpia": 14.14771484604654,
+          "char_218_cuttle": 14.14771484604654,
+          "char_237_gravel": 23.999861110833308,
+          "char_4106_bryota": 18.501156630172545,
+          "char_1039_thorn2": 18.501156630172545,
+          "char_402_tuye": 17.511257119850825,
+          "char_2023_ling": 18.64670156489177,
+          "char_474_glady": 14.148687068268828,
+          "char_416_zumama": 21.292402014126083,
+          "char_308_swire": 3.2932119305551737,
+          "char_1044_hsgma2": 3.2932119305551737,
+          "char_4046_ebnhlz": 18.64295156489152,
+          "char_478_kirara": 17.850979342597668,
+          "char_4055_bgsnow": 17.850979342597668,
+          "char_4032_provs": 2.3213611116900665,
+          "char_420_flamtl": 20.706788069444826,
+          "char_4098_vvana": 20.706788069444826,
+          "char_431_ashlok": 20.706232513889233,
+          "char_496_wildmn": 20.705954736111437,
+          "char_430_fartth": 20.705954736111437,
+          "char_4036_forcer": 6.1007976224115055,
+          "char_010_chen": 6.175462945311153,
+          "char_486_takila": 0.9888333335021002,
+          "char_377_gdglow": 2.7082924303184086,
+          "char_249_mlyss": 2.708014652540612,
+          "char_4048_doroth": 12.559466473160683,
+          "char_4212_nasti": 13.091736228710886,
+          "char_2015_dusk": 17.912487130491115,
+          "char_473_mberry": 5.355520657330601,
+          "char_455_nothin": 5.156215101961209,
+          "char_427_vigil": 5.3570484351084815,
+          "char_103_angel": 5.160187323900232,
+          "char_4193_lemuen": 5.160187323900232,
+          "char_2024_chyue": 5.353298435108229,
+          "char_2014_nian": 5.353020657330433,
+          "char_2026_yu": 5.353576212886026,
+          "char_159_peacok": 0.0016666672223664136,
+          "char_241_panda": 0.0016666672223664136
+        },
+        "exhausted": {
+          "char_285_medic2": 21.29170756968159
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.47095834674187,
+          "room_1_2": 182.17730714864874,
+          "room_1_3": 128.2254942765831,
+          "room_2_1": 253.90379442862252,
+          "room_2_2": 180.35531314905512,
+          "room_2_3": 102.82113794823398,
+          "room_3_1": 227.90112843000125,
+          "room_3_2": 225.3502646571588,
+          "room_3_3": 212.89761086668233
+        }
+      },
+      "6": {
+        "exp": 23000,
+        "gold": 178,
+        "orderLmd": 72500,
+        "tequila": 500,
+        "occupancy": {
+          "char_1027_greyy2": 17.57478199555584,
+          "char_285_medic2": 17.574504217778042,
+          "char_385_finlpp": 17.57464310666694,
+          "char_400_weedy": 17.57464310666694,
+          "char_263_skadi": 15.284352402139518,
+          "char_143_ghost": 15.284352402139518,
+          "char_202_demkni": 17.443978474639323,
+          "char_134_ifrit": 17.419039200194902,
+          "char_4164_tecno": 19.941964689722624,
+          "char_436_whispr": 19.940436911944744,
+          "char_4041_chnut": 19.94154802305593,
+          "char_151_myrtle": 19.94154802305593,
+          "char_243_waaifu": 19.93835357861127,
+          "char_391_rosmon": 19.93835357861127,
+          "char_446_aroma": 24,
+          "char_2023_ling": 19.941131356389235,
+          "char_474_glady": 15.283935734639442,
+          "char_416_zumama": 17.575198662222533,
+          "char_308_swire": 4.278181313369259,
+          "char_1044_hsgma2": 4.278181313369259,
+          "char_1042_phatm2": 4.278597980035954,
+          "char_4145_ulpia": 15.283519068806129,
+          "char_218_cuttle": 15.283519068806129,
+          "char_237_gravel": 23.999444443333232,
+          "char_4106_bryota": 17.05519755456288,
+          "char_1039_thorn2": 17.05519755456288,
+          "char_402_tuye": 18.848936912529382,
+          "char_4046_ebnhlz": 19.93988135638915,
+          "char_478_kirara": 19.072936911970658,
+          "char_4055_bgsnow": 19.072936911970658,
+          "char_4032_provs": 2.2872222219244804,
+          "char_420_flamtl": 19.72181868663074,
+          "char_4098_vvana": 19.72181868663074,
+          "char_431_ashlok": 19.721402019964046,
+          "char_496_wildmn": 19.72112424218625,
+          "char_430_fartth": 19.72112424218625,
+          "char_4036_forcer": 6.556021525360677,
+          "char_010_chen": 6.580960799805098,
+          "char_2015_dusk": 19.19890091258202,
+          "char_4048_doroth": 15.141004491193542,
+          "char_4212_nasti": 15.141004491193542,
+          "char_486_takila": 0.9983333333971132,
+          "char_455_nothin": 3.8621741989432508,
+          "char_2024_chyue": 4.058868643610765,
+          "char_473_mberry": 4.059563088055256,
+          "char_427_vigil": 4.060118643610849,
+          "char_103_angel": 3.9287297546322293,
+          "char_4193_lemuen": 3.9287297546322293,
+          "char_2014_nian": 4.058035310277376,
+          "char_2026_yu": 4.05845197694407,
+          "char_377_gdglow": 6.425495782221958,
+          "char_249_mlyss": 6.425218004444162,
+          "char_159_peacok": 0.0008333336111832068,
+          "char_241_panda": 0.0008333336111832068
+        },
+        "exhausted": {
+          "char_285_medic2": 17.574504217778042
+        },
+        "roomEfficiency": {
+          "room_1_1": 210.48873854997612,
+          "room_1_2": 184.33997361288104,
+          "room_1_3": 128.5352091391224,
+          "room_2_1": 261.4199867065892,
+          "room_2_2": 180.714603022866,
+          "room_2_3": 106.69322477313355,
+          "room_3_1": 227.5731235893998,
+          "room_3_2": 224.991572914916,
+          "room_3_3": 206.8254104808448
+        }
+      },
+      "7": {
+        "exp": 23000,
+        "gold": 174,
+        "orderLmd": 70000,
+        "tequila": 3000,
+        "occupancy": {
+          "char_1027_greyy2": 20.465784627293772,
+          "char_285_medic2": 20.465506849515975,
+          "char_385_finlpp": 20.465645738404874,
+          "char_400_weedy": 20.465645738404874,
+          "char_4164_tecno": 18.090752978027353,
+          "char_436_whispr": 18.088391866916083,
+          "char_4041_chnut": 18.09033631136066,
+          "char_151_myrtle": 18.09033631136066,
+          "char_243_waaifu": 18.087558533582694,
+          "char_391_rosmon": 18.087558533582694,
+          "char_446_aroma": 21.90769744116932,
+          "char_4036_forcer": 3.9841738400251643,
+          "char_010_chen": 4.006708326414241,
+          "char_431_ashlok": 20.555416953456586,
+          "char_496_wildmn": 20.555278064567688,
+          "char_430_fartth": 20.555278064567688,
+          "char_402_tuye": 17.002641866526403,
+          "char_4046_ebnhlz": 18.088252978027185,
+          "char_478_kirara": 17.52419742209048,
+          "char_4055_bgsnow": 17.52419742209048,
+          "char_2023_ling": 18.090752978027353,
+          "char_474_glady": 14.53784992586236,
+          "char_416_zumama": 20.466201293960467,
+          "char_420_flamtl": 20.55583362012328,
+          "char_4098_vvana": 20.55583362012328,
+          "char_263_skadi": 14.537988814751259,
+          "char_143_ghost": 14.537988814751259,
+          "char_237_gravel": 23.999583332499924,
+          "char_4145_ulpia": 14.536738814751175,
+          "char_218_cuttle": 14.536738814751175,
+          "char_4032_provs": 2.103277778277061,
+          "char_202_demkni": 20.015826159974836,
+          "char_473_mberry": 5.9116081330839165,
+          "char_455_nothin": 5.7140525777713265,
+          "char_427_vigil": 5.911747021972815,
+          "char_103_angel": 5.655830355334729,
+          "char_4193_lemuen": 5.655830355334729,
+          "char_4106_bryota": 18.816535696820324,
+          "char_1039_thorn2": 18.816535696820324,
+          "char_2024_chyue": 5.9092470219726465,
+          "char_2014_nian": 5.9092470219726465,
+          "char_2015_dusk": 18.905612468816514,
+          "char_2026_yu": 5.909663688639341,
+          "char_134_ifrit": 19.99329167358576,
+          "char_486_takila": 0.8199722225747905,
+          "char_4212_nasti": 15.088668005674549,
+          "char_4048_doroth": 12.996365446843868,
+          "char_377_gdglow": 3.5344931504840247,
+          "char_249_mlyss": 3.534215372706228,
+          "char_1042_phatm2": 3.444583046543414,
+          "char_159_peacok": 0.0025000013891371964,
+          "char_241_panda": 0.001805556389058438,
+          "char_308_swire": 3.4441663798767195,
+          "char_1044_hsgma2": 3.4441663798767195,
+          "char_1502_crosly": 0.0006944450000787583
+        },
+        "exhausted": {
+          "char_285_medic2": 20.465506849515975
+        },
+        "roomEfficiency": {
+          "room_1_1": 211.49121118204178,
+          "room_1_2": 182.1760227759026,
+          "room_1_3": 128.2943964199268,
+          "room_2_1": 253.16914727341808,
+          "room_2_2": 180.4556226338208,
+          "room_2_3": 103.68176369841079,
+          "room_3_1": 227.84957764110956,
+          "room_3_2": 225.30356946155382,
+          "room_3_3": 211.53949633370686
+        }
+      },
+      "8": {
+        "exp": 23000,
+        "gold": 169,
+        "orderLmd": 72000,
+        "tequila": 1500,
+        "occupancy": {
+          "char_1027_greyy2": 17.38366662781351,
+          "char_285_medic2": 17.38311107225792,
+          "char_385_finlpp": 17.383388850035715,
+          "char_400_weedy": 17.383388850035715,
+          "char_202_demkni": 20.430369439606807,
+          "char_134_ifrit": 20.41012561988464,
+          "char_263_skadi": 19.0179534384219,
+          "char_143_ghost": 19.0179534384219,
+          "char_4164_tecno": 19.645452475486536,
+          "char_436_whispr": 19.642952475486368,
+          "char_4041_chnut": 19.644896919930943,
+          "char_151_myrtle": 19.644896919930943,
+          "char_243_waaifu": 19.641008031041792,
+          "char_391_rosmon": 19.641008031041792,
+          "char_446_aroma": 23.205895017693877,
+          "char_2023_ling": 19.64517469770874,
+          "char_474_glady": 19.01753677147741,
+          "char_416_zumama": 17.3844999611469,
+          "char_308_swire": 4.327659735219413,
+          "char_1044_hsgma2": 4.327659735219413,
+          "char_1042_phatm2": 4.328076401886108,
+          "char_4145_ulpia": 19.016703438421814,
+          "char_218_cuttle": 19.016703438421814,
+          "char_237_gravel": 23.999861110833308,
+          "char_4106_bryota": 13.668698265477929,
+          "char_1039_thorn2": 13.668698265477929,
+          "char_4046_ebnhlz": 19.641702475486284,
+          "char_478_kirara": 18.845230252754902,
+          "char_4055_bgsnow": 18.845230252754902,
+          "char_402_tuye": 18.5314802537589,
+          "char_4032_provs": 2.287444444791049,
+          "char_486_takila": 0.994444445043257,
+          "char_420_flamtl": 19.672340264780587,
+          "char_4098_vvana": 19.672340264780587,
+          "char_431_ashlok": 19.671923598113892,
+          "char_496_wildmn": 19.671645820336096,
+          "char_430_fartth": 19.671645820336096,
+          "char_377_gdglow": 6.616888927742082,
+          "char_249_mlyss": 6.616333372186489,
+          "char_4048_doroth": 11.598657711542387,
+          "char_4212_nasti": 12.39276269384851,
+          "char_2015_dusk": 15.952927458278054,
+          "char_427_vigil": 4.358297524513716,
+          "char_103_angel": 4.160325302201841,
+          "char_4193_lemuen": 4.160325302201841,
+          "char_455_nothin": 4.175519746493308,
+          "char_473_mberry": 4.357047524513632,
+          "char_2024_chyue": 4.35482530229126,
+          "char_2014_nian": 4.354547524513464,
+          "char_2026_yu": 4.355103080069057,
+          "char_4036_forcer": 3.5696305603931933,
+          "char_010_chen": 3.5898743801153614,
+          "char_159_peacok": 0.0006944447222849703,
+          "char_241_panda": 0.0006944447222849703
+        },
+        "exhausted": {
+          "char_285_medic2": 17.38311107225792,
+          "char_474_glady": 1.673639164462486
+        },
+        "roomEfficiency": {
+          "room_1_1": 209.9302225162008,
+          "room_1_2": 184.05531293103405,
+          "room_1_3": 128.55101389205956,
+          "room_2_1": 255.3062841887497,
+          "room_2_2": 175.919204948892,
+          "room_2_3": 106.89259263305901,
+          "room_3_1": 227.55613309610465,
+          "room_3_2": 219.35780885194868,
+          "room_3_3": 206.51238680030335
+        }
+      }
+    }
+  }
+}

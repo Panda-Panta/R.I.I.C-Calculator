@@ -19,6 +19,12 @@ const allOwned:OwnedOperatorInput[]=OPERATORS.map(o=>({operator:o.name,elitePhas
 const mains=(w:ReturnType<typeof createDefaultWorkspace>)=>Object.values(w.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>s.occupant.kind==='operator'?[id(s.occupant.operatorId)]:[]))
 
 describe('bounded complete automatic roster drafts',()=>{
+ it('does not require preserved auxiliary staff in the imported idle-only library',()=>{
+  const base=createDefaultWorkspace()
+  base.mainPlan.facilities.factory.slots[0]!.occupant={kind:'operator',operatorId:id('杜宾')}
+  const result=generateAutomaticRoster(base,allOwned.filter(entry=>entry.operator!=='杜宾'),{trials:1,maxStates:1})
+  expect(result.diagnostics.some(d=>d.code==='INVENTORY_OPERATOR_NOT_OWNED')).toBe(false)
+ })
  it('builds complete 243 mains with unique backups and retains the source layout', async ({ annotate }) => {
 
    await annotate('同步计算前确认测试进度已送达')
@@ -153,14 +159,14 @@ describe('bounded complete automatic roster drafts',()=>{
    expect(JSON.stringify(base)).toBe(before)
   }
  },60000)
- it('rejects unsupported product, low-stage fixed support, and invalid options', async ({ annotate }) => {
+ it('rejects unsupported product and invalid options without gating preserved staff on idle-library stage', async ({ annotate }) => {
 
    await annotate('同步计算前确认测试进度已送达')
   const base=createDefaultWorkspace();base.mainPlan.facilities.room_1_1.product='fragment'
   expect(generateAutomaticRoster(base,allOwned).diagnostics[0]!.code).toBe('UNSUPPORTED_PRODUCT')
   base.mainPlan.facilities.room_1_1.product='gold';base.mainPlan.facilities.meeting.slots[0]!.occupant={kind:'operator',operatorId:id('陈')}
   const low=allOwned.map(o=>o.operator==='陈'?{...o,elitePhase:0,level:1}:o)
-  expect(generateAutomaticRoster(base,low).status).toBe('blocked')
+  expect(generateAutomaticRoster(base,low).status).toBe('draft')
   for(const options of [{seed:-1},{seed:2**32},{trials:0},{trials:9},{maxStates:0},{maxStates:100001}])expect(generateAutomaticRoster(createDefaultWorkspace(),allOwned,options).diagnostics[0]!.code).toBe('INVALID_OPTIONS')
- })
+ },60000)
 })

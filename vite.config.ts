@@ -30,6 +30,7 @@ export default defineConfig({
       'dist/**',
       'artifacts/**',
       'scratch/**',
+      'validation/**',
     ],
   },
 })

@@ -133,7 +133,7 @@ defineExpose({
     <div class="inventory-header">
       <div class="inventory-title-group">
         <h3 class="inventory-title">我的干员库</h3>
-        <span class="inventory-subtitle">录入实际持有干员与练度，用于排班准入与技能核验</span>
+        <span class="inventory-subtitle">录入可选的闲置干员与练度；未导入时从全体干员中选</span>
       </div>
       <div class="inventory-header-buttons">
         <button
@@ -160,7 +160,7 @@ defineExpose({
     <div class="inventory-toolbar">
       <label class="inventory-toggle">
         <input v-model="enabled" data-test="inventory-enabled" type="checkbox" />
-        <span>运行模拟与自动排班时检查干员库</span>
+        <span>启用后以库内干员作为闲置候选</span>
       </label>
 
       <div class="view-mode-tabs">
@@ -185,7 +185,7 @@ defineExpose({
       </div>
     </div>
 
-    <p v-if="!enabled" class="inventory-note">尚未启用检查：模拟继续沿用排班内干员的最高基建技能假设。</p>
+    <p v-if="!enabled" class="inventory-note">未导入干员库：全体干员可作为闲置候选；排班内干员仍按当前最高基建技能假设。</p>
     <div v-if="clearSuccessMsg" class="inventory-success-msg">{{ clearSuccessMsg }}</div>
 
     <!-- Table View Mode -->

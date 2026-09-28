@@ -13,6 +13,14 @@ const byReference = new Map(OPERATORS.flatMap(o => [[o.charId, o], [o.name, o]] 
 // Supplied v076 character_table.json phases[].maxLevel, indexed by displayed rarity.
 const levelCaps: Record<number, readonly number[]> = {1:[30],2:[30],3:[40,55],4:[45,60,70],5:[50,70,80],6:[50,80,90]}
 
+/** No imported library means the full operator catalog is available as idle cards. */
+export function fullCatalogIdleInventory(): OwnedOperatorInput[] {
+  return OPERATORS.map(operator => {
+    const caps=levelCaps[operator.rarity]!
+    return {operator:operator.charId,elitePhase:caps.length-1,level:caps[caps.length-1]!}
+  })
+}
+
 export function selectUnlockedSkills(operator: OperatorRecord, elitePhase: number, level: number): OperatorSkill[] {
   const cap = levelCaps[operator.rarity]?.[elitePhase]
   if (!Number.isInteger(elitePhase) || !Number.isInteger(level) || cap === undefined || level < 1 || level > cap) {

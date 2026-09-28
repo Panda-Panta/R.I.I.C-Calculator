@@ -1,7 +1,5 @@
 import type {IncomeSearchRequest,IncomeSearchSettings,IncomeSearchResult,IncomeSearchEvaluation,IncomeSearchProgress,IncomeSearchMove} from './rosterIncomeSearch'
-import {compileOperatorInventory} from '../domain/operatorInventory'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
-import {validateScheduleInventory} from './inventoryAdmission'
 import {generateBackupNeighbors} from './backupNeighborhood'
 import {generateControlMainNeighbors} from './controlNeighborhood'
 import {generateProductionMainNeighbors} from './primaryNeighborhood'
@@ -27,8 +25,10 @@ const layout=(w:RosterWorkspace)=>JSON.stringify(Object.values(w.mainPlan.facili
 export function runMultiStartSearch(request:IncomeSearchRequest,settings:IncomeSearchSettings,onProgress?:(p:IncomeSearchProgress)=>void):IncomeSearchResult {
  const original=structuredClone(request.baseline),errors=validatePhysicalRoster(original)
  if(errors.length)throw new Error(errors.map(e=>e.message).join('；'))
- const admission=validateScheduleInventory(compileRosterSchedule(original,settings.assumptions),compileOperatorInventory(request.inventory),settings.options.efficiencyResources)
- if(!admission.valid)throw new Error('起点排班未通过干员库检查：'+admission.diagnostics.map(d=>d.message).join('；'))
+ // The imported library supplies idle candidates; current roster workers may be absent from it.
+ const compiled=compileRosterSchedule(original,settings.assumptions)
+ const invalid=compiled.diagnostics.filter(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR')
+ if(invalid.length)throw new Error('起点排班无效：'+invalid.map(d=>d.message).join('；'))
  if(request.draft){const errors=validatePhysicalRoster(request.draft);if(errors.length||layout(request.draft)!==layout(original))throw new Error('草案须与原排班保持相同合法布局、等级与配方')}
  const baseline:IncomeSearchEvaluation={id:'baseline',label:'原排班',workspace:original,cases:[],comparison:null,cached:false,parentId:null,parentComparison:null,depth:0,origin:'baseline',conditional:false,move:null}
  const result:IncomeSearchResult={baseline,candidates:[],bestCandidateId:null,bestWorkspace:structuredClone(original),evaluatedCandidates:0,simulatedCandidates:0,budgetExhausted:false,issues:[],settings,request:structuredClone(request),bestPath:['baseline'],exploredDepth:0,depthLimitReached:false,stopReason:'neighborhood-exhausted'}

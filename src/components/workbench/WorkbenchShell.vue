@@ -56,6 +56,7 @@ const defaultSimSettings: SimulationSettings = {
   jayeElite0: false,
   fiammettaFool: true,
   restingThreshold: .65,
+  freeRoom: false,
 }
 const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
 watch(simSettings, value => {
@@ -451,6 +452,7 @@ function executeCalculation(): void {
       simulationAssumptions: {
         fiammettaFool: simSettings.value.fiammettaFool ?? true,
         restingThreshold: simSettings.value.restingThreshold ?? .65,
+        freeRoom: simSettings.value.freeRoom ?? false,
       },
       simulationOptions: {
         warmupHours: simSettings.value.warmupDays * 24,

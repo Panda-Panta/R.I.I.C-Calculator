@@ -1,0 +1,83 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "sourceFunction": "scheduler_task.generate_plan_by_drom",
+  "defaultMergeIntervalMinutes": 10,
+  "scope": "Default nonexperimental future SHIFT_ON groups stay separate; overdue-clamped tasks can share now. merge_release_dorm only merges RELEASE_DORM.",
+  "cases": [
+    {
+      "rawDeadlinesHours": [
+        2,
+        3
+      ],
+      "firstFullAndExhaust": false,
+      "tasks": [
+        {
+          "delayHours": 1.8666666666666667,
+          "plan": {
+            "room_1_2": [
+              "H"
+            ]
+          }
+        },
+        {
+          "delayHours": 2.8666666666666667,
+          "plan": {
+            "room_2_1": [
+              "K"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "rawDeadlinesHours": [
+        2,
+        2.0833333333333335
+      ],
+      "firstFullAndExhaust": false,
+      "tasks": [
+        {
+          "delayHours": 1.8666666666666667,
+          "plan": {
+            "room_1_2": [
+              "H"
+            ]
+          }
+        },
+        {
+          "delayHours": 1.95,
+          "plan": {
+            "room_2_1": [
+              "K"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "rawDeadlinesHours": [
+        -0.1,
+        -0.05
+      ],
+      "firstFullAndExhaust": true,
+      "tasks": [
+        {
+          "delayHours": 0.0,
+          "plan": {
+            "room_2_1": [
+              "K"
+            ]
+          }
+        },
+        {
+          "delayHours": 0.0,
+          "plan": {
+            "room_1_2": [
+              "H"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,326 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "is_refresh_trading",
+    "refresh_run_order_time",
+    "find_next_task"
+  ],
+  "scope": "Actual native refresh config and queue mutation at fixed clock; no order I/O or income/full-cycle assertion.",
+  "queries": [
+    {
+      "name": "夕",
+      "rules": [
+        "夕",
+        "诗怀雅"
+      ],
+      "output": [
+        true,
+        []
+      ]
+    },
+    {
+      "name": "夕",
+      "rules": [
+        "夕room_1_1",
+        "夕room_1_2"
+      ],
+      "output": [
+        true,
+        [
+          "room_1_1"
+        ]
+      ]
+    },
+    {
+      "name": "夕",
+      "rules": [
+        "夕(room_1_1",
+        "room_1_2)"
+      ],
+      "output": [
+        true,
+        [
+          "(room_1_1"
+        ]
+      ]
+    },
+    {
+      "name": "夕",
+      "rules": [
+        "诗怀雅"
+      ],
+      "output": [
+        false,
+        []
+      ]
+    },
+    {
+      "name": "Lancet-2",
+      "rules": [
+        "Lancet-2"
+      ],
+      "output": [
+        false,
+        []
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "boundary--1",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": -1,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": -1000000,
+          "type": "RUN_ORDER",
+          "metadata": "room_1_1",
+          "originalIndex": 0
+        }
+      ]
+    },
+    {
+      "name": "boundary-0",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 0,
+          "type": "RUN_ORDER",
+          "metadata": "room_1_1",
+          "originalIndex": 0
+        }
+      ]
+    },
+    {
+      "name": "boundary-1",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 1,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 0,
+          "type": "REFRESH_TIME",
+          "metadata": "room_1_1",
+          "originalIndex": null
+        }
+      ]
+    },
+    {
+      "name": "boundary-899",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 899,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 898000000,
+          "type": "REFRESH_TIME",
+          "metadata": "room_1_1",
+          "originalIndex": null
+        }
+      ]
+    },
+    {
+      "name": "boundary-900",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 900,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 900000000,
+          "type": "RUN_ORDER",
+          "metadata": "room_1_1",
+          "originalIndex": 0
+        }
+      ]
+    },
+    {
+      "name": "boundary-901",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 901,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": []
+    },
+    {
+      "name": "equal-but-other-metadata",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 902,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2"
+          },
+          {
+            "seconds": 901,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 901000000,
+          "type": "RUN_ORDER",
+          "metadata": "room_1_1",
+          "originalIndex": 1
+        }
+      ]
+    },
+    {
+      "name": "first-fia",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "FIAMMETTA",
+            "metadata": ""
+          },
+          {
+            "seconds": 800,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 100000000,
+          "type": "FIAMMETTA",
+          "metadata": "",
+          "originalIndex": 0
+        },
+        {
+          "timeMicros": 0,
+          "type": "REFRESH_TIME",
+          "metadata": "room_1_1",
+          "originalIndex": null
+        }
+      ]
+    },
+    {
+      "name": "queue-first-anchor",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 700,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 700000000,
+          "type": "NOT_SPECIFIC",
+          "metadata": "",
+          "originalIndex": 0
+        },
+        {
+          "timeMicros": 699000000,
+          "type": "REFRESH_TIME",
+          "metadata": "room_1_1",
+          "originalIndex": null
+        }
+      ]
+    },
+    {
+      "name": "long-then-short",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 950,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 199000000,
+          "type": "REFRESH_TIME",
+          "metadata": "room_1_1",
+          "originalIndex": null
+        }
+      ]
+    },
+    {
+      "name": "unrelated-room",
+      "input": {
+        "room": "room_1_1",
+        "tasks": [
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2"
+          }
+        ]
+      },
+      "output": [
+        {
+          "timeMicros": 200000000,
+          "type": "RUN_ORDER",
+          "metadata": "room_1_2",
+          "originalIndex": 0
+        }
+      ]
+    }
+  ]
+}

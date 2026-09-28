@@ -1132,3 +1132,12 @@ describe('Mower JSON Compatibility Layer', () => {
   })
 })
 
+
+
+it('preserves native balanced ling_xi=0 without changing it to perception mode',()=>{
+ const document=JSON.parse(exportMowerJson(createDefaultWorkspace()))
+ document.conf.ling_xi=0
+ const workspace=importMowerJson(JSON.stringify(document))
+ expect(workspace.mainPlan.conf.ling_xi).toBe(0)
+ expect(JSON.parse(exportMowerJson(workspace)).conf.ling_xi).toBe(0)
+})

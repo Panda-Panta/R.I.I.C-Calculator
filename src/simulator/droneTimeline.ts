@@ -9,6 +9,6 @@ export function generateDrones(state: DroneState, minutes: number, dronesPerMinu
   return { ...state, stock: state.stock + accepted, generated: state.generated + generated, overflow: state.overflow + generated - accepted }
 }
 export function spendDrones(state: DroneState, count: number) {
-  if (!Number.isInteger(count) || count < 0 || count > state.stock) throw new Error('Invalid drone spend')
-  return { state: { ...state, stock: state.stock - count, consumed: state.consumed + count }, baseMinutes: count * 3 }
+  if (!Number.isInteger(count) || count < 0 || count > state.stock + 1e-8) throw new Error('Invalid drone spend')
+  return { state: { ...state, stock: Math.max(0, state.stock - count), consumed: state.consumed + count }, baseMinutes: count * 3 }
 }

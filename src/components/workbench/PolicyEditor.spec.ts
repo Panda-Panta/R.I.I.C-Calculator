@@ -209,3 +209,14 @@ describe('PolicyEditor.vue', () => {
     expect(store.workspace.compatibility.backupPlans).toEqual([{ name: 'sub1', conf: {} }])
   })
 })
+
+
+it('shows imported native balanced mode 0 without rewriting the stored policy',()=>{
+ setActivePinia(createPinia())
+ const store=useRosterWorkbenchStore()
+ store.workspace.mainPlan.conf.ling_xi=0
+ const wrapper=mount(PolicyEditor)
+ expect((wrapper.find('[data-test="ling-xi-select"]').element as HTMLSelectElement).value).toBe('3')
+ expect(store.workspace.mainPlan.conf.ling_xi).toBe(0)
+ wrapper.unmount()
+})

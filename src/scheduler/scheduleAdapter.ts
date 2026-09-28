@@ -1,3 +1,4 @@
+import {orderMowerRecoveryBeds} from './mowerGlobalDormOrder'
 import { OPERATOR_MAP } from '../domain/operators'
 import { resolveOperatorCharId } from '../workbench/compat/mowerJson'
 import type { CompiledSchedule } from './types'
@@ -91,7 +92,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
   if (mode === 1 || mode === 2) {
     const lowHalf = named(mode === 1 ? '令' : '夕')
     const highHalf = named(mode === 1 ? '夕' : '令')
-    if (lowHalf) lowHalf.upperLimit = 12
+    if (lowHalf) { lowHalf.upperLimit = 12; lowHalf.restMoodLimit = true }
     if (highHalf) highHalf.lowerLimit = 12
     const groups = new Set([named('令')?.group, named('夕')?.group].filter(Boolean))
     for (const p of positions) if (p.group && groups.has(p.group) && !['令', '夕'].includes(OPERATOR_MAP.get(p.primary)?.name ?? '')) p.lowerLimit = 12
@@ -102,6 +103,8 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
     totter.lowerLimit = vermeil?.roomId === totter.roomId ? 8 : 20
     totter.upperLimit = vermeil?.roomId === totter.roomId ? 12 : 24
   }
+  const limitedId = mode === 1 ? resolveOperatorCharId('令') : mode === 2 ? resolveOperatorCharId('夕') : undefined
+  const restMoodLimits = limitedId && schedule.rooms.some(room => room.slots.some(slot => slot.primaryOperatorId === limitedId || slot.orderedCandidates.includes(limitedId))) ? {[limitedId]:12} : undefined
   const restingThreshold = schedule.assumptions.restingThreshold ?? 0.65
   const exhaustedGroups = new Set(positions.filter(p => p.exhaustRequired && p.group).map(p => p.group))
   for (const p of positions) {
@@ -152,12 +155,21 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
     orderedOperatorIds: [...p.orderedOperatorIds],
   }))
 
+  const sourceList=(key:string)=>{const raw=(schedule.policies as Record<string,unknown>)[key];return (Array.isArray(raw)?raw:typeof raw==='string'?raw.split(','):[]).map(String).filter(Boolean).map(resolveOperatorCharId)}
   return {
+    mowerDroneRoom:schedule.assumptions.droneRoom??null,
+    mowerServices:{enableParty:false,leifengMode:schedule.assumptions.leifengMode??true,droneIntervalHours:schedule.assumptions.droneIntervalHours??3,reloadRooms:schedule.assumptions.reloadRooms===null?null:schedule.assumptions.reloadRooms??[],maaGapHours:schedule.assumptions.maaGapHours??3},
+    mowerRunOrderFinishing:{bufferSeconds:schedule.assumptions.runOrderGrandet===false?-1:schedule.assumptions.runOrderBufferSeconds??15,droneCountLimit:schedule.assumptions.droneCountLimit??100,waitingScenes:[]},
+    mowerDeviceTiming:{roomReturnMicros:500_000},
+    mowerTaskScheduling:{configuredDelayMinutes:schedule.assumptions.runOrderDelayMinutes,enableMastery:schedule.assumptions.enableMastery,grandet:schedule.assumptions.runOrderGrandet},
+    mowerRunLoopClock:{minimumClockStepMicros:1,notificationSleepMicros:1_000_000},
+    mowerSourcePlan:Object.fromEntries(schedule.rooms.filter(r=>r.type!=='gaming'&&r.type!=='').flatMap(r=>{let last=r.slots.length-1;while(last>=0&&!r.slots[last]!.primaryOperatorId&&r.slots[last]!.occupant.kind!=='free')last--;return last<0?[]:[[r.roomId,r.slots.slice(0,last+1).map(slot=>({agent:slot.primaryOperatorId??(slot.occupant.kind==='free'?'Free':'Current'),group:slot.groupId??'',replacement:[...slot.orderedCandidates]}))]]})),
+    mowerSourceRules:{workaholic:sourceList('workaholic'),exhaustRequire:sourceList('exhaust_require'),restInFull:sourceList('rest_in_full'),lowPriority:sourceList('resting_priority'),refreshDrained:sourceList('refresh_drained'),refreshTrading:sourceList('refresh_trading'),lingMode:mode,standby:sourceList('resting_standby'),priorityReplacement:sourceList('resting_priority_replacement'),freeRoomExclusions:sourceList('free_room_exclusions')},
     idleOperators: schedule.assumptions.idleOperators,
-    freeBlacklist: Array.isArray(schedule.policies.free_blacklist) ? schedule.policies.free_blacklist.map(String).map(resolveOperatorCharId) : typeof schedule.policies.free_blacklist === 'string' ? schedule.policies.free_blacklist.split(',').filter(Boolean).map(resolveOperatorCharId) : [],
-    mowerPolicy: { restingThreshold, rescueThreshold: schedule.assumptions.rescueThreshold ?? 0.75, taskBuffers: true, powerPlantCount: schedule.rooms.filter(r => r.type === 'power').length, opeRestingPriority: [...(schedule.policies.ope_resting_priority ?? [])] },
+    freeBlacklist: [...new Set([...sourceList('free_blacklist'),...sourceList('workaholic')])],
+    mowerPolicy: { groupRestInFullOnMoodGap:schedule.assumptions.groupRestInFullOnMoodGap, groupMoodGapMaxExtraWaitHours:schedule.assumptions.groupMoodGapMaxExtraWaitHours, mergeIntervalMinutes:schedule.assumptions.mergeIntervalMinutes, restMoodLimits, restingThreshold, freeRoom: schedule.assumptions.freeRoom ?? false, rescueThreshold: schedule.assumptions.rescueThreshold ?? 0.75, taskBuffers: true, powerPlantCount: schedule.rooms.filter(r => r.type === 'power').length, opeRestingPriority: [...(schedule.policies.ope_resting_priority ?? [])] },
     positions,
-    beds,
+    beds:orderMowerRecoveryBeds(beds,schedule.assumptions.dormOrder??''),
     initialMorale,
     fiammetta,
     excludedCandidates: Array.from(shiftRunIds),

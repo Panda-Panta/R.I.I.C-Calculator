@@ -223,7 +223,7 @@ export function importMowerJson(text: string): RosterWorkspace {
       throw new Error('Invalid Mower JSON: "conf" must be an object')
     }
     const c = parsed.conf
-    if (c.ling_xi === 1 || c.ling_xi === 2 || c.ling_xi === 3) {
+    if (c.ling_xi === 0 || c.ling_xi === 1 || c.ling_xi === 2 || c.ling_xi === 3) {
       ws.mainPlan.conf.ling_xi = c.ling_xi
     } else {
       ws.mainPlan.conf.ling_xi = 1

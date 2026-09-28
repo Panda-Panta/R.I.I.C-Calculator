@@ -439,7 +439,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(wrapper.find('[data-test="metric-lmd"]').text()).toBe(initialLmd)
   }, 15000)
 
-  it('calculates with unlocked low-stage skills and clears stale results on a real failure', async () => {
+  it('calculates with the imported library as idle candidates while retaining assigned workers', async () => {
     localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ schemaVersion: 1, enabled: true, text: '夜烟,0,1' }))
     const store = useRosterWorkbenchStore()
     const ws = createDefaultWorkspace()
@@ -456,11 +456,10 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     wrapper.vm.handleCalculate()
     if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'gold', droneTradingRoomId: '' })
     await flushPromises()
-    expect(wrapper.vm.calculationReport).toBeNull()
-    expect(wrapper.vm.simulationReport?.success).toBe(false)
-    expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="results-panel"]').text()).toContain('夜烟')
-    expect(wrapper.vm.simulationReport?.diagnostics.some(d => d.code === 'INVENTORY_OPERATOR_NOT_OWNED')).toBe(true)
+    expect(wrapper.vm.calculationReport).not.toBeNull()
+    expect(wrapper.vm.simulationReport?.success).toBe(true)
+    expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(true)
+    expect(wrapper.vm.simulationReport?.diagnostics.some(d => d.code === 'INVENTORY_OPERATOR_NOT_OWNED')).toBe(false)
   }, 15000)
 
   // 11. File imports immediately update all views, and reset clears stale calculation state

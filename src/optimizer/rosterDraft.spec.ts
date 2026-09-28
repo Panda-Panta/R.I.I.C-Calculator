@@ -126,7 +126,8 @@ it('executes a generated main/backup team through real morale and production eve
  const ws=createDefaultWorkspace();ws.mainPlan.facilities.dormitory_1.slots.slice(0,3).forEach(s=>s.occupant={kind:'free'})
  const inventory=owned(['砾','阿罗玛','槐琥','雪猎','梅尔','淬羽赫默'])
  const draft=generateRosterDraft(ws,inventory,['manu-gold-waai-fu-copy'])
- const report=simulateSchedule(compileRosterSchedule(draft.workspace!),{sampleHours:48,warmupHours:24,maxStepHours:.25,operatorInventory:inventory,production:{droneTarget:'none'}})
+ const idleLibrary=owned(['艾丽妮','白铁','百炼嘉维尔','仇白','嵯峨','归溟幽灵鲨'])
+ const report=simulateSchedule(compileRosterSchedule(draft.workspace!),{sampleHours:48,warmupHours:24,maxStepHours:.25,operatorInventory:[...inventory,...idleLibrary],production:{droneTarget:'none'}})
  expect(report.success).toBe(true)
  expect(report.events.some(e=>e.type==='shift-off')).toBe(true)
  expect(report.events.some(e=>e.type==='shift-on')).toBe(true)
@@ -134,3 +135,12 @@ it('executes a generated main/backup team through real morale and production eve
  for(const op of report.operators)expect(op.workHours+op.restHours+op.idleHours+op.exhaustedHours).toBeCloseTo(48,6)
  for(const value of Object.values(report.production!.ledger.balances))expect(value).toBeGreaterThanOrEqual(0)
 },30000)
+
+it('keeps an existing on-duty worker absent from the imported idle-only library',()=>{
+ const ws=createDefaultWorkspace()
+ ws.mainPlan.facilities.central.slots[0]!.occupant={kind:'operator',operatorId:id('杜宾')}
+ const draft=generateRosterDraft(ws,owned(['温蒂','清流']),['manu-gold-weedy-purestream'])
+ expect(draft.status).toBe('draft')
+ expect(draft.workspace?.mainPlan.facilities.central.slots[0]!.occupant).toEqual({kind:'operator',operatorId:id('杜宾')})
+ expect(draft.diagnostics.some(d=>d.code==='INVENTORY_OPERATOR_NOT_OWNED')).toBe(false)
+})

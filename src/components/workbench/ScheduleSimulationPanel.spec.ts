@@ -5,8 +5,18 @@ import {createDefaultWorkspace} from '../../workbench/defaults'
 import ScheduleSimulationPanel from './ScheduleSimulationPanel.vue'
 const instances:any[]=[]
 class MockWorker {onmessage:any;onerror:any;postMessage=vi.fn();terminate=vi.fn();constructor(){instances.push(this)}}
-afterEach(()=>{vi.unstubAllGlobals();instances.length=0})
+afterEach(()=>{vi.unstubAllGlobals();instances.length=0;localStorage.removeItem('riic-mower-simulation-settings-v1')})
 describe('schedule simulation panel',()=>{
+ it('uses the full catalog without an imported idle library',async()=>{
+  vi.stubGlobal('Worker',MockWorker)
+  const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}})
+  await w.get('[data-test=simulate-schedule]').trigger('click')
+  const sent=instances[0].postMessage.mock.calls[0][0]
+  expect(sent.options).not.toHaveProperty('operatorInventory')
+  expect(sent.assumptions).not.toHaveProperty('idleOperators')
+  expect(w.text()).toContain('未导入干员库时从全体干员中选择')
+  w.unmount()
+ })
  it('runs in a worker, keeps defaults visible, and cancels stale work when roster changes',async()=>{
   vi.stubGlobal('Worker',MockWorker)
   const ws=createDefaultWorkspace(),w=mount(ScheduleSimulationPanel,{props:{workspace:ws}})
@@ -27,10 +37,10 @@ describe('schedule simulation panel',()=>{
   await w.vm.$nextTick();expect(w.text()).toContain('缺少当前干员状态');w.unmount()
  })
 })
-it('defaults to ideal unconstrained output with optional drones',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});expect(w.get('h2').text()).toBe('心情与产出模拟');await w.get('[data-test=simulate-schedule]').trigger('click');expect(instances[0].postMessage.mock.calls[0][0].options.production).toEqual({outputMode:'potential',runOrderMode:'ideal',droneTarget:'gold',initialResources:{drone:0},seed:1,collectionIntervalHours:0});expect(w.text()).toContain('不临时进驻');w.unmount()})
-it('sends changed production controls and rejects invalid initial amounts before starting a worker',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});await w.get('[data-test=output-mode]').setValue('settled');expect(w.get('[data-test=run-order-mode]').attributes('disabled')).toBeDefined();await w.get('[data-test=drone-target]').setValue('exp');await w.get('[data-test=initial-gold]').setValue('20');await w.get('[data-test=initial-device]').setValue('3');await w.get('[data-test=collection-interval]').setValue('2');await w.get('[data-test=production-seed]').setValue('42');await w.get('[data-test=simulate-schedule]').trigger('click');expect(instances[0].postMessage.mock.calls[0][0].options.production).toMatchObject({runOrderMode:'ideal',droneTarget:'exp',initialResources:{gold:20,device:3},seed:42,collectionIntervalHours:2});await w.get('[data-test=initial-gold]').setValue('-1');expect(instances[0].terminate).toHaveBeenCalled();await w.get('[data-test=simulate-schedule]').trigger('click');expect(instances).toHaveLength(1);expect(w.get('[role=alert]').text()).toContain('初始库存');w.unmount()})
+it('defaults to ideal income with physical scheduling and optional drones',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});expect(w.get('h2').text()).toBe('心情与产出模拟');await w.get('[data-test=simulate-schedule]').trigger('click');expect(instances[0].postMessage.mock.calls[0][0].options.production).toEqual({outputMode:'potential',inventoryMode:'unlimited',runOrderMode:'ideal',droneTarget:'gold',initialResources:{drone:0},seed:1,collectionIntervalHours:0});expect(w.text()).toContain('换人、心情消耗、等待与恢复');w.unmount()})
+it('sends changed production controls and rejects invalid initial amounts before starting a worker',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});await w.get('[data-test=output-mode]').setValue('settled');await w.get('[data-test=inventory-mode]').setValue('finite');expect(w.get('[data-test=run-order-mode]').attributes('disabled')).toBeDefined();await w.get('[data-test=drone-target]').setValue('exp');await w.get('[data-test=initial-gold]').setValue('20');await w.get('[data-test=initial-device]').setValue('3');await w.get('[data-test=collection-interval]').setValue('2');await w.get('[data-test=production-seed]').setValue('42');await w.get('[data-test=simulate-schedule]').trigger('click');expect(instances[0].postMessage.mock.calls[0][0].options.production).toMatchObject({runOrderMode:'ideal',droneTarget:'exp',initialResources:{gold:20,device:3},seed:42,collectionIntervalHours:0});await w.get('[data-test=initial-gold]').setValue('-1');expect(instances[0].terminate).toHaveBeenCalled();await w.get('[data-test=simulate-schedule]').trigger('click');expect(instances).toHaveLength(1);expect(w.get('[role=alert]').text()).toContain('初始库存');w.unmount()})
 it('shows sample resource movements and distinguishes incomplete production from a completed window',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});await w.get('[data-test=simulate-schedule]').trigger('click');instances[0].onmessage({data:{report:{success:true,observedHours:24,rooms:[],operators:[],diagnostics:[{code:'PENDING',message:'订单条件尚未完整量化'}],production:{success:false,sample:{opening:{gold:10},closing:{gold:13},inflows:{gold:8,exp:1000},outflows:{gold:5},net:{gold:3,exp:1000}},drones:{stock:12,capacity:235},manufacturing:[{completedItems:999999}],trading:[]}}}});await w.vm.$nextTick();expect(w.text()).toContain('模拟窗口已完成');expect(w.text()).toContain('产出策略未完整执行');expect(w.text()).toContain('EXP 点数');expect(w.get('[data-test=production-gold]').text()).toContain('+3');expect(w.text()).not.toContain('999999');expect(w.text()).toContain('期末无人机');w.unmount()})
-it('labels completed production separately and retains exports for a result',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});await w.get('[data-test=simulate-schedule]').trigger('click');instances[0].onmessage({data:{report:{success:true,observedHours:336,rooms:[],operators:[],diagnostics:[],production:{success:true,sample:{opening:{},closing:{},inflows:{},outflows:{},net:{}},drones:{stock:0,capacity:235}}}}});await w.vm.$nextTick();expect(w.text()).toContain('产出策略已完整执行');expect(w.text()).toContain('导出明细 JSON');expect(w.findAll('[data-test^=production-]').length).toBeGreaterThan(0);w.unmount()})
+it('labels completed production separately and retains exports for a result',async()=>{vi.stubGlobal('Worker',MockWorker);const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}});await w.get('[data-test=simulate-schedule]').trigger('click');instances[0].onmessage({data:{report:{success:true,observedHours:336,rooms:[],operators:[],diagnostics:[],production:{success:true,sample:{opening:{},closing:{},inflows:{},outflows:{},net:{}},drones:{stock:0,capacity:235}}}}});await w.vm.$nextTick();expect(w.text()).toContain('产出计算窗口已完成');expect(w.text()).toContain('导出明细 JSON');expect(w.findAll('[data-test^=production-]').length).toBeGreaterThan(0);w.unmount()})
 
 it('passes owned stages into the worker and invalidates old results on inventory edits',async()=>{
  localStorage.clear();vi.stubGlobal('Worker',MockWorker)
@@ -99,5 +109,31 @@ it.each([[false,true],[true,false]])('does not label an incomplete result as dai
  expect(label).toContain('2,100')
  expect(label).toContain('不可作为日均结论')
  expect(label).not.toContain('每日综合产出')
+ w.unmount()
+})
+
+it('sends and retains the selected global Mower settings across remounts',async()=>{
+ vi.stubGlobal('Worker',MockWorker)
+ const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}})
+ await w.get('[data-test=resting-threshold]').setValue(67.5)
+ await w.get('[data-test=fiammetta-fool]').setValue(false)
+ await w.get('[data-test=free-room]').setValue(true)
+ await w.get('[data-test=simulate-schedule]').trigger('click')
+ expect(instances[0].postMessage.mock.calls[0][0].assumptions).toMatchObject({restingThreshold:.675,fiammettaFool:false,freeRoom:true})
+ w.unmount()
+ const restored=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}})
+ expect(restored.get('[data-test=resting-threshold]').element).toHaveProperty('value','67.5')
+ expect(restored.get('[data-test=fiammetta-fool]').element).toHaveProperty('checked',false)
+ expect(restored.get('[data-test=free-room]').element).toHaveProperty('checked',true)
+ restored.unmount()
+})
+it('does not present unresolved shift deferrals as stable daily output',async()=>{
+ vi.stubGlobal('Worker',MockWorker)
+ const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}})
+ await w.get('[data-test=simulate-schedule]').trigger('click')
+ instances[0].onmessage({data:{report:{success:true,observedHours:24,rooms:[],operators:[],diagnostics:[{code:'group-blocked',message:'group:g: blocked'}],production:{success:true,assumptions:{outputMode:'potential'},sample:{completed:{exp:1000,gold:2,orderLmd:1500}},drones:{stock:0,capacity:235}}}}})
+ await w.vm.$nextTick()
+ expect(w.get('[data-test=roster-deferred]').text()).toContain('换班延后')
+ expect(w.get('[data-test=completed-production-score]').text()).toContain('不可作为稳定日均结论')
  w.unmount()
 })

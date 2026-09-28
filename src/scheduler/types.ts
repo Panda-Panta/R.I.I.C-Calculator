@@ -12,6 +12,24 @@ export interface SimulationAssumptions {
   /** Mower global configuration; absent from the plan JSON. */
   restingThreshold?: number
   rescueThreshold?: number
+  /** Mower global free_room: release recovered ordinary dorm residents. */
+  freeRoom?: boolean
+  /** Native global config.conf.dorm_order: every concrete recovery bed. */
+  dormOrder?: string
+  groupRestInFullOnMoodGap?: boolean
+  groupMoodGapMaxExtraWaitHours?: number
+  mergeIntervalMinutes?: number
+  runOrderDelayMinutes?: number
+  enableMastery?: boolean
+  runOrderGrandet?: boolean
+  enableParty?: boolean
+  leifengMode?: boolean
+  droneRoom?: string | null
+  droneIntervalHours?: number
+  droneCountLimit?: number
+  reloadRooms?: string[] | null
+  maaGapHours?: number
+  runOrderBufferSeconds?: number
   idleOperators?: string[]
   fiammettaFool?: boolean
   fiammettaThreshold?: number

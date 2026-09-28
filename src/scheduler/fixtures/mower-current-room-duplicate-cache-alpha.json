@@ -1,0 +1,51 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "get_current_room",
+    "get_current_operator",
+    "agent_get_mood",
+    "not_valid",
+    "prefer_resting_replacements"
+  ],
+  "scope": "Default two cached operators temporarily share same coordinate. No room read, no resting group; native room cache deliberately uses last write while per-slot query uses first match.",
+  "cases": [
+    {
+      "input": {
+        "order": [
+          "A",
+          "C"
+        ],
+        "currentRoom": "room_A",
+        "currentIndex": 0
+      },
+      "output": {
+        "currentRoom": [
+          "C"
+        ],
+        "currentOperator": "A",
+        "correction": {
+          "room_A": [
+            "A"
+          ]
+        }
+      }
+    },
+    {
+      "input": {
+        "order": [
+          "C",
+          "A"
+        ],
+        "currentRoom": "room_A",
+        "currentIndex": 0
+      },
+      "output": {
+        "currentRoom": [
+          "A"
+        ],
+        "currentOperator": "C",
+        "correction": {}
+      }
+    }
+  ]
+}

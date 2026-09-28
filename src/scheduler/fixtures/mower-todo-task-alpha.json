@@ -1,0 +1,1858 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "sourceHash": "7dff0665033f69d9b254e9e2dd844f14ed7cb024552c6d846b183e45bbc07d6d",
+  "actualAst": {
+    "selectedBranch": [
+      1230,
+      1264
+    ],
+    "innerReloadTimeWrite": [
+      8014,
+      8015
+    ]
+  },
+  "cycleProven": false,
+  "scope": "Actual todo-stage AST; clue/drone/reload internals are explicit nested-call I/O, with observed reload_time snapshot; no complete inner flow or scene parity claim.",
+  "cases": [
+    {
+      "name": "all-optional-flows-disabled-only-todo-flag",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "initial-clue-exact-return-clock",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 3700000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20003700000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20003700000
+          }
+        ],
+        "lastClueMicros": 20003700000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "clue-exact-one-hour-is-suppressed",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": 16400000000,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": 16400000000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "clue-one-microsecond-beyond-hour",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": 16399999999,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 3700000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20003700000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20003700000
+          }
+        ],
+        "lastClueMicros": 20003700000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "clue-future-last-is-suppressed",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": 21000000000,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": 21000000000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "clue-task-one-microsecond-inside-three-minutes-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20179999999,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20179999999,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "clue-task-exact-three-minutes-permits",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20180000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 1000000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001000000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001000000
+          }
+        ],
+        "lastClueMicros": 20001000000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20180000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "clue-any-task-type-overdue-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 19999999999,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1"
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 19999999999,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "drone-null-room-no-call",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-room-marked-runorder-skips",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [
+          "room_1_1"
+        ],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-initial-timestamp-after-observed-return",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 2900000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20002900000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20002900000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20002900000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-False-return-still-updates-timestamp",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": false,
+            "elapsedMicros": 2900000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20002900000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": false,
+            "nowMicros": 20002900000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20002900000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-exact-configured-three-hour-interval-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": 9200000000,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": 9200000000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-one-microsecond-beyond-interval-permits",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": 9199999999,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 200000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000200000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000200000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20000200000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-custom-fractional-interval-exact-boundary",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": 19100000000,
+        "droneIntervalHours": 0.25,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": 19100000000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-zero-interval-same-timestamp-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": 20000000000,
+        "droneIntervalHours": 0,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20000000000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-one-microsecond-inside-two-minutes-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20119999999,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20119999999,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "drone-exact-two-minutes-permits",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20120000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 200000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000200000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000200000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20000200000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20120000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "reload-null-list-no-call",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-empty-list-is-not-None-and-inner-snapshot-required",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "reload",
+            "value": {
+              "reloadTimeMicros": 20000000000
+            },
+            "elapsedMicros": 0
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": []
+            },
+            "value": {
+              "reloadTimeMicros": 20000000000
+            },
+            "nowMicros": 20000000000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": 20000000000,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-observed-inner-timestamp-not-stage-clock",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "reload",
+            "value": {
+              "reloadTimeMicros": 20000400000
+            },
+            "elapsedMicros": 750000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000750000,
+        "trace": [
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": [
+                "room_1_2"
+              ]
+            },
+            "value": {
+              "reloadTimeMicros": 20000400000
+            },
+            "nowMicros": 20000750000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": 20000400000,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-inner-early-return-None-preserves-old-timestamp",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "reload",
+            "value": {
+              "reloadTimeMicros": null
+            },
+            "elapsedMicros": 750000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000750000,
+        "trace": [
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": [
+                "room_1_2"
+              ]
+            },
+            "value": {
+              "reloadTimeMicros": null
+            },
+            "nowMicros": 20000750000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-exact-maa-gap-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": 9200000000,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": 9200000000,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-just-beyond-maa-gap",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": 9199999999,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "reload",
+            "value": {
+              "reloadTimeMicros": 20000400000
+            },
+            "elapsedMicros": 500000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000500000,
+        "trace": [
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": [
+                "room_1_2"
+              ]
+            },
+            "value": {
+              "reloadTimeMicros": 20000400000
+            },
+            "nowMicros": 20000500000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": 20000400000,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-two-minute-deadline-suppresses",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20119999999,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": []
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000000000,
+        "trace": [],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20119999999,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "reload-exact-two-minute-deadline-permits",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20120000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "reload",
+            "value": {
+              "reloadTimeMicros": 20000500000
+            },
+            "elapsedMicros": 500000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20000500000,
+        "trace": [
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": [
+                "room_1_2"
+              ]
+            },
+            "value": {
+              "reloadTimeMicros": 20000500000
+            },
+            "nowMicros": 20000500000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": 20000500000,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20120000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "all-three-actions-native-sequence-and-separate-return-timestamps",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 1500000
+          },
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 2200000
+          },
+          {
+            "kind": "reload",
+            "value": {
+              "reloadTimeMicros": 20004500000
+            },
+            "elapsedMicros": 800000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20004500000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001500000
+          },
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20003700000
+          },
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": [
+                "room_1_2"
+              ]
+            },
+            "value": {
+              "reloadTimeMicros": 20004500000
+            },
+            "nowMicros": 20004500000
+          }
+        ],
+        "lastClueMicros": 20001500000,
+        "droneTimeMicros": 20003700000,
+        "reloadTimeMicros": 20004500000,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "clue-duration-crosses-two-minute-gate-before-drone-and-reload",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20180000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 61000000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20061000000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20061000000
+          }
+        ],
+        "lastClueMicros": 20061000000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20180000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "drone-duration-crosses-reload-two-minute-gate",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [
+          {
+            "timeMicros": 20121000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": ""
+          }
+        ],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 2000000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20002000000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20002000000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20002000000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20121000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "clue-added-task-affects-later-gates",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 1000000,
+            "appendTasks": [
+              {
+                "timeMicros": 20050000000,
+                "type": "NOT_SPECIFIC",
+                "metadata": ""
+              }
+            ]
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001000000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20001000000
+          }
+        ],
+        "lastClueMicros": 20001000000,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20050000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "drone-added-task-suppresses-reload",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 1000000,
+            "appendTasks": [
+              {
+                "timeMicros": 20050000000,
+                "type": "NOT_SPECIFIC",
+                "metadata": ""
+              }
+            ]
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001000000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20001000000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20001000000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": [
+          {
+            "timeMicros": 20050000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "originalIndex": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "negative-configured-interval-native-gate-is-not-clamped",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": 20000000000,
+        "droneIntervalHours": -0.25,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 1000000
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": null,
+        "nowMicros": 20001000000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20001000000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": 20001000000,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": true,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "clue-new-exception-leaves-todo-flag-false",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": true,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": null,
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "clue-new",
+            "value": null,
+            "elapsedMicros": 500000,
+            "error": "controlled-clue-new-failure"
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-clue-new-failure"
+        },
+        "nowMicros": 20000500000,
+        "trace": [
+          {
+            "kind": "clue-new",
+            "request": {},
+            "value": null,
+            "nowMicros": 20000500000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "drone-exception-leaves-todo-flag-false",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": "room_1_1",
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "drone",
+            "value": null,
+            "elapsedMicros": 500000,
+            "error": "controlled-drone-failure"
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-drone-failure"
+        },
+        "nowMicros": 20000500000,
+        "trace": [
+          {
+            "kind": "drone",
+            "request": {
+              "room": "room_1_1"
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    },
+    {
+      "name": "reload-exception-leaves-todo-flag-false",
+      "input": {
+        "nowMicros": 20000000000,
+        "enableParty": false,
+        "lastClueMicros": null,
+        "droneRoom": null,
+        "runOrderRooms": [],
+        "droneTimeMicros": null,
+        "droneIntervalHours": 3,
+        "reloadRooms": [
+          "room_1_2"
+        ],
+        "reloadTimeMicros": null,
+        "maaGapHours": 3,
+        "tasks": [],
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "observations": [
+          {
+            "kind": "reload",
+            "value": null,
+            "elapsedMicros": 500000,
+            "error": "controlled-reload-failure"
+          }
+        ]
+      },
+      "output": {
+        "result": null,
+        "error": {
+          "message": "controlled-reload-failure"
+        },
+        "nowMicros": 20000500000,
+        "trace": [
+          {
+            "kind": "reload",
+            "request": {
+              "rooms": [
+                "room_1_2"
+              ]
+            },
+            "value": null,
+            "nowMicros": 20000500000
+          }
+        ],
+        "lastClueMicros": null,
+        "droneTimeMicros": null,
+        "reloadTimeMicros": null,
+        "flags": {
+          "todoTask": false,
+          "collectNotification": false,
+          "planned": true
+        },
+        "tasks": []
+      }
+    }
+  ]
+}

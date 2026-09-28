@@ -33,12 +33,12 @@ describe('local Mower expression and backup contracts', () => {
     const {state} = setup(trigger)
     expect(evaluateBackupExpression(trigger, state)).toBe(expected)
   })
-  it('evaluates external party_time as always active by default', () => {
+  it('evaluates native party_time as None until a real timestamp is observed', () => {
     const {state} = setup('op_data.party_time')
-    expect(evaluateBackupExpression('op_data.party_time', state)).toBe(true)
-    expect(evaluateBackupExpression('op_data.party_time is not None', state)).toBe(true)
-    expect(evaluateBackupExpression('op_data.party_time is None', state)).toBe(false)
-    expect(evaluateBackupExpression('op_data.party_time == True', state)).toBe(true)
+    expect(evaluateBackupExpression('op_data.party_time', state)).toBe(null)
+    expect(evaluateBackupExpression('op_data.party_time is not None', state)).toBe(false)
+    expect(evaluateBackupExpression('op_data.party_time is None', state)).toBe(true)
+    expect(evaluateBackupExpression('op_data.party_time == True', state)).toBe(false)
   })
   it('does not treat unknown production conditions or executable text as ignorable', () => {
     for(const expression of ["op_data.operators['砾'].unknown()",'globalThis.process.exit()',"__import__('os').system('echo unsafe')"]){
@@ -56,10 +56,11 @@ describe('local Mower expression and backup contracts', () => {
     expect(()=>evaluateBackupExpression('True '.repeat(5000),state)).toThrow(/限制/)
     expect(()=>evaluateBackupExpression('1 / 0',state)).toThrow(/有限数/)
   })
-  it('allows backup plan with party_time to activate naturally in simulation', () => {
+  it('keeps a party-dependent backup inactive when no party timestamp has been read', () => {
     const {schedule}=setup({left:'op_data.party_time',operator:'==',right:'True'})
     const report=simulateSchedule(schedule,{sampleHours:.1})
     expect(report.success).toBe(true)
+    expect(report.events.filter(e=>e.type==='backup-plan'&&e.active)).toEqual([])
     expect(report.diagnostics.some(d=>d.code==='BACKUP_EXTERNAL_CONDITION_SKIPPED')).toBe(false)
   })
   it('blocks legacy natural run-order requests through both engine and bridge', () => {

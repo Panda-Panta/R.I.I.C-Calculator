@@ -1,0 +1,106 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "handle_error",
+    "run",
+    "infra_main",
+    "find_next_task",
+    "SchedulerTask"
+  ],
+  "scope": "Actual run-entry strict-past task predicate and bounded 4-run freeze-clock replay. Room/mood/planning IO and ancillary activities are explicit no-op seams. This proves frozen-clock entry churn, not a real-device infinite loop or a complete scene-machine emulation.",
+  "predicateCases": [
+    {
+      "input": {
+        "id": "empty"
+      },
+      "output": {
+        "added": 1,
+        "timesMicros": [
+          0
+        ]
+      }
+    },
+    {
+      "input": {
+        "id": "exact-now"
+      },
+      "output": {
+        "added": 1,
+        "timesMicros": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "input": {
+        "id": "past-one-microsecond"
+      },
+      "output": {
+        "added": 0,
+        "timesMicros": [
+          -1
+        ]
+      }
+    },
+    {
+      "input": {
+        "id": "future"
+      },
+      "output": {
+        "added": 1,
+        "timesMicros": [
+          3600000000,
+          0
+        ]
+      }
+    }
+  ],
+  "frozenRuns": [
+    {
+      "nowMicros": 0,
+      "selectedType": "NOT_SPECIFIC",
+      "selectedTimeMicros": 0,
+      "selectedConsumed": true,
+      "afterQueueMicros": [
+        3600000000
+      ],
+      "planned": true,
+      "entryQueueCount": 2
+    },
+    {
+      "nowMicros": 0,
+      "selectedType": "NOT_SPECIFIC",
+      "selectedTimeMicros": 0,
+      "selectedConsumed": true,
+      "afterQueueMicros": [
+        3600000000
+      ],
+      "planned": true,
+      "entryQueueCount": 2
+    },
+    {
+      "nowMicros": 0,
+      "selectedType": "NOT_SPECIFIC",
+      "selectedTimeMicros": 0,
+      "selectedConsumed": true,
+      "afterQueueMicros": [
+        3600000000
+      ],
+      "planned": true,
+      "entryQueueCount": 2
+    },
+    {
+      "nowMicros": 0,
+      "selectedType": "NOT_SPECIFIC",
+      "selectedTimeMicros": 0,
+      "selectedConsumed": true,
+      "afterQueueMicros": [
+        3600000000
+      ],
+      "planned": true,
+      "entryQueueCount": 2
+    }
+  ],
+  "beginningCalls": 4
+}

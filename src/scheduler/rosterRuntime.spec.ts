@@ -39,14 +39,16 @@ describe('event roster runtime', () => {
     expect(s.events.filter(e => e.type === 'shift-on')).toHaveLength(1)
     expect(s.morale.B).toBe(16)
   })
-  it('does not schedule an empty return group for a permanent operator moved by a backup task', () => {
+  it('corrects a misplaced permanent operator without scheduling an empty return group', () => {
     const s = createRosterRuntime({ positions: [
       { id: 'work', roomId: 'manufacture', primary: 'A', candidates: [], permanent: true },
     ], beds: [{ id: 'bed', roomId: 'dormitory_1', vip: true }],
     initialMorale: { A: 10 }, mowerPolicy: { restingThreshold: .65, powerPlantCount: 2, opeRestingPriority: [] } })
     delete s.occupants.work; s.bedOccupants.bed = 'A'
     expect(() => settleRoster(s, rates)).not.toThrow()
-    expect(s.bedOccupants.bed).toBe('A')
+    // alpha not_valid restores workaholics outside their planned room.
+    expect(s.occupants.work).toBe('A')
+    expect(s.bedOccupants.bed).toBeUndefined()
     expect(s.returnDeadlines).toEqual({})
   })
   it('does not let a full-morale passive group member return a still-tired producer', () => {
@@ -60,7 +62,7 @@ describe('event roster runtime', () => {
     expect(s.occupants.producer).toBe('B')
     expect(s.events.filter(e => e.type === 'shift-on')).toEqual([])
   })
-  it('does not force an under-recovered group back to work when an exhausted group needs a bed', () => {
+  it('recalls a positive-mood ordinary owner during alpha exhaustion support without an invented return floor', () => {
     const s = createRosterRuntime({ positions: [
       { id: 'tired', roomId: 'manufacture', primary: 'A', candidates: ['B'], lowerLimit: 15 },
       { id: 'exhausted', roomId: 'manufacture2', primary: 'C', candidates: ['D'], exhaustRequired: true },
@@ -68,8 +70,10 @@ describe('event roster runtime', () => {
     mowerPolicy: { restingThreshold: .65, powerPlantCount: 3, opeRestingPriority: [] } })
     s.occupants.tired = 'B'; s.bedOccupants.a = 'A'
     settleRoster(s, rates)
-    expect(s.occupants).toEqual({ tired: 'B', exhausted: 'C' })
-    expect(s.bedOccupants.a).toBe('A')
+    // Actual exhaust support protects full+exhaust; an ordinary owner can release the bed at positive mood.
+    expect(s.occupants).toEqual({ tired: 'A', exhausted: 'D' })
+    expect(s.bedOccupants.a).toBe('C')
+    expect(s.morale.A).toBe(15)
   })
   it('keeps recurring shifts when recovery and fatigue happen simultaneously', () => {
     const result = simulateMoraleTimeline({

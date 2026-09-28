@@ -1,10 +1,8 @@
 /** @vitest-environment jsdom */
-import {describe,it,expect,vi,afterEach,beforeEach} from 'vitest'
+import {describe,it,expect,vi,afterEach} from 'vitest'
 import {mount} from '@vue/test-utils'
 import {createDefaultWorkspace} from '../../workbench/defaults'
-import {repairInventorySeed} from '../../optimizer/inventorySeed'
-vi.mock('../../optimizer/inventorySeed',()=>({repairInventorySeed:vi.fn()}))
-beforeEach(()=>{vi.mocked(repairInventorySeed).mockReset();vi.mocked(repairInventorySeed).mockImplementation((workspace,entries,context)=>{structuredClone(entries);structuredClone(context);return {status:'unchanged',workspace:structuredClone(workspace),changes:[],diagnostics:[]}})})
+import {resolveOperatorCharId as id} from '../../workbench/compat/mowerJson'
 import RosterIncomeSearchPanel from './RosterIncomeSearchPanel.vue'
 const workers:any[]=[]
 class MockWorker {onmessage:any;onerror:any;postMessage=vi.fn();terminate=vi.fn();constructor(){workers.push(this)}}
@@ -32,9 +30,15 @@ describe('income search worker ownership',()=>{
   await w.get('[data-test=search-budget]').setValue('2');await w.get('[data-test=search-income]').trigger('click')
   await w.setProps({options:{production:{seed:7}}});expect(workers[0].terminate).toHaveBeenCalled();expect(w.text()).toContain('尚未运行');w.unmount()
  })
- it('requires an enabled inventory and marks supplied draft conditions',async()=>{
-  vi.stubGlobal('Worker',MockWorker);const p=props();p.inventory.enabled=false
-  const w=mount(RosterIncomeSearchPanel,{props:p});expect(w.get('[data-test=search-income]').attributes('disabled')).toBeDefined();w.unmount()
+ it('uses the full catalog when no idle operator library is imported',async()=>{
+  vi.stubGlobal('Worker',MockWorker);const p=props();p.inventory.enabled=false;p.inventory.entries=[]
+  const w=mount(RosterIncomeSearchPanel,{props:p})
+  expect(w.get('[data-test=search-income]').attributes('disabled')).toBeUndefined()
+  await w.get('[data-test=search-income]').trigger('click')
+  const sent=workers[0].postMessage.mock.calls[0][0]
+  expect(sent.inventory).toHaveLength(429)
+  expect(sent.inventory.some((entry:{operator:string})=>entry.operator===id('阿'))).toBe(true)
+  w.unmount()
  })
 })
 
@@ -137,74 +141,17 @@ it.each(['composite','exp'])('shows %s final income from validation cases instea
 })
 
 
-describe('inventory seed repair preview',()=>{
- const repaired=()=>{const workspace=createDefaultWorkspace();workspace.name='修复后的起点';return {status:'repaired' as const,workspace,changes:[{from:'鸿雪',to:'砾',positions:['room_1_1.slots.0.occupant']},{from:'图耶',to:'芬',positions:['room_1_1.slots.0.replacements.1','central.slots.1.occupant','unknown-position']}],diagnostics:[]}}
- it('requires explicit opt-in in multi-start and passes scheduler context to preview',async()=>{
-  vi.stubGlobal('Worker',MockWorker);const p=props(),w=mount(RosterIncomeSearchPanel,{props:p})
-  expect(w.find('[data-test=search-repair-seed]').exists()).toBe(false);expect(repairInventorySeed).not.toHaveBeenCalled()
-  await w.get('[data-test=search-mode]').setValue('multi-start')
-  expect((w.get('[data-test=search-repair-seed]').element as HTMLInputElement).checked).toBe(false)
-  expect(repairInventorySeed).not.toHaveBeenCalled()
-  await w.get('[data-test=search-repair-seed]').setValue(true)
-  expect(repairInventorySeed).toHaveBeenCalledWith(p.workspace,p.inventory.entries,{assumptions:p.assumptions,resources:undefined})
-  expect(w.get('[data-test=seed-repair-preview]').text()).toContain('无需缺员替换');w.unmount()
- })
- it('shows every replacement and submits a separate repaired baseline without the original draft',async()=>{
-  vi.stubGlobal('Worker',MockWorker);const p=props(),before=JSON.stringify(p.workspace),repair=repaired()
-  vi.mocked(repairInventorySeed).mockReturnValue(repair)
-  const draft={workspace:createDefaultWorkspace(),uncheckedConditions:['原组合待核实']} as any
-  const w=mount(RosterIncomeSearchPanel,{props:{...p,draft}})
-  await w.get('[data-test=search-mode]').setValue('multi-start');await w.get('[data-test=search-repair-seed]').setValue(true)
-  expect(w.findAll('[data-test=seed-repair-change]')).toHaveLength(2)
-  expect(w.get('[data-test=seed-repair-preview]').text()).toContain('B101')
-  expect(w.get('[data-test=seed-repair-preview]').text()).toContain('第 1 位主班')
-  expect(w.get('[data-test=seed-repair-preview]').text()).toContain('第 1 位的第 2 候补')
-  expect(w.get('[data-test=seed-repair-preview]').text()).toContain('控制中枢：第 2 位主班')
-  expect(w.get('[data-test=seed-repair-preview]').text()).toContain('unknown-position')
-  expect(w.get('[data-test=seed-repair-preview]').text()).not.toContain('.slots.')
-  expect(w.text()).toContain('所有收益增量相对修复起点计算')
-  await w.get('[data-test=search-income]').trigger('click')
-  const request=workers[0].postMessage.mock.calls[0][0]
-  expect(request.baseline).toEqual(repair.workspace);expect(request).not.toHaveProperty('draft');expect(request).not.toHaveProperty('conditional')
-  expect(JSON.stringify(p.workspace)).toBe(before);expect(draft.uncheckedConditions).toEqual(['原组合待核实'])
-  workers[0].onmessage({data:{type:'progress',progress:{completedScenarios:4,completedCandidates:1,totalCandidates:4,label:'原排班',completed:{id:'baseline',label:'原排班',workspace:repair.workspace,cases:[],comparison:null}}}})
-  await w.vm.$nextTick();expect(w.get('tbody').text()).toContain('修复起点基线')
-  workers[0].onmessage({data:{type:'complete',report:{candidates:[{id:'baseline',label:'原排班',workspace:repair.workspace,cases:[],comparison:null}],bestCandidateId:'baseline',issues:[],validation:{status:'no-improvement',selectedId:null,reasons:['未确认相对原排班的改进'],baseline:[]}}}})
-  await w.vm.$nextTick();expect(w.get('[data-test=income-final-validation]').text()).toContain('未确认相对修复起点的改进')
-  expect(w.get('[data-test=income-final-value]').text()).toContain('修复起点复核日均')
-  expect(w.get('[data-test=search-budget]').element.parentElement?.textContent).toContain('含修复起点');w.unmount()
- })
- it('shows all blocking diagnostics and creates no worker',async()=>{
-  vi.stubGlobal('Worker',MockWorker)
-  vi.mocked(repairInventorySeed).mockReturnValue({status:'blocked',workspace:null,changes:[],diagnostics:[{code:'PROTECTED',message:'特殊目标缺员'},{code:'INSUFFICIENT',message:'无可用替代者'}]})
-  const w=mount(RosterIncomeSearchPanel,{props:props()})
-  await w.get('[data-test=search-mode]').setValue('multi-start');await w.get('[data-test=search-repair-seed]').setValue(true)
-  expect(w.findAll('[data-test=seed-repair-diagnostic]')).toHaveLength(2)
-  await w.get('[data-test=search-income]').trigger('click');expect(workers).toHaveLength(0);expect(w.text()).toContain('无可用替代者');w.unmount()
- })
- it('preserves the draft when no repair is needed and invalidates a run when repair is toggled',async()=>{
-  vi.stubGlobal('Worker',MockWorker);const p=props(),draft={workspace:createDefaultWorkspace(),uncheckedConditions:['条件']} as any
-  const w=mount(RosterIncomeSearchPanel,{props:{...p,draft}})
-  await w.get('[data-test=search-mode]').setValue('multi-start');await w.get('[data-test=search-repair-seed]').setValue(true)
-  await w.get('[data-test=search-income]').trigger('click')
-  expect(workers[0].postMessage.mock.calls[0][0]).toMatchObject({baseline:p.workspace,draft:draft.workspace,conditional:true})
-  await w.get('[data-test=search-repair-seed]').setValue(false)
-  expect(workers[0].terminate).toHaveBeenCalled();expect(w.text()).toContain('尚未运行');expect(w.find('[data-test=seed-repair-preview]').exists()).toBe(false)
-  await w.get('[data-test=search-mode]').setValue('hill-climb');expect(w.find('[data-test=search-repair-seed]').exists()).toBe(false);w.unmount()
- })
- it('exports the original and repair snapshot alongside the effective search request',async()=>{
-  vi.stubGlobal('Worker',MockWorker);const repair=repaired();vi.mocked(repairInventorySeed).mockReturnValue(repair)
-  const blobs:any[]=[];vi.stubGlobal('Blob',class {constructor(parts:any[]){blobs.push(parts)}})
-  vi.stubGlobal('URL',class extends URL {static override createObjectURL=vi.fn(()=>'blob:report');static override revokeObjectURL=vi.fn()})
-  const click=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
-  const p=props(),w=mount(RosterIncomeSearchPanel,{props:p})
-  await w.get('[data-test=search-mode]').setValue('multi-start');await w.get('[data-test=search-repair-seed]').setValue(true)
-  await w.get('[data-test=search-income]').trigger('click')
-  workers[0].onmessage({data:{type:'progress',progress:{completedScenarios:4,completedCandidates:1,totalCandidates:4,label:'基线',completed:{id:'baseline',label:'原排班',workspace:repair.workspace,cases:[],comparison:null}}}})
-  await w.vm.$nextTick();await w.get('[data-test=export-income-search]').trigger('click')
-  const exported=JSON.parse(blobs[0][0])
-  expect(exported.seedRepair.report.changes[0].positions).toEqual(['room_1_1.slots.0.occupant']);expect(exported.seedRepair).toEqual({original:p.workspace,report:repair});expect(exported.request.baseline).toEqual(repair.workspace)
-  expect(exported.seedRepair.original.name).not.toBe(exported.request.baseline.name)
-  click.mockRestore();w.unmount()
- })
+it('preserves assigned staff when the imported library contains only idle candidates',async()=>{
+ vi.stubGlobal('Worker',MockWorker)
+ const p=props(),draft={workspace:createDefaultWorkspace(),uncheckedConditions:['条件']} as any
+ const w=mount(RosterIncomeSearchPanel,{props:{...p,draft}})
+ await w.get('[data-test=search-mode]').setValue('multi-start')
+ expect(w.find('[data-test=search-repair-seed]').exists()).toBe(false)
+ await w.get('[data-test=search-income]').trigger('click')
+ const sent=workers[0].postMessage.mock.calls[0][0]
+ expect(sent.baseline).toEqual(p.workspace)
+ expect(sent.draft).toEqual(draft.workspace)
+ expect(sent.inventory).toEqual(p.inventory.entries)
+ expect(w.text()).not.toContain('缺员起点修复')
+ w.unmount()
 })

@@ -1,0 +1,1598 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "TaskTypes",
+    "set_type_enum",
+    "SchedulerTask",
+    "scheduling",
+    "_schedule_run_orders",
+    "adjust_run_order_for_maintenance",
+    "_support_swap_gap",
+    "protect_support_swaps",
+    "_avoid_swap_with_orders",
+    "_defer_work_before_swap",
+    "_ordinary_task_minutes",
+    "_merge_deferred_dorm_schedules",
+    "estimate_dorm_minutes"
+  ],
+  "scope": "Actual native task scheduling, default and experimental, with fixed clock and explicitly supplied maintenance/timing inputs. No order reading, drone adjustment, task execution or complete-cycle assertion.",
+  "cases": [
+    {
+      "name": "empty",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": []
+      },
+      "output": {
+        "tasks": [],
+        "conflict": null
+      }
+    },
+    {
+      "name": "close-orders",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 200000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "close-orders-disabled",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": false,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 200000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "first-already-due",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 0,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "second-adjusted",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_2",
+            "adjusted": true,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 200000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "adjusted": true,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "defer-three-rooms",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ],
+              "c": [
+                "C"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 101000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ],
+              "c": [
+                "C"
+              ]
+            }
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "dont-defer-adjusted",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ],
+              "c": [
+                "C"
+              ]
+            },
+            "metadata": "",
+            "adjusted": true,
+            "strict": false
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": true,
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ],
+              "c": [
+                "C"
+              ]
+            }
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "future-work-break",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "0": [
+                "A"
+              ],
+              "1": [
+                "A"
+              ],
+              "2": [
+                "A"
+              ],
+              "3": [
+                "A"
+              ],
+              "4": [
+                "A"
+              ],
+              "5": [
+                "A"
+              ],
+              "6": [
+                "A"
+              ],
+              "7": [
+                "A"
+              ],
+              "8": [
+                "A"
+              ],
+              "9": [
+                "A"
+              ],
+              "10": [
+                "A"
+              ],
+              "11": [
+                "A"
+              ],
+              "12": [
+                "A"
+              ],
+              "13": [
+                "A"
+              ],
+              "14": [
+                "A"
+              ],
+              "15": [
+                "A"
+              ],
+              "16": [
+                "A"
+              ],
+              "17": [
+                "A"
+              ],
+              "18": [
+                "A"
+              ],
+              "19": [
+                "A"
+              ],
+              "20": [
+                "A"
+              ],
+              "21": [
+                "A"
+              ],
+              "22": [
+                "A"
+              ],
+              "23": [
+                "A"
+              ],
+              "24": [
+                "A"
+              ],
+              "25": [
+                "A"
+              ],
+              "26": [
+                "A"
+              ],
+              "27": [
+                "A"
+              ],
+              "28": [
+                "A"
+              ],
+              "29": [
+                "A"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 901,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "0": [
+                "A"
+              ],
+              "1": [
+                "A"
+              ],
+              "2": [
+                "A"
+              ],
+              "3": [
+                "A"
+              ],
+              "4": [
+                "A"
+              ],
+              "5": [
+                "A"
+              ],
+              "6": [
+                "A"
+              ],
+              "7": [
+                "A"
+              ],
+              "8": [
+                "A"
+              ],
+              "9": [
+                "A"
+              ],
+              "10": [
+                "A"
+              ],
+              "11": [
+                "A"
+              ],
+              "12": [
+                "A"
+              ],
+              "13": [
+                "A"
+              ],
+              "14": [
+                "A"
+              ],
+              "15": [
+                "A"
+              ],
+              "16": [
+                "A"
+              ],
+              "17": [
+                "A"
+              ],
+              "18": [
+                "A"
+              ],
+              "19": [
+                "A"
+              ],
+              "20": [
+                "A"
+              ],
+              "21": [
+                "A"
+              ],
+              "22": [
+                "A"
+              ],
+              "23": [
+                "A"
+              ],
+              "24": [
+                "A"
+              ],
+              "25": [
+                "A"
+              ],
+              "26": [
+                "A"
+              ],
+              "27": [
+                "A"
+              ],
+              "28": [
+                "A"
+              ],
+              "29": [
+                "A"
+              ]
+            }
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 901000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "fia-three-minutes",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "FIAMMETTA",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 101000000,
+            "type": "FIAMMETTA",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "clue-three-minutes",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "CLUE_PARTY",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 101000000,
+            "type": "CLUE_PARTY",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "furniture-budget",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "FURNITURE",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 600,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 600000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 601000000,
+            "type": "FURNITURE",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "strict-task-kept",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ],
+              "c": [
+                "C"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": true
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ],
+              "c": [
+                "C"
+              ]
+            }
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "preserve-late-order",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": -100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "a": [
+                "A"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": -100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "a": [
+                "A"
+              ]
+            }
+          },
+          {
+            "originalIndex": 2,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "swap-late-order",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 10,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 120,
+            "type": "SWAP_SUPPORT",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 120000000,
+            "type": "SWAP_SUPPORT",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 721000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "swap-early-conflict",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 900,
+            "type": "SWAP_SUPPORT",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 100000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 900000000,
+            "type": "SWAP_SUPPORT",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "swap-work-deferred",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 120,
+            "type": "SWAP_SUPPORT",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 120000000,
+            "type": "SWAP_SUPPORT",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 300000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ]
+            }
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "swap-strict-work",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": true
+          },
+          {
+            "seconds": 120,
+            "type": "SWAP_SUPPORT",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 0,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "a": [
+                "A"
+              ],
+              "b": [
+                "B"
+              ]
+            }
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 120000000,
+            "type": "SWAP_SUPPORT",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "mastery-disabled",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": false,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 10,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 120,
+            "type": "SWAP_SUPPORT",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 10000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 120000000,
+            "type": "SWAP_SUPPORT",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "custom-swap-gap",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 11,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 100,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 1300,
+            "type": "SWAP_SUPPORT",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 1300000000,
+            "type": "SWAP_SUPPORT",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 2621000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "maintenance-strict-edges",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": false,
+        "maintenance": [
+          900,
+          1200
+        ],
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 300,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 301,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_2",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 1799,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_3",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 1800,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_2_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 2,
+            "timeMicros": 298000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_3",
+            "adjusted": true,
+            "plan": {}
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 299000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_2",
+            "adjusted": true,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 300000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 3,
+            "timeMicros": 1800000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_2_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": [
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "name": "experimental-fill-fixed",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": true,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "FILL_DORM",
+            "plan": {
+              "dormitory_1": [
+                "A"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 50,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 0,
+            "timeMicros": 0,
+            "type": "FILL_DORM",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "dormitory_1": [
+                "A"
+              ]
+            }
+          },
+          {
+            "originalIndex": 1,
+            "timeMicros": 50000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "experimental-recent-dorm-budget",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": true,
+        "maintenance": null,
+        "dormDurations": {
+          "dormitory_1": [
+            200
+          ]
+        },
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {
+              "dormitory_1": [
+                "A"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 200,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 1,
+            "timeMicros": 200000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 0,
+            "timeMicros": 201000000,
+            "type": "NOT_SPECIFIC",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "dormitory_1": [
+                "A"
+              ]
+            }
+          }
+        ],
+        "conflict": null
+      }
+    },
+    {
+      "name": "experimental-merge-dorms",
+      "input": {
+        "nowMicros": 0,
+        "runOrderDelayMinutes": 5,
+        "executionMinutes": 0.75,
+        "configuredDelayMinutes": 5,
+        "grandet": true,
+        "enableMastery": true,
+        "experimental": true,
+        "maintenance": null,
+        "dormDurations": {},
+        "tasks": [
+          {
+            "seconds": 0,
+            "type": "RE_ORDER",
+            "plan": {
+              "dormitory_1": [
+                "A",
+                "Current"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 0,
+            "type": "NOT_SPECIFIC",
+            "plan": {},
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 1,
+            "type": "SHIFT_OFF",
+            "plan": {
+              "work": [
+                "B"
+              ],
+              "dormitory_1": [
+                "Current",
+                "B"
+              ]
+            },
+            "metadata": "",
+            "adjusted": false,
+            "strict": false
+          },
+          {
+            "seconds": 30,
+            "type": "RUN_ORDER",
+            "plan": {},
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "strict": false
+          }
+        ]
+      },
+      "output": {
+        "tasks": [
+          {
+            "originalIndex": 3,
+            "timeMicros": 30000000,
+            "type": "RUN_ORDER",
+            "metadata": "room_1_1",
+            "adjusted": false,
+            "plan": {}
+          },
+          {
+            "originalIndex": 2,
+            "timeMicros": 31000000,
+            "type": "SHIFT_OFF",
+            "metadata": "",
+            "adjusted": false,
+            "plan": {
+              "work": [
+                "B"
+              ],
+              "dormitory_1": [
+                "A",
+                "B"
+              ]
+            }
+          }
+        ],
+        "conflict": null
+      }
+    }
+  ]
+}

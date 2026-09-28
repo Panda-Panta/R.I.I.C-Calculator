@@ -1,0 +1,108 @@
+{
+  "sourceCommit": "c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88",
+  "actualFunctions": [
+    "Operator.need_to_refresh",
+    "get_agent_from_room should_read_mood assignment and FIA override block"
+  ],
+  "scope": "Actual default mood-read predicate AST, not device OCR/timer reads or complete get_agent_from_room. FIA charge/restore metadata and read indices are caller fixture inputs.",
+  "cases": [
+    {
+      "input": {
+        "currentType": null,
+        "name": "R",
+        "index": 4,
+        "metadata": "",
+        "readTimeIndices": [],
+        "nativeRoom": "",
+        "observedAtHours": 0,
+        "nowHours": 1
+      },
+      "output": {
+        "shouldReadMood": true
+      }
+    },
+    {
+      "input": {
+        "currentType": "FIAMMETTA",
+        "name": "R",
+        "index": 4,
+        "metadata": "",
+        "readTimeIndices": [],
+        "nativeRoom": "",
+        "observedAtHours": 0,
+        "nowHours": 1
+      },
+      "output": {
+        "shouldReadMood": false
+      }
+    },
+    {
+      "input": {
+        "currentType": "FIAMMETTA",
+        "name": "R",
+        "index": 4,
+        "metadata": "Target",
+        "readTimeIndices": [
+          4
+        ],
+        "nativeRoom": "",
+        "observedAtHours": 0,
+        "nowHours": 1
+      },
+      "output": {
+        "shouldReadMood": false
+      }
+    },
+    {
+      "input": {
+        "currentType": "FIAMMETTA",
+        "name": "Target",
+        "index": 0,
+        "metadata": "Target",
+        "readTimeIndices": [
+          0
+        ],
+        "nativeRoom": "dormitory_1",
+        "observedAtHours": 0,
+        "nowHours": 1
+      },
+      "output": {
+        "shouldReadMood": true
+      }
+    },
+    {
+      "input": {
+        "currentType": "FIAMMETTA",
+        "name": "菲亚梅塔",
+        "index": 1,
+        "metadata": "Target",
+        "readTimeIndices": [
+          1
+        ],
+        "nativeRoom": "dormitory_1",
+        "observedAtHours": 0,
+        "nowHours": 1
+      },
+      "output": {
+        "shouldReadMood": true
+      }
+    },
+    {
+      "input": {
+        "currentType": "FIAMMETTA",
+        "name": "菲亚梅塔",
+        "index": 2,
+        "metadata": "",
+        "readTimeIndices": [
+          2
+        ],
+        "nativeRoom": "dormitory_1",
+        "observedAtHours": 0,
+        "nowHours": 1
+      },
+      "output": {
+        "shouldReadMood": true
+      }
+    }
+  ]
+}

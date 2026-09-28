@@ -8,9 +8,11 @@ import * as backup from './backupNeighborhood'
 import * as primaryBackup from './primaryBackupNeighborhood'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as comparison from './incomeComparison'
-const owned=(names:string[])=>names.map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
+// Free selections require a declared owned idle pool, including during holdout runs.
+const idleNames=['芬','安赛尔','夜刀','黑角','巡林者','正义骑士号']
+const owned=(names:string[])=>[...new Set([...names,...idleNames])].map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
 function workspace(){const w=createDefaultWorkspace();for(const f of Object.values(w.mainPlan.facilities)){if(f.type==='manufacture')f.product='gold'};w.mainPlan.facilities.central.slots=[{occupant:{kind:'operator',operatorId:id('杜宾')},groupId:null,replacements:[id('阿米娅')]}];w.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'};return w}
-const request=()=>({baseline:workspace(),inventory:owned(['杜宾','阿米娅','凯尔希']),mode:'multi-start' as const,restarts:2,maxDepth:2,searchSeed:42,includeControlMains:true,includeProductionMains:true,objective:'composite' as const,maxCandidates:3,options:{sampleHours:2,warmupHours:0,production:{seed:7,droneTarget:'none' as const}}})
+const request=()=>({baseline:workspace(),inventory:owned(['杜宾','阿米娅','凯尔希']),mode:'multi-start' as const,restarts:2,maxDepth:2,searchSeed:42,includeControlMains:true,includeProductionMains:true,objective:'composite' as const,maxCandidates:3,assumptions:{idleOperators:idleNames.map(id)},options:{sampleHours:2,warmupHours:0,production:{seed:7,droneTarget:'none' as const}}})
 afterEach(()=>vi.restoreAllMocks())
 it('validates independent random search parameters before simulating',()=>{
  for(const change of [{searchSeed:-1},{searchSeed:1.5},{restarts:0},{restarts:21},{maxCandidates:201},{includeControlMains:'yes'}])expect(()=>runRosterIncomeSearch({...request(),...change} as Parameters<typeof runRosterIncomeSearch>[0])).toThrow()
@@ -29,7 +31,10 @@ it('finds and independently revalidates a real control improvement without alter
  expect(result.validation!.steps[0]).toBeLessThanOrEqual(.25)
  expect(result.validation!.candidates.find(c=>c.id===result.bestCandidateId)!.comparison.minGain).toBeGreaterThan(0)
  expect(input).toEqual(before)
- expect(result.bestWorkspace.mainPlan.facilities.central.slots[0]!.occupant).toEqual({kind:'operator',operatorId:id('凯尔希')})
+ // The winning control operator is determined by complete scheduling and holdout gain.
+ const winner=result.bestWorkspace.mainPlan.facilities.central.slots[0]!.occupant
+ expect(winner.kind).toBe('operator')
+ expect(winner.kind==='operator'&&[id('阿米娅'),id('凯尔希')].includes(winner.operatorId)).toBe(true)
 },60000)
 it('does not promote a one-day gain when completed-item granularity leaves a zero lower bound',()=>{
  vi.spyOn(backup,'generateBackupNeighbors').mockReturnValue([])
@@ -87,8 +92,10 @@ it('continues a restart after a losing intermediate state',()=>{
  expect(r.candidates.map(c=>c.depth)).toEqual([0,1,2]);expect(r.candidates[2]!.parentId).toBe(r.candidates[1]!.id)
  expect(r.bestCandidateId).toBeNull()
 })
-it('rejects an unavailable starting roster before spending any simulation budget',()=>{
+it('accepts a starting roster whose on-duty operators are absent from the idle-only library',()=>{
  const spy=vi.spyOn(bridge,'runScheduleSimulationBridge')
- expect(()=>runRosterIncomeSearch({...request(),inventory:owned(['凯尔希'])})).toThrow('起点排班未通过干员库')
- expect(spy).not.toHaveBeenCalled()
+ const input=request();input.options.sampleHours=1;input.options.warmupHours=0
+ const result=runRosterIncomeSearch({...input,inventory:owned(['凯尔希']),maxCandidates:1})
+ expect(result.baseline.cases).toHaveLength(4)
+ expect(spy).toHaveBeenCalledTimes(4)
 })

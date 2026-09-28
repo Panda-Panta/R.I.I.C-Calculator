@@ -1,6 +1,7 @@
 import type { ManufactureProduct } from '../domain/types'
 
-const EPSILON = 1e-9
+// Below the scheduler's one-microsecond clock resolution; matches production boundary tolerance.
+const EPSILON = 1e-8
 export type ManufacturingFormulaId = 'exp-medium' | 'gold' | 'fragment-orirock' | 'fragment-device'
 export type ManufacturingDiagnosticCode = 'FORMULA_CHANGE_REQUIRES_EXPLICIT_RESET'
 

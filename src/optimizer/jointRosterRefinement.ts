@@ -6,7 +6,6 @@ import {resolveOperatorCharId as id} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace} from '../workbench/model'
 import {hasOpaqueStrategy,buildBackupSnapshot} from './backupEfficiency'
 import {estimateFixedDuty,type FixedDutyEstimate} from './fixedDuty'
-import {validateCatalogScheduleInventory as validateScheduleInventory} from './inventoryAdmission'
 import {validatePhysicalRoster} from './rosterDraft'
 
 export interface JointRosterChange {kind:'main-backup-swap'|'main-room-swap'|'main-replacement';positions:string[];before:string[];after:string[];beforeRanking:number;afterRanking:number}
@@ -18,7 +17,8 @@ export function refineJointRoster(workspace:RosterWorkspace,entries:readonly Own
  const max=options.maxEvaluations??256,ratio=options.mainDutyRatio??.775
  if(!Number.isInteger(max)||max<2||max>100000||!Number.isFinite(ratio)||ratio<.75||ratio>.8){result.diagnostics.push('INVALID_OPTIONS');return result}
  const inventory=compileOperatorInventory(entries)
- if(!inventory.valid||hasOpaqueStrategy(workspace)||validatePhysicalRoster(workspace).length||!validateScheduleInventory(compileRosterSchedule(workspace),inventory).valid){result.diagnostics.push('SOURCE_NOT_ADMITTED');return result}
+ const schedule=compileRosterSchedule(workspace)
+ if(!inventory.valid||hasOpaqueStrategy(workspace)||validatePhysicalRoster(workspace).length||schedule.diagnostics.some(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR')){result.diagnostics.push('SOURCE_NOT_ADMITTED');return result}
  try{buildBackupSnapshot(workspace)}catch{result.diagnostics.push('BACKUP_SNAPSHOT_UNAVAILABLE');return result}
  const participants=Object.values(workspace.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[id(s.occupant.operatorId)]:[]),...s.replacements.map(id)]))
  if(participants.some(value=>isShiftRunOperator(value)||OPERATOR_MAP.get(value)?.name==='菲亚梅塔')){result.diagnostics.push('SPECIAL_SCHEDULE_UNSUPPORTED');return result}
