@@ -10,9 +10,14 @@ import {
   type TimelineMarkerEvent,
 } from '../../workbench/timeline/timelineModel'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   report: ScheduleSimulationReport | null
-}>()
+  initialWindowHours?: 24 | 72
+  initiallyCollapsed?: boolean
+}>(), {
+  initialWindowHours: 72,
+  initiallyCollapsed: false,
+})
 
 const emit = defineEmits<{
   (e: 'request-simulate'): void
@@ -23,11 +28,12 @@ const viewMode = ref<'facility' | 'operator'>('facility')
 const facilityFilter = ref<string>('all')
 const searchQuery = ref('')
 const showEventMarkers = ref(true)
+const isTimelineExpanded = ref(!props.initiallyCollapsed)
 
 // Time window zoom & navigation
-const zoomPreset = ref<'6' | '12' | '24' | '48' | '72' | '168' | 'all'>('72')
+const zoomPreset = ref<'6' | '12' | '24' | '48' | '72' | '168' | 'all'>(props.initialWindowHours === 24 ? '24' : '72')
 const customWindowStart = ref(0)
-const customWindowEnd = ref(72)
+const customWindowEnd = ref<number>(props.initialWindowHours)
 const tracksContainerRef = ref<HTMLElement | null>(null)
 const isDraggingTimeline = ref(false)
 
@@ -137,15 +143,19 @@ const dataset = computed(() => {
   return buildTimelineData(props.report)
 })
 
-const totalObservedHours = computed(() => dataset.value?.observedHours ?? 72)
+const totalObservedHours = computed(() => props.report?.observedHours ?? props.initialWindowHours)
+
+watch(() => props.report, () => {
+  isTimelineExpanded.value = !props.initiallyCollapsed
+})
 
 // Initialize zoom window based on report observed hours
 watch(
-  () => dataset.value?.observedHours,
+  () => props.report?.observedHours,
   (hours) => {
     if (hours && hours > 0) {
       customWindowStart.value = 0
-      const initialDur = Math.min(72, hours)
+      const initialDur = Math.min(props.initialWindowHours, hours)
       customWindowEnd.value = Math.max(6, initialDur)
     }
   },
@@ -733,13 +743,23 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
           <button
             type="button"
             class="export-gantt-btn"
+            data-test="toggle-gantt-visibility"
+            :aria-expanded="isTimelineExpanded"
+            aria-controls="gantt-visualization"
+            @click="isTimelineExpanded = !isTimelineExpanded"
+          >
+            {{ isTimelineExpanded ? '收起图表' : '展开图表' }}
+          </button>
+          <button
+            type="button"
+            class="export-gantt-btn"
             data-test="export-gantt-btn"
             title="以标准 12h 视窗导出设施分道甘特图高清图片"
             @click="openExportModal"
           >
             📷 导出设施甘特图
           </button>
-          <div class="view-mode-toggle">
+          <div v-if="isTimelineExpanded" class="view-mode-toggle">
             <button
               type="button"
               class="toggle-btn"
@@ -763,7 +783,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       </div>
 
       <!-- Filter and Zoom Bar -->
-      <div class="gantt-controls-bar">
+      <div v-if="isTimelineExpanded" class="gantt-controls-bar">
         <!-- Facility Filter (facility view only) -->
         <div v-if="viewMode === 'facility'" class="filter-chips">
           <button
@@ -847,7 +867,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       </div>
 
       <!-- Window Navigation Toolbar -->
-      <div class="gantt-window-nav-bar" data-test="gantt-window-nav-bar">
+      <div v-if="isTimelineExpanded" class="gantt-window-nav-bar" data-test="gantt-window-nav-bar">
         <div class="nav-btn-group">
           <button
             type="button"
@@ -929,7 +949,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
       <!-- Overview Scrubber Track (visible when total > window, Req 4) -->
       <div
-        v-if="totalObservedHours > windowDuration"
+        v-if="isTimelineExpanded && totalObservedHours > windowDuration"
         class="gantt-overview-scrubber"
         data-test="gantt-overview-scrubber"
       >
@@ -975,7 +995,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       </div>
 
       <!-- Time Window Info Bar -->
-      <div class="time-window-info">
+      <div v-if="isTimelineExpanded" class="time-window-info">
         <span>当前视窗：<strong>T+{{ customWindowStart.toFixed(1) }}h</strong> 至 <strong>T+{{ customWindowEnd.toFixed(1) }}h</strong>（共 {{ windowDuration.toFixed(1) }} 小时 / {{ (windowDuration / 24).toFixed(1) }} 天 · 按住鼠标左键可拖拽时间轴平移）</span>
         <span v-if="cursorTime !== null" class="cursor-info">
           🎯 光标定位：<strong>T+{{ cursorTime.toFixed(2) }}h</strong>（第 {{ Math.floor(cursorTime / 24) + 1 }} 天 {{ String(Math.floor(cursorTime % 24)).padStart(2, '0') }}:{{ String(Math.floor((cursorTime % 1) * 60)).padStart(2, '0') }}）
@@ -984,7 +1004,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
     </div>
 
     <!-- Empty State -->
-    <div v-if="!dataset || dataset.facilityTracks.length === 0" class="gantt-empty-state">
+    <div v-if="isTimelineExpanded && (!dataset || dataset.facilityTracks.length === 0)" id="gantt-visualization" class="gantt-empty-state">
       <div class="empty-icon">📊</div>
       <p class="empty-title">暂无时间轴数据</p>
       <p class="empty-desc">运行基建排班仿真计算后，系统将自动记录并呈现全周期干员工休及设施运转甘特图。</p>
@@ -994,7 +1014,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
     </div>
 
     <!-- Gantt Chart Main Area -->
-    <div v-else class="gantt-container" data-test="gantt-container">
+    <div v-else-if="isTimelineExpanded" id="gantt-visualization" class="gantt-container" data-test="gantt-container">
       <div class="gantt-scroll-wrapper">
         <!-- Ruler Row (Sticky Header) -->
         <div class="gantt-ruler-row">
@@ -1197,7 +1217,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
     <!-- Floating Inspector Tooltip -->
     <div
-      v-if="hoveredInterval"
+      v-if="isTimelineExpanded && hoveredInterval"
       class="gantt-tooltip"
       :style="{ left: `${tooltipX}px`, top: `${tooltipY}px` }"
     >
@@ -1240,7 +1260,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
     <!-- Event Tooltip -->
     <div
-      v-if="hoveredEvent"
+      v-if="isTimelineExpanded && hoveredEvent"
       class="gantt-tooltip event-tooltip"
       :style="{ left: `${tooltipX}px`, top: `${tooltipY}px` }"
     >

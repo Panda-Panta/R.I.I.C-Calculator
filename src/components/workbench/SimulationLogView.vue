@@ -176,7 +176,7 @@ function exportJson(mode: ExportReportMode = 'summary'): void {
       </div>
 
       <!-- Gantt Chart Timeline Visualization -->
-      <ScheduleTimelineGantt :report="report" />
+      <ScheduleTimelineGantt :report="report" :initial-window-hours="24" initially-collapsed />
 
       <!-- Resource inflow/outflow balance table -->
       <section v-if="report.production" class="log-section">

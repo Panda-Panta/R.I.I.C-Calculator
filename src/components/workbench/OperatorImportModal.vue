@@ -5,14 +5,9 @@ import {
   NModal,
   NRadio,
   NRadioGroup,
-  NTabPane,
-  NTabs,
-  NTooltip,
 } from 'naive-ui'
 import {
   detectAndParseOperatorData,
-  parseSklandExport,
-  parseYituliuText,
   inventoryToCsvText,
   deduplicateOperatorEntries,
   type OperatorImportSummary,
@@ -29,105 +24,69 @@ const emit = defineEmits<{
   (e: 'imported', entries: OwnedOperatorInput[], text: string): void
 }>()
 
-const activeTab = ref<'auto' | 'maa' | 'yituliu' | 'skland'>('auto')
-const autoFile = ref<{ name: string; summary: OperatorImportSummary } | null>(null)
-const maaText = ref('')
-const yituliuText = ref('')
-const sklandText = ref('')
+const uploadedFile = ref<{ name: string; summary: OperatorImportSummary } | null>(null)
+const pastedText = ref('')
 const errorMessage = ref('')
 const isDragOver = ref(false)
 const importMode = ref<'replace' | 'merge'>('replace')
 const fileInputRef = ref<HTMLInputElement | null>(null)
+let inputVersion = 0
 
 const storageKey = 'arcinc-operator-inventory-v1'
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
+    inputVersion++
     errorMessage.value = ''
-    autoFile.value = null
-    maaText.value = ''
-    yituliuText.value = ''
-    sklandText.value = ''
+    uploadedFile.value = null
+    pastedText.value = ''
     isDragOver.value = false
   }
 })
 
-// Parsers for each tab
-const parsedMaa = computed(() => {
-  if (!maaText.value.trim()) return null
-  return detectAndParseOperatorData(maaText.value, 'maa.txt')
+const parsedText = computed(() => pastedText.value.trim()
+  ? detectAndParseOperatorData(pastedText.value)
+  : null)
+const detectedSummary = computed(() => uploadedFile.value?.summary ?? parsedText.value)
+const currentSummary = computed(() => {
+  const summary = detectedSummary.value
+  return summary?.source === 'maa' || summary?.source === 'yituliu' ? summary : null
+})
+const displayError = computed(() => {
+  if (errorMessage.value) return errorMessage.value
+  if (!detectedSummary.value) return ''
+  if (!currentSummary.value) return '未识别为 MAA 或一图流导出结果，请检查文件或粘贴内容。'
+  if (currentSummary.value.entries.length === 0) {
+    return currentSummary.value.error ?? '未识别到持有干员，请检查导出结果。'
+  }
+  return ''
 })
 
-const parsedYituliu = computed(() => {
-  if (!yituliuText.value.trim()) return null
-  const res = parseYituliuText(yituliuText.value)
-  return {
-    source: 'yituliu' as const,
-    format: '一图流表格文本',
-    entries: res.entries,
-    totalInFile: res.totalInFile,
-    unownedCount: res.unownedCount,
-  }
-})
-
-const parsedSkland = computed(() => {
-  if (!sklandText.value.trim()) return null
-  const entries = parseSklandExport(sklandText.value)
-  return {
-    source: 'skland' as const,
-    format: '森空岛角色数据 (JSON)',
-    entries,
-    totalInFile: entries.length,
-    unownedCount: 0,
-  }
-})
-
-// Active summary depending on tab
-const currentSummary = computed<OperatorImportSummary | null>(() => {
-  if (activeTab.value === 'auto') {
-    return autoFile.value?.summary ?? null
-  }
-  if (activeTab.value === 'maa') {
-    return parsedMaa.value
-  }
-  if (activeTab.value === 'yituliu') {
-    return parsedYituliu.value
-  }
-  if (activeTab.value === 'skland') {
-    return parsedSkland.value
-  }
-  return null
-})
+function handleTextInput(): void {
+  inputVersion++
+  uploadedFile.value = null
+  errorMessage.value = ''
+}
 
 function triggerFileInput(): void {
   fileInputRef.value?.click()
 }
 
 async function processFile(file: File): Promise<void> {
+  const version = ++inputVersion
   errorMessage.value = ''
+  uploadedFile.value = null
+  pastedText.value = ''
   try {
-    const isXlsx = file.name.endsWith('.xlsx')
-    if (isXlsx) {
-      const buffer = await file.arrayBuffer()
-      const summary = detectAndParseOperatorData(buffer, file.name)
-      if (summary.error) {
-        errorMessage.value = summary.error
-        return
-      }
-      autoFile.value = { name: file.name, summary }
-      activeTab.value = 'auto'
-    } else {
-      const text = await file.text()
-      const summary = detectAndParseOperatorData(text, file.name)
-      if (summary.error) {
-        errorMessage.value = summary.error
-        return
-      }
-      autoFile.value = { name: file.name, summary }
-      activeTab.value = 'auto'
-    }
+    const input = file.name.toLowerCase().endsWith('.xlsx')
+      ? await file.arrayBuffer()
+      : await file.text()
+    if (version !== inputVersion) return
+    uploadedFile.value = { name: file.name, summary: detectAndParseOperatorData(input, file.name) }
   } catch (err: unknown) {
-    errorMessage.value = `读取文件失败：${err instanceof Error ? err.message : String(err)}`
+    if (version === inputVersion) {
+      errorMessage.value = `读取文件失败：${err instanceof Error ? err.message : String(err)}`
+    }
   }
 }
 
@@ -193,7 +152,7 @@ function handleImport(): void {
   <n-modal
     :show="open"
     preset="card"
-    title="导入干员库（支持 MAA 与 一图流）"
+    title="导入干员库：MAA / 一图流导出结果"
     class="operator-import-modal"
     style="width: 720px; max-width: 95vw;"
     :mask-closable="true"
@@ -204,10 +163,15 @@ function handleImport(): void {
       <div
         class="file-dropzone"
         :class="{ 'is-dragover': isDragOver }"
+        role="button"
+        tabindex="0"
+        aria-label="选择 MAA 或一图流导出文件"
         @dragover.prevent="isDragOver = true"
         @dragleave.prevent="isDragOver = false"
         @drop.prevent="handleFileDrop"
         @click="triggerFileInput"
+        @keydown.enter.prevent="triggerFileInput"
+        @keydown.space.prevent="triggerFileInput"
       >
         <input
           ref="fileInputRef"
@@ -225,108 +189,22 @@ function handleImport(): void {
         </div>
       </div>
 
-      <!-- Tabs for clipboard paste and specialized guides -->
-      <n-tabs v-model:value="activeTab" type="segment">
-        <!-- Auto / File Upload Result Tab -->
-        <n-tab-pane name="auto" tab="已解析文件">
-          <div class="tab-body">
-            <div v-if="autoFile" class="file-loaded-banner">
-              <div class="file-badge">📄 {{ autoFile.name }}</div>
-              <div class="file-status">
-                识别格式：<strong>{{ autoFile.summary.format }}</strong>
-              </div>
-            </div>
-            <div v-else class="empty-file-tip">
-              暂未上传文件，请在上方区域选择或拖入 <code>.xlsx</code>、<code>.json</code>、<code>.csv</code>、<code>.md</code> 文件，或切换到对应标签页粘贴文本。
-            </div>
-          </div>
-        </n-tab-pane>
-
-        <!-- MAA Tab -->
-        <n-tab-pane name="maa" tab="MAA 识别结果 (粘贴)">
-          <div class="tab-body">
-            <div class="guide-banner">
-              <div class="guide-title-row">
-                <strong>MAA 导出结果导入说明</strong>
-                <n-tooltip trigger="hover">
-                  <template #trigger>
-                    <span class="help-circle">?</span>
-                  </template>
-                  <div class="help-popover-text">
-                    <strong>如何获取 MAA 导出结果？</strong><br />
-                    1. 打开 MAA 桌面端，进入「干员识别」或「排班助手」；<br />
-                    2. 点击导出，可选择导出的 JSON、CSV 或 Markdown 文件；<br />
-                    3. 在上方拖入导出的文件，或复制文件文本内容粘贴到下方。
-                  </div>
-                </n-tooltip>
-              </div>
-              <p class="guide-desc">
-                支持 MAA 导出的 <strong>JSON</strong>（<code>Arknights_OperBox_Export.json</code>）、<strong>CSV</strong>（<code>Arknights_OperBox_Export.csv</code>）与 <strong>Markdown</strong>（<code>Arknights_OperBox_Export.md</code>），会自动过滤未持有的干员。
-              </p>
-            </div>
-
-            <textarea
-              v-model="maaText"
-              class="import-textarea"
-              rows="6"
-              placeholder="在此粘贴 MAA 导出文件内容（JSON、CSV 或 Markdown 表格）..."
-            />
-          </div>
-        </n-tab-pane>
-
-        <!-- Yituliu Tab -->
-        <n-tab-pane name="yituliu" tab="一图流导表 (粘贴)">
-          <div class="tab-body">
-            <div class="guide-banner">
-              <div class="guide-title-row">
-                <strong>一图流网站 (yituliu.site) 导表说明</strong>
-                <n-tooltip trigger="hover">
-                  <template #trigger>
-                    <span class="help-circle">?</span>
-                  </template>
-                  <div class="help-popover-text">
-                    <strong>如何获取一图流导表？</strong><br />
-                    1. 访问一图流网站干员练度测算/导入页面；<br />
-                    2. 点击「导出干员练度表 (.xlsx)」；<br />
-                    3. 直接将下载的 <code>一图流-干员练度表.xlsx</code> 拖入上方上传区即可！
-                  </div>
-                </n-tooltip>
-              </div>
-              <p class="guide-desc">
-                推荐直接将下载的 <code>一图流-干员练度表.xlsx</code> 拖拽到上方文件区域；若复制了网页表格文本也可粘贴到下方。
-              </p>
-            </div>
-
-            <textarea
-              v-model="yituliuText"
-              class="import-textarea"
-              rows="6"
-              placeholder="在此粘贴一图流复制的表格文本（表头包含干员名称、是否已招募等）..."
-            />
-          </div>
-        </n-tab-pane>
-
-        <!-- SKLand Tab -->
-        <n-tab-pane name="skland" tab="森空岛 (JSON)">
-          <div class="tab-body">
-            <div class="guide-banner">
-              <div class="guide-title-row">
-                <strong>森空岛 (SKLand) 数据导入说明</strong>
-              </div>
-              <p class="guide-desc">
-                支持森空岛官方角色名片数据 JSON（包含 <code>data.chars</code> 数组）。
-              </p>
-            </div>
-
-            <textarea
-              v-model="sklandText"
-              class="import-textarea"
-              rows="6"
-              placeholder="在此粘贴森空岛导出的角色名片 JSON 数据..."
-            />
-          </div>
-        </n-tab-pane>
-      </n-tabs>
+      <div class="guide-banner">
+        MAA：上传 JSON、CSV 或 Markdown 导出文件；一图流：上传干员练度表 XLSX。
+        也可在下方粘贴 MAA 导出文本或一图流表格文本，自动识别格式并排除未持有干员。
+      </div>
+      <div v-if="uploadedFile" class="file-loaded-banner">
+        <span class="file-badge">📄 {{ uploadedFile.name }}</span>
+        <span class="file-status">识别格式：<strong>{{ uploadedFile.summary.format }}</strong></span>
+      </div>
+      <textarea
+        v-model="pastedText"
+        class="import-textarea"
+        rows="6"
+        aria-label="粘贴 MAA 或一图流导出结果"
+        placeholder="粘贴 MAA 的 JSON、CSV、Markdown 或一图流复制的表格文本…"
+        @input="handleTextInput"
+      />
 
       <!-- Recognition Statistics & Preview -->
       <div v-if="currentSummary && currentSummary.entries.length > 0" class="recognition-panel">
@@ -381,8 +259,8 @@ function handleImport(): void {
         </div>
       </div>
 
-      <div v-if="errorMessage" class="error-banner">
-        ✕ {{ errorMessage }}
+      <div v-if="displayError" class="error-banner">
+        ✕ {{ displayError }}
       </div>
 
       <div class="modal-actions">
@@ -422,6 +300,7 @@ function handleImport(): void {
 }
 
 .file-dropzone:hover,
+.file-dropzone:focus-visible,
 .file-dropzone.is-dragover {
   background: rgba(66, 214, 199, 0.1);
   border-color: #42d6c7;
@@ -456,13 +335,6 @@ function handleImport(): void {
   font-size: 11px;
 }
 
-.tab-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 6px;
-}
-
 .file-loaded-banner {
   display: flex;
   align-items: center;
@@ -484,55 +356,14 @@ function handleImport(): void {
   color: rgba(255, 255, 255, 0.85);
 }
 
-.empty-file-tip {
-  padding: 16px;
-  text-align: center;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.6;
-}
-
 .guide-banner {
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-}
-
-.guide-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  color: #42d6c7;
-  font-size: 12px;
-}
-
-.help-circle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: rgba(66, 214, 199, 0.2);
-  color: #42d6c7;
-  font-size: 10px;
-  font-weight: bold;
-  cursor: help;
-}
-
-.help-popover-text {
-  font-size: 12px;
-  line-height: 1.6;
-  max-width: 320px;
-}
-
-.guide-desc {
-  margin: 0;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .import-textarea {

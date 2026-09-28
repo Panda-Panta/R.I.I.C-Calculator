@@ -94,6 +94,27 @@ describe('SimulationLogView.vue', () => {
     expect(wrapper.find('[data-test="export-full-btn"]').exists()).toBe(true)
   })
 
+  it('starts with a collapsed 24h gantt while keeping image export available', async () => {
+    const wrapper = mount(SimulationLogView, {
+      props: { report: createSampleReport() },
+    })
+
+    const toggle = wrapper.get('[data-test="toggle-gantt-visibility"]')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('[data-test="gantt-container"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="export-gantt-btn"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="export-gantt-btn"]').trigger('click')
+    expect(wrapper.find('[data-test="gantt-export-modal"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="download-gantt-btn"]').exists()).toBe(true)
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('[data-test="gantt-container"]').exists()).toBe(true)
+    expect(wrapper.find('.time-window-info').text()).toContain('T+0.0h 至 T+24.0h')
+    wrapper.unmount()
+  })
+
   it('shows sampled manufacturing completions rather than lifetime totals', () => {
     const report = createSampleReport()
     report.production = {

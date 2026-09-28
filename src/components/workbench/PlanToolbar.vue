@@ -31,7 +31,7 @@
           清空干员
         </button>
 
-        <!-- Import Operator Inventory (MAA & SKLand) -->
+        <!-- Import Operator Inventory (MAA & Yituliu) -->
         <button
           type="button"
           class="mower-btn btn-import-inventory"

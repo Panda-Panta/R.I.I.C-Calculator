@@ -151,7 +151,7 @@ defineExpose({
           data-test="open-import-modal-btn"
           @click="importModalOpen = true"
         >
-          📥 导入干员数据 (MAA / 一图流)
+          📥 导入干员库 (MAA / 一图流)
         </button>
       </div>
     </div>
@@ -210,7 +210,7 @@ defineExpose({
         <div class="empty-icon">📂</div>
         <div class="empty-title">当前干员库暂无干员</div>
         <p class="empty-desc">
-          点击右上角「📥 导入干员数据」选择 MAA 或一图流导表，或切换至「文本代码编辑」直接粘贴。
+          点击右上角「📥 导入干员库」上传或粘贴 MAA／一图流导出结果，或切换至「文本代码编辑」手动录入。
         </p>
       </div>
 
