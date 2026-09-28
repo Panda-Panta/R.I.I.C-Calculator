@@ -4,6 +4,7 @@ import {
   searchOperators,
   getOperatorAvatarUrl,
   getOperatorName,
+  isRunOrderOperator,
   getRoomDisplayName,
   getAssignedSummaryMap,
   computeReplacementScope,
@@ -12,6 +13,10 @@ import { OPERATORS } from '../domain/operators'
 import { createDefaultWorkspace } from './defaults'
 
 describe('operatorHelpers', () => {
+  it('recognizes Closure as a trade run-order replacement while leaving U-Official ordinary', () => {
+    expect(isRunOrderOperator('可露希尔')).toBe(true)
+    expect(isRunOrderOperator('U-Official')).toBe(false)
+  })
   describe('searchOperators & buildOperatorSearchIndex', () => {
     const index = buildOperatorSearchIndex(OPERATORS)
 

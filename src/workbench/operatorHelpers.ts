@@ -6,6 +6,7 @@
 
 import { match, pinyin } from 'pinyin-pro'
 import { OPERATOR_MAP, OPERATORS, type OperatorRecord } from '../domain/operators'
+import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 import type { MowerFacilityType, MowerMainConf, MowerMainPlan, MowerRoomId } from './model'
 import { resolveAssetUrl } from '../utils/assets'
 export { resolveAssetUrl }
@@ -31,8 +32,7 @@ export function getOperatorName(identifier: string | null | undefined): string {
 
 export function isRunOrderOperator(identifier: string | null | undefined): boolean {
   if (!identifier) return false
-  const name = getOperatorName(identifier)
-  return name === '但书' || name === '龙舌兰' || name === '佩佩'
+  return isTradeRunOrderOperator(getOperatorName(identifier))
 }
 
 export function isProviso(identifier: string | null | undefined): boolean {

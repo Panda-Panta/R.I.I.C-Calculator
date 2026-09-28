@@ -1,7 +1,5 @@
 import type {CompiledRoom} from '../scheduler/types'
-import {OPERATOR_MAP} from '../domain/operators'
-const SPECIAL_NAMES=new Set(['但书','龙舌兰'])
-const isSpecial=(id:string)=>SPECIAL_NAMES.has(OPERATOR_MAP.get(id)?.name ?? id)
+import {isTradeRunOrderOperator as isSpecial} from '../domain/shiftRunPolicy'
 export interface RunOrderSwap {positionId:string;slotIndex:number;outgoingOperatorId:string|null;incomingOperatorId:string}
 export interface PreparedRunOrderSwap {roomId:string;swaps:RunOrderSwap[];restoreOccupants:Record<string,string>;diagnostics:{code:string;message:string}[]}
 /** Literal positional projection of Mower plan_run_order; availability/reservations belong to the caller. */

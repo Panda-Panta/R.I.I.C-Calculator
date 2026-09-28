@@ -39,6 +39,7 @@ export function createMowerProductionIO(state:RuntimeState,production:Controller
   }),()=>room)
  }
  function* drone(room:string,adjustTime:boolean,flags:{notCustomize:boolean;notReturn:boolean;skipEnter:boolean}){
+  if(production.nativeHasTrade(room)&&!production.nativeTradeDroneAvailable(room))return null
   const [planning,seam]=mowerRunOrderContext(state)
   let selectedQuantity=0,panelOpen=false
   const settings=state.config.mowerRunOrderFinishing

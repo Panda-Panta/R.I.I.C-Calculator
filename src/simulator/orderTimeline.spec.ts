@@ -1,9 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { getOrderDistribution } from '../rules/orderRules'
 import { advanceOrder, finishOrder, startOrder } from './orderTimeline'
-
-// Legacy special modes remain tested independently of the shift-run product boundary.
-vi.mock('../domain/edition', () => ({ EDITION: { id: 'standard' } }))
 
 describe('order acquisition timeline', () => {
   it('preserves leftover wall time for fixed-efficiency orders even when live efficiency is zero', () => {

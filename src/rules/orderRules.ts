@@ -1,4 +1,3 @@
-import { assertSupportedSpecialOrder } from '../domain/shiftRunPolicy'
 import type { QualityRule } from '../domain/types'
 
 export type OrderMode = 'gold' | 'orundum' | 'closure' | 'pepe'
@@ -30,7 +29,6 @@ const gold = (probability: number, goldCost: number, lmdReward: number, baseMinu
 })
 
 export function getOrderDistribution(level: number, quality: QualityRule = 'normal', mode: OrderMode = 'gold'): BaseOrderChoice[] {
-  assertSupportedSpecialOrder(mode)
   if (![1, 2, 3].includes(level)) throw new Error('Invalid trading level')
   if (mode === 'orundum') {
     if (level !== 3) throw new Error('Orundum orders require level 3')
@@ -56,8 +54,6 @@ export function selectBaseOrder(distribution: BaseOrderChoice[], choice: number)
 }
 
 export function captureOrder(base: BaseOrderChoice, capture: SpecialCapture, completedAt: number): Readonly<OrderSnapshot> {
-  assertSupportedSpecialOrder(base.mode)
-  for (const mode of ['uOfficial', 'closure', 'pepe'] as const) if (capture[mode]) assertSupportedSpecialOrder(mode)
   if (!Number.isFinite(completedAt) || completedAt < 0) throw new Error('Invalid completion time')
   if (base.mode === 'pepe' && !capture.pepe) throw new Error('Pepe acquisition mode must be fixed at start')
   if (base.mode !== 'pepe' && capture.pepe) throw new Error('Pepe mode must be fixed at acquisition start')

@@ -330,7 +330,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   Object.assign(rates,createMowerClueIO(state))
   diagnostic('MOWER_CLUE_OBSERVATION_MODEL','线索交流固定关闭，Party Time 为空，不执行线索待办及交流任务。')
   Object.assign(rates,createMowerProductionIO(state,production,()=>frameAt(0)))
-  diagnostic('MOWER_ORDER_OBSERVATION_MODEL',(options.production?.runOrderMode??'ideal')!=='ideal'?'葛朗台跑单任务按 Mower alpha 执行，倒计时来自同一生产状态的连续秒数；页面成功与识别零耗时为明确模拟输入，点击采用原版显式等待。此输入适配不代表像素识别等价。':'理想跑单在订单完成时转换收益，保留 Mower 订单读取、任务排序与唤醒，不执行临时换人；常规换班、收取及无人机任务仍按 Mower 时间线执行。')
+  diagnostic('MOWER_ORDER_OBSERVATION_MODEL',(options.production?.runOrderMode??'ideal')!=='ideal'?'葛朗台跑单任务按 Mower alpha 执行，倒计时来自同一生产状态的连续秒数；页面成功与识别零耗时为明确模拟输入，点击采用原版显式等待。此输入适配不代表像素识别等价。':'理想跑单在新单开始时锁定佩佩/可露希尔模式，在普通订单完成时转换但书/龙舌兰收益；保留 Mower 订单读取、任务排序与唤醒，不执行临时换人；常规换班、收取及无人机任务仍按 Mower 时间线执行。')
  }
  settle()
  if(backupFailed)return report

@@ -1,6 +1,5 @@
 import type { OperatorInventory } from '../domain/operatorInventory'
-import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import type { MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { configureRunOrder } from './configureRunOrder'
@@ -27,8 +26,7 @@ export function buildSingletonFallback(base: RosterWorkspace, inventory: Operato
     if (!skillTypes[room.type]) continue
     const cap = room.type === 'central' ? 5 : room.type === 'power' ? 1 : room.level
     while (room.slots.length < cap) room.slots.push({occupant:{kind:'empty'},groupId:null,replacements:[]})
-    const roomCandidates = available.filter(o=>room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId))
-    const pool = rankStaffingCandidates(ws, inventory, {roomId:room.roomId,slotIndex:0}, roomCandidates.map(o=>o.charId), 'main', {allowNeutral:true})
+    const pool = rankStaffingCandidates(ws, inventory, {roomId:room.roomId,slotIndex:0}, available.map(o=>o.charId), 'main', {allowNeutral:true})
     // Keep skilled auxiliary staff ahead of people contributing only a base staffing effect.
     if (room.type === 'power' || room.type === 'central') pool.sort((a,b)=>
       Number(available.find(o=>o.charId===b)!.skills.some(s=>s.roomType===skillTypes[room.type])) -
@@ -39,7 +37,7 @@ export function buildSingletonFallback(base: RosterWorkspace, inventory: Operato
       if (slot.occupant.kind === 'empty') positions.push({roomId:room.roomId,slotIndex,backup:false,pool})
       const mainId = slot.occupant.kind === 'operator' ? id(slot.occupant.operatorId) : undefined
       const permanent = mainId !== undefined && ws.mainPlan.conf.workaholic.some(ref=>id(ref)===mainId)
-      if (!permanent && !slot.replacements.some(ref=>!isShiftRunOperator(ref))) positions.push({roomId:room.roomId,slotIndex,backup:true,pool})
+      if (!permanent && !slot.replacements.some(ref=>isOrdinaryReplacementCandidate(ref,room.type))) positions.push({roomId:room.roomId,slotIndex,backup:true,pool:pool.filter(ref=>isOrdinaryReplacementCandidate(ref,room.type))})
     }
   }
   const owner = new Map<string,number>()

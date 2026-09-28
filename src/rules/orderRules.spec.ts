@@ -1,8 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { captureOrder, getOrderDistribution, selectBaseOrder } from './orderRules'
-
-// Legacy special modes remain tested independently of the shift-run product boundary.
-vi.mock('../domain/edition', () => ({ EDITION: { id: 'standard' } }))
 
 describe('order rules', () => {
   it('exposes finite probabilities and deterministic boundary choices', () => {

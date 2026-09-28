@@ -1,4 +1,3 @@
-import { assertSupportedSpecialOrder } from '../domain/shiftRunPolicy'
 import type {
   AppConfig,
   CalculationReport,
@@ -55,7 +54,6 @@ function distribution(level: number, quality: QualityRule): OrderTemplate[] {
 }
 
 function transformSpecial(template: OrderTemplate, special: SpecialOrder, roomLevel: number): OrderTemplate {
-  assertSupportedSpecialOrder(special)
   switch (special) {
     case 'pepe':
       return { probability: template.probability, cost: 0, reward: 1000, minutes: 270, efficiencyAffected: false }
@@ -180,16 +178,18 @@ function calculateTrade(
   }
 
   const expected = expectedGoldOrder(room, operatorResult.quality, operatorResult.specialOrder)
+  const pepe = operatorResult.specialOrder === 'pepe'
+  if (pepe) buffDetails.push('佩佩特别独占订单固定 100% 获取效率；贸易无人机加速未核实，未计入')
   const naturalMinutes = hours * 60 * (expected.efficiencyAffected ? efficiency : 1)
   const orders = naturalMinutes / expected.minutes
-  const extra = droneMinutes / expected.minutes
+  const extra = pepe ? 0 : droneMinutes / expected.minutes
   const totalOrders = orders + extra
   const virtualGold = totalOrders * expected.virtualGold
   const virtualGoldValue = virtualGold * 500
   return {
     roomId: room.id,
     strategy: room.strategy,
-    efficiency,
+    efficiency: pepe ? 1 : efficiency,
     orders: totalOrders,
     lmd: totalOrders * expected.reward,
     goldConsumed: totalOrders * expected.cost,

@@ -89,14 +89,13 @@ describe('Molecular Synthesis & Indivisible Atomic Units', () => {
         expect(roomOps).toContain('Miss.Christine')
       }
 
-      // 3. Shift-run branch constraint: Trade rooms NEVER permanently resident Proviso, Tequila, Closure
+      // 3. Automatic runners Proviso and Tequila remain reserved for temporary order swaps.
       const tradingRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'trading')
       const tradingOps = tradingRooms.flatMap((r) =>
         r.slots.map((s) => (s.occupant.kind === 'operator' ? restoreOperatorMowerName(s.occupant.operatorId) : '')),
       )
       expect(tradingOps).not.toContain('但书')
       expect(tradingOps).not.toContain('龙舌兰')
-      expect(tradingOps).not.toContain('可露希尔')
 
       // 4. Penguin Logistics: Sora is strictly excluded
       if (cand.appliedAtoms.includes('penguin_logistics')) {

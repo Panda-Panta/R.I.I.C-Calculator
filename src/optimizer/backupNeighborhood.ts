@@ -1,6 +1,6 @@
 import {OPERATOR_MAP} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
-import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
+import {isOrdinaryReplacementCandidate,isShiftRunOperator} from '../scheduler/scheduleAdapter'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace,MowerRoomId,MowerFacilityType,MowerSlot} from '../workbench/model'
 import {CANDIDATE_FACILITY_TYPES,validatePhysicalRoster} from './rosterDraft'
@@ -54,13 +54,13 @@ export function generateBackupNeighbors(workspace:RosterWorkspace,entries:OwnedO
  }
  protect(options.protectedIds);protect(workspace.mainPlan.conf);protect(workspace.compatibility)
  for(const room of rooms)for(const slot of room.slots)protect(slot.metadata)
- const special=(id:string)=>isShiftRunOperator(id)||name(id)==='菲亚梅塔'
+ const special=(id:string,type?:MowerFacilityType)=>isShiftRunOperator(id)||name(id)==='菲亚梅塔'||type==='trading'&&!isOrdinaryReplacementCandidate(id,type)
  const positions:Position[]=[]
  for(const room of rooms){
   if(!['manufacture','trading','power','central','contact','meeting'].includes(room.type))continue
   room.slots.forEach((slot,index)=>{
    if(locked.has(`${room.roomId}_${index}`))return
-   if(slot.occupant.kind!=='operator'||special(slot.occupant.operatorId)||protectedIds.has(resolveId(slot.occupant.operatorId))||slot.metadata&&Object.keys(slot.metadata).length)return
+   if(slot.occupant.kind!=='operator'||special(slot.occupant.operatorId,room.type)||protectedIds.has(resolveId(slot.occupant.operatorId))||slot.metadata&&Object.keys(slot.metadata).length)return
    if(slot.replacements.some(id=>name(id)==='菲亚梅塔'||protectedIds.has(resolveId(id))))return
    if(room.type!=='trading'&&slot.replacements.some(id=>isShiftRunOperator(resolveId(id))))return
    positions.push({roomId:room.roomId,type:room.type,index,key:`${room.roomId}_${index}`,slot})
@@ -70,22 +70,22 @@ export function generateBackupNeighbors(workspace:RosterWorkspace,entries:OwnedO
  const qualified=(id:string,type:MowerFacilityType)=>{const o=owned.get(resolveId(id));return Boolean(o?.matchesMaximumSkills&&o.skills.some(s=>s.roomType===roomTypes.get(type)))}
  const unused=inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!special(o.charId))
  function* replacements(p:Position):Generator<Change>{
-  const pool=rankStaffingCandidates(workspace,inventory,{roomId:p.roomId,slotIndex:p.index},unused.filter(o=>qualified(o.charId,p.type)).map(o=>o.charId),'backup')
-  const ordinary=p.slot.replacements.flatMap((id,index)=>special(id)?[]:[index])
+  const pool=rankStaffingCandidates(workspace,inventory,{roomId:p.roomId,slotIndex:p.index},unused.filter(o=>qualified(o.charId,p.type)&&!special(o.charId,p.type)).map(o=>o.charId),'backup')
+  const ordinary=p.slot.replacements.flatMap((id,index)=>special(id,p.type)?[]:[index])
   const indices=ordinary.length?ordinary:[p.slot.replacements.length]
   for(const id of pool)for(const index of indices)yield {kind:'replace',label:`${p.roomId} 第 ${p.index+1} 位候补 ${index+1} → ${name(id)}`,edits:[{position:p,index,value:id}]}
  }
  function* reorders(p:Position):Generator<Change>{
   for(let i=0;i<p.slot.replacements.length-1;i++){
    const a=p.slot.replacements[i]!,b=p.slot.replacements[i+1]!
-   if(special(a)||special(b)||resolveId(a)===resolveId(b)||!qualified(a,p.type)||!qualified(b,p.type))continue
+   if(special(a,p.type)||special(b,p.type)||resolveId(a)===resolveId(b)||!qualified(a,p.type)||!qualified(b,p.type))continue
    yield {kind:'reorder',label:`${p.roomId} 第 ${p.index+1} 位候补顺序：${name(a)} ↔ ${name(b)}`,edits:[{position:p,index:i,value:b},{position:p,index:i+1,value:a}]}
   }
  }
  function* exchanges(a:Position,b:Position):Generator<Change>{
   for(let i=0;i<a.slot.replacements.length;i++)for(let j=0;j<b.slot.replacements.length;j++){
    const x=a.slot.replacements[i]!,y=b.slot.replacements[j]!,xi=resolveId(x),yi=resolveId(y)
-   if(special(x)||special(y)||xi===yi||!qualified(y,a.type)||!qualified(x,b.type))continue
+   if(special(x,a.type)||special(y,b.type)||xi===yi||!qualified(y,a.type)||!qualified(x,b.type))continue
    if(a.slot.replacements.some((id,k)=>k!==i&&resolveId(id)===yi)||b.slot.replacements.some((id,k)=>k!==j&&resolveId(id)===xi))continue
    yield {kind:'exchange',label:`${a.roomId} 第 ${a.index+1} 位与 ${b.roomId} 第 ${b.index+1} 位互换候补：${name(x)} ↔ ${name(y)}`,edits:[{position:a,index:i,value:y},{position:b,index:j,value:x}]}
   }

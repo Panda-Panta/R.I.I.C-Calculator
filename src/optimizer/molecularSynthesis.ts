@@ -1,10 +1,9 @@
 import { mainPlanOnly } from './mainPlanOnly'
-import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
 import { configureRunOrder } from './configureRunOrder'
 import type { MowerFacilityType, MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { type OperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import {
   ATOMIC_UNITS,
   AUXILIARY_FACILITY_CANDIDATES,
@@ -203,7 +202,7 @@ export function generateMolecularCandidates(
       }
       const room = ws.mainPlan.facilities[roomId]
       if (!room) return false
-      if (room.type === 'trading' && (isUnsupportedTradeOperator(charId) || isShiftRunOperator(charId))) return false
+      if (room.type === 'trading' && isShiftRunOperator(charId)) return false
       const cap = capacity(room.type, room.level)
       if (slotIdx >= cap || slotIdx >= room.slots.length) return false
       const slot = room.slots[slotIdx]!
@@ -223,7 +222,7 @@ export function generateMolecularCandidates(
       }
 
       if (backupName && !validBackupId) return false
-      if (validBackupId && (validBackupId === charId || occupied.has(validBackupId) || isShiftRunOperator(validBackupId) || room.type === 'trading' && isUnsupportedTradeOperator(validBackupId))) return false
+      if (validBackupId && (validBackupId === charId || occupied.has(validBackupId) || !isOrdinaryReplacementCandidate(validBackupId,room.type))) return false
       slot.occupant = { kind: 'operator', operatorId: charId }
       slot.groupId = groupId
       if (room.type === 'manufacture' && charId === resolveId('机械师')) {
@@ -792,7 +791,7 @@ export function generateMolecularCandidates(
       for (const index of emptyIndices(room.roomId)) {
         const pool = inventory.operators.filter(o => !occupied.has(o.charId) &&
           !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
-          (room.type !== 'trading' || !isUnsupportedTradeOperator(o.charId)) && o.skills.some(s => s.roomType === skillType))
+          o.skills.some(s => s.roomType === skillType))
         const selected = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex: index }, pool.map(o => o.charId), 'main')[0]
         if (selected) placeOperator(room.roomId, index, selected)
       }
@@ -896,7 +895,7 @@ export function generateMolecularCandidates(
       const slot = room?.slots[p.slotIndex]
       return room && room.type !== 'dormitory' && slot?.occupant.kind === 'operator' &&
         !ws.mainPlan.conf.workaholic.some(id => resolveId(id) === resolveId(p.operatorId)) &&
-        !slot.replacements.some(id => !isShiftRunOperator(id))
+        !slot.replacements.some(id => isOrdinaryReplacementCandidate(id, room.type))
     })
 
     if (needBackups.length > 0) {
@@ -905,8 +904,8 @@ export function generateMolecularCandidates(
 
     // Do not fill missing backups with unrelated operators just to make every slot nonempty.
     const missingBackup = needBackups.some(p => {
-      const slot = ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!
-      return !slot.replacements.some(id => !isShiftRunOperator(id))
+      const room = ws.mainPlan.facilities[p.roomId], slot = room.slots[p.slotIndex]!
+      return !slot.replacements.some(id => isOrdinaryReplacementCandidate(id, room.type))
     })
     if (missingBackup) continue
 
@@ -934,7 +933,7 @@ export function generateMolecularCandidates(
       .flatMap(room => room.slots.flatMap((slot, slotIndex) => {
         if (slot.occupant.kind !== 'operator' || lockedPositions.has(`${room.roomId}:${slotIndex}`)) return []
         const operatorId = resolveId(slot.occupant.operatorId)
-        if (slot.replacements.some(id => !isShiftRunOperator(id)) || ws.mainPlan.conf.workaholic.some(id => resolveId(id) === operatorId)) return []
+        if (slot.replacements.some(id => isOrdinaryReplacementCandidate(id, room.type)) || ws.mainPlan.conf.workaholic.some(id => resolveId(id) === operatorId)) return []
         return [{ roomId: room.roomId, slotIndex, operatorId }]
       }))
     if (missingAfterPolicy.length && assignBackups(ws, inventory, missingAfterPolicy).missingReplacementIds.length) continue

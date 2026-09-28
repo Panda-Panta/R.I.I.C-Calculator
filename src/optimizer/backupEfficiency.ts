@@ -1,6 +1,7 @@
 import {OPERATOR_MAP} from '../domain/operators'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
 import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
+import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import type {MowerRoomId,RosterWorkspace} from '../workbench/model'
 import {admitCombinationCandidates} from './inventoryAdmission'
@@ -24,7 +25,7 @@ export function hasOpaqueStrategy(w:RosterWorkspace):boolean {
  const known=new Set(['ling_xi','exhaust_require','rest_in_full','resting_priority','workaholic','refresh_trading','refresh_drained','ope_resting_priority'])
  return Object.entries(w.mainPlan.conf).some(([k,v])=>!known.has(k)||(k!=='ling_xi'&&(!Array.isArray(v)||v.length>0)))||
  w.compatibility.backupPlans.length>0||[w.compatibility.otherPlans,w.compatibility.unrecognizedFields,w.compatibility.unrecognizedRooms,w.compatibility.facilityMetadata].some(v=>v&&Object.keys(v).length>0)||
- Object.values(w.mainPlan.facilities).some(r=>r.slots.some(s=>Object.keys(s.metadata??{}).length>0))
+ Object.values(w.mainPlan.facilities).some(r=>r.slots.some(s=>Object.keys(s.metadata??{}).length>0||r.type==='trading'&&s.replacements.some(isTradeRunOrderOperator)))
 }
 function supportSatisfied(snapshot:RosterWorkspace,supports:LayoutAssignment[],targetRoom:MowerRoomId):boolean {
  const rooms=Object.values(snapshot.mainPlan.facilities)

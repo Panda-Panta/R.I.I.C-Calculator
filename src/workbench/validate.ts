@@ -1,4 +1,3 @@
-import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
 import {
   MOWER_OUTPUT_ROOM_IDS,
   MOWER_ROOM_IDS,
@@ -96,11 +95,6 @@ export function validateRosterWorkspace(workspace: RosterWorkspace): ValidationR
     if (!facility) continue
 
     facility.slots.forEach((slot, slotIndex) => {
-      if (facility.type === 'trading') {
-        for (const id of [...(slot.occupant.kind === 'operator' ? [slot.occupant.operatorId] : []), ...slot.replacements]) {
-          if (isUnsupportedTradeOperator(id)) criticalErrors.push({ code: 'UNSUPPORTED_SPECIAL_ORDER', severity: 'critical', roomId, slotIndex, message: getOperatorName(id) + '：本分支贸易站仅支持但书、龙舌兰特殊订单。' })
-        }
-      }
       if (slot.occupant.kind === 'operator') {
         const opId = slot.occupant.operatorId
         if (!opId || opId.toLowerCase() === 'free' || opId.toLowerCase() === 'current') {

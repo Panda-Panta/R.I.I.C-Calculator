@@ -1,10 +1,11 @@
 import {describe,expect,it} from 'vitest'
 import {OPERATORS} from '../domain/operators'
+import {compileOperatorInventory} from '../domain/operatorInventory'
 import {matchesRiicIdentity} from '../domain/riicIdentity'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {resolveOperatorCharId as id,exportMowerJson,importMowerJson} from '../workbench/compat/mowerJson'
 import {selectCombinationCandidates} from './combinationCandidates'
-import {compileCandidateLayout,generateRosterDraft} from './rosterDraft'
+import {assignBackups,compileCandidateLayout,generateRosterDraft} from './rosterDraft'
 import {simulateSchedule} from '../simulator/scheduleSimulation'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import type {OwnedOperatorInput} from '../domain/operatorInventory'
@@ -86,6 +87,15 @@ describe('typed candidate layout and roster drafts',()=>{
   expect(replacements.some(rep=>mains(r.workspace!).includes(rep))).toBe(false)
   expect(new Set(slots.map(s=>s.groupId)).size).toBe(1)
   expect(r.restResources.missingReplacementIds).toEqual([])
+ })
+ it('keeps trade run-order candidates out of ordinary backup assignment',()=>{
+  const ws=createDefaultWorkspace()
+  const slot=ws.mainPlan.facilities.room_3_1.slots[0]!
+  slot.occupant={kind:'operator',operatorId:id('芬')}
+  slot.replacements=[id('佩佩')]
+  const inventory=compileOperatorInventory(owned(['芬','佩佩','能天使']))
+  assignBackups(ws,inventory,[{roomId:'room_3_1',slotIndex:0,operatorId:id('芬')}])
+  expect(slot.replacements).toEqual([id('佩佩'),id('能天使')])
  })
  it('keeps missing rest resources visible and never turns a temporal strategy into permanent staffing',()=>{
   const r=generateRosterDraft(createDefaultWorkspace(),owned(['温蒂','清流']),['manu-gold-weedy-purestream'])

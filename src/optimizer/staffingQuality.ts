@@ -2,7 +2,7 @@ import { inventoryOperatorRecords } from '../domain/operatorContext'
 import type { OperatorInventory } from '../domain/operatorInventory'
 import type { AppConfig } from '../domain/types'
 import { currentMoraleRates } from '../engine/morale'
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { type MowerRoomId, type MowerSlot, type RosterWorkspace } from '../workbench/model'
 import { projectControlOutput } from './controlImpact'
@@ -13,7 +13,7 @@ export interface StaffingPosition { roomId: MowerRoomId; slotIndex: number }
 type Quality = { output: number; power: number; consumption: number }
 type StaffingContext = { config: AppConfig; insertionIndex: number }
 const key = (roomId: string, index: number, slot: MowerSlot) => slot.groupId?.trim() || `${roomId}:${index}`
-const ordinaryBackup = (slot: MowerSlot) => slot.replacements.map(resolveId).find(id => !isShiftRunOperator(id))
+const ordinaryBackup = (slot: MowerSlot, roomType: string) => slot.replacements.map(resolveId).find(id => isOrdinaryReplacementCandidate(id, roomType))
 
 /** Planning snapshots only. They rank proposals; completed simulations decide income gains. */
 function assignmentContexts(workspace: RosterWorkspace, position: StaffingPosition, role: 'main' | 'backup', theoretical = false): StaffingContext[] {
@@ -48,7 +48,7 @@ function assignmentContexts(workspace: RosterWorkspace, position: StaffingPositi
         if (slot.occupant.kind !== 'operator' || !resting.has(key(r.roomId, index, slot))) return
         const primary = resolveId(slot.occupant.operatorId)
         if (snapshot.mainPlan.conf.workaholic?.some(id => resolveId(id) === primary)) return
-        const backup = ordinaryBackup(slot)
+        const backup = ordinaryBackup(slot, r.type)
         // The entire group leaves together. A not-yet-assigned backup is an
         // empty planning seat, not permission to retain the outgoing main's skills.
         slot.occupant = backup ? { kind: 'operator', operatorId: backup } : { kind: 'empty' }

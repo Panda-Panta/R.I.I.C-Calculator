@@ -2,6 +2,7 @@ import { inventoryOperatorRecords, runOrderSkillRank } from '../domain/operatorC
 import { EDITION } from '../domain/edition'
 import type { OperatorInventory } from '../domain/operatorInventory'
 import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import type { RosterWorkspace } from '../workbench/model'
 
@@ -22,11 +23,11 @@ export function configureRunOrder(workspace: RosterWorkspace, inventory: Operato
     if (room.type !== 'trading' || room.product !== 'money') continue
     const runners = (room.level === 3 ? ['但书', '龙舌兰'] : ['但书']).filter(name =>
       inventory.operators.some(o => o.charId === id(name) && runOrderSkillRank(context, o.charId, name === '但书' ? 'proviso' : 'tequila') > 0))
-    if (room.slots.length < runners.length) return false
     // Reapplying after roster changes preserves the ordinary backup order.
     for (const slot of room.slots) slot.replacements = slot.replacements.filter(x => !isShiftRunOperator(x))
-    for (const [index, name] of runners.entries()) {
-      const slot = room.slots[index]!
+    const available = room.slots.filter(slot => !slot.replacements.some(isTradeRunOrderOperator))
+    for (const [index, name] of runners.slice(0, available.length).entries()) {
+      const slot = available[index]!
       if (slot.occupant.kind !== 'operator') return false
       slot.replacements.unshift(id(name))
     }

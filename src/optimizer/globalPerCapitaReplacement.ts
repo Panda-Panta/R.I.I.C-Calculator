@@ -7,7 +7,7 @@ import {
   type AtomicUnit,
 } from './riicAtomicUnits'
 import { placePendantOperator } from '../scheduler/smartDormitoryPolicy'
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import { assignBackups, validatePhysicalRoster } from './rosterDraft'
 import { rankStaffingCandidates } from './staffingQuality'
 import { applySingletonWorkPolicy, productionTeamTheory } from './productionSingletons'
@@ -159,7 +159,7 @@ export function runGlobalPerCapitaReplacement(
     const positions = Object.values(targetWs.mainPlan.facilities).filter(room => ['manufacture', 'trading', 'power', 'central', 'meeting', 'contact', 'factory', 'train'].includes(room.type))
       .flatMap(room => room.slots.flatMap((slot, slotIndex) => {
         if (slot.occupant.kind !== 'operator' || lockedPositions.has(`${room.roomId}:${slotIndex}`) ||
-          slot.replacements.some(id => !isShiftRunOperator(id)) ||
+          slot.replacements.some(id => isOrdinaryReplacementCandidate(id, room.type)) ||
           targetWs.mainPlan.conf.workaholic.some(id => resolveId(id) === resolveId(slot.occupant.kind === 'operator' ? slot.occupant.operatorId : ''))) return []
         return [{ roomId: room.roomId, slotIndex, operatorId: resolveId(slot.occupant.operatorId) }]
       }))

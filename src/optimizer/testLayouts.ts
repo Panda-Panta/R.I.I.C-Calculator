@@ -63,9 +63,9 @@ function printRosterDetails(label: string, ws: RosterWorkspace, score: number | 
   )
 
   // 1. 跑单干员检查
-  const shiftRunForbidden = ['但书', '龙舌兰', '可露希尔', '空']
+  const shiftRunForbidden = ['但书', '龙舌兰', '空']
   const forbiddenFound = shiftRunForbidden.filter((op) => tradeOps.includes(op))
-  console.log(`  [跑单分支规范] 贸易站排除但书/龙舌兰/可露希尔/空: ${forbiddenFound.length === 0 ? '✅ 通过' : `❌ 发现违规: ${forbiddenFound.join(', ')}`}`)
+  console.log(`  [自动排班规范] 贸易站主班排除但书/龙舌兰/空: ${forbiddenFound.length === 0 ? '✅ 通过' : `❌ 发现违规: ${forbiddenFound.join(', ')}`}`)
 
   // 2. 鸿雪4杜林检查
   if (allMainsSet.has('鸿雪')) {

@@ -32,4 +32,21 @@ describe('source-backed mutually exclusive order transforms', () => {
     expect(result.gold).toBeCloseTo(4.1)
     expect(result.lmd).toBeCloseTo(2475)
   })
+  it('reports Pepe fixed throughput without applying room efficiency or unverified trading drones', () => {
+    const config = createDefaultConfig()
+    const room = config.rooms.find(value => value.type === 'trading')!
+    room.specialOrder = 'pepe'
+    room.skillBonus = 80
+    config.droneTarget = room.id
+    const result = calculate(config).trading.find(value => value.roomId === room.id)!
+    expect(result.efficiency).toBe(1)
+    expect(result.orders).toBeCloseTo(1440 / 270)
+    expect(result.droneExtraOrders).toBe(0)
+    expect(result.goldConsumed).toBe(0)
+  })
+  it('keeps U-Official base duration distribution with fixed two-gold rewards', () => {
+    const result = perOrder('uofficial')
+    expect(result.gold).toBeCloseTo(2)
+    expect(result.lmd).toBeCloseTo(1000)
+  })
 })

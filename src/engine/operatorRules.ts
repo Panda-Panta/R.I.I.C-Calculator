@@ -1,5 +1,4 @@
 import { operatorFor, hasOperatorSkill } from '../domain/operatorContext'
-import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
 import { temporalSkillBonus, type TimeContext } from './timeDependentSkills'
 import { evaluateHighestPhaseJaye } from './jayeRules'
 import { matchesRiicIdentity } from '../domain/riicIdentity'
@@ -252,13 +251,12 @@ function inferQuality(operators: OperatorRecord[], fallback: QualityRule): Quali
 }
 
 function inferSpecialOrder(operators: OperatorRecord[], fallback: SpecialOrder): SpecialOrder {
-  const forbidden = operators.find(o => isUnsupportedTradeOperator(o.charId))
-  if (forbidden) return forbidden.name === '佩佩' ? 'pepe' : forbidden.name === '可露希尔' ? 'closure' : 'uofficial'
+  const skill = (buffId: string) => operators.some(operator => operator.skills.some(value => value.buffId === buffId))
+  if (skill('trade_ord_pepe[000]')) return 'pepe'
+  if (skill('trade_ord_closure[000]')) return 'closure'
+  if (skill('trade_ord_spd&wt[000]')) return 'uofficial'
   if (fallback === 'shiftRun') return fallback
   const names = new Set(operators.map((operator) => operator.name))
-  if (names.has('佩佩')) return 'pepe'
-  if (names.has('可露希尔')) return 'closure'
-  if (names.has('U-Official')) return 'uofficial'
   if (names.has('但书')) return operators.some(o=>o.skills.some(s=>s.buffId==='trade_ord_against[010]'))?'provisoBeta':'provisoAlpha'
   if (names.has('龙舌兰')) return operators.some(o=>o.skills.some(s=>s.buffId==='trade_ord_long[010]'))?'tequilaBeta':'tequilaAlpha'
   return fallback

@@ -1,6 +1,6 @@
 import {mowerPlanEntries} from './mowerPlanOrder'
 import {mowerDormOrderError} from './mowerGlobalDormOrder'
-import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
+import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 import { GAME_DATA_VERSION, OPERATOR_MAP } from '../domain/operators'
 import { resolveOperatorCharId } from '../workbench/compat/mowerJson'
 import type { MowerMainConf, RosterWorkspace } from '../workbench/model'
@@ -79,11 +79,6 @@ export function compileRosterSchedule(workspace: RosterWorkspace, options: Parti
         else diagnostics.push({ code: 'CURRENT_STATE_REQUIRED', severity: 'error', path: `${facility.roomId}.slots.${slotIndex}`, message: 'Current 需要显式当前干员状态' })
       }
       const orderedCandidates = slot.replacements.map(resolveOperatorCharId)
-      if (facility.type === 'trading') {
-        for (const id of [primaryOperatorId, ...orderedCandidates]) {
-          if (id && isUnsupportedTradeOperator(id)) diagnostics.push({ code: 'UNSUPPORTED_SPECIAL_ORDER', severity: 'error', path: facility.roomId + '.slots.' + slotIndex, message: (OPERATOR_MAP.get(id)?.name ?? id) + '：本分支贸易站仅支持但书、龙舌兰特殊订单，请移除此主班或候补。' })
-        }
-      }
       for (const [candidateIndex, id] of orderedCandidates.entries()) {
         if (!isKnown(id)) diagnostics.push({ code: 'UNKNOWN_OPERATOR', severity: 'warning', path: `${facility.roomId}.slots.${slotIndex}.replacements.${candidateIndex}`, message: `未知干员 ${id}` })
       }
@@ -93,8 +88,7 @@ export function compileRosterSchedule(workspace: RosterWorkspace, options: Parti
       if (role === 'free-rest') freeSlotIndices.push(slotIndex)
       if (isFiammetta && primaryOperatorId) fiammettaPolicies.push({ roomId: facility.roomId, slotIndex, operatorId: primaryOperatorId, orderedTargets: [...orderedCandidates] })
       if (facility.type === 'trading') for (const id of orderedCandidates) {
-        const name = OPERATOR_MAP.get(id)?.name
-        if (name === '但书' || name === '龙舌兰') runCandidates.push(id)
+        if (isTradeRunOrderOperator(id)) runCandidates.push(id)
       }
       if (primaryOperatorId) operators[primaryOperatorId] = { operatorId: primaryOperatorId, morale: assumptions.operatorMorale[primaryOperatorId] ?? assumptions.initialMorale, roomId: facility.roomId, slotIndex }
       const slotMeta = (slot as { metadata?: Record<string, unknown> }).metadata

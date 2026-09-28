@@ -1,4 +1,5 @@
 import {orderMowerRecoveryBeds} from './mowerGlobalDormOrder'
+import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 import { OPERATOR_MAP } from '../domain/operators'
 import { resolveOperatorCharId } from '../workbench/compat/mowerJson'
 import type { CompiledSchedule } from './types'
@@ -13,6 +14,10 @@ export function isShiftRunOperator(operatorId: string): boolean {
   const charId = resolveOperatorCharId(operatorId)
   const name = OPERATOR_MAP.get(charId)?.name
   return name ? SHIFT_RUN_OPERATOR_NAMES.has(name) : false
+}
+
+export function isOrdinaryReplacementCandidate(operatorId: string, roomType: string): boolean {
+  return !isShiftRunOperator(operatorId) && (roomType !== 'trading' || !isTradeRunOrderOperator(operatorId))
 }
 
 /**
@@ -60,7 +65,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
       if (isDormKeeper || isFiammetta) {
         candidates = []
       } else {
-        candidates = slot.orderedCandidates.filter(id => !isShiftRunOperator(id))
+        candidates = slot.orderedCandidates.filter(id => isOrdinaryReplacementCandidate(id, room.type))
       }
 
       const exhaustRequired = Boolean(schedule.policies.exhaust_require?.includes(primary))

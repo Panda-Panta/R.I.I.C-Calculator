@@ -1,7 +1,6 @@
 import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { OPERATOR_MAP } from '../domain/operators'
-import { isUnsupportedTradeOperator } from '../domain/shiftRunPolicy'
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import type { MowerRoomId, MowerSlot, RosterWorkspace } from '../workbench/model'
 import { validatePhysicalRoster } from './rosterDraft'
@@ -56,11 +55,11 @@ export function generatePrimaryBackupNeighbors(workspace: RosterWorkspace, entri
     const edits = positions.flatMap(p => {
       if (p.slot.occupant.kind !== 'operator') return []
       const main = resolveId(p.slot.occupant.operatorId)
-      const backups = p.slot.replacements.map((value, index) => ({ id: resolveId(value), index })).filter(b => !isShiftRunOperator(b.id))
+      const room = workspace.mainPlan.facilities[p.roomId]
+      const backups = p.slot.replacements.map((value, index) => ({ id: resolveId(value), index })).filter(b => isOrdinaryReplacementCandidate(b.id, room.type))
       if (backups.length !== 1 || isShiftRunOperator(main) || protectedIds.has(main) || protectedIds.has(backups[0]!.id)) return []
-      const backup = backups[0]!, room = workspace.mainPlan.facilities[p.roomId]
+      const backup = backups[0]!
       if (![main, backup.id].every(id => owned.get(id)?.matchesMaximumSkills && owned.get(id)?.skills.some(s => s.roomType === types[room.type]))) return []
-      if (room.type === 'trading' && [main, backup.id].some(isUnsupportedTradeOperator)) return []
       return [{ ...p, main, backup }]
     })
     if (edits.length !== positions.length) continue
