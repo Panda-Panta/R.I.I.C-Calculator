@@ -96,7 +96,12 @@ export function createMowerProductionIO(state:RuntimeState,production:Controller
       }
       break
      case 'find':
-      value=detailPage&&!receiptBlocked&&(request.name==='manufacture_accelerate'?production.nativeHasManufacture(room):production.nativeHasTrade(room))?{control:request.name}:null
+      // A trade room can remain visible after its last whole drone is spent.
+      // Report the accelerate control only while another drone can change the order.
+      const available=request.name==='manufacture_accelerate'
+       ?production.nativeHasManufacture(room)
+       :production.nativeHasTrade(room)&&production.nativeDroneCount()>0&&production.nativeTradeRequiredDrones(room)>0
+      value=detailPage&&!receiptBlocked&&available?{control:request.name}:null
       break
      case 'read-drone-count':value=production.nativeDroneCount();break
      case 'read-order':value=absoluteDue(room);break

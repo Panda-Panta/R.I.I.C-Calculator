@@ -61,4 +61,14 @@ describe('full simulation supplies concrete order observations to Mower tasks',(
   expect(drones.stock).toBeCloseTo(drones.initial+drones.generated-drones.consumed-drones.overflow,8)
   expect(report.production!.ledger.outflows.drone).toBeCloseTo(drones.consumed,8)
  })
+ it('stops retrying trade acceleration after the available drones are spent',()=>{
+  const report=simulateSchedule(fixture(),{sampleHours:4,maxEvents:500,recordSegments:true,production:{
+   outputMode:'potential',runOrderMode:'ideal',droneTarget:'trading',droneRoomId:'room_3_1',seed:42,initialResources:{drone:0},
+  }})
+  expect(report.success,JSON.stringify(report.diagnostics)).toBe(true)
+  expect(report.segments.length).toBeLessThan(500)
+  expect(report.production!.drones.consumed).toBeGreaterThan(0)
+  expect(report.production!.drones.stock).toBeCloseTo(report.production!.drones.initial+report.production!.drones.generated-report.production!.drones.consumed-report.production!.drones.overflow,8)
+ })
+
 })
