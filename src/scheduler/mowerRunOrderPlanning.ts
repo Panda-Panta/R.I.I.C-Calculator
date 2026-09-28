@@ -2,11 +2,13 @@
  * Default Mower plan/read/adjust helpers and run_order_solver trade orchestration.
  * Source c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
  * Clock/deadline observations come from explicit I/O seams; no income fitting.
+ * The candidate names extend the pinned Mower list with U-Official for this app.
  * Experimental paths, native drone internals, Fia/exhaust tails and RUN_ORDER finishing
  * remain caller responsibilities; this core does not assert full scheduler parity.
  */
 import {MOWER_TASK_TYPES as T,MowerTask,MowerTaskQueue,toMowerMicros} from './mowerTaskQueue'
 import {scheduleMowerTasks,type MowerTaskSchedulingOptions} from './mowerTaskScheduling'
+import {TRADE_RUN_ORDER_NAMES} from '../domain/shiftRunPolicy'
 
 export interface RunOrderPlanSlot {replacement:readonly string[]}
 export interface RunOrderPlanningState {
@@ -50,7 +52,6 @@ export interface RunOrderPlanningSeam {
   onScheduling?(conflict:[MowerTask,MowerTask]|undefined):void
 }
 export type RunOrderGenerator<T>=Generator<RunOrderIORequest,T,RunOrderIOObservation>
-const TRADE_ORDER_AGENTS=['但书','龙舌兰','佩佩','可露希尔'] as const
 function acceptObservation(seam:RunOrderPlanningSeam,observation:RunOrderIOObservation):void {
   if(!Number.isSafeInteger(observation.observedAtMicros)||observation.observedAtMicros!==seam.nowMicros())
     throw new Error('Observation must describe the advanced scheduler wall clock')
@@ -84,7 +85,7 @@ export function* planDefaultRunOrder(
   const slots=state.plan[room]
   if(!slots)throw new Error('Native run-order room is absent from the plan: '+room)
   const names=slots.map(slot=>{
-    const matches=TRADE_ORDER_AGENTS.some(agent=>slot.replacement.some(id=>seam.nativeName(id).includes(agent)))
+    const matches=TRADE_RUN_ORDER_NAMES.some(agent=>slot.replacement.some(id=>seam.nativeName(id).includes(agent)))
     // Native scans all replacements, but deliberately selects replacement[0].
     return matches?slot.replacement[0]!:'Current'
   })

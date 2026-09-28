@@ -3,14 +3,15 @@
  * defer_dorm_before_run_order, alpha c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
  * Product observations and actual dorm-duration samples are explicit; no yield fitting.
  * Fia/exhaust tails and the complete experimental dorm/product lifecycle remain caller responsibilities.
+ * Trade runner recognition extends the pinned source list with U-Official for this app.
  */
 import {MOWER_TASK_TYPES as T,MowerTask,toMowerMicros,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
 import {scheduleMowerTasks,type MowerTaskSchedulingOptions} from './mowerTaskScheduling'
+import {TRADE_RUN_ORDER_NAMES} from '../domain/shiftRunPolicy'
 import {
  observeNativeRunOrderTime,getDefaultRunOrderAdjustRoom,
  type RunOrderPlanningState,type RunOrderPlanningSeam,type RunOrderIORequest,type RunOrderIOObservation,type RunOrderTradeResult,
 } from './mowerRunOrderPlanning'
-const TRADE_AGENTS=['但书','龙舌兰','佩佩','可露希尔']
 export interface MowerExperimentalFacilityState {product?:string;facility?:string;updated_at?:string}
 export interface MowerExperimentalRunOrderState {
  planning:RunOrderPlanningState
@@ -52,7 +53,7 @@ export function syncMowerExperimentalRunOrderTasks(state:MowerExperimentalRunOrd
  const previous=state.runOrderRooms
  state.runOrderRooms=Object.fromEntries(Object.entries(state.planning.plan).filter(([room,slots])=>
   room.startsWith('room')&&state.activeProducts[room]!=='orundum'&&state.facilityStates[room]?.product!=='orundum'&&
-  slots.some(slot=>slot.replacement.some(id=>TRADE_AGENTS.includes(seam.nativeName(id)))),
+  slots.some(slot=>slot.replacement.some(id=>TRADE_RUN_ORDER_NAMES.some(name=>seam.nativeName(id)===name))),
  ).map(([room])=>[room,previous[room]??{}]))
  state.planning.runOrderRooms=Object.keys(state.runOrderRooms)
  const invalid=new Set(state.planning.queue.tasks.filter(task=>
@@ -96,7 +97,7 @@ export function* planMowerExperimentalRunOrder(state:MowerExperimentalRunOrderSt
  MowerExperimentalRunOrderGenerator<MowerTask|undefined>{
  syncMowerExperimentalRunOrderTasks(state,seam)
  if(!(room in state.runOrderRooms)||state.planning.queue.find({type:T.RUN_ORDER,metadata:room}))return
- const names=state.planning.plan[room]!.map(slot=>TRADE_AGENTS.some(agent=>slot.replacement.some(id=>seam.nativeName(id).includes(agent)))?slot.replacement[0]!:'Current')
+ const names=state.planning.plan[room]!.map(slot=>TRADE_RUN_ORDER_NAMES.some(agent=>slot.replacement.some(id=>seam.nativeName(id).includes(agent)))?slot.replacement[0]!:'Current')
  const timeMicros=yield* readTime(state,seam,room)
  syncMowerExperimentalRunOrderTasks(state,seam)
  if(!(room in state.runOrderRooms))return

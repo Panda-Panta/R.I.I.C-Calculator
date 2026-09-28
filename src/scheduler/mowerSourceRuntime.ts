@@ -10,11 +10,13 @@ import {runDefaultTradeSegment,dispatchDefaultRefreshTime,type RunOrderPlanningS
 // Headless adapter for pinned default Mower task decisions.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 // Physical room reads come from the RIIC simulation; reservations and observations stay separate.
+// Trade runner recognition extends the pinned source list with U-Official for this app.
 import {mowerPlanEntries} from './mowerPlanOrder'
 import {scheduleMowerTasks,protectMowerSupportSwaps} from './mowerTaskScheduling'
 import {mowerRefreshTradingSpec,refreshMowerRunOrderTime} from './mowerRunOrderRefresh'
 import {MowerArrangementError} from './mowerArrangementError'
 import {OPERATOR_MAP} from '../domain/operators'
+import {isTradeRunOrderOperator,TRADE_RUN_ORDER_NAMES} from '../domain/shiftRunPolicy'
 import type {BackupTiming} from './backupPlans'
 import type {RuntimeState,RuntimeRates,RuntimeConfig} from './rosterRuntime'
 import {MowerOperatorState} from './mowerOperatorState'
@@ -42,6 +44,7 @@ export interface MowerSourceRuntime {
  lastTrainMoodReadMicros?:number;lastWakeMicros?:number;lastFiaNoopMicros?:number;trace:{timeMicros:number;type:string;plan:MowerTaskPlan;metadata:string}[]
 }
 const slotIndex=(id:string)=>Number(id.slice(id.lastIndexOf('_')+1))
+const isConfiguredTradeRoom=(config:RuntimeConfig,room:string)=>config.runOrderPolicies?.some(policy=>policy.roomId===room)??false
 function makeData(s:RuntimeState,previous?:MowerSourceRuntime):MowerSchedulingData {
  const config=s.config,source=Object.fromEntries(mowerPlanEntries(config.mowerSourcePlan!)),rules=config.mowerSourceRules!,operators:Record<string,MowerOperatorState>={}
  const primary=new Set(Object.values(source).flatMap(slots=>slots.map(p=>p.agent)).filter(n=>!['Free','Current',''].includes(n)))
@@ -66,7 +69,7 @@ function makeData(s:RuntimeState,previous?:MowerSourceRuntime):MowerSchedulingDa
   op.singleRecoveryManager=managerNames.has(op.name)&&skills.some(skill=>skill.description.replace(/<[^>]*>/g,'').includes('进驻宿舍时，使该宿舍内除自身以外心情未满的某个干员每小时恢复'))
  }
  const runOrderRooms=config.mowerRunOrderEnabled===false?{}:previous?.data.runOrderRooms??{}
- if(config.mowerRunOrderEnabled!==false)for(const [room,slots] of Object.entries(source))if(room.startsWith('room')&&slots.some(slot=>slot.replacement.some(name=>['但书','龙舌兰','佩佩','可露希尔'].includes(OPERATOR_MAP.get(name)?.name??name))))runOrderRooms[room]={}
+ if(config.mowerRunOrderEnabled!==false)for(const [room,slots] of Object.entries(source))if(room.startsWith('room')&&slots.some(slot=>slot.replacement.some(id=>isTradeRunOrderOperator(id)&&((OPERATOR_MAP.get(id)?.name??id)!=='U-Official'||isConfiguredTradeRoom(config,room)))))runOrderRooms[room]={}
  const dorms=previous?.data.dorms??config.beds.filter(b=>b.managedRecovery!==false).sort((a,b)=>Number(b.vip)-Number(a.vip)).map(b=>new MowerDormState([b.roomId,slotIndex(b.id)]))
  return new MowerSchedulingData({plan:Object.fromEntries(Object.entries(source).map(([room,slots])=>[room,slots.map(p=>p.agent)])),operators,dorms,runOrderRooms,nowMicros:toMowerMicros(s.time),policy:{restingThreshold:config.mowerPolicy!.restingThreshold,rescueThreshold:config.mowerPolicy?.rescueThreshold??.75},freeRoom:config.mowerPolicy?.freeRoom,groupRestInFullOnMoodGap:config.mowerPolicy?.groupRestInFullOnMoodGap,groupMoodGapMaxExtraWaitHours:config.mowerPolicy?.groupMoodGapMaxExtraWaitHours,mergeIntervalMinutes:config.mowerPolicy?.mergeIntervalMinutes,powerPlantCount:config.mowerPolicy?.powerPlantCount,planConditions:previous?.data.planConditions,partyTime:config.mowerServices?.enableParty===false?undefined:previous?.data.partyTime,restingPriorityNames:config.mowerPolicy?.opeRestingPriority,freeBlacklist:config.freeBlacklist,excludedCandidates:new Set(config.excludedCandidates)})
 }
@@ -207,7 +210,7 @@ function* arrangeRoom(s:RuntimeState,rates:RuntimeRates,room:string,names:string
  names.splice(0,names.length,...resolved)
  // Native new_plan captures temporary order staffing before a potential no-op.
  let restoration:MowerTaskPlan|undefined,fiammettaCharge=false
- if(!room.startsWith('dormitory')&&room!=='train'&&resolved.some(id=>['但书','龙舌兰','佩佩','可露希尔'].some(name=>(OPERATOR_MAP.get(id)?.name??id).includes(name))))
+ if(!room.startsWith('dormitory')&&room!=='train'&&resolved.some(id=>TRADE_RUN_ORDER_NAMES.some(name=>(OPERATOR_MAP.get(id)?.name??id).includes(name)&&(name!=='U-Official'||isConfiguredTradeRoom(s.config,room)))))
   restoration=chooseError>0?sharedRestoration:{[room]:[...current]}
  if(restoration)Object.assign(sharedRestoration,restoration)
  if(room in getMowerSourceRuntime(s).data.runOrderRooms&&!restoration&&task.type!==T.RUN_ORDER&&
