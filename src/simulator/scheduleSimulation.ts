@@ -1,6 +1,6 @@
 import {createMowerClueIO} from './mowerNativeClueIO'
 import {createMowerProductionIO} from './mowerNativeProductionIO'
-import {mowerConfirmedRecoveryTarget} from '../scheduler/mowerDormRecovery'
+import {mowerConfirmedRecoveryTargets} from '../scheduler/mowerDormRecovery'
 import { createBackupPlanController } from '../scheduler/backupPlans'
 import { inventoryOperatorRecords, operatorFor, hasOperatorSkill } from '../domain/operatorContext'
 import {createProductionTimeline,assertRunOrderMode,type ProductionOptions,type ProductionReport,type ProductionFrame} from './productionTimeline'
@@ -15,7 +15,7 @@ import {buildRiicGlobalContext} from '../engine/globalContext'
 import {getTemporalSkillBoundaries} from '../engine/timeDependentSkills'
 import type {CompiledSchedule} from '../scheduler/types'
 import {compiledScheduleToRuntimeConfig} from '../scheduler/scheduleAdapter'
-import {advanceRoster,createRosterRuntime,MORALE_EPSILON,nextRosterEventHours,nextRosterActionHours,settleRoster,moraleDerivative,type RuntimeState,type RuntimeRates,type RuntimeEvent} from '../scheduler/rosterRuntime'
+import {advanceRoster,createRosterRuntime,currentMoraleDerivatives,MORALE_EPSILON,nextRosterEventHours,nextRosterActionHours,settleRoster,moraleDerivative,type RuntimeState,type RuntimeRates,type RuntimeEvent} from '../scheduler/rosterRuntime'
 
 export interface ScheduleSimulationProgress {
  phase:'warmup'|'sampling'; elapsedHours:number; totalHours:number; warmupHours:number
@@ -150,49 +150,56 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  refreshSessions()
  const stats=new Map(Object.keys(state.morale).map(id=>[id,{operatorId:id,operatorName:OPERATOR_MAP.get(id)?.name??id,mainWorkHours:0,substituteWorkHours:0,workHours:0,exhaustedHours:0,restHours:0,idleHours:0,permanentPrimaryOccupancyHours:0,workFraction:0,workRestRatio:null,initialMorale:initial[id]!,finalMorale:initial[id]!} as SimulatedOperator]))
  const roomStats=new Map(projectScheduleState(schedule,state).rooms.map(r=>[r.id,{roomId:r.id,roomType:r.type,averageEfficiencyPercent:0,efficiencyPercentHours:0,occupiedHours:0,teams:[]} as SimulatedRoom]))
- // Rates are queried repeatedly within the same immutable time slice. Track actual
- // map writes (including same-time Fiammetta/swaps) instead of serializing all operators per query.
- let cachedRecoveryOrderVersion=-1
- let rateRevision=0,cachedRevision=-1,cachedTime=NaN,occupancyRevision=0
- let cachedWork:Record<string,number>={},cachedRecovery:Record<string,number>={}
- const trackOccupancyMap=<T extends string|number>(map:Record<string,T>):Record<string,T>=>new Proxy(map,{
-  set(target,key,value){if(target[String(key)]!==value){rateRevision++;occupancyRevision++}return Reflect.set(target,key,value)},
-  deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key)){rateRevision++;occupancyRevision++}return Reflect.deleteProperty(target,key)},
- })
- const trackRateMap=<T extends string|number>(map:Record<string,T>):Record<string,T>=>new Proxy(map,{
-  set(target,key,value){if(target[String(key)]!==value)rateRevision++;return Reflect.set(target,key,value)},
-  deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key))rateRevision++;return Reflect.deleteProperty(target,key)},
- })
+  // Rate formulas depend on physical occupancy and discrete morale thresholds.
+  // Keep the result across native I/O ticks while every input stays in the same band.
+  let cachedRecoveryOrderVersion=-1
+  let rateRevision=0,cachedRevision=-1,occupancyRevision=0
+  let cachedWork:Record<string,number>={},cachedRecovery:Record<string,number>={}
+  const rateMoodBand=(value:number|undefined)=>{
+   if(value===undefined)return -1
+   let band=Number(value>0)|Number(value>=24-EPS)<<1|Number(value<=12)<<2|Number(value<=18)<<3|Number(value<=20)<<4
+   for(const [index,threshold] of [4,8,12,16,18,20].entries())if(Math.abs(value-threshold)<EPS)band|=1<<(index+5)
+   return band
+  }
+  const trackOccupancyMap=<T extends string|number>(map:Record<string,T>):Record<string,T>=>new Proxy(map,{
+    set(target,key,value){if(target[String(key)]!==value){rateRevision++;occupancyRevision++}return Reflect.set(target,key,value)},
+    deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key)){rateRevision++;occupancyRevision++}return Reflect.deleteProperty(target,key)},
+  })
+  const trackRateMap=(map:Record<string,number>):Record<string,number>=>new Proxy(map,{
+   set(target,key,value){if(rateMoodBand(target[String(key)])!==rateMoodBand(value))rateRevision++;return Reflect.set(target,key,value)},
+   deleteProperty(target,key){if(Object.prototype.hasOwnProperty.call(target,key))rateRevision++;return Reflect.deleteProperty(target,key)},
+  })
  state.morale=trackRateMap(state.morale);state.occupants=trackOccupancyMap(state.occupants);state.bedOccupants=trackOccupancyMap(state.bedOccupants)
  let trackedMorale=state.morale,trackedOccupants=state.occupants,trackedBeds=state.bedOccupants,trackedConfig=state.config
- const updateRates=()=>{
-  const recoveryOrderVersion=state.mowerSource?.data.recoveryOrderVersion??0
-  if(recoveryOrderVersion!==cachedRecoveryOrderVersion){cachedRecoveryOrderVersion=recoveryOrderVersion;rateRevision++}
-  if(state.config!==trackedConfig){trackedConfig=state.config;rateRevision++;occupancyRevision++}
+  const updateRates=()=>{
+   const recoveryOrderVersion=state.mowerSource?.data.recoveryOrderVersion??0
+    if(recoveryOrderVersion!==cachedRecoveryOrderVersion){cachedRecoveryOrderVersion=recoveryOrderVersion;rateRevision++}
+    if(state.config!==trackedConfig){trackedConfig=state.config;rateRevision++;occupancyRevision++}
   // Runtime replaces the bed map atomically after group reservations/reordering.
   if(state.morale!==trackedMorale){state.morale=trackedMorale=trackRateMap(state.morale);rateRevision++}
   if(state.occupants!==trackedOccupants){state.occupants=trackedOccupants=trackOccupancyMap(state.occupants);rateRevision++;occupancyRevision++}
   if(state.bedOccupants!==trackedBeds){state.bedOccupants=trackedBeds=trackOccupancyMap(state.bedOccupants);rateRevision++;occupancyRevision++}
-  if(cachedRevision===rateRevision&&cachedTime===state.time)return
-  cachedRevision=rateRevision;cachedTime=state.time
+   if(cachedRevision===rateRevision)return
+   cachedRevision=rateRevision
   const c=projectScheduleState(schedule,state);c.operatorRecords=operatorRecords;Object.assign(c.efficiencyResources,options.efficiencyResources)
   const snapshot=currentMoraleRates(c)
   for(const message of snapshot.unquantified)diagnostic('UNQUANTIFIED_WORK_RATE',message)
-  let work=snapshot.rates,atBoundary=false
-  const restingIds=new Set([...Object.values(state.bedOccupants),...state.config.positions.filter(p=>p.dormitory).map(p=>state.occupants[p.id]!)])
+   let work=snapshot.rates,atBoundary=false
+   const restingIds=new Set([...Object.values(state.bedOccupants),...state.config.positions.filter(p=>p.dormitory).map(p=>state.occupants[p.id]!)])
   // Strict mood thresholds use the directional limit in an evaluation copy, never alter physical mood.
   for(const [id,m] of Object.entries(c.operatorMorale)){
    const direction=restingIds.has(id)?1:-Math.sign(options.consumptionOverrides?.[id]??work[id]??0)
-   if([4,8,12,16,18,20].some(x=>Math.abs(m-x)<EPS)){c.operatorMorale[id]=m+direction*EPS*2;atBoundary=true}
+     if([4,8,12,16,18,20].some(x=>Math.abs(m-x)<EPS)){c.operatorMorale[id]=m+direction*EPS*2;atBoundary=true}
   }
   if(atBoundary)work=currentMoraleRates(c).rates
-  cachedWork={...work,...options.consumptionOverrides};cachedRecovery={}
-  const dorms=schedule.rooms.filter(r=>r.type==='dormitory'),morale=new Map(Object.entries(c.operatorMorale))
-  for(const [index,room] of dorms.entries()){
+   cachedWork={...work,...options.consumptionOverrides};cachedRecovery={}
+   const dorms=schedule.rooms.filter(r=>r.type==='dormitory'),morale=new Map(Object.entries(c.operatorMorale))
+   const confirmedTargets=state.mowerSource?mowerConfirmedRecoveryTargets(state.mowerSource.data):undefined
+   for(const [index,room] of dorms.entries()){
    const ids=c.facilityOperatorIds.dormitories[index]??[],targets=new Map<string,string>()
    for(const id of ids){
     const skill=operatorFor(c,id)?.skills.find(s=>s.roomType==='DORMITORY'&&s.description.includes('某个干员'))
-    const confirmed=state.mowerSource?mowerConfirmedRecoveryTarget(state.mowerSource.data,room.roomId,id):undefined
+     const confirmed=confirmedTargets?.get(room.roomId)?.get(id)
     const target=options.recoveryTargetByProvider?.[id]??(confirmed&&ids.includes(confirmed)&&(morale.get(confirmed)??24)<24-EPS?confirmed:undefined)??ids.find(other=>(morale.get(other)??24)<24-EPS
       && !operatorFor(c,other)?.skills.some(s=>s.buffId==='dorm_recExcludeOther[000]')
       &&(!skill?.description.includes('除自身以外')||other!==id))
@@ -214,7 +221,13 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    }
   }
  }
- const rates:RuntimeRates={workRate:id=>{updateRates();return cachedWork[id]??0},recoveryRate:id=>{updateRates();return cachedRecovery[id]??0},thresholds:()=>[4,8,12,16,18,20]}
+  const rates:RuntimeRates={workRate:id=>{updateRates();return cachedWork[id]??0},recoveryRate:id=>{updateRates();return cachedRecovery[id]??0},snapshotRates:()=>{updateRates();return {work:cachedWork,recovery:cachedRecovery}},thresholds:()=>[4,8,12,16,18,20]}
+  let derivativeRevision=-1,derivatives:Record<string,number>={}
+  const derivativeRates=()=>{
+   updateRates()
+   if(derivativeRevision!==rateRevision){derivatives=currentMoraleDerivatives(state,rates);derivativeRevision=rateRevision}
+   return derivatives
+  }
  const blockedMessages=new Map<string,{code:string;message:string}>()
  const deferrals:NonNullable<ScheduleSimulationReport['shiftDeferrals']>=[]
  const pendingDeferrals=new Map<string,typeof deferrals[number]>()
@@ -233,7 +246,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   const count=state.events.length
   const phase=(timing:Parameters<NonNullable<typeof backups>['evaluate']>[0])=>{
    const previousConfig=state.config,changed=backups?.evaluate(timing)??false
-   if(changed||state.config!==previousConfig){Object.assign(schedule,backups!.schedule);cachedRevision=-1;refreshGroups()}
+   if(changed||state.config!==previousConfig){Object.assign(schedule,backups!.schedule);cachedRevision=-1;derivativeRevision=-1;refreshGroups()}
    return changed
   }
   if(!state.config.mowerSourcePlan)phase('BEGINNING')
@@ -255,7 +268,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
     deferrals.push(episode);pendingDeferrals.set(key,episode)
    }
   }
-  refreshSessions(events);cachedRevision=-1
+  refreshSessions(events);cachedRevision=-1;derivativeRevision=-1
  }
  const settle=()=>{
   if(backupFailed)return
@@ -274,7 +287,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  const frameAt=(offset:number):ProductionFrame=>{
   const base=getBaseConfig()
   const c={...base,operatorMorale:{...state.morale}}
-  if(offset!==0){for(const id of Object.keys(c.operatorMorale))c.operatorMorale[id]=Math.max(0,Math.min(24,c.operatorMorale[id]!+moraleDerivative(state,id,rates)*offset))}
+  if(offset!==0){const derivative=derivativeRates();for(const id of Object.keys(c.operatorMorale))c.operatorMorale[id]=Math.max(0,Math.min(24,c.operatorMorale[id]!+(derivative[id]??0)*offset))}
   c.zeroMoraleOperatorIds=state.config.positions.filter(p=>!p.dormitory&&(c.operatorMorale[state.occupants[p.id]!]??0)<=0).map(p=>state.occupants[p.id]!)
   const zeroMoraleKey=c.zeroMoraleOperatorIds.join(',')
   // These are the mood-dependent production rules; zero-morale activity has its own key.
@@ -300,7 +313,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   return {time:state.time+offset,config:c,active,morale,evaluations:evaluations!}
  }
  const efficiencies=(frame:ProductionFrame)=>Object.fromEntries(Object.entries(frame.evaluations).map(([id,r])=>[id,r.efficiencyPercent]))
- const production=options.production?createProductionTimeline(schedule,state,options.production,warmupHours,diagnostic,()=>{refreshSessions();cachedRevision=-1},!!state.config.mowerSourcePlan):undefined
+ const production=options.production?createProductionTimeline(schedule,state,options.production,warmupHours,diagnostic,()=>{refreshSessions();cachedRevision=-1;derivativeRevision=-1},!!state.config.mowerSourcePlan):undefined
  // Real facilities exist before native scheduling first reads a countdown.
  production?.settle(()=>frameAt(0))
  if(production&&state.config.mowerSourcePlan){
@@ -351,11 +364,12 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   if(steps++>=maxEvents){diagnostic('SIMULATION_EVENT_LIMIT',`达到 ${maxEvents} 个积分区间，结果未完成`);break}
   let action=moraleStep?moraleStep.actionAt-state.time:production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates)
   if(action<=(state.config.mowerSourcePlan?0:EPS)){settle();production?.settle(()=>frameAt(0));action=production?.isRosterLocked()?Infinity:nextRosterActionHours(state,rates);if(action<=(state.config.mowerSourcePlan?0:EPS)){diagnostic('SIMULATION_SAME_TIME_ACTION','同刻调度未能稳定，结果未完成');break}}
-  let dt=moraleStep?moraleStep.end-state.time:Math.min(maxStepHours,total-state.time,nextRosterEventHours(state,rates,!production?.isRosterLocked()),state.time<warmupHours-EPS?warmupHours-state.time:Infinity)
+  let dt=moraleStep?moraleStep.end-state.time:Math.min(maxStepHours,total-state.time,nextRosterEventHours(state,rates,!production?.isRosterLocked(),derivativeRates()),state.time<warmupHours-EPS?warmupHours-state.time:Infinity)
   if(!moraleStep)for(const [id,s] of entered)for(const boundary of getTemporalSkillBoundaries(id,{operatorRecords})){const delay=boundary+s.time-state.time;if(delay>EPS)dt=Math.min(dt,delay)}
   if(independentMoraleClock&&!moraleStep){
+   const derivative=derivativeRates()
    const morale=Object.fromEntries(Object.entries(state.morale).map(([id,m])=>{
-    const value=Math.max(0,Math.min(24,m+moraleDerivative(state,id,rates)*dt))
+    const value=Math.max(0,Math.min(24,m+(derivative[id]??0)*dt))
     return [id,value<=EPS?0:value>=24-EPS?24:value]
    }))
    moraleStep={end:state.time+dt,morale,actionAt:state.time+action}
@@ -403,7 +417,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    if(options.recordSegments)report.segments.push({start:state.time,end:state.time+dt,occupants:{...state.occupants},bedOccupants:{...state.bedOccupants},morale:{...state.morale},efficiencyPercent:eff})
   }
   production?.advance(dt,frame(dt/2))
-  advanceRoster(state,dt,rates)
+  advanceRoster(state,dt,rates,derivativeRates())
   if(moraleStep&&Math.abs(state.time-moraleStep.end)<=EPS){
    state.time=moraleStep.end
    Object.assign(state.morale,moraleStep.morale)
@@ -412,7 +426,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   production?.settle(()=>frameAt(0))
   if((state.config.mowerSourcePlan?nextRosterActionHours(state,rates)===0:Math.abs(dt-action)<=EPS)&&!production?.isRosterLocked()){settle();production?.settle(()=>frameAt(0))}
  }
- report.elapsedHours=state.time;report.success=!backupFailed&&Math.abs(state.time-total)<EPS
+  report.elapsedHours=state.time;report.success=!backupFailed&&Math.abs(state.time-total)<EPS
  report.operators=[...stats.values()].map(s=>({...s,finalMorale:state.morale[s.operatorId]!,workFraction:report.observedHours?s.workHours/report.observedHours:0,workRestRatio:s.restHours>EPS?s.workHours/s.restHours:null}))
  report.rooms=[...roomStats.values()].map(r=>({...r,averageEfficiencyPercent:report.observedHours?r.efficiencyPercentHours/report.observedHours:0,teams:r.teams.map(t=>({...t,fraction:report.observedHours?t.hours/report.observedHours:0}))}))
  if(production){report.production=production.report();report.production.success&&=report.success}

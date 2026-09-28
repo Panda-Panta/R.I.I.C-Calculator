@@ -3,7 +3,7 @@ import oracle from './fixtures/mower-dorm-recovery-alpha.json'
 import {MowerOperatorState} from './mowerOperatorState'
 import {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {MowerTask,MowerTaskQueue,toMowerMicros} from './mowerTaskQueue'
-import {ensureMowerDormRecovery,mowerRecoveryTarget,mowerConfirmedRecoveryTarget} from './mowerDormRecovery'
+import {ensureMowerDormRecovery,mowerRecoveryTarget,mowerConfirmedRecoveryTarget,mowerConfirmedRecoveryTargets} from './mowerDormRecovery'
 function fixture(groupHole=false,padding='known'){
  const room='dormitory_1',fixed=['M0','M1',groupHole?'Resident':'Free','Free','Free']
  const agents=groupHole?['M0','M1','Cover','H','Q']:['M0','M1','H','R','Q'],operators:Record<string,MowerOperatorState>={}
@@ -59,8 +59,10 @@ describe('actual alpha default dorm recovery ordering',()=>{
  it('requires actual target and manager coordinates and movement version for confirmed physical targeting',()=>{
   const f=fixture();f.ensure();f.restore()
   expect(mowerConfirmedRecoveryTarget(f.data,'dormitory_1','M0')).toBe('H')
+  expect(mowerConfirmedRecoveryTargets(f.data).get('dormitory_1')?.get('M0')).toBe('H')
   f.operators.M0!.currentIndex=1
   expect(mowerConfirmedRecoveryTarget(f.data,'dormitory_1','M0')).toBeUndefined()
+  expect(mowerConfirmedRecoveryTargets(f.data).get('dormitory_1')?.get('M0')).toBeUndefined()
   expect(mowerRecoveryTarget(f.data,'dormitory_1',f.agents)?.name).toBe('H')
  })
 })

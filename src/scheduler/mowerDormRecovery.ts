@@ -88,3 +88,19 @@ export function mowerConfirmedRecoveryTarget(data:MowerSchedulingData,room:strin
  }
  return undefined
 }
+/** Resolve every confirmed provider in one pass for a shared rate evaluation. */
+export function mowerConfirmedRecoveryTargets(data:MowerSchedulingData):Map<string,Map<string,string>> {
+ const rooms=new Map<string,Map<string,string>>()
+ for(const op of Object.values(data.operators)){
+  const room=op.dormRecoveryRoom,index=op.dormRecoveryIndex
+  if(!room||!active(op,room,index)||!op.dormRecoveryFixed.length)continue
+  if(!op.dormRecoveryFixed.every(([name,position,version])=>{
+   const manager=data.operators[name]
+   return !!manager&&manager.currentRoom===room&&manager.currentIndex===position&&manager.dormPositionVersion===version
+  }))continue
+  let targets=rooms.get(room)
+  if(!targets){targets=new Map();rooms.set(room,targets)}
+  for(const [provider] of op.dormRecoveryFixed)if(!targets.has(provider))targets.set(provider,op.name)
+ }
+ return rooms
+}

@@ -80,6 +80,8 @@ export interface RuntimeRates {
   mowerRunOrderIO?:(request:RunOrderIORequest,state:RuntimeState)=>MowerNativeIOWork<RunOrderIOObservation>
   workRate: (operatorId: string, roomId: string, state: RuntimeState) => number
   recoveryRate: (operatorId: string, roomId: string, state: RuntimeState) => number
+  /** Stable rate tables for one physical-state sweep; callers must not mutate state while using them. */
+  snapshotRates?:()=>{work:Readonly<Record<string,number>>;recovery:Readonly<Record<string,number>>}
   /** Additional skill morale boundaries; callers can split intervals at non-roster events too. */
   thresholds?: (operatorId: string, state: RuntimeState) => number[]
 }
@@ -611,14 +613,34 @@ function updateMowerReturnDeadlines(s: RuntimeState, rates: RuntimeRates): void 
   s.returnDeadlines=deadlines
 }
 
-export function moraleDerivative(s: RuntimeState, id: string, rates: RuntimeRates): number {
-  const p = s.config.positions.find(p => s.occupants[p.id] === id)
-  const bed = s.config.beds.find(b => s.bedOccupants[b.id] === id)
+function placedMoraleDerivative(s:RuntimeState,id:string,rates:RuntimeRates,p?:RuntimePosition,bed?:RuntimeBed,snapshot?:ReturnType<NonNullable<RuntimeRates['snapshotRates']>>):number {
   if (id === s.config.fiammetta?.operatorId && (p?.dormitory || bed)) return 2
-  const rate = bed ? rates.recoveryRate(id, bed.roomId, s) : p ? (p.dormitory ? rates.recoveryRate(id, p.roomId, s) : -rates.workRate(id, p.roomId, s)) : 0
+  const recovery=(room:string)=>snapshot?(snapshot.recovery[id]??0):rates.recoveryRate(id,room,s)
+  const work=(room:string)=>snapshot?(snapshot.work[id]??0):rates.workRate(id,room,s)
+  const rate = bed ? recovery(bed.roomId) : p ? (p.dormitory ? recovery(p.roomId) : -work(p.roomId)) : 0
   if (!Number.isFinite(rate)) throw new Error(`Non-finite morale rate: ${id}`)
   return rate
 }
+export function moraleDerivative(s: RuntimeState, id: string, rates: RuntimeRates): number {
+  const p = s.config.positions.find(p => s.occupants[p.id] === id)
+  const bed = s.config.beds.find(b => s.bedOccupants[b.id] === id)
+  return placedMoraleDerivative(s,id,rates,p,bed)
+}
+/** Index the current physical roster once for a whole rate sweep. */
+function moraleRateSnapshot(s:RuntimeState,rates:RuntimeRates):{derivatives:Record<string,number>;primary:Map<string,RuntimePosition>} {
+ const occupied=new Map<string,RuntimePosition>(),beds=new Map<string,RuntimeBed>(),primary=new Map<string,RuntimePosition>()
+ for(const p of s.config.positions){
+  const id=s.occupants[p.id]
+  if(id&&!occupied.has(id))occupied.set(id,p)
+  if(!primary.has(p.primary))primary.set(p.primary,p)
+ }
+ for(const bed of s.config.beds){const id=s.bedOccupants[bed.id];if(id&&!beds.has(id))beds.set(id,bed)}
+ const rateSnapshot=rates.snapshotRates?.()
+ const derivatives:Record<string,number>={}
+ for(const id of Object.keys(s.morale))derivatives[id]=placedMoraleDerivative(s,id,rates,occupied.get(id),beds.get(id),rateSnapshot)
+ return {derivatives,primary}
+}
+export function currentMoraleDerivatives(s:RuntimeState,rates:RuntimeRates):Record<string,number>{return moraleRateSnapshot(s,rates).derivatives}
 /** Planning events only. Skill boundaries and a substitute reaching 24 do not run Mower's planner. */
 export function nextRosterActionHours(s: RuntimeState, rates: RuntimeRates): number {
   if(s.config.mowerSourcePlan)return nextMowerSourceActionHours(s)
@@ -652,13 +674,16 @@ export function nextRosterActionHours(s: RuntimeState, rates: RuntimeRates): num
   if (fia) { const rate=moraleDerivative(s,fia,rates);const t=(24-(s.morale[fia] ?? 24))/rate;if (rate>0 && t>MORALE_EPSILON) next=Math.min(next,t) }
   return next
 }
-export function nextRosterEventHours(s: RuntimeState, rates: RuntimeRates, includePlanning = true): number {
+export function nextRosterEventHours(s: RuntimeState, rates: RuntimeRates, includePlanning = true, preparedDerivatives?:Readonly<Record<string,number>>): number {
   if (includePlanning && s.config.mowerPolicy&&!s.config.mowerSourcePlan) updateMowerReturnDeadlines(s,rates)
   let next = includePlanning ? Math.min(s.config.mowerPolicy ? nextRosterActionHours(s,rates) : Infinity,...[s.nextPlanningTime ?? Infinity,s.nextFiammettaCheckTime ?? Infinity,...Object.values(s.returnDeadlines ?? {})].map(t => t-s.time).filter(t => t > MORALE_EPSILON)) : Infinity
+  const primary=new Map<string,RuntimePosition>()
+  if(preparedDerivatives)for(const p of s.config.positions)if(!primary.has(p.primary))primary.set(p.primary,p)
+  const snapshot=preparedDerivatives?{derivatives:preparedDerivatives,primary}:moraleRateSnapshot(s,rates)
   for (const [id, m] of Object.entries(s.morale)) {
-    const rate = moraleDerivative(s, id, rates)
+    const rate = snapshot.derivatives[id]!
     if (!rate) continue
-    const p = s.config.positions.find(p => p.primary === id)
+    const p = snapshot.primary.get(id)
     const thresholds = [0, 24, ...(p ? [shiftThreshold(p,s,rates), upper(p)] : []), ...(rates.thresholds?.(id, s) ?? [])]
     if (s.config.fiammetta?.orderedTargets.includes(id)) thresholds.push(s.config.fiammetta.threshold ?? 21.6)
     for (const threshold of thresholds) {
@@ -668,9 +693,9 @@ export function nextRosterEventHours(s: RuntimeState, rates: RuntimeRates, inclu
   }
   return next
 }
-export function advanceRoster(s: RuntimeState, hours: number, rates: RuntimeRates): void {
+export function advanceRoster(s: RuntimeState, hours: number, rates: RuntimeRates, preparedDerivatives?:Readonly<Record<string,number>>): void {
   if (!Number.isFinite(hours) || hours <= 0) throw new Error('Roster advance must be finite and positive')
-  const derivatives = Object.fromEntries(Object.keys(s.morale).map(id => [id, moraleDerivative(s, id, rates)]))
+  const derivatives = preparedDerivatives??moraleRateSnapshot(s,rates).derivatives
   if (s.config.mowerPolicy) for (const id of s.config.beds.filter(b => b.managedRecovery !== false).map(b => s.bedOccupants[b.id]).filter((id): id is string => Boolean(id))) {
     const target = restTarget(s,id), before = s.morale[id] ?? 0, rate = derivatives[id] ?? 0
     const targets = s.recoveryCompletionTargets ??= {}

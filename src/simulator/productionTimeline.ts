@@ -62,6 +62,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
  const ledger=createLedger(initial),materialsConsumed:ResourceAmounts={}
  let drones=createDroneState(initial.drone??0),serial=0,valid=true,nextCollection=interval||Infinity
  const events:ProductionEvent[]=[],manufactures=new Map<string,ManufactureRoom>(),trades=new Map<string,TradeRoom>()
+ const capacityByEvaluation=new WeakMap<ProductionFrame['evaluations'],Map<string,{moodBand:string;bonus:number}>>()
  let run:{roomId:string;swap:PreparedRunOrderSwap}|undefined
  let opening:ResourceAmounts|undefined=warmupHours===0?{...ledger.balances}:undefined,openingIn:ResourceAmounts={},openingOut:ResourceAmounts={}
  const unsupported=(code:string,message:string)=>{valid=false;diagnostic(code,message)}
@@ -105,7 +106,14 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
     if(!m){const formula:ManufacturingFormulaId=room.product==='exp'?'exp-medium':room.product==='fragment'?(options.fragmentFormulaByRoom?.[room.id]??'fragment-orirock'):'gold'
      if(room.level<MANUFACTURING_FORMULAS[formula].requiredRoomLevel){unsupported('MANUFACTURE_FORMULA_LEVEL',`${room.id}：所选配方不满足设施等级，未计产出`);continue}
      m={roomId:room.id,state:startManufacturing({formula,capacityWeight:0,paymentAuthorized:false}),blockedHours:0,blockedMaterialHours:0,collectedItems:0};manufactures.set(room.id,m)}
-    const capacity=[24,36,54][room.level-1]!+evaluateManufacturingCapacity(room,frame.config,frame.active,frame.morale)
+    // The same efficiency snapshot has stable staffing and capacity-relevant mood boundaries.
+    let capacities=capacityByEvaluation.get(frame.evaluations)
+    if(!capacities){capacities=new Map();capacityByEvaluation.set(frame.evaluations,capacities)}
+    const moodBand=room.operatorIds.map(id=>Number((frame.morale.get(id)??24)<12)).join('')
+    let cached=capacities.get(room.id)
+    if(!cached||cached.moodBand!==moodBand){cached={moodBand,bonus:evaluateManufacturingCapacity(room,frame.config,frame.active,frame.morale)};capacities.set(room.id,cached)}
+    const bonus=cached.bonus
+    const capacity=[24,36,54][room.level-1]!+bonus
     m.state=updateManufacturingCapacity(m.state,Math.max(0,capacity))
    }else if(room.type==='trading'){
     let t=trades.get(room.id)

@@ -27,7 +27,7 @@ import {planMowerOrdinary,mowerGetRestingPlan,mowerTryReorder,mowerPlanningHasNe
 import {planMowerMetadata} from './mowerMetadata'
 import {planMowerExhaustSupport} from './mowerExhaustPlanning'
 import {selectMowerFiaTarget,mowerFiaReadyMicros} from './mowerFiammetta'
-import {prepareMowerDormSelection,mowerArrangementReadIndexes} from './mowerSelection'
+import {prepareMowerDormSelection,mowerArrangementReadIndexes,mowerDormReplacementForSlot} from './mowerSelection'
 import {prepareMowerRunEntry} from './mowerRunLifecycle'
 import {ensureMowerDormRecovery} from './mowerDormRecovery'
 import {prepareMowerRelease} from './mowerRelease'
@@ -305,7 +305,26 @@ function scheduleFiaAndExhaust(s:RuntimeState,rates:RuntimeRates):void {
     observeRoom(s,rates,op.room,undefined,[index])
     return data.nowMicros+toMowerMicros(Math.max(0,(24-s.morale[fia.operatorId]!)/2))
    })
-   const task=new MowerTask({type:T.FIAMMETTA});task.timeMicros=ready;queue.tasks.push(task)
+   // Source Mower can repeatedly select a full worker when fool protection is
+   // disabled. Dorm selection releases that worker and charges an idle Free
+   // card instead. Recheck later when the observed roster or morale can differ.
+   const threshold=(fia.threshold??21.6)/24
+   const planned=selectMowerFiaTarget(data,fia.orderedTargets,fia.fool??true,threshold)
+   const target=planned?data.operators[planned]:undefined
+   const released=!!target&&target.mood===target.upperLimit&&!target.room.startsWith('dorm')&&
+    !mowerDormReplacementForSlot(data,planned!,op.room,0)
+   const trainee=data.currentOperator('train',0)?.name
+   const free=released?freeCandidateNames(s,data,new Set([planned!,fia.operatorId,...(s.config.freeBlacklist??[]),...(trainee?[trainee]:[])]))[0]:undefined
+   const effectiveTarget=released?free:planned
+   const fullNoop=effectiveTarget!==undefined&&(s.morale[effectiveTarget]??0)>=24-1e-8&&
+    ((s.morale[fia.operatorId]??0)>=24-1e-8||ready>data.nowMicros)
+   if(fullNoop){
+    if(!s.diagnostics.some(d=>d.code==='mower-fia-full-noop-skipped'))s.diagnostics.push({code:'mower-fia-full-noop-skipped',message:'跳过双方满心情的无收益充能；五分钟后重新检查。此优化精简了 Mower 原版的空操作事件。'})
+    const retry=ready>data.nowMicros?ready:data.nowMicros+toMowerMicros(5/60)
+    if(!queue.tasks.some(t=>t.type===T.NOT_SPECIFIC&&t.timeMicros>data.nowMicros&&t.timeMicros<=retry)){
+     const task=new MowerTask({type:T.NOT_SPECIFIC});task.timeMicros=retry;queue.tasks.push(task)
+    }
+   }else{const task=new MowerTask({type:T.FIAMMETTA});task.timeMicros=ready;queue.tasks.push(task)}
   }
  }
  for(const op of Object.values(data.operators)){
