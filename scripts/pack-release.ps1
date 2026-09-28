@@ -48,9 +48,6 @@ $zipPath = Join-Path $resolvedOutputDir "R.I.I.C-Calculator-Windows-x64-Portable
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 tar.exe -a -cf "$zipPath" -C release R.I.I.C-Calculator
 
-$arcIncZipPath = Join-Path $resolvedOutputDir "ArcIncCalc-Windows-x64-Portable.zip"
-Copy-Item $zipPath $arcIncZipPath -Force
-
 function Get-Sha256([string]$filePath) {
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     $stream = [System.IO.File]::OpenRead((Resolve-Path $filePath))
@@ -60,9 +57,8 @@ function Get-Sha256([string]$filePath) {
 }
 
 $hash = Get-Sha256 $zipPath
-$hashArc = Get-Sha256 $arcIncZipPath
 $sumsPath = Join-Path $resolvedOutputDir "SHA256SUMS.txt"
-"$hash  R.I.I.C-Calculator-Windows-x64-Portable.zip`r`n$hashArc  ArcIncCalc-Windows-x64-Portable.zip" | Set-Content -Path $sumsPath -Encoding utf8
+"$hash  R.I.I.C-Calculator-Windows-x64-Portable.zip" | Set-Content -Path $sumsPath -Encoding utf8
 
 if (-not $env:CI) {
     $targetSyncDir = if (Test-Path "D:\Tools\R.I.I.C-Calculator") { "D:\Tools\R.I.I.C-Calculator" } elseif (Test-Path "D:\Tools\ArcIncCalc") { "D:\Tools\ArcIncCalc" } else { "" }
