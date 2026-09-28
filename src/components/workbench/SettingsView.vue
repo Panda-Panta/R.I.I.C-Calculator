@@ -13,7 +13,9 @@ export interface SimulationSettings {
   useOperatorInventory?: boolean
   jayeElite0?: boolean
   fiammettaFool?: boolean
+  fiammettaThreshold?: number
   restingThreshold?: number
+  rescueThreshold?: number
   freeRoom?: boolean
 }
 
@@ -45,14 +47,6 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
 
       <div class="sim-controls-grid">
         <label class="control-item">
-          <span class="control-label">孑状态设置</span>
-          <select class="control-select" data-test="jaye-elite0-select" :value="String(settings.jayeElite0 ?? false)" @change="updateField('jayeElite0', ($event.target as HTMLSelectElement).value === 'true')">
-            <option value="false">默认（按干员库或精2最高技能）</option>
-            <option value="true">精0跑单（仅摊贩经济，满差额加成）</option>
-          </select>
-          <span class="control-hint">勾选精0跑单时，贸易站内队友效率不会削减订单上限，享受全额差额加成。</span>
-        </label>
-        <label class="control-item">
           <span class="control-label">菲亚防呆</span>
           <select class="control-select" data-test="fiammetta-fool" :value="String(settings.fiammettaFool ?? true)" @change="updateField('fiammettaFool', ($event.target as HTMLSelectElement).value === 'true')">
             <option value="true">开启（Mower 默认）</option>
@@ -61,8 +55,18 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
           <span class="control-hint">按作业要求设置；排班图片不包含这个全局选项。</span>
         </label>
         <label class="control-item">
+          <span class="control-label">菲亚阈值（%）</span>
+          <input class="control-input" data-test="fiammetta-threshold" type="number" min="0" max="100" step="1" :disabled="settings.fiammettaFool ?? true" :value="(settings.fiammettaThreshold ?? .9) * 100" @input="updateField('fiammettaThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+          <span class="control-hint">防呆开启时固定充心情不高于 90% 的候选，本项无效；关闭后优先充不高于所设阈值者，否则充心情最低者。</span>
+        </label>
+        <label class="control-item">
           <span class="control-label">休息阈值（%）</span>
           <input class="control-input" data-test="resting-threshold" type="number" min="0" max="100" step="1" :value="(settings.restingThreshold ?? .65) * 100" @input="updateField('restingThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+        </label>
+        <label class="control-item">
+          <span class="control-label">急救阈值（%）</span>
+          <input class="control-input" data-test="rescue-threshold" type="number" min="0" max="100" step="1" :value="(settings.rescueThreshold ?? .75) * 100" @input="updateField('rescueThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+          <span class="control-hint">整体心情不高于休息阈值 × 急救阈值时，忽视高优人数限制，使用全部可用休息位。</span>
         </label>
         <label class="control-item">
           <span class="control-label">满心情闲人离宿</span>

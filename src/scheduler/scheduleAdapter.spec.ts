@@ -98,6 +98,21 @@ describe('compiledScheduleToRuntimeConfig adapter', () => {
     }
   })
 
+  it('applies the custom Fiammetta threshold only with fool protection off and forwards rescue threshold', () => {
+    const workspace = importMowerJson(readFileSync('src/workbench/compat/fixtures/mower-252-2gold.json', 'utf8'))
+    const protectedConfig = compiledScheduleToRuntimeConfig(compileRosterSchedule(workspace, {
+      fiammettaFool: true, fiammettaThreshold: .8, rescueThreshold: .9,
+    }))
+    expect(protectedConfig.fiammetta?.threshold).toBe(21.6)
+    expect(protectedConfig.mowerPolicy?.rescueThreshold).toBe(.9)
+
+    const unprotectedConfig = compiledScheduleToRuntimeConfig(compileRosterSchedule(workspace, {
+      fiammettaFool: false, fiammettaThreshold: .8, rescueThreshold: .9,
+    }))
+    expect(unprotectedConfig.fiammetta?.threshold).toBeCloseTo(19.2)
+    expect(unprotectedConfig.fiammetta?.fool).toBe(false)
+  })
+
   it('identifies shift-run operators accurately via isShiftRunOperator', () => {
     expect(isShiftRunOperator('但书')).toBe(true)
     expect(isShiftRunOperator('龙舌兰')).toBe(true)

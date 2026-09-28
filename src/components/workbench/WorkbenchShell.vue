@@ -55,7 +55,9 @@ const defaultSimSettings: SimulationSettings = {
   droneTradingRoomId: '',
   jayeElite0: false,
   fiammettaFool: true,
+  fiammettaThreshold: .9,
   restingThreshold: .65,
+  rescueThreshold: .75,
   freeRoom: false,
 }
 const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
@@ -451,7 +453,9 @@ function executeCalculation(): void {
       jayeElite0: simSettings.value.jayeElite0 ?? false,
       simulationAssumptions: {
         fiammettaFool: simSettings.value.fiammettaFool ?? true,
+        fiammettaThreshold: simSettings.value.fiammettaThreshold ?? .9,
         restingThreshold: simSettings.value.restingThreshold ?? .65,
+        rescueThreshold: simSettings.value.rescueThreshold ?? .75,
         freeRoom: simSettings.value.freeRoom ?? false,
       },
       simulationOptions: {

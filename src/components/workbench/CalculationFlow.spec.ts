@@ -29,16 +29,21 @@ beforeEach(() => {
 afterEach(() => { wrapper.unmount(); vi.useRealTimers(); vi.unstubAllGlobals(); document.body.innerHTML = '' })
 
 it('asks for drone settings before launching a cancellable background calculation', async () => {
-  wrapper.vm.simSettings.fiammettaFool = false
-  wrapper.vm.simSettings.restingThreshold = .7
-  wrapper.vm.simSettings.freeRoom = true
+  await wrapper.get('[data-test="tab-settings"]').trigger('click')
+  expect(wrapper.find('[data-test="jaye-elite0-select"]').exists()).toBe(false)
+  await wrapper.get('[data-test="fiammetta-fool"]').setValue('false')
+  await wrapper.get('[data-test="fiammetta-threshold"]').setValue('80')
+  await wrapper.get('[data-test="resting-threshold"]').setValue('70')
+  await wrapper.get('[data-test="rescue-threshold"]').setValue('90')
+  await wrapper.get('[data-test="free-room"]').setValue('true')
+  await wrapper.get('[data-test="tab-workbench"]').trigger('click')
   await wrapper.get('[data-test="calc-btn"]').trigger('click')
   expect(wrapper.vm.calculationConfigOpen).toBe(true)
   expect(workers).toHaveLength(0)
   wrapper.vm.handleConfirmCalculation({ droneTarget: 'trading', droneTradingRoomId: 'room_3_1' })
   await wrapper.vm.$nextTick()
   expect(workers).toHaveLength(1)
-  expect(workers[0]!.postMessage.mock.calls[0]![0].options.simulationAssumptions).toEqual({ fiammettaFool: false, restingThreshold: .7, freeRoom: true })
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options.simulationAssumptions).toEqual({ fiammettaFool: false, fiammettaThreshold: .8, restingThreshold: .7, rescueThreshold: .9, freeRoom: true })
   expect(workers[0]!.postMessage.mock.calls[0]![0].options.simulationOptions.production).toMatchObject({
     droneTarget: 'trading', droneTradingRoomId: 'room_3_1',
   })

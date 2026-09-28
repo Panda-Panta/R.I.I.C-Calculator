@@ -1,0 +1,28 @@
+// @vitest-environment jsdom
+import { expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import SettingsView, { type SimulationSettings } from './SettingsView.vue'
+
+const settings: SimulationSettings = {
+  sampleDays: 7, warmupDays: 3, step: .25, seed: 1,
+  droneTarget: 'none', fiammettaFool: true,
+  fiammettaThreshold: .9, restingThreshold: .65,
+  rescueThreshold: .75,
+}
+
+it('shows Mower thresholds and keeps Jaye only in calculation options', async () => {
+  const wrapper = mount(SettingsView, {
+    props: { settings },
+    global: { stubs: { OperatorInventoryPanel: true } },
+  })
+  expect(wrapper.find('[data-test="jaye-elite0-select"]').exists()).toBe(false)
+  expect(wrapper.get('[data-test="fiammetta-threshold"]').attributes('disabled')).toBeDefined()
+  await wrapper.setProps({ settings: { ...settings, fiammettaFool: false } })
+  await wrapper.get('[data-test="fiammetta-threshold"]').setValue('80')
+  const firstUpdate = wrapper.emitted('update:settings') ?? []
+  expect(firstUpdate[firstUpdate.length - 1]?.[0]).toMatchObject({ fiammettaThreshold: .8 })
+  await wrapper.get('[data-test="rescue-threshold"]').setValue('90')
+  const secondUpdate = wrapper.emitted('update:settings') ?? []
+  expect(secondUpdate[secondUpdate.length - 1]?.[0]).toMatchObject({ rescueThreshold: .9 })
+  wrapper.unmount()
+})

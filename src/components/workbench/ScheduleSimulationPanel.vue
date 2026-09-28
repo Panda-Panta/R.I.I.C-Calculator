@@ -16,6 +16,8 @@ const sampleDays=ref(14),warmupDays=ref(7),step=ref(.25),warmupModel=ref<'contin
 const settingsKey='riic-mower-simulation-settings-v1'
 const savedSettings=(()=>{try{const value=JSON.parse(localStorage.getItem(settingsKey)??'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch{return {}}})()
 const restingPercent=ref(typeof savedSettings.restingPercent==='number'&&Number.isFinite(savedSettings.restingPercent)&&savedSettings.restingPercent>=0&&savedSettings.restingPercent<=100?savedSettings.restingPercent:65)
+const rescuePercent=ref(typeof savedSettings.rescuePercent==='number'&&Number.isFinite(savedSettings.rescuePercent)&&savedSettings.rescuePercent>=0&&savedSettings.rescuePercent<=100?savedSettings.rescuePercent:75)
+const fiammettaPercent=ref(typeof savedSettings.fiammettaPercent==='number'&&Number.isFinite(savedSettings.fiammettaPercent)&&savedSettings.fiammettaPercent>=0&&savedSettings.fiammettaPercent<=100?savedSettings.fiammettaPercent:90)
 const fiammettaFool=ref(typeof savedSettings.fiammettaFool==='boolean'?savedSettings.fiammettaFool:true),freeRoom=ref(typeof savedSettings.freeRoom==='boolean'?savedSettings.freeRoom:false)
 const runOrderMode=ref<'ideal'|'grandet'>(savedSettings.runOrderMode==='grandet'?'grandet':'ideal'),droneTarget=ref<'gold'|'exp'|'none'>('gold')
 const runOrderLeadSeconds=ref(typeof savedSettings.runOrderLeadSeconds==='number'&&Number.isFinite(savedSettings.runOrderLeadSeconds)?savedSettings.runOrderLeadSeconds:180)
@@ -26,7 +28,7 @@ const outputMode=ref<'potential'|'settled'>('potential')
 const productionInputs=[outputMode,inventoryMode,runOrderMode,droneTarget,initialGold,initialLmd,initialOrirock,initialDevice,initialDrone,seed,collectionIntervalHours]
 const draftForSearch=ref<RosterDraftResult|null>(null)
 const searchOptions=computed(()=>({maxStepHours:step.value,warmupModel:warmupModel.value,production:{inventoryMode:inventoryMode.value,runOrderMode:runOrderMode.value,...(runOrderMode.value==='grandet'?{runOrderLeadSeconds:runOrderLeadSeconds.value,runOrderBufferSeconds:runOrderBufferSeconds.value}:{}),droneTarget:droneTarget.value,initialResources:{gold:initialGold.value,lmd:initialLmd.value,orirock:initialOrirock.value,device:initialDevice.value,drone:initialDrone.value},seed:seed.value,collectionIntervalHours:collectionIntervalHours.value}}))
-const searchAssumptions=computed(()=>({restingThreshold:restingPercent.value/100,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value,operationDurationHours:0}))
+const searchAssumptions=computed(()=>({restingThreshold:restingPercent.value/100,rescueThreshold:rescuePercent.value/100,fiammettaFool:fiammettaFool.value,fiammettaThreshold:fiammettaPercent.value/100,freeRoom:freeRoom.value,operationDurationHours:0}))
 const simulationProduction=computed(()=>({...searchOptions.value.production,outputMode:outputMode.value,...(outputMode.value==='potential'?{initialResources:{drone:initialDrone.value},collectionIntervalHours:0}:{})}))
 const reportBasis=ref('当前排班')
 const running=ref(false),report=ref<ScheduleSimulationReport|null>(null),error=ref('')
@@ -40,8 +42,8 @@ function cancel(){worker?.terminate();worker=undefined;running.value=false}
 function clear(){cancel();report.value=null;error.value=''}
 watch(()=>props.workspace,clear,{deep:true})
 watch([sampleDays,warmupDays,step,warmupModel,...productionInputs],clear)
-watch([restingPercent,fiammettaFool,freeRoom,runOrderMode,runOrderLeadSeconds,runOrderBufferSeconds],()=>{
- try{localStorage.setItem(settingsKey,JSON.stringify({restingPercent:restingPercent.value,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value,runOrderMode:runOrderMode.value,runOrderLeadSeconds:runOrderLeadSeconds.value,runOrderBufferSeconds:runOrderBufferSeconds.value}))}catch{}
+watch([restingPercent,rescuePercent,fiammettaPercent,fiammettaFool,freeRoom,runOrderMode,runOrderLeadSeconds,runOrderBufferSeconds],()=>{
+ try{localStorage.setItem(settingsKey,JSON.stringify({restingPercent:restingPercent.value,rescuePercent:rescuePercent.value,fiammettaPercent:fiammettaPercent.value,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value,runOrderMode:runOrderMode.value,runOrderLeadSeconds:runOrderLeadSeconds.value,runOrderBufferSeconds:runOrderBufferSeconds.value}))}catch{}
  clear()
 })
 onBeforeUnmount(cancel)
@@ -50,6 +52,8 @@ function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班
  reportBasis.value=basis
  if(inventory.value.enabled&&!inventory.value.valid){error.value='请先修正干员库中的输入错误';return}
  if(!Number.isFinite(restingPercent.value)||restingPercent.value<0||restingPercent.value>100){error.value='休息阈值须为 0–100%';return}
+ if(!Number.isFinite(rescuePercent.value)||rescuePercent.value<0||rescuePercent.value>100){error.value='急救阈值须为 0–100%';return}
+ if(!Number.isFinite(fiammettaPercent.value)||fiammettaPercent.value<0||fiammettaPercent.value>100){error.value='菲亚阈值须为 0–100%';return}
  if(!Number.isFinite(sampleDays.value)||sampleDays.value<=0||!Number.isFinite(warmupDays.value)||warmupDays.value<0){error.value='采样天数应大于 0，预热天数不能为负';return}
  if(runOrderMode.value==='grandet'&&(!Number.isFinite(runOrderLeadSeconds.value)||runOrderLeadSeconds.value<=0||runOrderLeadSeconds.value>3600||!Number.isFinite(runOrderBufferSeconds.value)||runOrderBufferSeconds.value<0||runOrderBufferSeconds.value>3600)){error.value='葛朗台跑单前置须大于 0 且不超过 3600 秒，缓冲须为 0–3600 秒';return}
  if((outputMode.value==='potential'||inventoryMode.value==='unlimited'?[initialDrone]:[initialGold,initialLmd,initialOrirock,initialDevice,initialDrone]).some(n=>!Number.isFinite(n.value)||n.value<0)){error.value='初始库存须为不小于 0 的数值';return}
@@ -83,9 +87,12 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   </div>
   <div class="simulation-controls mower-settings">
    <label>休息阈值（%）<input v-model.number="restingPercent" data-test="resting-threshold" type="number" min="0" max="100" step="0.5" /></label>
+   <label>急救阈值（%）<input v-model.number="rescuePercent" data-test="rescue-threshold" type="number" min="0" max="100" step="1" /></label>
    <label><input v-model="fiammettaFool" data-test="fiammetta-fool" type="checkbox" />菲亚梅塔防呆</label>
+   <label>菲亚阈值（%）<input v-model.number="fiammettaPercent" data-test="fiammetta-threshold" type="number" min="0" max="100" step="1" :disabled="fiammettaFool" /></label>
    <label><input v-model="freeRoom" data-test="free-room" type="checkbox" />满心情闲人离宿</label>
   </div>
+  <p class="simulation-note">菲亚防呆开启时固定充心情不高于 90% 的候选；关闭后优先按菲亚阈值选人，若均高于阈值则充心情最低者。整体心情不高于休息阈值 × 急救阈值时，忽视高优人数限制。</p>
   <div class="simulation-controls production-controls">
    <label>产出口径<select v-model="outputMode" data-test="output-mode"><option value="potential">完成产出</option><option value="settled">收取记录</option></select></label>
    <label>材料库存<select v-model="inventoryMode" data-test="inventory-mode" :disabled="outputMode==='potential'"><option value="unlimited">无限（默认）</option><option value="finite">有限</option></select></label>
@@ -112,7 +119,7 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   </details>
   <details class="simulation-idle" data-test="scheduling-external-conditions"><summary>影响跑单与排班的外部条件</summary>
    <p>线索交流固定关闭，Party Time 为空。材料库存默认无限，设施容量和无人机数量按实际规则计算。</p>
-   <p>当前条件：初始心情 24，宿舍按等级满氛围；未导入干员库时从全体干员中选择闲置候选，导入后以库内名单为闲置候选。原排班干员下班后仍可参与 Free 选人。休息阈值、菲亚梅塔防呆、满心情闲人离宿，以及无人机目标和数量均按上方设置。</p>
+   <p>当前条件：初始心情 24，宿舍按等级满氛围；未导入干员库时从全体干员中选择闲置候选，导入后以库内名单为闲置候选。原排班干员下班后仍可参与 Free 选人。休息、急救和菲亚阈值、菲亚梅塔防呆、满心情闲人离宿，以及无人机目标和数量均按上方设置。</p>
    <p>待办无人机检查间隔 3 小时、使用门槛 100 架；葛朗台跑单使用当前前置与缓冲设置。主副表的候补顺序、绑组、用尽、回满、优先级和黑名单影响换班。</p>
    <p>本次不注入维护停服、加工、专精或其他外部任务。普通换人、收取按原版显式等待；葛朗台模式另计跑单换人等待。稳定页面与识别零耗时为模拟输入。初始在岗状态、预热、暖机规则和订单随机种子会影响长期结果。</p>
   </details>
