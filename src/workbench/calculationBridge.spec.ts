@@ -75,3 +75,16 @@ it('enables production when calculation callers supply only simulation timing op
   expect(r.simulationReport?.production?.success).toBe(true)
   expect(r.report?.summary?.orderLmd).toBeGreaterThan(0)
 })
+
+it('reports zero accepted drone charge when the simulated stock stays full', () => {
+  const result = runCalculationBridge(createDefaultWorkspace(), {
+    engine: 'simulation',
+    simulationOptions: {
+      sampleHours: 1,
+      production: { outputMode: 'potential', droneTarget: 'none', initialResources: { drone: 235 } },
+    },
+  })
+  expect(result.success).toBe(true)
+  expect(result.simulationReport!.production!.sample.inflows.drone ?? 0).toBe(0)
+  expect(result.report!.drones).toBe(0)
+})

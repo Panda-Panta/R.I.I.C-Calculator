@@ -67,6 +67,14 @@ watch(simSettings, value => {
   }
 }, { deep: true })
 const simulationReport = shallowRef<ScheduleSimulationReport | null>(null)
+const droneUsage = computed(() => {
+  const report = simulationReport.value
+  if (!report?.production || report.observedHours <= 0) return null
+  return {
+    spentPerDay: (report.production.sample.outflows.drone ?? 0) / (report.observedHours / 24),
+    finalStock: report.production.drones.stock,
+  }
+})
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
 const generationProgress = ref<SmartRosterProgress | null>(null)
@@ -970,14 +978,17 @@ defineExpose({
               </span>
             </div>
 
-            <!-- Theoretical Drones -->
+            <!-- Actual simulated drone charging and spending -->
             <div class="metric-card card-drones" data-test="metric-drones">
-              <span class="metric-tag">理论无人机</span>
+              <span class="metric-tag">无人机充能</span>
               <div class="metric-main">
                 <span class="metric-num">{{ formatNumber(calculationReport.drones, 1) }}</span>
                 <span class="metric-unit">架/日</span>
               </div>
-              <span class="metric-sub">长期日均充能</span>
+              <span class="metric-sub">采样期日均入库</span>
+              <span v-if="droneUsage" class="metric-sub" data-test="metric-drones-usage">
+                日均消耗 {{ formatNumber(droneUsage.spentPerDay, 1) }} 架 · 期末库存 {{ formatNumber(droneUsage.finalStock, 1) }} 架
+              </span>
             </div>
 
             <!-- Orundum & Fragments (if present) -->
