@@ -133,5 +133,5 @@ jobs:
             artifacts/SHA256SUMS.txt
           generate_release_notes: true
           draft: false
-          prerelease: ${{ github.event_name == 'push' || inputs.prerelease }}
+          prerelease: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || inputs.prerelease) }}
           token: ${{ secrets.GITHUB_TOKEN }}
