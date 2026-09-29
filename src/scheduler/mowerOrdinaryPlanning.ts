@@ -70,6 +70,8 @@ export function mowerTryReorder(data:MowerSchedulingData,newPlan:MowerTaskPlan):
  const assigned=new Set(Object.values(newPlan).flat())
  for(const bed of data.dorms)if(assigned.has(bed.name))bed.reset()
  const dorms=data.dorms.map(b=>new MowerDormState([...b.position],b.name,b.timeMicros,b.autoFree))
+ // The room picker converts full-mood non-residents to Free, so moving one by name cannot settle.
+ for(const bed of dorms){const op=data.operators[bed.name];if(op&&op.mood>=op.upperLimit&&!op.room.startsWith('dorm'))bed.reset()}
  const vip=Object.keys(data.plan).filter(room=>room.startsWith('dorm')).length;if(!vip)return undefined
  const effective=dorms.map((bed,index)=>({bed,index})).filter(({bed})=>data.effectiveFreeSlot(bed)).map(({index})=>index)
  for(const [index,bed] of dorms.entries())if(!effective.includes(index))bed.reset()

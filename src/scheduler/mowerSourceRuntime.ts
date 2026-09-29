@@ -207,6 +207,11 @@ function* arrangeRoom(s:RuntimeState,rates:RuntimeRates,room:string,names:string
  const cached=()=>data.currentRoom(room,true)!
  if(data.currentRoom(room,false,requested)===undefined)observeRoom(s,rates,room,task)
  const current=cached(),resolved=names.map((name,index)=>name==='Current'?current[index]||'Free':name||'Free'),fia=s.config.fiammetta?.operatorId
+ // Moving an explicit operator vacates their old Current slot before dorm recovery ordering.
+ const explicit=new Set(names.filter(name=>name!=='Current'&&name!=='Free'&&name!==''))
+ for(const [index,name] of names.entries())if(name==='Current'&&explicit.has(resolved[index]!))resolved[index]='Free'
+ const seen=new Set<string>()
+ for(const [index,name] of resolved.entries())if(name!=='Free'&&name!==''){if(seen.has(name))resolved[index]='Free';else seen.add(name)}
  names.splice(0,names.length,...resolved)
  // Native new_plan captures temporary order staffing before a potential no-op.
  let restoration:MowerTaskPlan|undefined,fiammettaCharge=false

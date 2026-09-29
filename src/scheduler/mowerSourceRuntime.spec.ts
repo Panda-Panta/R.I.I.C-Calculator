@@ -107,23 +107,25 @@ describe('integrated Mower source scheduler',()=>{
   expect(s.time*3_600_000_000).toBeCloseTo(1_000_001,5)
  })
 
- it('retries native duplicate recovery three times, then retains the task for source error handling',()=>{
+ it('vacates a Current dorm bed when its operator is explicitly moved to another bed',()=>{
   const c=fixture();c.idleOperators=['X','Y'];c.mowerDeviceTiming={roomReturnMicros:500_000};c.mowerRunLoopClock={minimumClockStepMicros:1,notificationSleepMicros:1_000_000}
+  c.positions=c.positions.filter(p=>p.id!=='dormitory_1_3')
+  c.beds=[{id:'dormitory_1_3',roomId:'dormitory_1',vip:true},{id:'dormitory_1_4',roomId:'dormitory_1',vip:false}]
+  c.mowerSourcePlan!.dormitory_1=[...['K1','K2','K3'].map(agent=>({agent,group:'',replacement:[]})),{agent:'Free',group:'',replacement:[]},{agent:'Free',group:'',replacement:[]}]
   const s=createRosterRuntime(c),source=getMowerSourceRuntime(s);source.initial=false
-  delete s.occupants.room_1_1_0;s.occupants.room_1_1_0='R';s.bedOccupants.dormitory_1_4='A';s.morale.A=8
-  for(const [index,name] of ['K1','K2','K3','K4','A'].entries()){const op=source.data.operators[name]!;op.currentRoom='dormitory_1';op.currentIndex=index;op.mood=s.morale[name]??24;op.timeStampMicros=0}
+  s.occupants.room_1_1_0='R';s.bedOccupants.dormitory_1_4='A';s.morale.A=8
+  for(const [index,name] of ['K1','K2','K3','','A'].entries())if(name){const op=source.data.operators[name]!;op.currentRoom='dormitory_1';op.currentIndex=index;op.mood=s.morale[name]??24;op.timeStampMicros=0}
   source.data.operators.R!.currentRoom='room_1_1';source.data.operators.R!.currentIndex=0;source.data.operators.K1!.singleRecoveryManager=true
-  const task=new MowerTask({plan:{dormitory_1:['Current','Current','A','Current','Current']}});source.queue.tasks=[task]
-  for(let attempt=0;attempt<4;attempt++){
+  const task=new MowerTask({plan:{dormitory_1:['Current','Current','Current','A','Current']}});source.queue.tasks=[task]
+  for(let attempt=0;attempt<20&&source.queue.tasks.includes(task);attempt++){
    settleRoster(s,rates)
-   expect(new Set([...Object.values(s.occupants),...Object.values(s.bedOccupants)]).size).toBe(Object.keys(s.occupants).length+Object.keys(s.bedOccupants).length)
-   if(attempt<3){expect(source.execution).toBeDefined();advanceRoster(s,.5/3600,rates)}
+   if(source.queue.tasks.includes(task))advanceRoster(s,Math.max(nextRosterActionHours(s,rates),1/3_600_000_000),rates)
   }
-  expect(source.execution).toBeUndefined();expect(source.error).toBe(true)
-  expect(source.queue.tasks).toContain(task);expect(task.plan.dormitory_1).toEqual(['K1','K2','A','K4','A'])
-  expect(task.dormRecoveryRestore).toEqual(['dormitory_1'])
-  s.time=901;settleRoster(s,rates)
   expect(source.queue.tasks).not.toContain(task)
+  expect(source.error).toBeFalsy()
+  expect(s.bedOccupants.dormitory_1_3).toBe('A')
+  expect(Object.values(s.bedOccupants).filter(name=>name==='A')).toHaveLength(1)
+  expect(s.diagnostics.some(d=>d.code==='mower-task-exception')).toBe(false)
  })
 
 })
