@@ -10,7 +10,6 @@ import type { AppConfig, CalculationReport } from '../../domain/types'
 import type { CalculationWorkerMessage, CalculationProgress } from '../../workbench/calculationWorker'
 import CalculationConfigModal, { type CalculationConfig } from './CalculationConfigModal.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
-import { mowerReportMetrics } from '../../workbench/mowerReportMetrics'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 
@@ -69,16 +68,6 @@ watch(simSettings, value => {
   }
 }, { deep: true })
 const simulationReport = shallowRef<ScheduleSimulationReport | null>(null)
-const specialOrderCounts = computed(() => {
-  const report = simulationReport.value
-  const metrics = report ? mowerReportMetrics(report) : null
-  if (!report || !metrics) return []
-  const labels = { pepe: '佩佩', closure: '可露希尔', uOfficial: 'U-Official', proviso: '但书', tequila: '龙舌兰' } as const
-  return Object.entries(labels).flatMap(([kind, label]) => {
-    const count = metrics.orderDistribution[kind]?.count ?? 0
-    return count > 0 ? [{ kind, label, count }] : []
-  })
-})
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
 const generationProgress = ref<SmartRosterProgress | null>(null)
@@ -955,10 +944,6 @@ defineExpose({
                 <span class="metric-num">{{ formatNumber(calculationReport.summary.orderLmd) }}</span>
                 <span class="metric-unit">龙门币/日</span>
               </div>
-              <span class="metric-sub">日消耗赤金 {{ formatNumber(calculationReport.summary.goldConsumed, 1) }} 条</span>
-              <span v-if="specialOrderCounts.length" class="metric-sub" data-test="metric-special-orders">
-                采样期特殊订单：<template v-for="(item, index) in specialOrderCounts" :key="item.kind">{{ index ? ' · ' : '' }}{{ item.label }} {{ item.count }} 单</template>
-              </span>
             </div>
 
             <!-- Combat Records EXP -->

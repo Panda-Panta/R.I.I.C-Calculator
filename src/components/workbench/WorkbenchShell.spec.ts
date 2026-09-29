@@ -406,7 +406,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 10. Results panel displays actual report fields and repeat calculation refreshes
-  it.each(['可露希尔', '佩佩'])('shows %s special orders and virtual gold in the main result', async runner => {
+  it.each(['可露希尔', '佩佩'])('hides %s special order details and consumed gold in the main result', async runner => {
     localStorage.setItem(`arc-income-calculator-sim-settings-v1-${EDITION.storageNamespace}`, JSON.stringify({
       warmupDays: 0, sampleDays: 1 / 3, step: .25, seed: 42, droneTarget: 'none', droneTradingRoomId: '',
     }))
@@ -430,7 +430,10 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(gold.findAll('.metric-sub')).toHaveLength(1)
     expect(gold.find('[data-test="metric-special-orders"]').exists()).toBe(false)
     const trade = wrapper.get('[data-test="metric-lmd"]')
-    expect(trade.get('[data-test="metric-special-orders"]').text()).toMatch(new RegExp(`${runner} \\d+ 单`))
+    expect(trade.get('.metric-num').text()).toBeTruthy()
+    expect(trade.text()).not.toContain('日消耗赤金')
+    expect(trade.text()).not.toContain('采样期特殊订单')
+    expect(trade.find('[data-test="metric-special-orders"]').exists()).toBe(false)
   }, 30000)
 
   it('displays compact results panel with actual report fields and refreshes on repeat calculation', async () => {
