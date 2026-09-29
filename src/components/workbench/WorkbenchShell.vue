@@ -15,6 +15,7 @@ import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 
 import PlanToolbar from './PlanToolbar.vue'
+import LayoutPresetBar from './LayoutPresetBar.vue'
 import BaseMap from './BaseMap.vue'
 import FacilityEditor from './FacilityEditor.vue'
 import PolicyEditor from './PolicyEditor.vue'
@@ -824,6 +825,7 @@ defineExpose({
 
     <!-- Reachable Toolbar Section (shown on workbench tab) -->
     <div v-show="activeTab === 'workbench'" class="toolbar-sticky-wrapper">
+      <LayoutPresetBar @applied="handleReset" />
       <div class="toolbar-scroll-container">
         <PlanToolbar
           :base-map-element="baseMapElement"
