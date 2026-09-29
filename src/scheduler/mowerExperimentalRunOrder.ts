@@ -9,7 +9,7 @@ import {MOWER_TASK_TYPES as T,MowerTask,toMowerMicros,type MowerTaskQueue,type M
 import {scheduleMowerTasks,type MowerTaskSchedulingOptions} from './mowerTaskScheduling'
 import {TRADE_RUN_ORDER_NAMES} from '../domain/shiftRunPolicy'
 import {
- observeNativeRunOrderTime,getDefaultRunOrderAdjustRoom,
+ observeNativeRunOrderTime,getDefaultRunOrderAdjustRoom,selectRunOrderReplacement,
  type RunOrderPlanningState,type RunOrderPlanningSeam,type RunOrderIORequest,type RunOrderIOObservation,type RunOrderTradeResult,
 } from './mowerRunOrderPlanning'
 export interface MowerExperimentalFacilityState {product?:string;facility?:string;updated_at?:string}
@@ -97,7 +97,7 @@ export function* planMowerExperimentalRunOrder(state:MowerExperimentalRunOrderSt
  MowerExperimentalRunOrderGenerator<MowerTask|undefined>{
  syncMowerExperimentalRunOrderTasks(state,seam)
  if(!(room in state.runOrderRooms)||state.planning.queue.find({type:T.RUN_ORDER,metadata:room}))return
- const names=state.planning.plan[room]!.map(slot=>TRADE_RUN_ORDER_NAMES.some(agent=>slot.replacement.some(id=>seam.nativeName(id).includes(agent)))?slot.replacement[0]!:'Current')
+ const names=state.planning.plan[room]!.map(slot=>selectRunOrderReplacement(slot.replacement,seam.nativeName,state.planning.preferSpecialReplacement===true))
  const timeMicros=yield* readTime(state,seam,room)
  syncMowerExperimentalRunOrderTasks(state,seam)
  if(!(room in state.runOrderRooms))return

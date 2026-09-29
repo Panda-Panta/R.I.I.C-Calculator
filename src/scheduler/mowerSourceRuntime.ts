@@ -352,6 +352,7 @@ export function mowerRunOrderContext(s:RuntimeState):[RunOrderPlanningState,RunO
  const source=getMowerSourceRuntime(s)
  const state:RunOrderPlanningState={
   plan:Object.fromEntries(mowerPlanEntries(s.config.mowerSourcePlan!)),
+  preferSpecialReplacement:true,
   runOrderRooms:Object.keys(source.data.runOrderRooms),queue:source.queue,
   configuredDelayMinutes:s.config.mowerTaskScheduling?.configuredDelayMinutes??3,
   droneRoom:s.config.mowerDroneRoom??null,flags:source.runFlags!,

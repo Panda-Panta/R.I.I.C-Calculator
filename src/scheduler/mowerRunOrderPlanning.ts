@@ -13,6 +13,8 @@ import {TRADE_RUN_ORDER_NAMES} from '../domain/shiftRunPolicy'
 export interface RunOrderPlanSlot {replacement:readonly string[]}
 export interface RunOrderPlanningState {
   plan:Readonly<Record<string,readonly RunOrderPlanSlot[]>>
+  /** App extension: any dedicated replacement may run, regardless of list position. */
+  preferSpecialReplacement?:boolean
   /** Preserve native insertion order; not a lexicographically sorted list. */
   runOrderRooms:readonly string[]
   queue:MowerTaskQueue
@@ -84,17 +86,18 @@ export function* planDefaultRunOrder(
   if(state.queue.find({type:T.RUN_ORDER,metadata:room}))return
   const slots=state.plan[room]
   if(!slots)throw new Error('Native run-order room is absent from the plan: '+room)
-  const names=slots.map(slot=>{
-    const matches=TRADE_RUN_ORDER_NAMES.some(agent=>slot.replacement.some(id=>seam.nativeName(id).includes(agent)))
-    // Native scans all replacements, but deliberately selects replacement[0].
-    return matches?slot.replacement[0]!:'Current'
-  })
+  const names=slots.map(slot=>selectRunOrderReplacement(slot.replacement,seam.nativeName,state.preferSpecialReplacement===true))
   const timeMicros=yield* observeNativeRunOrderTime(state,seam,room)
   const task=new MowerTask({type:T.RUN_ORDER,metadata:room,plan:{[room]:names}})
   task.timeMicros=timeMicros
   task.observedOrderDueMicros=timeMicros+toMowerMicros(state.configuredDelayMinutes/60)
   state.queue.tasks.push(task)
   return task
+}
+/** Keep pinned Mower selection for oracle tests; app schedules opt into any-position recognition. */
+export function selectRunOrderReplacement(replacements:readonly string[],nativeName:(id:string)=>string,preferSpecial=false):string{
+  const dedicated=replacements.find(id=>TRADE_RUN_ORDER_NAMES.some(name=>nativeName(id).includes(name)))
+  return dedicated?(preferSpecial?dedicated:replacements[0]!):'Current'
 }
 /** Corresponds to native default branch; experimental reconciliation is not ported here. */
 export function getDefaultRunOrderAdjustRoom(

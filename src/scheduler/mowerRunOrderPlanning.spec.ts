@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest'
 import native from './fixtures/mower-run-order-planning-alpha.json'
 import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T,type MowerTaskType,type MowerTaskPlan} from './mowerTaskQueue'
 import {
-  planDefaultRunOrder,getDefaultRunOrderAdjustRoom,runDefaultTradeSegment,dispatchDefaultRefreshTime,
+  planDefaultRunOrder,getDefaultRunOrderAdjustRoom,runDefaultTradeSegment,dispatchDefaultRefreshTime,selectRunOrderReplacement,
   type RunOrderPlanSlot,type RunOrderPlanningState,type RunOrderPlanningSeam,type RunOrderGenerator,type RunOrderIOObservation,
 } from './mowerRunOrderPlanning'
 
@@ -54,6 +54,11 @@ function inputOf(raw:unknown):Input{
   }
 }
 describe('actual alpha default run-order planning and trade orchestration',()=>{
+  it('keeps native first-candidate selection while the app opts into any replacement position',()=>{
+    const replacements=['芬','可露希尔']
+    expect(selectRunOrderReplacement(replacements,id=>id)).toBe('芬')
+    expect(selectRunOrderReplacement(replacements,id=>id,true)).toBe('可露希尔')
+  })
   it.each(native.cases)('matches every field of $name',test=>{
     expect(native.sourceCommit).toBe('c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88')
     const input=inputOf(test.input)

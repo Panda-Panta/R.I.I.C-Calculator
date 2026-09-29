@@ -24,10 +24,9 @@ export function isOrdinaryReplacementCandidate(operatorId: string, roomType: str
  * Pure function adapter converting a CompiledSchedule to a RuntimeConfig.
  *
  * Rules:
- * 1. General candidate lists (RuntimePosition.candidates) strictly EXCLUDE shift-run dedicated operators
- *    (Proviso, Tequila).
+ * 1. Trading positions exclude all five dedicated run-order operators from ordinary replacements.
  * 2. schedule.runOrderPolicies retains its exact original order.
- * 3. RuntimeConfig.excludedCandidates includes all shift-run dedicated candidates.
+ * 3. RuntimeConfig.excludedCandidates includes configured run-order candidates.
  * 4. Fiammetta swap policy is mapped to runtime fiammetta config.
  * 5. Dormitory Free slots are mapped to runtime beds.
  * 6. Dorm-keepers without candidates are marked permanent to avoid invalid shifts.
@@ -60,7 +59,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
       const isDormKeeper = slot.role === 'dorm-keeper'
       const isFiammetta = slot.role === 'fiammetta'
 
-      // General candidates must exclude shift-run operators (Proviso, Tequila)
+      // Trading run-order candidates never fill ordinary replacement shifts.
       let candidates: string[]
       if (isDormKeeper || isFiammetta) {
         candidates = []

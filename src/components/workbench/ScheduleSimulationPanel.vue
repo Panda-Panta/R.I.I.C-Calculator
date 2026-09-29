@@ -102,7 +102,7 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
    <label>待办无人机设施<select v-model="droneTarget" data-test="drone-target"><option value="gold">加速赤金</option><option value="exp">加速作战记录</option><option value="none">不用</option></select></label>
   </div>
   <p class="simulation-note" data-test="simulation-controls-scope">以上设置用于“运行模拟”，不影响旧版快速估算；更改后需要重新运行。</p>
-  <p v-if="runOrderMode==='ideal'" class="simulation-note">理想跑单在订单完成时应用已配置的但书／龙舌兰效果；保留 Mower 订单任务唤醒，不执行临时换人或跑单等待。普通轮班仍参与模拟，结果可核对逐制造站采样完成件数。</p>
+  <p v-if="runOrderMode==='ideal'" class="simulation-note">贸易站替补位中的但书、龙舌兰、佩佩、可露希尔及 U-Official 均识别为跑单干员，不参与普通接班。理想跑单在新单开始时应用佩佩／可露希尔订单模式，在普通订单完成时应用其他跑单效果；保留 Mower 订单任务唤醒，不执行临时换人或跑单等待。</p>
   <p v-else class="simulation-note">葛朗台跑单执行 Mower 临时换人、等待、心情消耗与恢复；前置和缓冲时间按上方设置。</p>
   <details class="simulation-idle production-settings"><summary>随机种子、无人机与可选库存设置</summary>
    <p v-if="outputMode==='potential'">材料默认无限；初始无人机和随机种子参与计算。收取由 Mower 任务决定，设施容量仍有限。</p><p v-else>默认材料库存无限。选择有限库存后，初始材料从预热开始计入；收取时间由 Mower 任务决定。</p>
