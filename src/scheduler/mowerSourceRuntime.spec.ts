@@ -21,6 +21,14 @@ describe('integrated Mower source scheduler',()=>{
   expect(bed.timeMicros!/3_600_000_000).toBeCloseTo(5.125)
   expect(nextRosterActionHours(s,rates)).toBeCloseTo(2.625-8/60)
  })
+ it('records a completed return so only an immediate repeat receives the stability delay',()=>{
+  const s=createRosterRuntime(fixture());settleRoster(s,rates)
+  advanceRoster(s,2.5,rates);settleRoster(s,rates)
+  advanceRoster(s,nextRosterActionHours(s,rates),rates);settleRoster(s,rates)
+  const data=getMowerSourceRuntime(s).data
+  expect(s.occupants.room_1_1_0).toBe('A')
+  expect(data.recentShiftOnByRestUnit.get('operator:A')).toBe(data.nowMicros)
+ })
  it('evaluates backup moods from the source cache rather than physical simulation values',()=>{
   const c=fixture(),id='char_237_gravel';c.positions[0]!.primary=id;c.mowerSourcePlan!.room_1_1![0]!.agent=id;c.initialMorale={[id]:10,R:24}
   const s=createRosterRuntime(c),data=getMowerSourceRuntime(s).data,op=data.operators[id]!

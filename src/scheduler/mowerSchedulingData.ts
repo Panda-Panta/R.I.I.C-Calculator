@@ -11,6 +11,7 @@ export interface MowerSchedulingDataOptions {
  policy?:Partial<MowerMoodPolicy>;freeRoom?:boolean;powerPlantCount?:number;planConditions?:boolean[]
  groupRestInFullOnMoodGap?:boolean;groupMoodGapMaxExtraWaitHours?:number;mergeIntervalMinutes?:number
  busyRestingNames?:Set<string>;excludedCandidates?:Set<string>;restingPriorityNames?:string[];freeBlacklist?:string[]
+ recentShiftOnByRestUnit?:Map<string,number>
 }
 export class MowerSchedulingData {
  plan:Record<string,string[]>;operators:Record<string,MowerOperatorState>;dorms:MowerDormState[];nowMicros:number;partyTime?:MowerDateTimeValue|boolean|null;runOrderRooms:Record<string,Record<string,never>>
@@ -18,6 +19,7 @@ export class MowerSchedulingData {
  policy:MowerMoodPolicy;freeRoom:boolean;powerPlantCount:number;planConditions:boolean[]
  groupRestInFullOnMoodGap:boolean;groupMoodGapMaxExtraWaitHours:number;mergeIntervalMinutes:number
  busyRestingNames:Set<string>;excludedCandidates:Set<string>;restingPriorityNames:string[];freeBlacklist:string[]
+ recentShiftOnByRestUnit:Map<string,number>
  constructor(o:MowerSchedulingDataOptions){
   this.plan=o.plan;this.operators=o.operators;this.dorms=o.dorms;this.nowMicros=o.nowMicros;this.partyTime=o.partyTime;this.runOrderRooms=o.runOrderRooms??{}
   this.policy={restingThreshold:.65,rescueThreshold:.75,experimentalDormLogic:false,...o.policy}
@@ -26,6 +28,7 @@ export class MowerSchedulingData {
   this.groupMoodGapMaxExtraWaitHours=o.groupMoodGapMaxExtraWaitHours??0;this.mergeIntervalMinutes=o.mergeIntervalMinutes??10
   this.busyRestingNames=o.busyRestingNames??new Set();this.excludedCandidates=o.excludedCandidates??new Set()
   this.restingPriorityNames=o.restingPriorityNames??[];this.freeBlacklist=o.freeBlacklist??[]
+  this.recentShiftOnByRestUnit=o.recentShiftOnByRestUnit??new Map()
  }
  dynamicDormPosition(room:string,index:number):boolean{return this.plan[room]?.[index]==='Free'||!!this.policy.experimentalDormLogic&&this.dorms.some(b=>b.position[0]===room&&b.position[1]===index&&b.autoFree)}
  dormReplacementForSlot(name:string,room:string,index:number):boolean {const owner=this.operators[this.plan[room]?.[index]??''];return !!owner?.group&&owner.replacement.includes(name)}

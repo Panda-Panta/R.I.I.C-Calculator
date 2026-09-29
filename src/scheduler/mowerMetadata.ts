@@ -4,6 +4,29 @@ import {MOWER_TASK_TYPES as T,MowerTask,toMowerMicros,type MowerTaskQueue,type M
 import {hasRestingMood} from './mowerOperatorState'
 import type {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {generateMowerDormTasks,type MowerDormBatch,type MowerReturnTargets} from './mowerDormTasks'
+
+export const mowerRestUnitKey=(op:{group:string;name:string})=>op.group?'group:'+op.group:'operator:'+op.name
+const recentlyReturned=(data:MowerSchedulingData,key:string)=>{
+ const last=data.recentShiftOnByRestUnit.get(key)
+ return last!==undefined&&data.nowMicros>=last&&data.nowMicros-last<=toMowerMicros(10/60)
+}
+/** The pinned Mower return rule can create a rapid ON/OFF cycle in the fast-I/O
+ * simulator. Only after observing that cycle, postpone the next return until the
+ * whole rest unit is above the downshift threshold. Normal returns keep source timing. */
+function stableGroupReturnMicros(data:MowerSchedulingData,beds:MowerDormState[]):number {
+ let ready=data.nowMicros
+ for(const bed of beds){
+  const op=data.operators[bed.name]
+  if(!op?.isHigh()||op.workaholic||op.exhaustRequire||['dorm','factory','train'].some(room=>op.room.startsWith(room)))continue
+  const mood=op.currentMood(data.nowMicros)
+  const threshold=op.restMoodLimit?op.upperLimit:Math.min(op.upperLimit,Math.floor((op.upperLimit-op.lowerLimit)*data.policy.restingThreshold+op.lowerLimit)+.125)
+  if(mood>=threshold)continue
+  if(bed.timeMicros===undefined||bed.timeMicros<=data.nowMicros||mood>=op.upperLimit){ready=Math.max(ready,data.nowMicros+toMowerMicros(.5));continue}
+  const fraction=(threshold-mood)/(op.upperLimit-mood)
+  ready=Math.max(ready,data.nowMicros+Math.ceil((bed.timeMicros-data.nowMicros)*fraction))
+ }
+ return ready
+}
 export function planMowerMoodLimitReleases(data:MowerSchedulingData):MowerTask[] {
  const result:MowerTask[]=[]
  for(const bed of data.dorms){
@@ -50,9 +73,22 @@ export function planMowerMetadata(data:MowerSchedulingData,queue:MowerTaskQueue)
     if(moodGap&&data.groupMoodGapMaxExtraWaitHours>0&&nearest){const normal=Math.min(nearest.timeMicros!,minimumRest);time=Math.max(normal,Math.min(time,normal+toMowerMicros(data.groupMoodGapMaxExtraWaitHours)))}
    }else if(nearest)time=Math.min(nearest.timeMicros!,minimumRest)
    else continue
+   if(recentlyReturned(data,'group:'+group)){
+    // generateMowerDormTasks starts ordinary returns eight minutes before time.
+    const stable=stableGroupReturnMicros(data,dorms)
+    if(stable>data.nowMicros)time=Math.max(time,stable+toMowerMicros(8/60))
+   }
    add(time,high,full.length>0)
   }
-  if(high.length&&!group)for(const bed of high)if(bed.timeMicros!==undefined&&bed.name){const full=data.operators[bed.name]!.restInFull;add(full?bed.timeMicros:Math.min(bed.timeMicros,minimumRest),[bed],full)}
+  if(high.length&&!group)for(const bed of high)if(bed.timeMicros!==undefined&&bed.name){
+   const full=data.operators[bed.name]!.restInFull
+   let time=full?bed.timeMicros:Math.min(bed.timeMicros,minimumRest)
+   if(recentlyReturned(data,'operator:'+bed.name)){
+    const stable=stableGroupReturnMicros(data,[bed])
+    if(stable>data.nowMicros)time=Math.max(time,stable+toMowerMicros(8/60))
+   }
+   add(time,[bed],full)
+  }
  }
  const releases=new Map<number,MowerDormBatch>()
  if(data.freeRoom)for(const bed of freeRooms){
