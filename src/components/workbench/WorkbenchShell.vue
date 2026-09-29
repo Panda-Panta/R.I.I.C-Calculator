@@ -10,6 +10,7 @@ import type { AppConfig, CalculationReport } from '../../domain/types'
 import type { CalculationWorkerMessage, CalculationProgress } from '../../workbench/calculationWorker'
 import CalculationConfigModal, { type CalculationConfig } from './CalculationConfigModal.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+import type { TimelineDataset } from '../../workbench/timeline/timelineModel'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 
@@ -68,6 +69,7 @@ watch(simSettings, value => {
   }
 }, { deep: true })
 const simulationReport = shallowRef<ScheduleSimulationReport | null>(null)
+const timelineData = shallowRef<TimelineDataset | null>(null)
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
 const generationProgress = ref<SmartRosterProgress | null>(null)
@@ -357,6 +359,7 @@ function handleReset(): void {
   calculationReport.value = null
   calculationError.value = null
   simulationReport.value = null
+  timelineData.value = null
   replaceStatusMessage.value = null
 }
 
@@ -364,6 +367,7 @@ function handleClearOperators(): void {
   calculationReport.value = null
   calculationError.value = null
   simulationReport.value = null
+  timelineData.value = null
   replaceStatusMessage.value = null
 }
 
@@ -371,6 +375,7 @@ function handleImported(_workspace: RosterWorkspace): void {
   calculationReport.value = null
   calculationError.value = null
   simulationReport.value = null
+  timelineData.value = null
   replaceStatusMessage.value = null
 }
 
@@ -422,6 +427,7 @@ function executeCalculation(): void {
   }
   calculationReport.value = null
   simulationReport.value = null
+  timelineData.value = null
   isCalculating.value = true
   calculationElapsed.value = 0
   calculationProgress.value = { label: '正在准备计算…', fraction: 0 }
@@ -490,6 +496,7 @@ function executeCalculation(): void {
       } else if (message.type === 'complete') {
         const result = message.result
         simulationReport.value = result.simulationReport ?? null
+        timelineData.value = message.timelineData
         if (result.success && result.report) calculationReport.value = result.report
         else calculationError.value = result.error ?? '收益计算未成功完成'
         stopCalculation()
@@ -1059,6 +1066,7 @@ defineExpose({
       <div v-show="activeTab === 'logs'" class="tab-panel logs-tab-panel" data-test="logs-tab-panel">
         <SimulationLogView
           :report="simulationReport"
+          :timeline-data="timelineData"
           :error="calculationError"
           @clear="simulationReport = null"
         />

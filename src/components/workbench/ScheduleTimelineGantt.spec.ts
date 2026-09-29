@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+import { buildTimelineData } from '../../workbench/timeline/timelineModel'
 
 vi.mock('html-to-image', () => ({
   toPng: vi.fn().mockResolvedValue('data:image/png;base64,mockpng'),
@@ -125,6 +126,18 @@ function createSampleReport(): ScheduleSimulationReport {
 }
 
 describe('ScheduleTimelineGantt.vue', () => {
+  it('reveals worker-prepared timeline data without rebuilding it on expansion', async () => {
+    const report = createSampleReport()
+    const timelineData = buildTimelineData(report)
+    report.segments = []
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report, timelineData, initiallyCollapsed: true },
+    })
+    expect(wrapper.find('.gantt-container').exists()).toBe(false)
+    await wrapper.find('[data-test="toggle-gantt-visibility"]').trigger('click')
+    expect(wrapper.find('.gantt-container').exists()).toBe(true)
+    expect(wrapper.text()).toContain('德克萨斯')
+  })
   it('renders empty state when report is null', () => {
     const wrapper = mount(ScheduleTimelineGantt, {
       props: { report: null },

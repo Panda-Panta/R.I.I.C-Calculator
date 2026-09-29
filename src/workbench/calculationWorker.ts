@@ -1,10 +1,11 @@
 import { runCalculationBridge, type CalculationBridgeOptions, type CalculationBridgeResult } from './calculationBridge'
 import type { RosterWorkspace } from './model'
+import { buildTimelineData, type TimelineDataset } from './timeline/timelineModel'
 
 export interface CalculationProgress { label: string; fraction: number }
 export type CalculationWorkerMessage =
   | { type: 'progress'; progress: CalculationProgress }
-  | { type: 'complete'; result: CalculationBridgeResult }
+  | { type: 'complete'; result: CalculationBridgeResult; timelineData: TimelineDataset | null }
   | { type: 'error'; error: string }
 
 self.onmessage = (event: MessageEvent<{ workspace: RosterWorkspace; options: CalculationBridgeOptions }>) => {
@@ -21,7 +22,8 @@ self.onmessage = (event: MessageEvent<{ workspace: RosterWorkspace; options: Cal
       } })
     })
     send({ type: 'progress', progress: { label: '正在汇总产出报告…', fraction: .99 } })
-    send({ type: 'complete', result })
+    const timelineData = result.simulationReport ? buildTimelineData(result.simulationReport) : null
+    send({ type: 'complete', result, timelineData })
   } catch (error) {
     send({ type: 'error', error: error instanceof Error ? error.message : String(error) })
   }

@@ -5,9 +5,11 @@ import { getRoomDisplayName } from '../../workbench/operatorHelpers'
 import { mowerReportMetrics } from '../../workbench/mowerReportMetrics'
 import { downloadReportJson, serializeReportJson, type ExportReportMode } from '../../workbench/reportExport'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
+import type { TimelineDataset } from '../../workbench/timeline/timelineModel'
 
 const props = defineProps<{
   report: ScheduleSimulationReport | null
+  timelineData?: TimelineDataset | null
   error?: string | null
 }>()
 
@@ -185,7 +187,7 @@ function exportJson(mode: ExportReportMode = 'summary'): void {
       </div>
 
       <!-- Gantt Chart Timeline Visualization -->
-      <ScheduleTimelineGantt :report="report" :initial-window-hours="24" initially-collapsed />
+      <ScheduleTimelineGantt :report="report" :timeline-data="timelineData" :initial-window-hours="24" initially-collapsed />
 
       <!-- Resource inflow/outflow balance table -->
       <section v-if="report.production" class="log-section">

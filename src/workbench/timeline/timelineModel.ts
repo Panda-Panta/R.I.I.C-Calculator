@@ -203,7 +203,7 @@ export function buildTimelineData(report: ScheduleSimulationReport): TimelineDat
             }
             // Start new interval
             currentInterval = {
-              id: `${slot.slotKey}_${segStart.toFixed(2)}`,
+              id: `${slot.slotKey}_${segStart}`,
               start: segStart,
               end: segEnd,
               duration: segEnd - segStart,
@@ -341,7 +341,7 @@ export function buildTimelineData(report: ScheduleSimulationReport): TimelineDat
             track.intervals.push(currentInterval)
           }
           currentInterval = {
-            id: `op_${opId}_${segStart.toFixed(2)}`,
+            id: `op_${opId}_${segStart}`,
             start: segStart,
             end: segEnd,
             duration: segEnd - segStart,

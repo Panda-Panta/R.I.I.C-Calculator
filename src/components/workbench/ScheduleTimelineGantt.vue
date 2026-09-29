@@ -4,14 +4,17 @@ import { toPng, toBlob } from 'html-to-image'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import {
   buildTimelineData,
+  type TimelineDataset,
   type FacilityTrack,
   type OperatorTrack,
   type TimelineInterval,
   type TimelineMarkerEvent,
 } from '../../workbench/timeline/timelineModel'
+import { visibleTimelineIntervals, type TimelineDisplayInterval } from '../../workbench/timeline/timelineDisplay'
 
 const props = withDefaults(defineProps<{
   report: ScheduleSimulationReport | null
+  timelineData?: TimelineDataset | null
   initialWindowHours?: 24 | 72
   initiallyCollapsed?: boolean
 }>(), {
@@ -124,7 +127,7 @@ const exportTrackWidthPx = computed(() => Math.round(activeExportDuration.value 
 const exportTotalWidthPx = computed(() => 190 + exportTrackWidthPx.value)
 
 // Hover inspector state
-const hoveredInterval = ref<TimelineInterval | null>(null)
+const hoveredInterval = ref<TimelineDisplayInterval | null>(null)
 const hoveredEvent = ref<TimelineMarkerEvent | null>(null)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
@@ -139,6 +142,7 @@ const highlightedOperatorId = computed(() => {
 
 // Build dataset
 const dataset = computed(() => {
+  if (props.timelineData) return props.timelineData
   if (!props.report) return null
   return buildTimelineData(props.report)
 })
@@ -402,10 +406,6 @@ function getExportWidthPercent(start: number, end: number): number {
   return ((e - s) / dur) * 100
 }
 
-function isExportIntervalVisible(interval: TimelineInterval): boolean {
-  return interval.end > activeExportStart.value && interval.start < activeExportEnd.value && interval.duration > 0
-}
-
 const exportRulerTicks = computed<RulerTick[]>(() => {
   const start = activeExportStart.value
   const end = activeExportEnd.value
@@ -577,10 +577,6 @@ function getWidthPercent(start: number, end: number): number {
   return ((e - s) / windowDuration.value) * 100
 }
 
-function isIntervalVisible(interval: TimelineInterval): boolean {
-  return interval.end > customWindowStart.value && interval.start < customWindowEnd.value
-}
-
 // Generate Ruler Ticks (Days & Hours)
 interface RulerTick {
   time: number
@@ -664,6 +660,30 @@ const filteredOperatorTracks = computed<OperatorTrack[]>(() => {
   })
 })
 
+const visibleFacilityIntervals = computed(() => {
+  const result = new Map<string, TimelineDisplayInterval[]>()
+  for (const track of filteredFacilityTracks.value) for (const slot of track.slots) {
+    result.set(slot.slotKey, visibleTimelineIntervals(slot.intervals, customWindowStart.value, customWindowEnd.value, 900))
+  }
+  return result
+})
+
+const visibleOperatorIntervals = computed(() => {
+  const result = new Map<string, TimelineDisplayInterval[]>()
+  for (const track of filteredOperatorTracks.value) {
+    result.set(track.operatorId, visibleTimelineIntervals(track.intervals, customWindowStart.value, customWindowEnd.value, 900))
+  }
+  return result
+})
+
+const exportFacilityIntervals = computed(() => {
+  const result = new Map<string, TimelineDisplayInterval[]>()
+  for (const track of filteredFacilityTracks.value) for (const slot of track.slots) {
+    result.set(slot.slotKey, visibleTimelineIntervals(slot.intervals, activeExportStart.value, activeExportEnd.value, exportTrackWidthPx.value))
+  }
+  return result
+})
+
 // Filtered Events within zoom window
 const visibleEvents = computed<TimelineMarkerEvent[]>(() => {
   if (!dataset.value || !showEventMarkers.value) return []
@@ -705,7 +725,7 @@ function handleMouseLeave(): void {
   hoveredEvent.value = null
 }
 
-function handleIntervalHover(interval: TimelineInterval, e: MouseEvent): void {
+function handleIntervalHover(interval: TimelineDisplayInterval, e: MouseEvent): void {
   hoveredInterval.value = interval
   tooltipX.value = e.clientX + 12
   tooltipY.value = e.clientY + 12
@@ -737,7 +757,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
       <div class="gantt-title-row">
         <div class="gantt-title-group">
           <h4 class="gantt-title">排班甘特图 / 时间轴可视化</h4>
-          <span class="gantt-subtitle">多周期离散事件演化、干员轮换在岗时段与实时工休轨迹</span>
+          <span class="gantt-subtitle">多周期离散事件演化、干员轮换在岗时段与实时工休轨迹；小于屏幕像素的连续切换会合并显示</span>
         </div>
         <div class="gantt-title-actions">
           <button
@@ -1120,7 +1140,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
                 <div class="track-content-lane">
                   <div
-                    v-for="interval in slot.intervals.filter(isIntervalVisible)"
+                    v-for="interval in visibleFacilityIntervals.get(slot.slotKey) ?? []"
                     :key="interval.id"
                     class="gantt-block"
                     :class="[
@@ -1128,6 +1148,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
                       {
                         highlighted: highlightedOperatorId === interval.operatorId && interval.operatorId,
                         dimmed: highlightedOperatorId && highlightedOperatorId !== interval.operatorId,
+                        'status-condensed': Boolean(interval.condensedCount),
                       },
                     ]"
                     :style="{
@@ -1181,14 +1202,15 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
               <div class="track-content-lane">
                 <div
-                  v-for="interval in op.intervals.filter(isIntervalVisible)"
+                  v-for="interval in visibleOperatorIntervals.get(op.operatorId) ?? []"
                   :key="interval.id"
                   class="gantt-block"
                   :class="[
                     getStatusBadgeClass(interval.status, interval.roomType),
                     {
-                      highlighted: highlightedOperatorId === interval.operatorId && interval.operatorId,
-                      dimmed: highlightedOperatorId && highlightedOperatorId !== interval.operatorId,
+                        highlighted: highlightedOperatorId === interval.operatorId && interval.operatorId,
+                        dimmed: highlightedOperatorId && highlightedOperatorId !== interval.operatorId,
+                        'status-condensed': Boolean(interval.condensedCount),
                     },
                   ]"
                   :style="{
@@ -1202,7 +1224,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
                     <span class="block-status-icon">
                       {{ interval.status === 'working' ? '💼' : interval.status === 'resting' ? '🛏️' : interval.status === 'exhausted' ? '⚠️' : '💤' }}
                     </span>
-                    <span class="block-name">{{ interval.roomName }}</span>
+                    <span class="block-name">{{ interval.condensedCount ? interval.operatorName : interval.roomName }}</span>
                     <span v-if="interval.duration >= 3" class="block-duration">
                       {{ formatHour(interval.duration) }}
                     </span>
@@ -1233,7 +1255,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
           <span class="tooltip-subtitle">{{ hoveredInterval.roomName }} · 槽位 {{ hoveredInterval.slotIndex + 1 }}</span>
         </div>
         <span class="tooltip-status-tag" :class="hoveredInterval.status">
-          {{ hoveredInterval.status === 'working' ? '在岗作业' : hoveredInterval.status === 'resting' ? '宿舍恢复' : hoveredInterval.status === 'exhausted' ? '疲劳工作' : '待机闲置' }}
+          {{ hoveredInterval.condensedCount ? `${hoveredInterval.condensedCount} 段合并显示` : hoveredInterval.status === 'working' ? '在岗作业' : hoveredInterval.status === 'resting' ? '宿舍恢复' : hoveredInterval.status === 'exhausted' ? '疲劳工作' : '待机闲置' }}
         </span>
       </div>
       <div class="tooltip-body">
@@ -1478,10 +1500,10 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
                     <div class="track-content-lane" :style="{ width: `${exportTrackWidthPx}px` }">
                       <div
-                        v-for="interval in slot.intervals.filter(isExportIntervalVisible)"
+                        v-for="interval in exportFacilityIntervals.get(slot.slotKey) ?? []"
                         :key="interval.id"
                         class="gantt-block"
-                        :class="getStatusBadgeClass(interval.status, interval.roomType)"
+                        :class="[getStatusBadgeClass(interval.status, interval.roomType), { 'status-condensed': Boolean(interval.condensedCount) }]"
                         :style="{
                           left: `${getExportOffsetPercent(interval.start)}%`,
                           width: `${getExportWidthPercent(interval.start, interval.end)}%`,
@@ -1508,7 +1530,7 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
               <div class="export-canvas-footer">
                 <span>明日方舟基建排班与全动态模拟测算器 · R.I.I.C-Calculator</span>
-                <span>采样全周期完整甘特图 · 设施分道全景</span>
+                <span>采样全周期甘特图 · 小于像素的连续切换合并显示</span>
               </div>
             </div>
           </div>
@@ -2423,6 +2445,11 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
   background: #1e293b;
   border-color: #475569;
   border-style: dashed;
+}
+
+.gantt-block.status-condensed {
+  background: repeating-linear-gradient(45deg, #334155, #334155 5px, #64748b 5px, #64748b 10px);
+  border-color: #cbd5e1;
 }
 
 /* Floating Tooltip */

@@ -10,6 +10,7 @@ import type {OwnedOperatorInput} from '../../domain/operatorInventory'
 import {getRoomDisplayName} from '../../workbench/operatorHelpers'
 import type {RosterWorkspace} from '../../workbench/model'
 import type {ScheduleSimulationReport} from '../../simulator/scheduleSimulation'
+import type {TimelineDataset} from '../../workbench/timeline/timelineModel'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 const props=defineProps<{workspace:RosterWorkspace}>()
 const sampleDays=ref(14),warmupDays=ref(7),step=ref(.25),warmupModel=ref<'continuous'|'hourly'>('continuous')
@@ -32,6 +33,7 @@ const searchAssumptions=computed(()=>({restingThreshold:restingPercent.value/100
 const simulationProduction=computed(()=>({...searchOptions.value.production,outputMode:outputMode.value,...(outputMode.value==='potential'?{initialResources:{drone:initialDrone.value},collectionIntervalHours:0}:{})}))
 const reportBasis=ref('当前排班')
 const running=ref(false),report=ref<ScheduleSimulationReport|null>(null),error=ref('')
+const timelineData=ref<TimelineDataset|null>(null)
 const completedOutput=computed(()=>{const r=report.value,c=r?.production?.sample.completed;return c&&r.observedHours>0?scoreProduction(c,r.observedHours):null})
 const rosterDeferred=computed(()=>report.value?.diagnostics.some(d=>d.code==='group-blocked')??false)
 const productionComplete=computed(()=>report.value?.success===true&&report.value?.production?.success===true&&!rosterDeferred.value)
@@ -39,7 +41,7 @@ const inventory=ref<{enabled:boolean;valid:boolean;entries:OwnedOperatorInput[]}
 function updateInventory(value:typeof inventory.value){inventory.value=value;clear()}
 let worker:Worker|undefined
 function cancel(){worker?.terminate();worker=undefined;running.value=false}
-function clear(){cancel();report.value=null;error.value=''}
+function clear(){cancel();report.value=null;timelineData.value=null;error.value=''}
 watch(()=>props.workspace,clear,{deep:true})
 watch([sampleDays,warmupDays,step,warmupModel,...productionInputs],clear)
 watch([restingPercent,rescuePercent,fiammettaPercent,fiammettaFool,freeRoom,runOrderMode,runOrderLeadSeconds,runOrderBufferSeconds],()=>{
@@ -62,7 +64,7 @@ function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班
  try{
   worker=new Worker(new URL('../../simulator/scheduleSimulationWorker.ts',import.meta.url),{type:'module'})
   const currentWorker=worker
-  worker.onmessage=event=>{if(worker!==currentWorker)return;report.value=event.data.report??null;error.value=event.data.error??'';cancel()}
+  worker.onmessage=event=>{if(worker!==currentWorker)return;report.value=event.data.report??null;timelineData.value=event.data.timelineData??null;error.value=event.data.error??'';cancel()}
   worker.onerror=event=>{if(worker!==currentWorker)return;error.value=event.message||'模拟执行失败';cancel()}
   worker.postMessage({workspace:JSON.parse(JSON.stringify(targetWorkspace)),options:{...(inventory.value.enabled?{operatorInventory:JSON.parse(JSON.stringify(inventory.value.entries))}:{}),sampleHours:sampleDays.value*24,warmupHours:warmupDays.value*24,maxStepHours:step.value,warmupModel:warmupModel.value,recordSegments:true,production:JSON.parse(JSON.stringify(simulationProduction.value))},assumptions:{...searchAssumptions.value}})
  }catch(e){error.value=e instanceof Error?e.message:String(e);cancel()}
@@ -131,7 +133,7 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
    <p class="simulation-note">正在查看：{{reportBasis}}</p>
    <p role="status">{{report.success?'模拟窗口已完成':'模拟未完成'}} · 实际采样 {{number(report.observedHours/24)}} 天 <button type="button" @click="download">导出明细 JSON</button></p>
    <p v-if="rosterDeferred" data-test="roster-deferred" class="simulation-error">仍有换班延后未恢复，请查看诊断；此结果不能作为稳定日均结论。</p>
-   <ScheduleTimelineGantt :report="report" @request-simulate="run()" />
+   <ScheduleTimelineGantt :report="report" :timeline-data="timelineData" initially-collapsed @request-simulate="run()" />
    <details v-if="(report.events??[]).some(e=>e.type==='backup-plan')" data-test="backup-plan-events">
     <summary>副表切换记录（{{(report.events??[]).filter(e=>e.type==='backup-plan').length}} 次）</summary>
     <p>按实际心情和位置判断条件；下表显示采样期间的切换。完整任务记录可导出明细 JSON。</p>

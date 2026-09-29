@@ -204,6 +204,21 @@ describe('timelineModel', () => {
     expect(data.events).toHaveLength(2)
     expect(data.events.some(e => e.type === 'shift-off')).toBe(true)
     expect(data.events.some(e => e.type === 'shift-on')).toBe(true)
+
+    const rapid = {
+      ...report,
+      segments: Array.from({ length: 4 }, (_, index) => ({
+        start: index * .001,
+        end: (index + 1) * .001,
+        occupants: { room_1_1_0: index % 2 ? 'char_198_blackd' : 'char_102_texas' },
+        bedOccupants: {},
+        morale: { char_102_texas: 24, char_198_blackd: 24 },
+        efficiencyPercent: { room_1_1: 120 },
+      })),
+    }
+    const rapidSlot = buildTimelineData(rapid).facilityTracks.find(f => f.roomId === 'room_1_1')!.slots[0]!
+    expect(rapidSlot.intervals).toHaveLength(4)
+    expect(new Set(rapidSlot.intervals.map(interval => interval.id)).size).toBe(4)
   })
 
   it('correctly offsets intervals by warmupHours', () => {
