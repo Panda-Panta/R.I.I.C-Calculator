@@ -968,14 +968,14 @@ defineExpose({
               </div>
             </div>
 
-            <!-- Net physical gold and report-only order premium -->
+            <!-- Gold manufacture value with net physical and virtual gold details -->
             <div class="metric-card card-gold" data-test="metric-gold">
               <span class="metric-tag">赤金制造</span>
               <div class="metric-main">
-                <span class="metric-num">{{ formatNumber(calculationReport.summary.netGoldCount, 1) }}</span>
-                <span class="metric-unit">条/日（净产出）</span>
+                <span class="metric-num">{{ formatNumber(calculationReport.summary.goldValue) }}</span>
+                <span class="metric-unit">龙门币/日</span>
               </div>
-              <span class="metric-sub">虚拟赤金 +{{ formatNumber(calculationReport.summary.virtualGoldCount, 1) }} 条/日</span>
+              <span class="metric-sub">净产出 {{ formatNumber(calculationReport.summary.netGoldCount, 1) }} 条 · 虚拟赤金 +{{ formatNumber(calculationReport.summary.virtualGoldCount, 1) }} 条</span>
             </div>
 
             <!-- Actual simulated drone charging and spending -->
