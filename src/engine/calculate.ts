@@ -11,6 +11,7 @@ import { ROOM_LIMITS } from '../domain/defaults'
 import { evaluateOperators } from './operatorRules'
 import { simulateMorale } from './morale'
 import { buildRiicGlobalContext, type RiicGlobalContext } from './globalContext'
+import { virtualGoldEquivalent } from '../rules/orderValue'
 
 const OUTPUT_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
 const POWER_GENERATION = { 1: 60, 2: 130, 3: 270 } as const
@@ -113,10 +114,10 @@ function expectedGoldOrder(room: OutputRoom, quality: QualityRule, specialOrder:
   const transformed = distribution(room.level, quality).map((template) =>
     transformSpecial(template, specialOrder, room.level),
   )
-  const isTequilaBonus = (specialOrder === 'tequilaBeta' || specialOrder === 'shiftRun') && room.level >= 3
-  const virtualGoldPerOrder = isTequilaBonus
-    ? distribution(room.level, quality).find((t) => t.cost > 3)?.probability ?? 0
-    : 0
+  const virtualGoldPerOrder = transformed.reduce(
+    (sum, item) => sum + item.probability * virtualGoldEquivalent({ goldCost: item.cost, lmdReward: item.reward }),
+    0,
+  )
 
   return {
     minutes: transformed.reduce((sum, item) => sum + item.probability * item.minutes, 0),

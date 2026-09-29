@@ -10,6 +10,7 @@ import type { AppConfig, CalculationReport } from '../../domain/types'
 import type { CalculationWorkerMessage, CalculationProgress } from '../../workbench/calculationWorker'
 import CalculationConfigModal, { type CalculationConfig } from './CalculationConfigModal.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
+import { mowerReportMetrics } from '../../workbench/mowerReportMetrics'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 
@@ -67,6 +68,16 @@ watch(simSettings, value => {
   }
 }, { deep: true })
 const simulationReport = shallowRef<ScheduleSimulationReport | null>(null)
+const specialOrderCounts = computed(() => {
+  const report = simulationReport.value
+  const metrics = report ? mowerReportMetrics(report) : null
+  if (!report || !metrics) return []
+  const labels = { pepe: '佩佩', closure: '可露希尔', uOfficial: 'U-Official', proviso: '但书', tequila: '龙舌兰' } as const
+  return Object.entries(labels).flatMap(([kind, label]) => {
+    const count = metrics.orderDistribution[kind]?.count ?? 0
+    return count > 0 ? [{ kind, label, perDay: count * 24 / report.observedHours }] : []
+  })
+})
 const droneUsage = computed(() => {
   const report = simulationReport.value
   if (!report?.production || report.observedHours <= 0) return null
@@ -963,7 +974,7 @@ defineExpose({
               <span class="metric-sub">中级经验书等效</span>
             </div>
 
-            <!-- Gold Manufacture (Req 15 Tequila Virtual Gold) -->
+            <!-- Physical gold manufacture and report-only order premium -->
             <div class="metric-card card-gold" data-test="metric-gold">
               <span class="metric-tag">赤金制造</span>
               <div class="metric-main">
@@ -975,6 +986,9 @@ defineExpose({
                 <template v-if="calculationReport.summary.virtualGoldCount > 0">
                   · 虚拟赤金 +{{ formatNumber(calculationReport.summary.virtualGoldCount, 1) }} 条
                 </template>
+              </span>
+              <span v-if="specialOrderCounts.length" class="metric-sub" data-test="metric-special-orders">
+                特殊订单：<template v-for="(item, index) in specialOrderCounts" :key="item.kind">{{ index ? ' · ' : '' }}{{ item.label }} {{ formatNumber(item.perDay, 1) }} 单/日</template>
               </span>
             </div>
 

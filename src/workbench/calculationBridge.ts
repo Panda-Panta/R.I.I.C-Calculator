@@ -8,6 +8,7 @@ import { compileMainPlanToAppConfig } from './adapter'
 import type { RosterWorkspace } from './model'
 import { validateRosterWorkspace, type ValidationResult } from './validate'
 import { runScheduleSimulationBridge } from './scheduleSimulationBridge'
+import { virtualGoldEquivalent } from '../rules/orderValue'
 import type { ScheduleSimulationOptions, ScheduleSimulationReport, ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 
 export type CalculationEngineKind = 'legacy' | 'simulation'
@@ -53,16 +54,14 @@ export function simulationReportToCalculationReport(
 
   const warmupHours = simReport.assumptions?.warmupHours ?? 0
   const sampleOrderEvents = simReport.production?.events.filter(
-    e => e.type === 'order-completed' && e.time >= warmupHours
+    e => e.type === 'order-completed' && e.time > warmupHours && e.time <= simReport.elapsedHours
   ) ?? []
   const ordersGoldCost = sampleOrderEvents.reduce((n, e) => n + (e.order?.goldCost ?? 0), 0) / days
   const goldConsumed = (outflows?.gold ?? 0) > 0 ? (outflows?.gold ?? 0) / days : ordersGoldCost
   const netGoldCount = goldCount - goldConsumed
 
-  // Tequila virtual gold (within sample period)
-  const tequilaBonusLmd = sampleOrderEvents.filter(e => e.order?.kind === 'tequila')
-    .reduce((sum, e) => sum + Math.max(0, e.order!.lmdReward - e.order!.goldCost * 500), 0)
-  const virtualGoldCount = tequilaBonusLmd / 500 / days
+  // A report equivalent, not a physical gold inflow. Closure and Pepe also have premiums.
+  const virtualGoldCount = sampleOrderEvents.reduce((sum, e) => sum + (e.order ? virtualGoldEquivalent(e.order) : 0), 0) / days
   const virtualGoldValue = virtualGoldCount * 500
 
   // 82 score: exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd

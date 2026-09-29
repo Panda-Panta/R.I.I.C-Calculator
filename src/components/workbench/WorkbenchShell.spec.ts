@@ -65,6 +65,8 @@ import { createDefaultConfig } from '../../domain/defaults'
 import { calculate } from '../../engine/calculate'
 import { EDITION } from '../../domain/edition'
 import { OPERATORS } from '../../domain/operators'
+import sourceRoster from '../../../validation/mower-output-2026-09-27/roster.json'
+import { importMowerJson } from '../../workbench/compat/mowerJson'
 
 describe('WorkbenchShell.vue and App primary entry integration', () => {
   let pinia: Pinia
@@ -404,6 +406,24 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   })
 
   // 10. Results panel displays actual report fields and repeat calculation refreshes
+  it.each(['可露希尔', '佩佩'])('shows %s special orders and virtual gold in the main result', async runner => {
+    localStorage.setItem(`arc-income-calculator-sim-settings-v1-${EDITION.storageNamespace}`, JSON.stringify({
+      warmupDays: 0, sampleDays: 1 / 3, step: .25, seed: 42, droneTarget: 'none', droneTradingRoomId: '',
+    }))
+    const roster = structuredClone(sourceRoster)
+    roster.plan1.room_1_1.plans[1]!.agent = '绮良'
+    roster.plan1.room_1_1.plans[1]!.replacement = ['能天使', runner]
+    roster.plan1.room_1_1.plans[2]!.replacement = ['蕾缪安']
+    useRosterWorkbenchStore().loadWorkspace(importMowerJson(JSON.stringify(roster)))
+    const wrapper = mountWithPinia(WorkbenchShell)
+    wrapper.vm.handleCalculate()
+    if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'none', droneTradingRoomId: '' })
+    await flushPromises()
+    expect(wrapper.vm.calculationReport?.summary?.virtualGoldCount).toBeGreaterThan(0)
+    expect(wrapper.find('[data-test="metric-gold"]').text()).toContain('虚拟赤金')
+    expect(wrapper.find('[data-test="metric-special-orders"]').text()).toContain(runner)
+  }, 30000)
+
   it('displays compact results panel with actual report fields and refreshes on repeat calculation', async () => {
     const wrapper = mountWithPinia(WorkbenchShell)
 

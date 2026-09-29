@@ -43,6 +43,18 @@ describe('source-backed mutually exclusive order transforms', () => {
     expect(result.orders).toBeCloseTo(1440 / 270)
     expect(result.droneExtraOrders).toBe(0)
     expect(result.goldConsumed).toBe(0)
+    expect(result.virtualGold! / result.orders).toBeCloseTo(2)
+  })
+  it.each([
+    ['closure', .4],
+    ['tequilaAlpha', .1],
+    ['tequilaBeta', .2],
+  ] as const)('converts %s order premium to report-only gold', (special, virtualPerOrder) => {
+    const config = createDefaultConfig()
+    const room = config.rooms.find(value => value.type === 'trading')!
+    room.specialOrder = special
+    const trade = calculate(config).trading.find(value => value.roomId === room.id)!
+    expect(trade.virtualGold! / trade.orders).toBeCloseTo(virtualPerOrder)
   })
   it('keeps U-Official base duration distribution with fixed two-gold rewards', () => {
     const result = perOrder('uofficial')

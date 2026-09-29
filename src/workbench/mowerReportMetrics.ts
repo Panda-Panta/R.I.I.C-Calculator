@@ -1,7 +1,8 @@
 import type { ScheduleSimulationReport } from '../simulator/scheduleSimulation'
 import { scoreProduction } from '../optimizer/productionObjective'
+import { virtualGoldEquivalent } from '../rules/orderValue'
 
-/** Mower ui/src/pages/report.vue: Tequila's premium is also valued at 0.8.
+/** The calculator's 82 report values order premiums at 0.8.
  * This is a reporting convention, never a physical gold inventory inflow.
  */
 export function mowerReportMetrics(report: ScheduleSimulationReport) {
@@ -11,12 +12,13 @@ export function mowerReportMetrics(report: ScheduleSimulationReport) {
   const orders = production.events.filter(e => e.type === 'order-completed'
     && e.time > report.assumptions.warmupHours && e.time <= report.elapsedHours
     && e.order && e.order.kind !== 'orundum').map(e => e.order!)
-  const tequilaBonus = orders.reduce((n, o) => n + (o.kind === 'tequila' ? Math.max(0, o.lmdReward - o.goldCost * 500) : 0), 0)
+  const virtualGoldCount = orders.reduce((n, o) => n + virtualGoldEquivalent(o), 0)
   const score = scoreProduction(production.sample.completed, report.observedHours)
   return {
     exp: score.exp, goldValue: score.goldValue, orderLmd: score.orderValue,
-    tequilaGoldValue: tequilaBonus * factor,
-    mower82: score.total + .8 * tequilaBonus * factor,
+    virtualGoldCount: virtualGoldCount * factor,
+    virtualGoldValue: virtualGoldCount * 500 * factor,
+    mower82: score.total + .8 * virtualGoldCount * 500 * factor,
     meanOrderValue: orders.length ? orders.reduce((n, o) => n + o.lmdReward, 0) / orders.length : null,
     orderCount: orders.length,
     orderDistribution: Object.fromEntries([...new Set(orders.map(o => o.kind))].map(kind => [kind, {

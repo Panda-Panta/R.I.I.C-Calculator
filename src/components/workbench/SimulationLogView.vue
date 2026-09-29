@@ -19,6 +19,15 @@ const searchKeyword = ref('')
 const selectedRoom = ref<string>('all')
 const copySuccess = ref(false)
 const mowerMetrics = computed(() => props.report ? mowerReportMetrics(props.report) : null)
+const specialOrderRows = computed(() => {
+  const metrics = mowerMetrics.value
+  if (!metrics) return []
+  const labels = { pepe: '佩佩', closure: '可露希尔', uOfficial: 'U-Official', proviso: '但书', tequila: '龙舌兰' } as const
+  return Object.entries(labels).flatMap(([kind, label]) => {
+    const item = metrics.orderDistribution[kind]
+    return item ? [{ kind, label, ...item }] : []
+  })
+})
 
 const resourceLabels = [
   ['gold', '赤金（件）'],
@@ -210,9 +219,10 @@ function exportJson(mode: ExportReportMode = 'summary'): void {
       </section>
 
       <section v-if="mowerMetrics" class="log-section">
-        <h4 class="section-heading">Mower 报表口径对照（日均）</h4>
-        <p>82 收益 {{ number(mowerMetrics.mower82) }}；经验 {{ number(mowerMetrics.exp) }}；赤金价值 {{ number(mowerMetrics.goldValue) }}；订单 {{ number(mowerMetrics.orderLmd) }}；龙舌兰额外价值 {{ number(mowerMetrics.tequilaGoldValue) }}。</p>
-        <p>平均订单金额 {{ number(mowerMetrics.meanOrderValue) }}。龙舌兰额外价值仅用于报表折算，不增加赤金库存。</p>
+        <h4 class="section-heading">82 收益报表（日均）</h4>
+        <p>82 收益 {{ number(mowerMetrics.mower82) }}；经验 {{ number(mowerMetrics.exp) }}；赤金价值 {{ number(mowerMetrics.goldValue) }}；订单 {{ number(mowerMetrics.orderLmd) }}；特殊订单虚拟赤金价值 {{ number(mowerMetrics.virtualGoldValue) }}。</p>
+        <p>平均订单金额 {{ number(mowerMetrics.meanOrderValue) }}。虚拟赤金 {{ number(mowerMetrics.virtualGoldCount) }} 条/日仅用于报表折算，不增加赤金库存。</p>
+        <p v-if="specialOrderRows.length" data-test="special-order-distribution">采样期特殊订单：<template v-for="(item, index) in specialOrderRows" :key="item.kind">{{ index ? ' · ' : '' }}{{ item.label }} {{ number(item.count) }} 单（{{ number(item.lmd) }} 龙门币）</template></p>
         <p>Mower 工休图按心情记录变化估算；下方工作占比统计非疲劳工作时间，不能直接视为同一指标。</p>
       </section>
 

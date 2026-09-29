@@ -27,11 +27,11 @@ it('matches Mower 82 arithmetic without adding virtual gold to the ledger', () =
   const value = mowerReportMetrics(report)!
   const premium = report.production!.events.filter(e => e.type === 'order-completed' && e.order?.kind === 'tequila').reduce((n, e) => n + e.order!.lmdReward - e.order!.goldCost * 500, 0)
   expect(premium).toBeGreaterThan(0)
-  expect(value.mower82).toBeCloseTo(value.exp + .8 * (value.goldValue + value.tequilaGoldValue) + .2 * value.orderLmd)
-  expect(value.tequilaGoldValue).toBeCloseTo(premium * 24 / report.observedHours)
+  expect(value.mower82).toBeCloseTo(value.exp + .8 * (value.goldValue + value.virtualGoldValue) + .2 * value.orderLmd)
+  expect(value.virtualGoldValue).toBeCloseTo(premium * 24 / report.observedHours)
   expect(JSON.stringify(report)).toBe(before)
   report.assumptions.warmupHours = report.elapsedHours
-  expect(mowerReportMetrics(report)!.tequilaGoldValue).toBe(0)
+  expect(mowerReportMetrics(report)!.virtualGoldValue).toBe(0)
   report.success = false
   expect(mowerReportMetrics(report)).toBeNull()
 })
