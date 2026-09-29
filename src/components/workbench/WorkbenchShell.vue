@@ -75,16 +75,8 @@ const specialOrderCounts = computed(() => {
   const labels = { pepe: '佩佩', closure: '可露希尔', uOfficial: 'U-Official', proviso: '但书', tequila: '龙舌兰' } as const
   return Object.entries(labels).flatMap(([kind, label]) => {
     const count = metrics.orderDistribution[kind]?.count ?? 0
-    return count > 0 ? [{ kind, label, perDay: count * 24 / report.observedHours }] : []
+    return count > 0 ? [{ kind, label, count }] : []
   })
-})
-const droneUsage = computed(() => {
-  const report = simulationReport.value
-  if (!report?.production || report.observedHours <= 0) return null
-  return {
-    spentPerDay: (report.production.sample.outflows.drone ?? 0) / (report.observedHours / 24),
-    finalStock: report.production.drones.stock,
-  }
 })
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
@@ -962,6 +954,9 @@ defineExpose({
                 <span class="metric-unit">龙门币/日</span>
               </div>
               <span class="metric-sub">日消耗赤金 {{ formatNumber(calculationReport.summary.goldConsumed, 1) }} 条</span>
+              <span v-if="specialOrderCounts.length" class="metric-sub" data-test="metric-special-orders">
+                采样期特殊订单：<template v-for="(item, index) in specialOrderCounts" :key="item.kind">{{ index ? ' · ' : '' }}{{ item.label }} {{ item.count }} 单</template>
+              </span>
             </div>
 
             <!-- Combat Records EXP -->
@@ -971,25 +966,16 @@ defineExpose({
                 <span class="metric-num">{{ formatNumber(calculationReport.summary.exp) }}</span>
                 <span class="metric-unit">EXP/日</span>
               </div>
-              <span class="metric-sub">中级经验书等效</span>
             </div>
 
-            <!-- Physical gold manufacture and report-only order premium -->
+            <!-- Net physical gold and report-only order premium -->
             <div class="metric-card card-gold" data-test="metric-gold">
               <span class="metric-tag">赤金制造</span>
               <div class="metric-main">
-                <span class="metric-num">{{ formatNumber(calculationReport.summary.goldValue) }}</span>
-                <span class="metric-unit">龙门币/日</span>
+                <span class="metric-num">{{ formatNumber(calculationReport.summary.netGoldCount, 1) }}</span>
+                <span class="metric-unit">条/日（净产出）</span>
               </div>
-              <span class="metric-sub">
-                净产出 {{ formatNumber(calculationReport.summary.netGoldCount, 1) }} 条
-                <template v-if="calculationReport.summary.virtualGoldCount > 0">
-                  · 虚拟赤金 +{{ formatNumber(calculationReport.summary.virtualGoldCount, 1) }} 条
-                </template>
-              </span>
-              <span v-if="specialOrderCounts.length" class="metric-sub" data-test="metric-special-orders">
-                特殊订单：<template v-for="(item, index) in specialOrderCounts" :key="item.kind">{{ index ? ' · ' : '' }}{{ item.label }} {{ formatNumber(item.perDay, 1) }} 单/日</template>
-              </span>
+              <span class="metric-sub">虚拟赤金 +{{ formatNumber(calculationReport.summary.virtualGoldCount, 1) }} 条/日</span>
             </div>
 
             <!-- Actual simulated drone charging and spending -->
@@ -999,10 +985,6 @@ defineExpose({
                 <span class="metric-num">{{ formatNumber(calculationReport.drones, 1) }}</span>
                 <span class="metric-unit">架/日</span>
               </div>
-              <span class="metric-sub">采样期日均入库</span>
-              <span v-if="droneUsage" class="metric-sub" data-test="metric-drones-usage">
-                日均消耗 {{ formatNumber(droneUsage.spentPerDay, 1) }} 架 · 期末库存 {{ formatNumber(droneUsage.finalStock, 1) }} 架
-              </span>
             </div>
 
             <!-- Orundum & Fragments (if present) -->

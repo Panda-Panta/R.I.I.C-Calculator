@@ -420,8 +420,13 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     if (wrapper.vm.calculationConfigOpen) wrapper.vm.handleConfirmCalculation({ droneTarget: 'none', droneTradingRoomId: '' })
     await flushPromises()
     expect(wrapper.vm.calculationReport?.summary?.virtualGoldCount).toBeGreaterThan(0)
-    expect(wrapper.find('[data-test="metric-gold"]').text()).toContain('虚拟赤金')
-    expect(wrapper.find('[data-test="metric-special-orders"]').text()).toContain(runner)
+    const gold = wrapper.get('[data-test="metric-gold"]')
+    expect(gold.text()).toContain('净产出')
+    expect(gold.text()).toContain('虚拟赤金')
+    expect(gold.text()).not.toContain('龙门币')
+    expect(gold.find('[data-test="metric-special-orders"]').exists()).toBe(false)
+    const trade = wrapper.get('[data-test="metric-lmd"]')
+    expect(trade.get('[data-test="metric-special-orders"]').text()).toMatch(new RegExp(`${runner} \\d+ 单`))
   }, 30000)
 
   it('displays compact results panel with actual report fields and refreshes on repeat calculation', async () => {
@@ -447,8 +452,8 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(wrapper.find('[data-test="metric-exp"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="metric-gold"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="metric-drones"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="metric-drones-usage"]').text()).toContain('日均消耗')
-    expect(wrapper.find('[data-test="metric-drones-usage"]').text()).toContain('期末库存')
+    expect(wrapper.find('[data-test="metric-exp"] .metric-sub').exists()).toBe(false)
+    expect(wrapper.find('[data-test="metric-drones"] .metric-sub').exists()).toBe(false)
 
     const initialLmd = wrapper.find('[data-test="metric-lmd"]').text()
 
