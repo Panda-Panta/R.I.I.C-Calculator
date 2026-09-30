@@ -89,6 +89,15 @@ jobs:
               $entryPath = 'R.I.I.C-Calculator/dist' + $url.AbsolutePath
               if ($null -eq $archive.GetEntry($entryPath)) { throw "Missing desktop resource: $entryPath" }
             }
+            $duplicates = @($archive.Entries | Group-Object FullName | Where-Object Count -gt 1)
+            if ($duplicates.Count -gt 0) { throw 'Release ZIP contains duplicate paths' }
+            $publicRoot = (Resolve-Path -LiteralPath public).Path
+            foreach ($file in Get-ChildItem -LiteralPath $publicRoot -File -Recurse -Force) {
+              $relative = [IO.Path]::GetRelativePath($publicRoot, $file.FullName).Replace('\', '/')
+              if ($null -eq $archive.GetEntry('R.I.I.C-Calculator/dist/' + $relative)) {
+                throw "Release ZIP lost or renamed public asset: $relative"
+              }
+            }
           } finally { $archive.Dispose() }
 
       - name: Resolve Release Tag

@@ -46,7 +46,15 @@ Remove-Item release/R.I.I.C-Calculator/*.pdb, release/R.I.I.C-Calculator/*.xml -
 Write-Host ">>> [5/5] Compressing portable ZIP archive into $resolvedOutputDir..."
 $zipPath = Join-Path $resolvedOutputDir "R.I.I.C-Calculator-Windows-x64-Portable.zip"
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
-tar.exe -a -cf "$zipPath" -C release R.I.I.C-Calculator
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$releaseFolder = (Resolve-Path -LiteralPath "release/R.I.I.C-Calculator").Path
+[System.IO.Compression.ZipFile]::CreateFromDirectory(
+    $releaseFolder,
+    $zipPath,
+    [System.IO.Compression.CompressionLevel]::Optimal,
+    $true,
+    [System.Text.UTF8Encoding]::new($false)
+)
 
 function Get-Sha256([string]$filePath) {
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
