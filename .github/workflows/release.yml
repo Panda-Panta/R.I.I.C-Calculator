@@ -57,6 +57,8 @@ jobs:
 
       - name: Build & Package Desktop Release
         shell: pwsh
+        env:
+          BASE_URL: '/'
         run: |
           pwsh -ExecutionPolicy Bypass -File scripts/pack-release.ps1 -OutputDir artifacts
 
@@ -74,6 +76,20 @@ jobs:
           if ($actualSum -ne $expectedSum) {
             throw 'SHA256SUMS.txt does not match the release ZIP'
           }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path "artifacts/$expectedZip"))
+          try {
+            $index = $archive.GetEntry('R.I.I.C-Calculator/dist/index.html')
+            if ($null -eq $index) { throw 'Release ZIP is missing dist/index.html' }
+            $reader = [IO.StreamReader]::new($index.Open())
+            try { $html = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            foreach ($match in [regex]::Matches($html, '(?:src|href)="([^"?#]+)"')) {
+              $url = [Uri]::new([Uri]'https://app.riic/index.html', $match.Groups[1].Value)
+              if ($url.Host -ne 'app.riic') { continue }
+              $entryPath = 'R.I.I.C-Calculator/dist' + $url.AbsolutePath
+              if ($null -eq $archive.GetEntry($entryPath)) { throw "Missing desktop resource: $entryPath" }
+            }
+          } finally { $archive.Dispose() }
 
       - name: Resolve Release Tag
         id: resolve_tag
