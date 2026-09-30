@@ -10,7 +10,7 @@ import { placePendantOperator } from '../scheduler/smartDormitoryPolicy'
 import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import { assignBackups, validatePhysicalRoster } from './rosterDraft'
 import { rankStaffingCandidates } from './staffingQuality'
-import { applySingletonWorkPolicy, productionTeamTheory } from './productionSingletons'
+import { applySingletonWorkPolicy, productionColleagueBonus, productionTeamTheory } from './productionSingletons'
 import { getRoomDisplayName } from '../workbench/operatorHelpers'
 
 export interface ReplacementResult {
@@ -234,8 +234,8 @@ export function runGlobalPerCapitaReplacement(
           Object.values(ws.mainPlan.facilities).some(f => f.slots.some(slot => slot.groupId === op.groupId &&
             slot.occupant.kind === 'operator' && !targetIds.has(resolveId(slot.occupant.operatorId)))))) continue
         const K = targetOps.length
-        const available = (name: string) => ownedNames.has(name) && !lockedOperators.has(resolveId(name)) &&
-          (!occupied.has(resolveId(name)) || targetIds.has(resolveId(name)))
+        const availableOperator = (id: string) => !lockedOperators.has(id) && (!occupied.has(id) || targetIds.has(id))
+        const available = (name: string) => ownedNames.has(name) && availableOperator(resolveId(name))
 
         const candidates: { unit: AtomicUnit; independent: boolean }[] = ATOMIC_UNITS.flatMap(unit => {
           const adapted = unit.adaptToPowerCount?.(powerCount, product === 'exp' ? 'exp' : 'gold')
@@ -253,7 +253,7 @@ export function runGlobalPerCapitaReplacement(
 
         // The strongest unused singletons enter before simulation budgets are spent.
         // A small frontier also admits alternative bundles when their best members are scarce backups.
-        const unused = inventory.operators.filter(o => o.matchesMaximumSkills && available(o.name))
+        const unused = inventory.operators.filter(o => availableOperator(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔')
         const singletonPreview = structuredClone(ws)
         for (const index of slotIndices) {
           const slot = singletonPreview.mainPlan.facilities[room.roomId].slots[index]!
@@ -265,7 +265,9 @@ export function runGlobalPerCapitaReplacement(
         const frontier = ranked.slice(0, Math.max(6, K))
         // 吉星 needs colleagues. An empty-team probe must not eliminate her before
         // a complete two/three-person bundle can be evaluated below.
-        if (!isManufacture && currentOps.length > 1 && available('吉星') && !frontier.includes(resolveId('吉星'))) frontier.push(resolveId('吉星'))
+        const colleagueCounter = unused.filter(o => productionColleagueBonus(o.skills) > 0)
+          .sort((a, b) => productionColleagueBonus(b.skills) - productionColleagueBonus(a.skills))[0]
+        if (!isManufacture && currentOps.length > 1 && colleagueCounter && !frontier.includes(colleagueCounter.charId)) frontier.push(colleagueCounter.charId)
         const bundles: string[][] = []
         const choose = (start: number, ids: string[]) => {
           if (ids.length === K) { bundles.push(ids); return }
@@ -275,7 +277,7 @@ export function runGlobalPerCapitaReplacement(
         for (const ids of bundles) {
           const names = ids.map(id => inventory.operators.find(o => o.charId === id)!.name)
           candidates.push({ independent: true, unit: {
-            id: `singletons:${ids.join('+')}`, name: names.join('+'), description: '常用散件理论效率比较',
+            id: `singletons:${ids.join('+')}`, name: names.join('+'), description: '已解锁散件技能效率比较',
             preferredFacilityType: isManufacture ? 'manufacture' : 'trading',
             coreMembers: names.map(name => ({ name, roomType: isManufacture ? 'manufacture' : 'trading' })),
           } })
@@ -414,7 +416,7 @@ export function runGlobalPerCapitaReplacement(
     for (let sIdx = 0; sIdx < cap; sIdx++) {
       const slot = room.slots[sIdx]!
       if (slot.occupant.kind !== 'operator' && repairPositions.has(`${room.roomId}:${sIdx}`) && !lockedPositions.has(`${room.roomId}:${sIdx}`)) {
-        const pool = inventory.operators.filter(o => o.matchesMaximumSkills && !occupiedAll.has(o.charId) && !lockedOperators.has(o.charId))
+        const pool = inventory.operators.filter(o => !occupiedAll.has(o.charId) && !lockedOperators.has(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔')
         const freeSingleton = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex: sIdx }, pool.map(o => o.charId), 'main')[0]
         if (freeSingleton) {
           const sId = resolveId(freeSingleton)

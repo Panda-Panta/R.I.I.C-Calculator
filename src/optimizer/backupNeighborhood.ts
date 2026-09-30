@@ -67,8 +67,8 @@ export function generateBackupNeighbors(workspace:RosterWorkspace,entries:OwnedO
   })
  }
  const owned=new Map(inventory.operators.map(o=>[o.charId,o]))
- const qualified=(id:string,type:MowerFacilityType)=>{const o=owned.get(resolveId(id));return Boolean(o?.matchesMaximumSkills&&o.skills.some(s=>s.roomType===roomTypes.get(type)))}
- const unused=inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!special(o.charId))
+ const qualified=(id:string,type:MowerFacilityType)=>{const o=owned.get(resolveId(id));return Boolean(o?.skills.some(s=>s.roomType===roomTypes.get(type)))}
+ const unused=inventory.operators.filter(o=>!reserved.has(o.charId)&&!special(o.charId))
  function* replacements(p:Position):Generator<Change>{
   const pool=rankStaffingCandidates(workspace,inventory,{roomId:p.roomId,slotIndex:p.index},unused.filter(o=>qualified(o.charId,p.type)&&!special(o.charId,p.type)).map(o=>o.charId),'backup')
   const ordinary=p.slot.replacements.flatMap((id,index)=>special(id,p.type)?[]:[index])

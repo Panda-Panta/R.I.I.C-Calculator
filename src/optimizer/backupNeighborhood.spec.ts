@@ -37,7 +37,7 @@ describe('fair protected ordinary backup neighborhood',()=>{
   expect(r.workspace.mainPlan.facilities.room_1_1.slots[0]!.replacements).toEqual(['雪猎','梅尔'])
   expect(r.workspace.mainPlan.facilities.room_1_2.slots[0]!.replacements).toEqual(['淬羽赫默','维伊'])
  })
- it('rejects exchanges across facility types or without matching owned maximum skills',()=>{
+ it('rejects exchanges across facility types or without matching owned unlocked skills',()=>{
   const w=fixture();w.mainPlan.facilities.room_1_2.type='trading';w.mainPlan.facilities.room_1_2.product='money'
   expect(generateBackupNeighbors(w,allOwned,21).some(n=>n.move.kind==='exchange')).toBe(false)
   w.mainPlan.facilities.room_1_2.type='manufacture';w.mainPlan.facilities.room_1_2.product='gold';w.mainPlan.facilities.room_1_2.slots[0]!.replacements=['Lancet-2']
@@ -69,7 +69,14 @@ describe('fair protected ordinary backup neighborhood',()=>{
   expect(exchange.move.positions).toEqual(['room_1_1_0','room_1_1_1'])
   expect(exchange.workspace.mainPlan.facilities.room_1_1.slots[1]!.groupId).toBe('room_1_2-group')
  })
- it('does not move unowned or lower-stage existing candidates even during reordering',()=>{
+ it('uses an owned lower-stage candidate with an unlocked facility skill during reordering',()=>{
+  const w=fixture();w.mainPlan.facilities.room_1_1.slots[0]!.replacements=['淬羽赫默','白面鸮']
+  w.mainPlan.facilities.room_1_2.slots[0]!.occupant={kind:'operator',operatorId:id('断罪者')}
+  const entries=[...owned(['砾','断罪者','淬羽赫默','梅尔','雪猎','维伊']),{operator:'白面鸮',elitePhase:0,level:1}]
+  const r=generateBackupNeighbors(w,entries,21)
+  expect(r.some(n=>n.move.kind==='reorder'&&n.move.positions.includes('room_1_1_0'))).toBe(true)
+ })
+ it('does not move unowned or not-yet-unlocked existing candidates during reordering',()=>{
   const w=fixture();w.mainPlan.facilities.room_1_1.slots[0]!.replacements=['淬羽赫默','调香师']
   w.mainPlan.facilities.room_1_2.slots[0]!.occupant={kind:'operator',operatorId:id('断罪者')}
   const entries=[...owned(['砾','断罪者','淬羽赫默','梅尔','雪猎','维伊']),{operator:'调香师',elitePhase:0,level:1}]

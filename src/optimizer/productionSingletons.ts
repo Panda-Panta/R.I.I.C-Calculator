@@ -7,7 +7,8 @@ import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJso
 import { MOWER_OUTPUT_ROOM_IDS, type MowerRoomId, type RosterWorkspace } from '../workbench/model'
 import { projectRosterConfig } from './rosterProjection'
 
-/** User reference: 常用组合.md; 血猎 was explicitly corrected to 雪猎.
+/** Reference members for the combination catalog, not singleton admission or ranking.
+ * User reference: 常用组合.md; 血猎 was explicitly corrected to 雪猎.
  * Only additive/self-dependent production skills belong here. Copying, clearing
  * colleagues' effects, automation and special-order mechanics belong to units.
  * 吉星 counts working colleagues: an additive room bonus, not a rewrite of their skills.
@@ -28,19 +29,33 @@ export function isSelfOnlyProductionFallback(skills: readonly OperatorSkill[], t
   if (!facility) return false
   const relevant = skills.filter(s => s.roomType === facility)
   const family = type === 'manufacture'
-    ? /^(manu_prod_spd|manu_formula_spd|manu_prod_spd_addition|manu_formula_spd&cost|manu_prod_spd&limit&cost|manu_formula_spd&limit&cost|manu_prod_limit|manu_formula_limit|manu_cost)\[\d+\]$/
+    ? /^(manu_prod_spd|manu_formula_spd|manu_prod_spd_addition|manu_formula_spd&cost|manu_prod_spd&limit|manu_prod_spd&limit&cost|manu_formula_spd&limit&cost|manu_prod_limit|manu_formula_limit|manu_cost)\[\d+\]$/
     : /^(trade_ord_spd|trade_ord_spd&limit|trade_ord_spd&cost|trade_ord_limit&cost|trade_cost)\[\d+\]$/
   return relevant.length > 0 && relevant.every(s => family.test(s.buffId) && !/其他干员|全体干员|所有干员|清零|视作|复制/.test(s.description))
 }
 
-export function productionSingletonNames(workspace: RosterWorkspace, roomId: MowerRoomId): readonly string[] {
+/** Admit supported additive mechanisms from unlocked facility skills, regardless of name.
+ * Copying, suppression and global-resource teams still require their atomic units.
+ */
+export function isProductionSingletonCandidate(workspace: RosterWorkspace, roomId: MowerRoomId, skills: readonly OperatorSkill[]): boolean {
   const room = workspace.mainPlan.facilities[roomId]
-  if (room.type === 'trading') return PRODUCTION_SINGLETONS.trading
-  if (room.type !== 'manufacture') return []
+  if (room.type !== 'manufacture' && room.type !== 'trading') return false
+  const relevant = skills.filter(s => s.roomType === (room.type === 'manufacture' ? 'MANUFACTURE' : 'TRADING'))
   const powerCount = Object.values(workspace.mainPlan.facilities).filter(r => r.type === 'power').length
-  return [...PRODUCTION_SINGLETONS.generalManufacture,
-    ...(room.product === 'gold' ? PRODUCTION_SINGLETONS.goldManufacture : room.product === 'exp' ? PRODUCTION_SINGLETONS.expManufacture : [])]
-    .filter(name => name !== '至简' || powerCount > 2)
+  if (powerCount <= 2 && relevant.some(s => /^manu_prod_spd_bd\[1[01]0\]$/.test(s.buffId))) return false
+  const conditional = room.type === 'manufacture'
+    ? /^(manu_prod_spd_train&lv|manu_prod_spd&trade|manu_prod_cost_min|manu_prod_spd_reduce|manu_prod_spd_addition&cost|manu_skill_spd1|manu_formula_spd&bd|manu_constrLv)\[\d+\]$|^manu_prod_spd_bd\[1[01]0\]$/
+    : /^(trade_ord_spd&meet|trade_ord_spd&dorm&lv|trade_ord_par&per|trade_ord_spd_ext|trade_ord_spd&formula|trade_ord_spd&share|trade_ord_limit&cost_P|trade_ord_limit&trade&lv)\[\d+\]$/
+  return relevant.length > 0 && relevant.every(s => isSelfOnlyProductionFallback([s], room.type) || conditional.test(s.buffId))
+}
+
+const colleagueBonuses: Record<string, number> = {
+  'trade_ord_spd&share[000]': 15, 'trade_ord_spd&share[001]': 10, 'trade_ord_spd&share[002]': 20,
+}
+
+/** Per working colleague, using the unlocked version of the additive trading skill. */
+export function productionColleagueBonus(skills: readonly OperatorSkill[]): number {
+  return skills.filter(s => s.roomType === 'TRADING').reduce((bonus, skill) => bonus + (colleagueBonuses[skill.buffId] ?? 0), 0)
 }
 
 export function productionRoomId(roomId: MowerRoomId): string {

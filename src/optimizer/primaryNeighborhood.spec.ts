@@ -23,6 +23,14 @@ function fixture(){
 }
 function position(key:string){const index=Number(key.slice(key.lastIndexOf('_')+1));return {roomId:key.slice(0,key.lastIndexOf('_')) as MowerRoomId,index}}
 describe('protected production main neighborhood',()=>{
+ it('admits a stronger unlocked skill without requiring the maximum-stage version',()=>{
+  const w=createDefaultWorkspace()
+  w.mainPlan.facilities.room_1_1.slots[0]!.occupant={kind:'operator',operatorId:id('黑角')}
+  const results=generateProductionMainNeighbors(w,[{operator:'黑角',elitePhase:0,level:1},{operator:'白面鸮',elitePhase:0,level:1}])
+  expect(results.map(n=>n.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant)).toEqual([
+   {kind:'operator',operatorId:id('白面鸮')},
+  ])
+ })
  it('changes one occupied production seat, round robins facilities and preserves every other field',()=>{
   const w=fixture(),before=structuredClone(w),results=generateProductionMainNeighbors(w,owned(['阿罗玛','海蒂','格雷伊']),4)
   expect(results).toHaveLength(4)
@@ -36,7 +44,7 @@ describe('protected production main neighborhood',()=>{
   }
   expect(w).toEqual(before)
  })
- it('requires an owned maximum-stage facility skill and uses the actual layout type',()=>{
+ it('requires an owned unlocked facility skill and uses the actual layout type',()=>{
   const w=fixture()
   const results=generateProductionMainNeighbors(w,[...owned(['海蒂','阿米娅']),{operator:'斑点',elitePhase:0,level:1}])
   expect(results.map(n=>n.move.positions)).toEqual([['room_3_1_0']])

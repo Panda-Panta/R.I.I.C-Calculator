@@ -180,7 +180,7 @@ export function generateMolecularCandidates(
     }
 
     const bestSingleton = (roomId: MowerRoomId, slotIndex: number, metalcraftOnly = false): string | undefined => {
-      const pool = inventory.operators.filter(o => isAvailableSingleton(o.name) &&
+      const pool = inventory.operators.filter(o => !occupied.has(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
         (!metalcraftOnly || o.skills.some(s => s.roomType === 'MANUFACTURE' && /^金属工艺·[αβγ]$/.test(s.name))))
       return rankStaffingCandidates(ws, inventory, { roomId, slotIndex }, pool.map(o => o.charId), 'main')[0]
     }

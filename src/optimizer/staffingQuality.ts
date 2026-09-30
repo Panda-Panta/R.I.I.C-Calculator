@@ -7,11 +7,15 @@ import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJso
 import { type MowerRoomId, type MowerSlot, type RosterWorkspace } from '../workbench/model'
 import { projectControlOutput } from './controlImpact'
 import { projectRosterConfig } from './rosterProjection'
-import { isSelfOnlyProductionFallback, productionRoomId, productionSingletonNames, singletonTheory } from './productionSingletons'
+import { isProductionSingletonCandidate, productionColleagueBonus, productionRoomId, singletonTheory } from './productionSingletons'
 
 export interface StaffingPosition { roomId: MowerRoomId; slotIndex: number }
 type Quality = { output: number; power: number; consumption: number }
 type StaffingContext = { config: AppConfig; insertionIndex: number }
+const facilitySkills: Record<string, string> = {
+  manufacture: 'MANUFACTURE', trading: 'TRADING', power: 'POWER', central: 'CONTROL',
+  contact: 'HIRE', meeting: 'MEETING', factory: 'WORKSHOP', train: 'TRAINING',
+}
 const key = (roomId: string, index: number, slot: MowerSlot) => slot.groupId?.trim() || `${roomId}:${index}`
 const ordinaryBackup = (slot: MowerSlot, roomType: string) => slot.replacements.map(resolveId).find(id => isOrdinaryReplacementCandidate(id, roomType))
 
@@ -104,7 +108,12 @@ function removeOperator(config: AppConfig, workspace: RosterWorkspace, position:
 const qualityCache = new Map<string, Quality>()
 
 function qualityKey(c: AppConfig): string {
-  return `${c.controlOperatorIds.join(',')}|${c.rooms.map(r => r.operatorIds.join(',')).join(';')}|${c.facilityOperatorIds.training.join(',')}|${c.facilityOperatorIds.office.join(',')}|${c.facilityOperatorIds.reception.join(',')}|${c.facilityOperatorIds.workshop.join(',')}`
+  const { operatorRecords, ...configuration } = c
+  const present = [...new Set([...c.controlOperatorIds, ...c.rooms.flatMap(r => r.operatorIds),
+    ...Object.values(c.facilityOperatorIds).flat(2)])]
+  // The same IDs can have different unlocked skills, room levels or products.
+  // Include the planning configuration and only the records that can act in it.
+  return JSON.stringify([configuration, present.map(id => [id, operatorRecords?.[id]?.skills.map(s => s.buffId)])])
 }
 
 function quality(config: AppConfig): Quality {
@@ -132,40 +141,41 @@ export function rankStaffingCandidates(
 ): string[] {
   const type = workspace.mainPlan.facilities[position.roomId].type
   const production = type === 'manufacture' || type === 'trading'
-  if (!production && candidates.length < 2) return [...candidates]
   const records = inventoryOperatorRecords(inventory)
+  const owned = new Set(inventory.operators.map(o => o.charId))
+  const pool = [...new Set(candidates.map(resolveId))].filter(id => owned.has(id) &&
+    (records[id]?.skills.some(s => s.roomType === facilitySkills[type]) || options.allowNeutral))
+  if (!production && pool.length < 2) return pool
   const contexts = assignmentContexts(workspace, position, role, production || role === 'main')
   if (production) {
     // The first snapshot is the relevant main/relief team. Ordinary production
     // candidates are ordered by their own theoretical skill, not whole-base gain.
     const context = contexts[0]
     if (!context) return []
-    const allowed = new Set(productionSingletonNames(workspace, position.roomId).map(resolveId))
-    const owned = new Set(inventory.operators.map(o => o.charId))
-    const neutral = (id: string) => options.allowNeutral && !records[id]?.skills.some(s => s.roomType === (type === 'manufacture' ? 'MANUFACTURE' : 'TRADING'))
+    const neutral = (id: string) => options.allowNeutral && !records[id]?.skills.some(s => s.roomType === facilitySkills[type])
     const cfg = context.config
     cfg.operatorRecords = records
     const targetRoom = cfg.rooms.find(r => r.id === productionRoomId(position.roomId))
-    return [...new Set(candidates.map(resolveId))].filter(id => owned.has(id) &&
-      (allowed.has(id) || isSelfOnlyProductionFallback(records[id]?.skills ?? [], type) || neutral(id))).flatMap(id => {
+    return pool.filter(id => isProductionSingletonCandidate(workspace, position.roomId, records[id]?.skills ?? []) || neutral(id)).flatMap(id => {
       insertOperator(cfg, workspace, position, context.insertionIndex, id)
       let efficiency = singletonTheory(cfg, position.roomId, id)
       // Initial matching constructs a complete relief team. Do not eliminate
       // count-based 吉星 just because her future colleagues are not assigned yet.
       // improveBackups re-evaluates the resulting team with actual occupants.
-      if (role === 'backup' && options.completingReliefTeam && records[id]?.skills.some(s => s.buffId === 'trade_ord_spd&share[002]')) {
+      const colleagueBonus = productionColleagueBonus(records[id]?.skills ?? [])
+      if (role === 'backup' && options.completingReliefTeam && colleagueBonus > 0) {
         const room = targetRoom ?? cfg.rooms.find(r => r.id === productionRoomId(position.roomId))!
         const cleared = room.operatorIds.some(other => other !== id && records[other]?.skills.some(s => s.buffId === 'trade_ord_vodfox[000]'))
-        if (!cleared) efficiency = Math.max(0, workspace.mainPlan.facilities[position.roomId].slots.filter(s => s.occupant.kind === 'operator').length - 1) * 20
+        if (!cleared) efficiency = Math.max(0, workspace.mainPlan.facilities[position.roomId].slots.filter(s => s.occupant.kind === 'operator').length - 1) * colleagueBonus
       }
       removeOperator(cfg, workspace, position, context.insertionIndex)
-      return efficiency !== undefined && (efficiency > 0 || options.allowNeutral && efficiency === 0) ? [{ id, efficiency, preferred: allowed.has(id) }] : []
-    }).sort((a, b) => Number(b.efficiency > 0) - Number(a.efficiency > 0) || Number(b.preferred) - Number(a.preferred) || b.efficiency - a.efficiency).map(item => item.id)
+      return efficiency !== undefined && (efficiency > 0 || options.allowNeutral && efficiency === 0) ? [{ id, efficiency }] : []
+    }).sort((a, b) => b.efficiency - a.efficiency).map(item => item.id)
   }
-  if (!contexts.length) return [...candidates]
+  if (!contexts.length) return pool
   contexts.forEach(({ config }) => { config.operatorRecords = records })
   const baselines = contexts.map(({ config }) => quality(config))
-  const ranked = [...new Set(candidates.map(resolveId))].map(id => {
+  const ranked = pool.map(id => {
     const deltas = contexts.map(({ config: contextCfg, insertionIndex }, index) => {
       const room = contextCfg.rooms.find(r => r.id === productionRoomId(position.roomId))
       const prevPower = room?.powerStaffed ?? false

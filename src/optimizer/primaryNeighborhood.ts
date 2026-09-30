@@ -50,7 +50,7 @@ export function generateProductionMainNeighbors(workspace:RosterWorkspace,entrie
   protect(slot.metadata)
   if(slot.occupant.kind==='operator'&&name(slot.occupant.operatorId)==='菲亚梅塔')protect(slot.replacements)
  }
- const unused=inventory.operators.filter(o=>o.matchesMaximumSkills&&!reserved.has(o.charId)&&!special(o.charId))
+ const unused=inventory.operators.filter(o=>!reserved.has(o.charId)&&!special(o.charId))
  const positions=rooms.flatMap(room=>{
   if(room.type!=='manufacture'&&room.type!=='trading'&&room.type!=='power')return []
   const roomType=roomTypes[room.type]

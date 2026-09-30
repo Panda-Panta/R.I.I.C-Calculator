@@ -56,7 +56,7 @@ export function generateControlMainNeighbors(workspace:RosterWorkspace,entries:O
   if(slot.replacements.some(id=>special(id)||protectedSet.has(canonical(id))))return []
   return [index]
  })
- const pool=inventory.operators.filter(o=>o.matchesMaximumSkills&&o.skills.some(s=>s.roomType==='CONTROL')&&!reserved.has(o.charId)&&!special(o.charId))
+ const pool=inventory.operators.filter(o=>o.skills.some(s=>s.roomType==='CONTROL')&&!reserved.has(o.charId)&&!special(o.charId))
  const ranked=positions.map(index=>({index,ids:rankStaffingCandidates(workspace,inventory,{roomId:'central',slotIndex:index},pool.map(o=>o.charId),'main')}))
  const results:ControlMainNeighbor[]=[]
  for(let offset=0;offset<pool.length;offset++)for(const position of ranked){
