@@ -1,0 +1,33 @@
+{
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+  "logicalCpus": 20,
+  "concurrency": 4,
+  "elapsedMs": 158081.94030000002,
+  "evaluatedCandidates": 4,
+  "simulatedCandidates": 4,
+  "bestCandidateId": null,
+  "bestPath": [
+    "baseline"
+  ],
+  "matchesBaseline": true,
+  "createdWorkers": 4,
+  "terminatedWorkers": 4,
+  "batches": [
+    {
+      "jobs": 4,
+      "elapsedMs": 40261.592300000004
+    },
+    {
+      "jobs": 4,
+      "elapsedMs": 37433.199100000005
+    },
+    {
+      "jobs": 4,
+      "elapsedMs": 36933.48300000001
+    },
+    {
+      "jobs": 4,
+      "elapsedMs": 43050.1235
+    }
+  ]
+}

@@ -1,0 +1,313 @@
+{
+  "warmupHours": 24,
+  "sampleHours": 72,
+  "seed": 20260920,
+  "step": 0.25,
+  "elapsedMs": 32520.1312,
+  "eligible": true,
+  "matchesBaseline": true,
+  "self": [
+    {
+      "name": "frameAt",
+      "line": 17513,
+      "ms": 3097,
+      "percent": 9.52
+    },
+    {
+      "name": "frameAt",
+      "line": 17513,
+      "ms": 1149,
+      "percent": 3.53
+    },
+    {
+      "name": "currentRoom",
+      "line": 1543,
+      "ms": 797,
+      "percent": 2.45
+    },
+    {
+      "name": "matchesRiicIdentity",
+      "line": 5111,
+      "ms": 785,
+      "percent": 2.41
+    },
+    {
+      "name": "frameAt",
+      "line": 17513,
+      "ms": 716,
+      "percent": 2.2
+    },
+    {
+      "name": "buildRiicGlobalContext",
+      "line": 5463,
+      "ms": 640,
+      "percent": 1.97
+    },
+    {
+      "name": "simulateSchedule",
+      "line": 17216,
+      "ms": 607,
+      "percent": 1.87
+    },
+    {
+      "name": "mowerCorrectionPlan",
+      "line": 1865,
+      "ms": 599,
+      "percent": 1.84
+    },
+    {
+      "name": "evaluateOperators",
+      "line": 5912,
+      "ms": 585,
+      "percent": 1.8
+    },
+    {
+      "name": "frameAt",
+      "line": 17513,
+      "ms": 564,
+      "percent": 1.73
+    },
+    {
+      "name": "allPresentOperators",
+      "line": 5286,
+      "ms": 469,
+      "percent": 1.44
+    },
+    {
+      "name": "updateRates",
+      "line": 17351,
+      "ms": 456,
+      "percent": 1.4
+    },
+    {
+      "name": "advanceRoster",
+      "line": 17159,
+      "ms": 443,
+      "percent": 1.36
+    },
+    {
+      "name": "operatorFor",
+      "line": 4522,
+      "ms": 441,
+      "percent": 1.35
+    },
+    {
+      "name": "evaluateDormitoryRecovery",
+      "line": 16346,
+      "ms": 440,
+      "percent": 1.35
+    },
+    {
+      "name": "nextRosterEventHours",
+      "line": 17138,
+      "ms": 352,
+      "percent": 1.08
+    },
+    {
+      "name": "evaluateOperators",
+      "line": 5912,
+      "ms": 335,
+      "percent": 1.03
+    },
+    {
+      "name": "projectPublicState",
+      "line": 2894,
+      "ms": 318,
+      "percent": 0.98
+    },
+    {
+      "name": "(garbage collector)",
+      "line": 0,
+      "ms": 317,
+      "percent": 0.97
+    },
+    {
+      "name": "buildRiicGlobalContext",
+      "line": 5463,
+      "ms": 311,
+      "percent": 0.95
+    },
+    {
+      "name": "matchesRiicIdentity",
+      "line": 5111,
+      "ms": 308,
+      "percent": 0.95
+    },
+    {
+      "name": "computeRates",
+      "line": 16148,
+      "ms": 301,
+      "percent": 0.92
+    },
+    {
+      "name": "projectScheduleState",
+      "line": 17180,
+      "ms": 285,
+      "percent": 0.88
+    },
+    {
+      "name": "moraleRateSnapshot",
+      "line": 17083,
+      "ms": 280,
+      "percent": 0.86
+    },
+    {
+      "name": "operatorFor",
+      "line": 4522,
+      "ms": 278,
+      "percent": 0.85
+    }
+  ],
+  "inclusive": [
+    {
+      "name": "(root)",
+      "line": 0,
+      "ms": 32544,
+      "percent": 100
+    },
+    {
+      "name": "(anonymous)",
+      "line": 0,
+      "ms": 32148,
+      "percent": 98.78
+    },
+    {
+      "name": "processTicksAndRejections",
+      "line": 72,
+      "ms": 32148,
+      "percent": 98.78
+    },
+    {
+      "name": "simulateCandidate",
+      "line": 18160,
+      "ms": 32124,
+      "percent": 98.71
+    },
+    {
+      "name": "runScheduleSimulationBridge",
+      "line": 18044,
+      "ms": 32098,
+      "percent": 98.63
+    },
+    {
+      "name": "simulateSchedule",
+      "line": 17216,
+      "ms": 32070,
+      "percent": 98.54
+    },
+    {
+      "name": "settle",
+      "line": 7032,
+      "ms": 11701,
+      "percent": 35.96
+    },
+    {
+      "name": "nextStep",
+      "line": 7063,
+      "ms": 9459,
+      "percent": 29.07
+    },
+    {
+      "name": "crosses",
+      "line": 7072,
+      "ms": 7814,
+      "percent": 24.01
+    },
+    {
+      "name": "frame",
+      "line": 17648,
+      "ms": 7782,
+      "percent": 23.91
+    },
+    {
+      "name": "frameAt",
+      "line": 17513,
+      "ms": 7681,
+      "percent": 23.6
+    },
+    {
+      "name": "synchronize",
+      "line": 6830,
+      "ms": 6187,
+      "percent": 19.01
+    },
+    {
+      "name": "evaluateManufacturingCapacity",
+      "line": 5902,
+      "ms": 5819,
+      "percent": 17.88
+    },
+    {
+      "name": "buildRiicGlobalContext",
+      "line": 5463,
+      "ms": 5249,
+      "percent": 16.13
+    },
+    {
+      "name": "derivativeRates",
+      "line": 17432,
+      "ms": 4382,
+      "percent": 13.47
+    },
+    {
+      "name": "settle",
+      "line": 17491,
+      "ms": 4294,
+      "percent": 13.19
+    },
+    {
+      "name": "settleUnsafe",
+      "line": 17453,
+      "ms": 4289,
+      "percent": 13.18
+    },
+    {
+      "name": "settleRoster",
+      "line": 16671,
+      "ms": 4192,
+      "percent": 12.88
+    },
+    {
+      "name": "settleMowerSource",
+      "line": 3162,
+      "ms": 4161,
+      "percent": 12.79
+    },
+    {
+      "name": "updateRates",
+      "line": 17351,
+      "ms": 4031,
+      "percent": 12.39
+    },
+    {
+      "name": "(anonymous)",
+      "line": 17706,
+      "ms": 3227,
+      "percent": 9.92
+    },
+    {
+      "name": "frameAt",
+      "line": 17513,
+      "ms": 3202,
+      "percent": 9.84
+    },
+    {
+      "name": "planningSteps",
+      "line": 3415,
+      "ms": 2506,
+      "percent": 7.7
+    },
+    {
+      "name": "buildRiicGlobalContext",
+      "line": 5463,
+      "ms": 2331,
+      "percent": 7.16
+    },
+    {
+      "name": "(anonymous)",
+      "line": 17709,
+      "ms": 2234,
+      "percent": 6.87
+    }
+  ]
+}

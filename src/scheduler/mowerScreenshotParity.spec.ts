@@ -21,4 +21,6 @@ it.each(scenarios)('records screenshot steady-window scenario: $droneTarget / $a
   const r = result.report!
   summaries.push({ droneTarget, configuredAssumptions: assumptions, assumptions: r.assumptions, metrics: mowerReportMetrics(r), operators: r.operators, rooms: r.rooms, production: r.production, rosterEvents: r.events, diagnostics: r.diagnostics })
   writeFileSync(new URL(process.env.MOWER_PARITY_OUTPUT ?? 'screenshot-scenarios.json', root), JSON.stringify(summaries, null, 2))
-}, 600000)
+  // Full 336h Grandet runs can exceed ten minutes on a busy CPU.
+  // Keep the original windows and assertions; budget twenty minutes per scenario.
+}, 1200000)

@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/R.I.I.C-Calculator - Codex
+
+ ✓ src/scheduler/mowerScreenshotParity.spec.ts (3 tests | 2 skipped) 444017ms
+   ✓ records screenshot steady-window scenario: 'gold' / {}  444016ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 2 skipped (3)
+   Start at  07:55:35
+   Duration  445.65s (transform 583ms, setup 0ms, collect 1.05s, tests 444.02s, environment 0ms, prepare 142ms)
+

@@ -8,7 +8,7 @@ export class CandidateSimulationCache {
     // The bridge accepts JSON data. Preserve nested object insertion order too:
     // facility order drives room/operator/bed traversal and can affect ties.
     // Only the outer, named job envelope is normalized here.
-    return JSON.stringify([job.workspace, job.options, job.assumptions])
+    return JSON.stringify([job.workspace, job.options, job.assumptions, Boolean(job.incomeComparison)])
   }
 
   remember(key: string, result: CandidateSimulationResult): void {

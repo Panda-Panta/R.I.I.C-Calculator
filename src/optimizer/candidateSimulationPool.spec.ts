@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runCandidateBatch, candidateConcurrency } from './candidateSimulationPool'
+import { runCandidateBatch, candidateConcurrency, CandidateSimulationPool } from './candidateSimulationPool'
 import type { CandidateSimulationJob, CandidateSimulationResult } from './candidateSimulation'
 import { simulateCandidate } from './candidateSimulation'
 import { createDefaultWorkspace } from '../workbench/defaults'
@@ -17,6 +17,37 @@ class TestWorker {
 const jobs = [0, 1, 2, 3, 4].map(i => ({ workspace: { name: String(i) } })) as CandidateSimulationJob[]
 
 describe('bounded candidate CPU workers', () => {
+  it('keeps workers alive across search batches and releases them at the end', async () => {
+    const workers: TestWorker[] = []
+    const pool = new CandidateSimulationPool({ concurrency: 2, createWorker: () => {
+      const worker = new TestWorker(); workers.push(worker); return worker
+    } })
+    try {
+      const first = pool.run(jobs.slice(0, 2))
+      workers[1]!.finish(1); workers[0]!.finish(0)
+      expect((await first).map(r => r.simScore)).toEqual([0, 1])
+      expect(workers.every(w => !w.terminated)).toBe(true)
+      const second = pool.run(jobs.slice(2, 4))
+      expect(workers).toHaveLength(2)
+      workers[0]!.finish(2); workers[1]!.finish(3)
+      expect((await second).map(r => r.simScore)).toEqual([2, 3])
+      expect(workers.map(w => w.jobs.length)).toEqual([2, 2])
+    } finally { pool.dispose() }
+    expect(workers.every(w => w.terminated)).toBe(true)
+  })
+  it('rejects overlapping batches and cancels an active pool without leaving a pending promise', async () => {
+    const workers: TestWorker[] = []
+    const pool = new CandidateSimulationPool({ concurrency: 2, createWorker: () => {
+      const worker = new TestWorker(); workers.push(worker); return worker
+    } })
+    const active = pool.run(jobs)
+    const canceled = expect(active).rejects.toThrow('已取消')
+    await expect(pool.run(jobs)).rejects.toThrow('上一批')
+    pool.dispose(); pool.dispose()
+    await canceled
+    expect(workers.every(w => w.terminated)).toBe(true)
+    await expect(pool.run(jobs)).rejects.toThrow('已关闭')
+  })
   it('limits active jobs, reuses workers, and returns input order despite reverse completion', async () => {
     const workers: TestWorker[] = [], completed: number[] = []
     const result = runCandidateBatch(jobs, { concurrency: 2, createWorker: () => {

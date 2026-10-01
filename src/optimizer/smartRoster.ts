@@ -6,11 +6,12 @@ import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/ope
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 import { scoreProduction } from './productionObjective'
 import { hasConsumptionSkill } from './fixedDuty'
-import { runRosterIncomeSearch, type IncomeSearchResult } from './rosterIncomeSearch'
+import { rosterIncomeSearchSteps, type IncomeSearchResult } from './rosterIncomeSearch'
 import { validatePhysicalRoster } from './rosterDraft'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
-import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult } from './candidateSimulation'
+import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
+export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
 
 export interface SmartRosterOptions {
@@ -101,12 +102,16 @@ export function runSmartRoster(
   const run = smartRosterSteps(base, entries, options, onProgress)
   let step = run.next()
   while (!step.done) {
-    const completed = simulationProgress(step.value.length, onProgress)
-    step = run.next(step.value.map((job, index) => {
-      const result = simulateCandidate(job)
-      completed(result, index)
-      return result
-    }))
+    const batch = step.value
+    let results: CandidateSimulationResult[]
+    try {
+      results = batch.jobs.map((job, index) => {
+        const result = simulateCandidate(job)
+        batch.onComplete(result, index)
+        return result
+      })
+    } catch (error) { step = run.throw(error); continue }
+    step = run.next(results)
   }
   return step.value
 }
@@ -121,11 +126,6 @@ function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress)
   }
 }
 
-export type CandidateBatchExecutor = (
-  jobs: CandidateSimulationJob[],
-  onComplete: (result: CandidateSimulationResult, index: number) => void,
-) => Promise<CandidateSimulationResult[]>
-
 export async function runSmartRosterParallel(
   base: RosterWorkspace,
   entries: readonly OwnedOperatorInput[],
@@ -136,9 +136,12 @@ export async function runSmartRosterParallel(
   const run = smartRosterSteps(base, entries, options, onProgress)
   let step = run.next()
   while (!step.done) {
-    const jobs = step.value
-    const results = await execute(jobs, simulationProgress(jobs.length, onProgress))
-    if (results.length !== jobs.length) throw new Error('候选仿真返回数量不完整')
+    const { jobs, onComplete } = step.value
+    let results: CandidateSimulationResult[]
+    try {
+      results = await execute(jobs, onComplete)
+      if (results.length !== jobs.length) throw new Error('候选仿真返回数量不完整')
+    } catch (error) { step = run.throw(error); continue }
     step = run.next(results)
   }
   return step.value
@@ -149,7 +152,7 @@ function* smartRosterSteps(
   entries: readonly OwnedOperatorInput[],
   options: SmartRosterOptions = {},
   onProgress?: (p: SmartRosterProgress) => void,
-): Generator<CandidateSimulationJob[], SmartRosterResult, CandidateSimulationResult[]> {
+): Generator<CandidateSimulationBatch, SmartRosterResult, CandidateSimulationResult[]> {
  base = mainPlanOnly(base)
   const result: SmartRosterResult = {
     status: 'blocked',
@@ -303,7 +306,7 @@ function* smartRosterSteps(
   // Capture keys before dispatch; later policy/placement changes must not turn
   // a report of the original input into a report of the modified workspace.
   const inputKeys = jobs.map(job => cache.key(job))
-  const simulationResults = yield jobs
+  const simulationResults = yield { jobs, onComplete: simulationProgress(jobs.length, onProgress) }
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!
@@ -388,7 +391,7 @@ function* smartRosterSteps(
     })
 
     try {
-      const searchResult = runRosterIncomeSearch(
+      const searchResult = yield* rosterIncomeSearchSteps(
         {
           baseline: finalWorkspace,
           inventory: [...entries],
@@ -416,8 +419,8 @@ function* smartRosterSteps(
         progress => {
           onProgress?.({
             phase: 'searching',
-            phaseProgress: progress.completedCandidates / Math.max(1, progress.totalCandidates),
-            label: `阶段 3/3: 邻域微调 ${progress.label} (${progress.completedCandidates}/${progress.totalCandidates})`,
+            phaseProgress: 0.5 + 0.5 * progress.completedScenarios / Math.max(1, progress.totalScenarios),
+            label: `阶段 3/3: 邻域微调 ${progress.label} (候选 ${progress.completedCandidates}/${progress.totalCandidates}，场景 ${progress.completedScenarios}/${progress.totalScenarios})`,
           })
         }
       )

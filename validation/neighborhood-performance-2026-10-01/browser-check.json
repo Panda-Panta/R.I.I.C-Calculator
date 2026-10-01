@@ -1,0 +1,21 @@
+{
+  "parallel": {
+    "passed": true,
+    "equivalent": true,
+    "created": 4,
+    "terminated": 4,
+    "scenarios": 4,
+    "searching": true,
+    "status": "draft",
+    "score": 38400,
+    "window": "0h warmup + 1h sample",
+    "evidence": "browser-parallel.png"
+  },
+  "cancellation": {
+    "passed": true,
+    "children": 4,
+    "lateHeartbeats": 0
+  },
+  "parentBundle": "smartRosterWorker-CVhX7Z4s.js",
+  "childBundle": "candidateSimulationWorker-DkO-2yaR.js"
+}

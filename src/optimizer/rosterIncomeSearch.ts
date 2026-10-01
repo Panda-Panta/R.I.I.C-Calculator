@@ -9,10 +9,10 @@ import type {SimulationAssumptions} from '../scheduler/types'
 import type {ScheduleSimulationOptions} from '../simulator/scheduleSimulation'
 import {resolveOperatorCharId as resolveId} from '../workbench/compat/mowerJson'
 import type {RosterWorkspace} from '../workbench/model'
-import {runScheduleSimulationBridge} from '../workbench/scheduleSimulationBridge'
+import {simulateCandidate,type CandidateSimulationBatch,type CandidateSimulationResult,type CandidateBatchExecutor} from './candidateSimulation'
 import {validatePhysicalRoster} from './rosterDraft'
 import {generateBackupNeighbors,type BackupNeighbor} from './backupNeighborhood'
-import {summarizeIncome,compareIncome,type IncomeCase,type IncomeComparison} from './incomeComparison'
+import {compareIncome,type IncomeCase,type IncomeComparison} from './incomeComparison'
 
 export type IncomeSearchMode='single-pass'|'hill-climb'|'multi-start'
 export type IncomeSearchMove=BackupNeighbor['move']|ControlMainNeighbor['move']|ProductionMainNeighbor['move']|PrimaryBackupNeighbor['move']
@@ -91,6 +91,29 @@ interface Frontier {parent:IncomeSearchEvaluation;neighbors:SearchNeighbor[];ind
 
 /** Whole-candidate budget; every accepted step must improve both the original and its parent. */
 export function runRosterIncomeSearch(request:IncomeSearchRequest,onProgress?:(progress:IncomeSearchProgress)=>void):IncomeSearchResult {
+ const run=rosterIncomeSearchSteps(request,onProgress)
+ let step=run.next()
+ while(!step.done){
+  const batch=step.value
+  const results=batch.jobs.map((job,index)=>{const result=simulateCandidate(job);batch.onComplete(result,index);return result})
+  step=run.next(results)
+ }
+ return step.value
+}
+
+/** Only independent scenarios run concurrently; frontier admission stays in serial order. */
+export async function runRosterIncomeSearchParallel(request:IncomeSearchRequest,execute:CandidateBatchExecutor,onProgress?:(progress:IncomeSearchProgress)=>void):Promise<IncomeSearchResult> {
+ const run=rosterIncomeSearchSteps(request,onProgress)
+ let step=run.next()
+ while(!step.done){
+  const batch=step.value,results=await execute(batch.jobs,batch.onComplete)
+  if(results.length!==batch.jobs.length)throw new Error('邻域场景返回数量不完整')
+  step=run.next(results)
+ }
+ return step.value
+}
+
+export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?:(progress:IncomeSearchProgress)=>void):Generator<CandidateSimulationBatch,IncomeSearchResult,CandidateSimulationResult[]> {
  const settings=normalize(request)
  if(settings.mode==='multi-start')return runMultiStartSearch(request,settings,onProgress)
  const baseline=structuredClone(request.baseline),baseErrors=validatePhysicalRoster(baseline)
@@ -114,18 +137,21 @@ export function runRosterIncomeSearch(request:IncomeSearchRequest,onProgress?:(p
  const scenarios=settings.seeds.flatMap(seed=>settings.steps.map(step=>({seed,step})))
  let completedScenarios=0
  const notify=(label:string,completed?:IncomeSearchEvaluation)=>onProgress?.({completedCandidates:result.evaluatedCandidates,totalCandidates:settings.maxCandidates,completedScenarios,totalScenarios:settings.maxCandidates*4,label,completed:completed?structuredClone(completed):undefined,bestCandidateId:result.bestCandidateId})
- const evaluate=(evaluation:IncomeSearchEvaluation,parent?:IncomeSearchEvaluation)=>{
+ const evaluate=function*(evaluation:IncomeSearchEvaluation,parent?:IncomeSearchEvaluation):Generator<CandidateSimulationBatch,boolean,CandidateSimulationResult[]>{
   const key=fingerprint(evaluation.workspace)
   if(parent)comparedEdges.add(parent.id+':'+evaluation.origin+':'+evaluation.conditional+':'+key)
   const cached=cache.get(key)
   if(cached){evaluation.cases=structuredClone(cached);evaluation.cached=true}
   else{
-  for(const {seed,step} of scenarios){
-   notify(evaluation.label)
-   const options={...structuredClone(settings.options),maxStepHours:step,production:{...structuredClone(settings.options.production),seed}}
-   const response=runScheduleSimulationBridge(evaluation.workspace,options,structuredClone(settings.assumptions))
-   if(!response.report)throw new Error(`${evaluation.label}：${response.error??'模拟未返回报告'}`)
-   evaluation.cases.push(summarizeIncome(response.report));completedScenarios++;notify(evaluation.label)
+  notify(evaluation.label)
+  const jobs=scenarios.map(({seed,step})=>({workspace:evaluation.workspace,incomeComparison:true,
+   options:{...structuredClone(settings.options),maxStepHours:step,production:{...structuredClone(settings.options.production),seed}},assumptions:structuredClone(settings.assumptions)}))
+  const results=yield {jobs,onComplete:()=>{completedScenarios++;notify(evaluation.label)}}
+  if(results.length!==scenarios.length)throw new Error('邻域场景返回数量不完整')
+  for(const [index,summary] of results.entries()){
+   const scenario=scenarios[index]!,incomeCase=summary.incomeCase
+   if(!incomeCase||incomeCase.seed!==scenario.seed||incomeCase.step!==scenario.step)throw new Error(`${evaluation.label}：邻域场景证据缺失或顺序错误`)
+   evaluation.cases.push(incomeCase)
   }
   cache.set(key,structuredClone(evaluation.cases));result.simulatedCandidates++
   }
@@ -182,17 +208,17 @@ export function runRosterIncomeSearch(request:IncomeSearchRequest,onProgress?:(p
   }
   return undefined
  }
- evaluate(initial);addFrontier(initial)
+ yield* evaluate(initial);addFrontier(initial)
  const draftDifferent=fingerprint(source)!==fingerprint(baseline)
  if(draftDifferent&&result.evaluatedCandidates<settings.maxCandidates){
   const draft:IncomeSearchEvaluation={id:`candidate-${result.evaluatedCandidates}`,label:'组合草案',workspace:source,cases:[],comparison:null,cached:false,parentId:'baseline',parentComparison:null,depth:0,origin:'draft',conditional:request.conditional??false,move:null}
-  evaluate(draft,initial);addFrontier(draft)
+  yield* evaluate(draft,initial);addFrontier(draft)
  }
  while(result.evaluatedCandidates<settings.maxCandidates){
   const next=takeNext();if(!next)break
   const {parent,neighbor}=next
   const evaluation:IncomeSearchEvaluation={id:`candidate-${result.evaluatedCandidates}`,label:(parent.origin==='draft'?'草案：':'')+neighbor.label,workspace:neighbor.workspace,cases:[],comparison:null,cached:false,parentId:parent.id,parentComparison:null,depth:parent.depth+1,origin:parent.origin,conditional:parent.conditional,move:neighbor.move}
-  const accepted=evaluate(evaluation,parent)
+  const accepted=yield* evaluate(evaluation,parent)
   if(accepted&&settings.mode==='hill-climb'){
    if(evaluation.depth<settings.maxDepth)addFrontier(evaluation,true)
    else depthBoundaries.push(evaluation)

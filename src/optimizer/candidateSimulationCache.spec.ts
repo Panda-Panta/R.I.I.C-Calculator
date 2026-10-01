@@ -39,6 +39,7 @@ describe('request-local simulation cache', () => {
       j => { j.assumptions!.restingThreshold = 0.5 },
       j => { j.workspace.mainPlan.conf.workaholic = ['砾'] },
       j => { j.workspace.mainPlan.facilities.room_1_1.level = 2 },
+      j => { j.incomeComparison = true },
     ]
     for (const mutate of mutations) { const changed = structuredClone(input); mutate(changed); expect(cache.get(changed)).toBeUndefined() }
   })

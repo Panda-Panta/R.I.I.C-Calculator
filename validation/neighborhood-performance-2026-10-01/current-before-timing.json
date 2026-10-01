@@ -1,0 +1,16 @@
+{
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+  "logicalCpus": 20,
+  "concurrency": 1,
+  "elapsedMs": 495164.0269,
+  "evaluatedCandidates": 4,
+  "simulatedCandidates": 4,
+  "bestCandidateId": null,
+  "bestPath": [
+    "baseline"
+  ],
+  "matchesBaseline": null,
+  "createdWorkers": 0,
+  "terminatedWorkers": 0,
+  "batches": []
+}

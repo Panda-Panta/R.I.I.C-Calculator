@@ -1,0 +1,10 @@
+{
+  "originalCases": 3,
+  "retryCases": 1,
+  "originalGoldMatchesRetry": true,
+  "effectivePassedTests": 2147,
+  "intentionalSkippedTests": 1,
+  "effectivePassedFiles": 187,
+  "originalTimeouts": 2,
+  "successfulTimeoutRetries": 2
+}

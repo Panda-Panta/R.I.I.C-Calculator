@@ -18,4 +18,6 @@ it('replays physical Mower task decisions and production exactly for the same or
   const mismatch = Array.from({ length: Math.max(events[0]!.length, events[1]!.length) }, (_, i) => i)
     .find(i => JSON.stringify(events[0]![i]) !== JSON.stringify(events[1]![i]))
   expect(mismatch, JSON.stringify({ mismatch, pair: events.map(es => es.slice(Math.max(0,(mismatch ?? 0)-1), (mismatch ?? 0)+2)) })).toBeUndefined()
-}, 360000)
+  // Two complete 168h physical-task replays can exceed six minutes on a busy CPU.
+  // Preserve both full replays and their exact assertions; only allow more wall time.
+}, 1200000)

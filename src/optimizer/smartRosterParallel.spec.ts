@@ -25,6 +25,38 @@ function candidates() {
 }
 
 describe('parallel smart roster preserves serial semantics', () => {
+  it('preserves the fully verified second-stage result when a deep-search worker fails', async () => {
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)
+    const result = await runSmartRosterParallel(baseWorkspace(), entries, { ...options, enableDeepSearch: true }, async (jobs, done) => {
+      if (jobs[0]?.incomeComparison) throw new Error('deep worker failed')
+      return jobs.map((job, i) => { const result = simulateCandidate(job); done(result, i); return result })
+    })
+    const baseline = runSmartRoster(baseWorkspace(), entries, options)
+    expect(result.status).toBe('draft')
+    expect(result.workspace).toEqual(baseline.workspace)
+    expect(result.score).toEqual(baseline.score)
+    expect(result.diagnostics).toContainEqual({ code: 'SEARCH_FALLBACK', message: '邻域深度搜索未产生进一步改动：deep worker failed' })
+    expect(result.phases.search).toEqual({ improved: false, gain: 0 })
+  })
+  it('dispatches the four deep-search scenarios through the real batch executor', async () => {
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)
+    const input = { ...options, enableDeepSearch: true }, batches: number[] = [], progress: SmartRosterProgress[] = []
+    const serial = runSmartRoster(baseWorkspace(), entries, input)
+    const parallel = await runSmartRosterParallel(baseWorkspace(), entries, input, async (jobs, done) => {
+      if (jobs[0]?.incomeComparison) {
+        expect(jobs.every(job => job.incomeComparison)).toBe(true)
+        batches.push(jobs.length)
+      }
+      const results = jobs.map(simulateCandidate)
+      for (let i = results.length - 1; i >= 0; i--) done(results[i]!, i)
+      return results
+    }, p => progress.push(p))
+    expect(batches).toEqual([4])
+    expect(parallel).toEqual(serial)
+    expect(parallel.phases.search?.result?.baseline.cases).toHaveLength(4)
+    expect(progress.filter(p => p.phase === 'simulating').map(p => p.phaseProgress)).toEqual([0, 0.5, 1])
+    expect(progress.some(p => p.phase === 'searching' && p.label.includes('场景 4/80'))).toBe(true)
+  })
   it('reuses the winning completed simulation when the final input is unchanged', () => {
     vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)
     const simulate = vi.spyOn(bridge, 'runScheduleSimulationBridge')

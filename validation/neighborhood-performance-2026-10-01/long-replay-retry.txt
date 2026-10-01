@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/R.I.I.C-Calculator - Codex
+
+ ✓ src/scheduler/mowerRosterDeterminism.spec.ts (1 test) 649006ms
+   ✓ replays physical Mower task decisions and production exactly for the same order seed  649004ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:37:54
+   Duration  650.91s (transform 699ms, setup 0ms, collect 1.28s, tests 649.01s, environment 0ms, prepare 148ms)
+
