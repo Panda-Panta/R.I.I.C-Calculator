@@ -23,7 +23,7 @@ const phaseRank = { PHASE_0: 0, PHASE_1: 1, PHASE_2: 2 }
 
 function cleanDescription(value = '') {
   return value
-    .replace(/<\$cc\.[^>]+>/g, '')
+    .replace(/<+\$cc\.[^>]+>/g, '')
     .replace(/<@cc\.[^>]+>/g, '')
     .replace(/<\/?>/g, '')
     .replace(/<[^>]+>/g, '')
@@ -31,37 +31,41 @@ function cleanDescription(value = '') {
     .trim()
 }
 
-function bestSkill(slot) {
-  return [...(slot.buffData ?? [])].sort((left, right) => {
-    const phase = (phaseRank[right.cond?.phase] ?? 0) - (phaseRank[left.cond?.phase] ?? 0)
-    return phase || (right.cond?.level ?? 1) - (left.cond?.level ?? 1)
-  })[0]
+function normalizeSkill(entry, charId) {
+  const buff = building.buffs?.[entry.buffId]
+  if (!buff) throw new Error(`Missing buff definition: ${charId}/${entry.buffId}`)
+  const unlockPhase = phaseRank[entry.cond?.phase]
+  if (!Number.isInteger(unlockPhase)) throw new Error(`Unknown skill unlock phase: ${charId}/${entry.buffId}`)
+  const unlockLevel = entry.cond?.level
+  if (!Number.isInteger(unlockLevel) || unlockLevel < 1) {
+    throw new Error(`Invalid skill unlock level: ${charId}/${entry.buffId}`)
+  }
+  return {
+    buffId: entry.buffId,
+    name: buff.buffName ?? '',
+    roomType: buff.roomType ?? '',
+    skillIcon: buff.skillIcon ?? '',
+    description: cleanDescription(buff.description),
+    unlockPhase,
+    unlockLevel,
+  }
 }
 
 const operators = []
 const excludedWithoutBuildingData = []
 for (const [charId, base] of Object.entries(characters)) {
-  if (!base.name || charId.startsWith('trap_') || base.profession === 'TOKEN') continue
+  if (!base.name || charId.startsWith('trap_') || base.profession === 'TOKEN' || base.isNotObtainable) continue
   const buildingChar = building.chars?.[charId]
   if (!buildingChar?.buffChar?.length) {
     excludedWithoutBuildingData.push({ charId, name: base.name })
     continue
   }
-  const skills = buildingChar.buffChar
-    .map(bestSkill)
-    .filter(Boolean)
-    .map((entry) => {
-      const buff = building.buffs?.[entry.buffId] ?? {}
-      return {
-        buffId: entry.buffId,
-        name: buff.buffName ?? '',
-        roomType: buff.roomType ?? '',
-        skillIcon: buff.skillIcon ?? '',
-        description: cleanDescription(buff.description),
-        unlockPhase: phaseRank[entry.cond?.phase] ?? 0,
-        unlockLevel: entry.cond?.level ?? 1,
-      }
-    })
+  const skillSlots = buildingChar.buffChar.map(slot => (slot.buffData ?? [])
+    .map(entry => normalizeSkill(entry, charId))
+    .sort((left, right) => left.unlockPhase - right.unlockPhase || left.unlockLevel - right.unlockLevel))
+    .filter(slot => slot.length > 0)
+  // Keep the maximum-stage view for existing consumers; actual levels use all versions.
+  const skills = skillSlots.flatMap(slot => slot.length ? [slot[slot.length - 1]] : [])
 
   operators.push({
     charId,
@@ -72,7 +76,9 @@ for (const [charId, base] of Object.entries(characters)) {
     nationId: base.nationId ?? null,
     groupId: base.groupId ?? null,
     teamId: base.teamId ?? null,
+    isAlter: Boolean(base.isSpChar),
     skills,
+    skillSlots,
   })
 }
 
@@ -83,15 +89,16 @@ if (operators.some((operator) => operator.skills.length === 0)) {
 }
 
 const payload = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   sourceVersion,
   operatorCount: operators.length,
   skillCount: operators.reduce((sum, operator) => sum + operator.skills.length, 0),
+  skillStageCount: operators.reduce((sum, operator) => sum + operator.skillSlots.reduce((count, slot) => count + slot.length, 0), 0),
   operators,
 }
 
 const output = path.resolve('src/data/operators.generated.json')
 fs.mkdirSync(path.dirname(output), { recursive: true })
 fs.writeFileSync(output, `${JSON.stringify(payload)}\n`, 'utf8')
-console.log(`Generated ${payload.operatorCount} RIIC operator profiles with ${payload.skillCount} skills at ${output}`)
+console.log(`Generated ${payload.operatorCount} RIIC operator profiles with ${payload.skillCount} highest-stage skills and ${payload.skillStageCount} skill stages at ${output}`)
 console.log(`Excluded ${excludedWithoutBuildingData.length} characters without building_data records`)

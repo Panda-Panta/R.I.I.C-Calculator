@@ -9,7 +9,7 @@
     <RootNamespace>RIIC_Calculator.Desktop</RootNamespace>
     <AssemblyTitle>明日方舟基建排班与全动态模拟测算器</AssemblyTitle>
     <Product>R.I.I.C-Calculator</Product>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <PublishSingleFile>true</PublishSingleFile>

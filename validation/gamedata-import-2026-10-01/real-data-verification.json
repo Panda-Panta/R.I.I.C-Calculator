@@ -1,0 +1,12 @@
+{
+  "source": "C:/Users/Panda-Panta/Downloads/Compressed/ArknightsGameData-master/zh_CN/gamedata/excel",
+  "importExitCode": 0,
+  "auditExitCode": 0,
+  "operators": 425,
+  "highestSkills": 746,
+  "skillStages": 913,
+  "slotMismatchesWithCurrentData": [],
+  "currentDataUnchanged": true,
+  "currentDataSha256": "7cdea1d1ac699361927e2e2bb4e60d67b3a291ab89ec08b1ca0ed90753185e17",
+  "comparison": "All imported official profiles have identical skillSlots and isAlter to their corresponding active profiles. The active catalog, including its supplemental profiles, was not overwritten."
+}
