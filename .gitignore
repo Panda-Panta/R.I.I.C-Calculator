@@ -20,6 +20,8 @@ __pycache__/
 *.py[cod]
 /CHANGELOG*.md
 /docs/*
+# Design and implementation plans stay local; do not force-add this directory.
+/docs/superpowers/
 !/docs/用户说明书.md
 !/docs/UPDATE_*.md
 /一键排班算法实施计划.md
