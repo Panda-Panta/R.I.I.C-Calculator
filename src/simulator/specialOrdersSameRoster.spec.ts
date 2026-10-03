@@ -6,7 +6,6 @@ import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
 import { compiledScheduleToRuntimeConfig } from '../scheduler/scheduleAdapter'
 import { createRosterRuntime } from '../scheduler/rosterRuntime'
 import { getMowerSourceRuntime } from '../scheduler/mowerSourceRuntime'
-import { prepareRunOrderSwap } from './mowerRunOrder'
 
 type Runner = '普通订单' | '但书' | '龙舌兰' | '佩佩' | '可露希尔' | 'U-Official'
 const targetRoom = 'room_1_1'
@@ -55,10 +54,8 @@ describe('same imported Mower roster with one trading operator changed', () => {
 
   it.each(['但书', '龙舌兰', '佩佩', '可露希尔', 'U-Official'] as const)('recognizes %s in the replacement slot as a run-order candidate', runner => {
     const schedule = compileRosterSchedule(sameRoster(runner))
-    const room = schedule.rooms.find(value => value.roomId === targetRoom)!
     expect(schedule.runOrderPolicies.find(policy => policy.roomId === targetRoom)?.orderedOperatorIds).toContain(id(runner))
     expect(compiledScheduleToRuntimeConfig(schedule).positions.find(position => position.id === targetRoom + '_1')?.candidates).not.toContain(id(runner))
-    expect(prepareRunOrderSwap(room, { [targetRoom + '_1']: id('绮良') }).swaps.some(swap => swap.incomingOperatorId === id(runner))).toBe(true)
   })
 
   it.each(['普通订单', '但书', '龙舌兰', '佩佩', '可露希尔', 'U-Official'] as const)('%s', runner => {
@@ -79,18 +76,18 @@ describe('same imported Mower roster with one trading operator changed', () => {
     }
   }, 30000)
 
-  it.each(['但书', '龙舌兰', '佩佩', '可露希尔', 'U-Official'] as const)('Grandet: %s follows its roster role and affects an order', runner => {
+  it.each(['但书', '龙舌兰', '佩佩', '可露希尔', 'U-Official'] as const)('ideal: %s follows its roster role without temporary staffing', runner => {
     const result = runScheduleSimulationBridge(sameRoster(runner), {
       sampleHours: 8,
       warmupHours: 0,
       recordSegments: true,
-      production: { outputMode: 'potential', runOrderMode: 'grandet', droneTarget: 'none', seed: 42 },
+      production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'none', seed: 42 },
     }, { restingThreshold: .65, freeRoom: false, fiammettaFool: false })
     const report = result.report!
     expect(report.success, JSON.stringify(report.diagnostics)).toBe(true)
     const entered = report.segments.some(segment => Object.entries(segment.occupants).some(([position, operator]) => position.startsWith(targetRoom + '_') && operator === id(runner)))
     const orders = report.production!.events.filter(event => event.type === 'order-completed' && event.roomId === targetRoom).map(event => event.order!)
-    expect(entered).toBe(true)
+    expect(entered).toBe(false)
     expect(orders.some(order => order.kind === ({ 但书: 'proviso', 龙舌兰: 'tequila', 佩佩: 'pepe', 可露希尔: 'closure', 'U-Official': 'uOfficial' } as const)[runner])).toBe(true)
     if (runner === '佩佩') expect(orders.filter(order => order.kind === 'pepe').every(order => order.baseMinutes === 270 && order.goldCost === 0 && order.lmdReward === 1000)).toBe(true)
     if (runner === '可露希尔') expect(orders.filter(order => order.kind === 'closure').every(order => order.baseMinutes === 144 && order.goldCost === 2 && order.lmdReward === 1200)).toBe(true)

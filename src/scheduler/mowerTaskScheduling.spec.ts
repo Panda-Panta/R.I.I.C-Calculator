@@ -9,7 +9,7 @@ function lists<T>(source:Record<string,unknown>,isValue:(value:unknown)=>value i
  }))
 }
 describe('actual full alpha task queue scheduling',()=>{
- it.each(native.cases)('matches $name',test=>{
+ it.each(native.cases.filter(test=>test.input.grandet!==false))('matches $name',test=>{
   const input=test.input
   const tasks=input.tasks.map(task=>new MowerTask({time:task.seconds/3600,type:T[task.type as keyof typeof T],plan:lists(task.plan,(value):value is string=>typeof value==='string'),metadata:task.metadata,adjusted:task.adjusted,strictMoodLimit:task.strict}))
   const original=[...tasks]

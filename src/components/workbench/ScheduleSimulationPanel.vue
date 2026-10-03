@@ -20,15 +20,13 @@ const restingPercent=ref(typeof savedSettings.restingPercent==='number'&&Number.
 const rescuePercent=ref(typeof savedSettings.rescuePercent==='number'&&Number.isFinite(savedSettings.rescuePercent)&&savedSettings.rescuePercent>=0&&savedSettings.rescuePercent<=100?savedSettings.rescuePercent:75)
 const fiammettaPercent=ref(typeof savedSettings.fiammettaPercent==='number'&&Number.isFinite(savedSettings.fiammettaPercent)&&savedSettings.fiammettaPercent>=0&&savedSettings.fiammettaPercent<=100?savedSettings.fiammettaPercent:90)
 const fiammettaFool=ref(typeof savedSettings.fiammettaFool==='boolean'?savedSettings.fiammettaFool:true),freeRoom=ref(typeof savedSettings.freeRoom==='boolean'?savedSettings.freeRoom:false)
-const runOrderMode=ref<'ideal'|'grandet'>(savedSettings.runOrderMode==='grandet'?'grandet':'ideal'),droneTarget=ref<'gold'|'exp'|'none'>('gold')
-const runOrderLeadSeconds=ref(typeof savedSettings.runOrderLeadSeconds==='number'&&Number.isFinite(savedSettings.runOrderLeadSeconds)?savedSettings.runOrderLeadSeconds:180)
-const runOrderBufferSeconds=ref(typeof savedSettings.runOrderBufferSeconds==='number'&&Number.isFinite(savedSettings.runOrderBufferSeconds)?savedSettings.runOrderBufferSeconds:15)
+const droneTarget=ref<'gold'|'exp'|'none'>('gold')
 const initialGold=ref(0),initialLmd=ref(0),initialOrirock=ref(0),initialDevice=ref(0),initialDrone=ref(0),seed=ref(1),collectionIntervalHours=ref(0)
 const inventoryMode=ref<'unlimited'|'finite'>('unlimited')
 const outputMode=ref<'potential'|'settled'>('potential')
-const productionInputs=[outputMode,inventoryMode,runOrderMode,droneTarget,initialGold,initialLmd,initialOrirock,initialDevice,initialDrone,seed,collectionIntervalHours]
+const productionInputs=[outputMode,inventoryMode,droneTarget,initialGold,initialLmd,initialOrirock,initialDevice,initialDrone,seed,collectionIntervalHours]
 const draftForSearch=ref<RosterDraftResult|null>(null)
-const searchOptions=computed(()=>({maxStepHours:step.value,warmupModel:warmupModel.value,production:{inventoryMode:inventoryMode.value,runOrderMode:runOrderMode.value,...(runOrderMode.value==='grandet'?{runOrderLeadSeconds:runOrderLeadSeconds.value,runOrderBufferSeconds:runOrderBufferSeconds.value}:{}),droneTarget:droneTarget.value,initialResources:{gold:initialGold.value,lmd:initialLmd.value,orirock:initialOrirock.value,device:initialDevice.value,drone:initialDrone.value},seed:seed.value,collectionIntervalHours:collectionIntervalHours.value}}))
+const searchOptions=computed(()=>({maxStepHours:step.value,warmupModel:warmupModel.value,production:{inventoryMode:inventoryMode.value,runOrderMode:'ideal' as const,droneTarget:droneTarget.value,initialResources:{gold:initialGold.value,lmd:initialLmd.value,orirock:initialOrirock.value,device:initialDevice.value,drone:initialDrone.value},seed:seed.value,collectionIntervalHours:collectionIntervalHours.value}}))
 const searchAssumptions=computed(()=>({restingThreshold:restingPercent.value/100,rescueThreshold:rescuePercent.value/100,fiammettaFool:fiammettaFool.value,fiammettaThreshold:fiammettaPercent.value/100,freeRoom:freeRoom.value,operationDurationHours:0}))
 const simulationProduction=computed(()=>({...searchOptions.value.production,outputMode:outputMode.value,...(outputMode.value==='potential'?{initialResources:{drone:initialDrone.value},collectionIntervalHours:0}:{})}))
 const reportBasis=ref('当前排班')
@@ -44,10 +42,10 @@ function cancel(){worker?.terminate();worker=undefined;running.value=false}
 function clear(){cancel();report.value=null;timelineData.value=null;error.value=''}
 watch(()=>props.workspace,clear,{deep:true})
 watch([sampleDays,warmupDays,step,warmupModel,...productionInputs],clear)
-watch([restingPercent,rescuePercent,fiammettaPercent,fiammettaFool,freeRoom,runOrderMode,runOrderLeadSeconds,runOrderBufferSeconds],()=>{
- try{localStorage.setItem(settingsKey,JSON.stringify({restingPercent:restingPercent.value,rescuePercent:rescuePercent.value,fiammettaPercent:fiammettaPercent.value,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value,runOrderMode:runOrderMode.value,runOrderLeadSeconds:runOrderLeadSeconds.value,runOrderBufferSeconds:runOrderBufferSeconds.value}))}catch{}
+watch([restingPercent,rescuePercent,fiammettaPercent,fiammettaFool,freeRoom],()=>{
+ try{localStorage.setItem(settingsKey,JSON.stringify({restingPercent:restingPercent.value,rescuePercent:rescuePercent.value,fiammettaPercent:fiammettaPercent.value,fiammettaFool:fiammettaFool.value,freeRoom:freeRoom.value}))}catch{}
  clear()
-})
+},{immediate:true})
 onBeforeUnmount(cancel)
 function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班'){
  clear()
@@ -57,7 +55,6 @@ function run(targetWorkspace:RosterWorkspace=props.workspace,basis='当前排班
  if(!Number.isFinite(rescuePercent.value)||rescuePercent.value<0||rescuePercent.value>100){error.value='急救阈值须为 0–100%';return}
  if(!Number.isFinite(fiammettaPercent.value)||fiammettaPercent.value<0||fiammettaPercent.value>100){error.value='菲亚阈值须为 0–100%';return}
  if(!Number.isFinite(sampleDays.value)||sampleDays.value<=0||!Number.isFinite(warmupDays.value)||warmupDays.value<0){error.value='采样天数应大于 0，预热天数不能为负';return}
- if(runOrderMode.value==='grandet'&&(!Number.isFinite(runOrderLeadSeconds.value)||runOrderLeadSeconds.value<=0||runOrderLeadSeconds.value>3600||!Number.isFinite(runOrderBufferSeconds.value)||runOrderBufferSeconds.value<0||runOrderBufferSeconds.value>3600)){error.value='葛朗台跑单前置须大于 0 且不超过 3600 秒，缓冲须为 0–3600 秒';return}
  if((outputMode.value==='potential'||inventoryMode.value==='unlimited'?[initialDrone]:[initialGold,initialLmd,initialOrirock,initialDevice,initialDrone]).some(n=>!Number.isFinite(n.value)||n.value<0)){error.value='初始库存须为不小于 0 的数值';return}
  if(!Number.isSafeInteger(seed.value)||seed.value<0||seed.value>4294967295||(outputMode.value==='settled'&&(!Number.isFinite(collectionIntervalHours.value)||collectionIntervalHours.value<0))){error.value='随机种子须为 0–4294967295 的整数，收取间隔不能为负';return}
  running.value=true
@@ -98,14 +95,10 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   <div class="simulation-controls production-controls">
    <label>产出口径<select v-model="outputMode" data-test="output-mode"><option value="potential">完成产出</option><option value="settled">收取记录</option></select></label>
    <label>材料库存<select v-model="inventoryMode" data-test="inventory-mode" :disabled="outputMode==='potential'"><option value="unlimited">无限（默认）</option><option value="finite">有限</option></select></label>
-   <label>跑单方式<select v-model="runOrderMode" data-test="run-order-mode"><option value="ideal">理想跑单（默认）</option><option value="grandet">葛朗台跑单</option></select></label>
-   <label v-if="runOrderMode==='grandet'">跑单前置（秒）<input v-model.number="runOrderLeadSeconds" data-test="run-order-lead" type="number" min="1" max="3600" step="1" /></label>
-   <label v-if="runOrderMode==='grandet'">葛朗台缓冲（秒）<input v-model.number="runOrderBufferSeconds" data-test="run-order-buffer" type="number" min="0" max="3600" step="1" /></label>
    <label>待办无人机设施<select v-model="droneTarget" data-test="drone-target"><option value="gold">加速赤金</option><option value="exp">加速作战记录</option><option value="none">不用</option></select></label>
   </div>
   <p class="simulation-note" data-test="simulation-controls-scope">以上设置用于“运行模拟”，不影响旧版快速估算；更改后需要重新运行。</p>
-  <p v-if="runOrderMode==='ideal'" class="simulation-note">贸易站替补位中的但书、龙舌兰、佩佩、可露希尔及 U-Official 均识别为跑单干员，不参与普通接班。理想跑单在新单开始时应用佩佩／可露希尔订单模式，在普通订单完成时应用其他跑单效果；保留 Mower 订单任务唤醒，不执行临时换人或跑单等待。</p>
-  <p v-else class="simulation-note">葛朗台跑单执行 Mower 临时换人、等待、心情消耗与恢复；前置和缓冲时间按上方设置。</p>
+  <p class="simulation-note">贸易站替补位中的但书、龙舌兰、佩佩、可露希尔及 U-Official 均识别为跑单干员，不参与普通接班。理想跑单在新单开始时应用佩佩／可露希尔订单模式，在普通订单完成时应用其他跑单效果；保留 Mower 订单任务唤醒，不执行临时换人或跑单等待。</p>
   <details class="simulation-idle production-settings"><summary>随机种子、无人机与可选库存设置</summary>
    <p v-if="outputMode==='potential'">材料默认无限；初始无人机和随机种子参与计算。收取由 Mower 任务决定，设施容量仍有限。</p><p v-else>默认材料库存无限。选择有限库存后，初始材料从预热开始计入；收取时间由 Mower 任务决定。</p>
    <div class="simulation-controls">
@@ -122,8 +115,8 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
   <details class="simulation-idle" data-test="scheduling-external-conditions"><summary>影响跑单与排班的外部条件</summary>
    <p>线索交流固定关闭，Party Time 为空。材料库存默认无限，设施容量和无人机数量按实际规则计算。</p>
    <p>当前条件：初始心情 24，宿舍按等级满氛围；未导入干员库时从全体干员中选择闲置候选，导入后以库内名单为闲置候选。原排班干员下班后仍可参与 Free 选人。休息、急救和菲亚阈值、菲亚梅塔防呆、满心情闲人离宿，以及无人机目标和数量均按上方设置。</p>
-   <p>待办无人机检查间隔 3 小时、使用门槛 100 架；葛朗台跑单使用当前前置与缓冲设置。主副表的候补顺序、绑组、用尽、回满、优先级和黑名单影响换班。</p>
-   <p>本次不注入维护停服、加工、专精或其他外部任务。普通换人、收取按原版显式等待；葛朗台模式另计跑单换人等待。稳定页面与识别零耗时为模拟输入。初始在岗状态、预热、暖机规则和订单随机种子会影响长期结果。</p>
+   <p>待办无人机检查间隔 3 小时、使用门槛 100 架。主副表的候补顺序、绑组、用尽、回满、优先级和黑名单影响换班。</p>
+   <p>本次不注入维护停服、加工、专精或其他外部任务。普通换人、收取按原版显式等待。稳定页面与识别零耗时为模拟输入。初始在岗状态、预热、暖机规则和订单随机种子会影响长期结果。</p>
   </details>
   <p class="simulation-note">效率包含基本效率 100%。直观产出按采样完成数计分，实际收支口径另计到账；预热长度及步长可调整，用于检查结果是否稳定。</p>
   <ControlImpactPanel :workspace="workspace" :inventory="inventory" />

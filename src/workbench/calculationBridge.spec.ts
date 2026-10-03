@@ -46,7 +46,7 @@ describe('runCalculationBridge engine options', () => {
         warmupModel: 'hourly',
         production: {
           outputMode: 'potential',
-          runOrderMode: 'drone',
+          runOrderMode: 'ideal',
           droneTarget: 'gold',
         },
       },

@@ -21,7 +21,7 @@ function fixture(level = 1, runners = ['但书']) {
  return compileRosterSchedule(ws,{idleOperators:['米格鲁','安赛尔','芙蓉','巡林者'].map(id)})
 }
 const options = {sampleHours:8,recordSegments:true,consumptionOverrides:Object.fromEntries(['芬','砾','香草','克洛丝','斑点','空爆'].map(n=>[id(n),0])),production:{outputMode:'potential' as const,droneTarget:'none' as const,seed:42}}
-describe('ideal income and optional native Grandet scheduling',()=>{
+describe('ideal-only run-order scheduling',()=>{
  it('applies ideal conversion without physically entering the runner',()=>{
   const actual=simulateSchedule(fixture(),options)
   expect(actual.success,JSON.stringify(actual.diagnostics)).toBe(true)
@@ -43,21 +43,15 @@ describe('ideal income and optional native Grandet scheduling',()=>{
   expect(wakeOnly.segments.some(segment=>Object.values(segment.occupants).includes(id('但书')))).toBe(false)
   expect(wakeOnly.production!.events.filter(event=>event.type==='run-order-ideal')).toHaveLength(wakeOnly.production!.events.filter(event=>event.type==='order-completed').length)
  })
- it('shares a runner across two trade stations without simultaneous physical occupancy in Grandet mode',()=>{
-  const actual=simulateSchedule(fixture(),{...options,production:{...options.production,runOrderMode:'grandet' as const}})
+ it('shares a virtual runner across two trade stations without physical occupancy',()=>{
+  const actual=simulateSchedule(fixture(),options)
   expect(actual.success,JSON.stringify(actual.diagnostics)).toBe(true)
   for(const segment of actual.segments){
+   expect(Object.values(segment.occupants)).not.toContain(id('但书'))
    const positions=[...Object.values(segment.occupants),...Object.values(segment.bedOccupants)]
    expect(positions.filter(name=>name===id('但书')).length).toBeLessThanOrEqual(1)
   }
-  for(const room of ['room_3_1','room_3_2'])expect(actual.segments.some(segment=>segment.occupants[room+'_0']===id('但书'))).toBe(true)
- })
- it('registers source replacements and leaves a borrowed bed empty during temporary staffing in Grandet mode',()=>{
-  const actual=simulateSchedule(fixture(),{...options,production:{...options.production,runOrderMode:'grandet' as const}})
-  expect(actual.success,JSON.stringify(actual.diagnostics)).toBe(true)
-  expect(actual.operators.some(o=>o.operatorId===id('但书'))).toBe(true)
-  expect(actual.segments.some(s=>Object.values(s.bedOccupants).includes(id('但书')))).toBe(true)
-  for(const s of actual.segments)if(Object.values(s.occupants).includes(id('但书')))expect(Object.values(s.bedOccupants)).not.toContain(id('但书'))
+  for(const room of ['room_3_1','room_3_2'])expect(actual.production!.events.some(event=>event.roomId===room&&event.type==='order-completed'&&event.order?.kind==='proviso')).toBe(true)
  })
  it('converts base four-gold orders with Tequila and never stacks Proviso on them',()=>{
   const result=simulateSchedule(fixture(3,['但书','龙舌兰']),{...options,sampleHours:24})
@@ -65,14 +59,6 @@ describe('ideal income and optional native Grandet scheduling',()=>{
   const orders=result.production!.events.filter(e=>e.type==='order-completed').map(e=>e.order!)
   expect(orders.some(o=>o.kind==='tequila')).toBe(true)
   expect(orders.every(o=>o.kind==='tequila'?o.goldCost===4&&o.lmdReward===2500:o.kind==='proviso'&&((o.goldCost===4&&o.lmdReward===2000)||(o.goldCost===5&&o.lmdReward===2500)))).toBe(true)
- })
- it('uses configurable Grandet lead and buffer timing',()=>{
-  const actual=simulateSchedule(fixture(),{...options,production:{...options.production,runOrderMode:'grandet' as const,runOrderLeadSeconds:90,runOrderBufferSeconds:7}})
-  expect(actual.success,JSON.stringify(actual.diagnostics)).toBe(true)
-  expect(actual.inputs.schedule.assumptions.runOrderDelayMinutes).toBe(1.5)
-  expect(actual.inputs.schedule.assumptions.runOrderBufferSeconds).toBe(7)
-  expect(actual.production!.assumptions).toMatchObject({runOrderMode:'grandet',runOrderLeadSeconds:90,runOrderBufferSeconds:7})
-  expect(actual.segments.some(s=>Object.values(s.occupants).includes(id('但书')))).toBe(true)
  })
  it('keeps virtual runners out of physical rooms after Mower backup-plan recompilation',()=>{
   const result=runScheduleSimulationBridge(importMowerJson(JSON.stringify(sourceRoster)),{

@@ -15,7 +15,7 @@ function scenario(native=false,outputMode:'potential'|'settled'='potential'){
   const config=projectScheduleState(schedule,state),active=new Set(Object.keys(state.morale)),morale=new Map(Object.entries(state.morale))
   return {time:state.time,config,active,morale,evaluations:Object.fromEntries(config.rooms.map(room=>[room.id,evaluateOperators(room,config,active,morale)]))}
  }
- const controller=createProductionTimeline(schedule,state,{outputMode,collectionIntervalHours:1000,droneTarget:'none',initialResources:{drone:native?235:50,gold:10000},seed:42},0,()=>{},()=>{},native)
+ const controller=createProductionTimeline(schedule,state,{outputMode,collectionIntervalHours:1000,droneTarget:'none',initialResources:{drone:native?235:50,gold:10000},seed:42},0,()=>{},native)
  controller.settle(frame)
  return {state,frame,controller}
 }

@@ -5,7 +5,7 @@ import {bridgeMowerNativeIO} from './mowerRunOrderBridge'
 function scenario(){
   let clock=0
   const state:RunOrderPlanningState={plan:{room_1_1:[{replacement:['但书']}]},runOrderRooms:['room_1_1'],queue:new MowerTaskQueue(),configuredDelayMinutes:3,droneRoom:null,flags:{planned:false,todoTask:false,collectNotification:false}}
-  const seam:RunOrderPlanningSeam={nowMicros:()=>clock,nativeName:n=>n,currentDormOccupants:()=>undefined,scheduling:{}}
+  const seam:RunOrderPlanningSeam={nowMicros:()=>clock,currentDormOccupants:()=>undefined,scheduling:{}}
   return {state,seam,advance:(micros:number)=>{clock+=micros}}
 }
 describe('native scheduling continuation shares the host clock',()=>{

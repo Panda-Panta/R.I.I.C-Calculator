@@ -17,7 +17,11 @@ function base(primary='芬', replacements=['但书'], second=false){
 const options:ScheduleSimulationOptions={sampleHours:2,recordSegments:true,production:{runOrderMode:'ideal',droneTarget:'none',initialResources:{gold:100},collectionIntervalHours:0}}
 const selected=(r:ReturnType<typeof simulateSchedule>,type:string)=>r.production!.events.filter(e=>e.type===type)
 
-describe('run-order integration after natural mode removal',()=>{
+describe('ideal-only run-order integration',()=>{
+ it.each(['grandet','drone'])('rejects removed %s run-order mode before scheduling',runOrderMode=>{
+  const production=JSON.parse(JSON.stringify({...options.production,runOrderMode}))
+  expect(()=>simulateSchedule(base(),{...options,production})).toThrow(/仅支持理想跑单/)
+ })
  it('accelerates a selected trade room even when ideal run-order candidates are configured',()=>{
   const schedule=base()
   const production={outputMode:'potential' as const,runOrderMode:'ideal' as const,seed:42,initialResources:{drone:235}}
@@ -44,28 +48,10 @@ describe('run-order integration after natural mode removal',()=>{
   const production=JSON.parse(JSON.stringify({...options.production,runOrderMode:'natural',outputMode}))
   expect(()=>simulateSchedule(base(),{...options,production})).toThrow(/自然跑单.*禁用/)
  })
- it('uses the same physical native temporary staffing and restoration for Grandet and legacy drone modes',()=>{
-  const run=(runOrderMode:'grandet'|'drone')=>simulateSchedule(base(),{...options,production:{runOrderMode,inventoryMode:'finite',droneTarget:'none',initialResources:{gold:100,drone:20}}})
-  const grandet=run('grandet'),r=run('drone')
-  expect(r.success&&r.production!.success&&grandet.success&&grandet.production!.success).toBe(true)
-  expect(r.segments).toHaveLength(grandet.segments.length)
-  for(const [index,segment] of r.segments.entries()){
-   const other=grandet.segments[index]!
-   expect(segment.occupants).toEqual(other.occupants);expect(segment.bedOccupants).toEqual(other.bedOccupants)
-   expect(segment.efficiencyPercent).toEqual(other.efficiencyPercent)
-   expect(Math.abs(segment.start-other.start)).toBeLessThan(1/3_600_000_000)
-   expect(Math.abs(segment.end-other.end)).toBeLessThan(1/3_600_000_000)
-   for(const [operator,mood] of Object.entries(segment.morale))expect(mood).toBeCloseTo(other.morale[operator]!,7)
-  }
-  const position='room_1_1_0'
-  expect(r.segments.some(segment=>segment.occupants[position]===id('但书'))).toBe(true)
-  expect(r.segments[r.segments.length-1]!.occupants[position]).toBe(id('芬'))
-  expect(r.operators.find(operator=>operator.operatorId===id('但书'))!.workHours).toBeGreaterThan(0)
-  expect(selected(r,'order-completed')).toHaveLength(1)
-  expect(r.production!.drones.consumed).toBe(grandet.production!.drones.consumed)
-  expect(r.production!.drones.initial+r.production!.drones.generated-r.production!.drones.consumed-r.production!.drones.overflow).toBeCloseTo(r.production!.drones.stock,8)
-  expect(r.production!.ledger.outflows.gold).toBe(4)
-  expect(r.production!.ledger.inflows.lmd).toBe(2000)
+ it.each(['grandet','drone'])('rejects removed %s mode in a compiled schedule',runOrderMode=>{
+  const schedule=base()
+  Object.assign(schedule.assumptions,{runOrderSimulationMode:runOrderMode})
+  expect(()=>simulateSchedule(schedule,options)).toThrow(/仅支持理想跑单/)
  })
  it('retains ideal reward conversion without native temporary staffing',()=>{
   const r=simulateSchedule(base(),options)

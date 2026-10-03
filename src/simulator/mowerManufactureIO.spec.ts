@@ -20,7 +20,7 @@ describe('native manufacture drone action observations',()=>{
    const config=projectScheduleState(schedule,state),active=new Set(Object.keys(state.morale)),morale=new Map(Object.entries(state.morale))
    return {time:state.time,config,active,morale,evaluations:Object.fromEntries(config.rooms.map(r=>[r.id,evaluateOperators(r,config,active,morale)]))}
   }
-  const production=createProductionTimeline(schedule,state,{outputMode:'potential',droneTarget:'none',initialResources:{drone:150}},0,()=>{},()=>{},true)
+  const production=createProductionTimeline(schedule,state,{outputMode:'potential',droneTarget:'none',initialResources:{drone:150}},0,()=>{},true)
   production.settle(frame)
   const rates:RuntimeRates={workRate:()=>1,recoveryRate:()=>2,...createMowerProductionIO(state,production,frame)}
   const work=rates.mowerTodoTaskIO!({kind:'drone',room:'room_2_1'},state)

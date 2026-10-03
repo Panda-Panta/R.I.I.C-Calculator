@@ -70,7 +70,7 @@ describe('local Mower expression and backup contracts', () => {
     const result=runScheduleSimulationBridge(workspace,options)
     expect(result.report).toBeNull()
     expect(result.error).toMatch(/自然跑单.*禁用/)
-    expect(()=>createProductionTimeline(schedule,state,options.production,0,()=>{},()=>{})).toThrow(/自然跑单.*禁用/)
+    expect(()=>createProductionTimeline(schedule,state,options.production,0,()=>{})).toThrow(/自然跑单.*禁用/)
     expect(()=>runRosterIncomeSearch({baseline:workspace,inventory:[],options})).toThrow(/自然跑单.*禁用/)
   })
 })

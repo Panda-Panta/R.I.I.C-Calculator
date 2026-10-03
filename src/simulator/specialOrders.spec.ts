@@ -65,17 +65,17 @@ describe('all special trading orders', () => {
     expect(orders('芬', 2, ['可露希尔'])[0]).toMatchObject({ kind: 'closure', baseMinutes: 144, goldCost: 2 })
   })
 
-  it('locks the next order while a Grandet Pepe runner is still in the room', () => {
+  it('locks Pepe workload from the first ideal order without inserting the runner', () => {
     const schedule = tradeSchedule('芬', ['佩佩'])
     const report = simulateSchedule(schedule, {
       sampleHours: 12,
       consumptionOverrides: { [id('芬')]: 0, [id('佩佩')]: 0 },
       operatorInventory: [owned('芬', 0), owned('佩佩', 2)],
-      production: { outputMode: 'potential', runOrderMode: 'grandet', droneTarget: 'none', seed: 42 },
+      production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'none', seed: 42 },
     })
     expect(report.success, JSON.stringify(report.diagnostics)).toBe(true)
     const completed = report.production!.events.filter(event => event.type === 'order-completed').map(event => event.order!)
-    expect(completed[0]?.kind).toBe('gold')
+    expect(completed[0]).toMatchObject({ kind: 'pepe', baseMinutes: 270, goldCost: 0 })
     expect(completed[1]).toMatchObject({ kind: 'pepe', baseMinutes: 270, goldCost: 0 })
   })
 
@@ -90,11 +90,11 @@ describe('all special trading orders', () => {
     expect(report.diagnostics.some(diagnostic => diagnostic.code === 'PEPE_DRONE_UNVERIFIED')).toBe(true)
   })
 
-  it('keeps the Grandet task clock moving when a Pepe trade cannot use drones', () => {
+  it('keeps the ideal order clock moving when a Pepe trade cannot use drones', () => {
     const report = simulateSchedule(tradeSchedule('佩佩'), {
       sampleHours: 6,
       operatorInventory: [owned('佩佩', 2)],
-      production: { outputMode: 'potential', runOrderMode: 'grandet', droneTarget: 'trading', initialResources: { drone: 235 }, seed: 42 },
+      production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'trading', initialResources: { drone: 235 }, seed: 42 },
     })
     expect(report.success, JSON.stringify(report.diagnostics)).toBe(true)
     expect(report.production!.trading[0]!.completedOrders).toBeGreaterThan(0)

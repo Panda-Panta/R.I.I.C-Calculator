@@ -3,7 +3,7 @@ import native from './fixtures/mower-run-order-drone-adjustment-alpha.json'
 import {MOWER_TASK_TYPES as T,MowerTask,MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
 import type {RunOrderPlanningState} from './mowerRunOrderPlanning'
 import {
- executeMowerTradeDrone,executeMowerTradeDroneAdjustment,adjustMowerTradeOrderTime,
+ executeMowerTradeDrone,
  type MowerTradeDroneAdjustmentState,type MowerTradeDroneAdjustmentSeam,
  type MowerTradeDroneAdjustmentRequest,type MowerTradeDroneAdjustmentObservation,
 } from './mowerRunOrderDroneAdjustment'
@@ -36,15 +36,14 @@ function requestFields(request:MowerTradeDroneAdjustmentRequest):Record<string,u
   case 'tap':return {target:structuredClone(request.target),...(request.intervalSeconds===undefined?{}:{interval:request.intervalSeconds}),...(request.yRate===undefined?{}:{y_rate:request.yRate})}
   case 'wait-interface':return {interval:request.intervalSeconds,...(request.accelerateTemplate===undefined?{}:{accelerate_template:request.accelerateTemplate})}
   case 'find':return {name:request.name}
-  case 'read-order':return {region:request.region,use_digit_reader:request.useDigitReader}
   case 'cache-facility-page':return {room:request.room,facility:request.facility}
   case 'tap-drone-accelerate':return {template:request.template,control:request.control}
   case 'return-main':return {scene:'infra-main'}
   default:return {}
  }
 }
-describe('actual alpha full trade/manufacture drone branches and trade adjust_order_time',()=>{
- it.each(native.cases)('matches every source output field of $name',test=>{
+describe('ordinary alpha trade/manufacture drone branches',()=>{
+ it.each(native.cases.filter(test=>test.input.action==='normal'))('matches every source output field of $name',test=>{
   expect(native.sourceCommit).toBe('c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88')
   const input=test.input,queue=new MowerTaskQueue()
   queue.tasks=input.tasks.map(raw=>{
@@ -63,15 +62,9 @@ describe('actual alpha full trade/manufacture drone branches and trade adjust_or
    notReturn:input.notReturn,waitingScenes:input.waitingScenes,droneCountLimit:input.droneCountLimit,
   }
   const seam:MowerTradeDroneAdjustmentSeam={
-   nowMicros:()=>clock,scheduling:{grandet:input.grandet,enableMastery:input.enableMastery},
-   onScheduling:conflict=>trace.push({
-    kind:'scheduling',nowMicros:clock,argDelayMinutes:5,configuredDelayMinutes:input.configuredDelayMinutes,
-    conflict:conflict?conflict.map(task=>({type:task.type.key,metadata:task.metadata})):null,
-   }),
-   onAdjustTarget:room=>trace.push({kind:'adjust-target',room:room??null,nowMicros:clock}),
+   nowMicros:()=>clock,
   }
-  const generator=input.action==='drone'?executeMowerTradeDroneAdjustment(state,seam):
-   input.action==='normal'?executeMowerTradeDrone(state,seam):adjustMowerTradeOrderTime(state,seam,input.accelerate)
+  const generator=executeMowerTradeDrone(state,seam)
   const observations=input.observations.map(observation)
   let error:{message:string}|null=null,result:false|null=null
   try{

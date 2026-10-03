@@ -2,6 +2,8 @@
 
 编写日期：2026-09-08。快照的准确源版本、文件SHA256与条数见 catalog.json.manifest。
 
+2026-10-03 功能范围更新：当前程序仅支持理想跑单，葛朗台/旧无人机实体跑单的模式入口、前置/缓冲配置、临时换人、等待、恢复及冲突无人机调整已删除。下文涉及实体跑单的记录属于历史验证，不代表当前可用功能。理想订单结算、Mower 订单唤醒及常规换班/收取/无人机任务仍保留；模拟回归不等于真实游戏操作证据。
+
 ## 数据来源
 
 - 用户本地 ArknightsGameData-master/zh_CN/gamedata/excel：building_data.json、character_table.json、item_table.json、data_version.txt。技能名称、技能槽、全部解锁版本及原始参数以此为可复核证据。
