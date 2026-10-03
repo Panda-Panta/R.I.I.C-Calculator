@@ -389,7 +389,7 @@ function handleSelectRoom(roomId: MowerRoomId) {
   border-left: 3px solid #38bdf8;
 }
 .facility-chip.type-power {
-  border-left: 3px solid #eab308;
+  border-left: 3px solid #18a058;
 }
 .facility-chip.type-central {
   border-left: 3px solid #ec4899;
