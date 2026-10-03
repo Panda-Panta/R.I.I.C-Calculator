@@ -10,6 +10,10 @@ describe('lossless roster compiler', () => {
     const before = structuredClone(workspace)
     const result = compileRosterSchedule(workspace)
     for (const facility of Object.values(workspace.mainPlan.facilities)) {
+      if (facility.level === 0) {
+        expect(result.rooms.some(room => room.roomId === facility.roomId)).toBe(false)
+        continue
+      }
       const room = result.rooms.find(room => room.roomId === facility.roomId)!
       expect(room.level).toBe(facility.level)
       facility.slots.forEach((slot, index) => {

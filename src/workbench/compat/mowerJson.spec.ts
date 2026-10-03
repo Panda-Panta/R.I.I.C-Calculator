@@ -193,8 +193,8 @@ describe('Mower JSON Compatibility Layer', () => {
       expect(res.warnings).toHaveLength(0)
       expect(res.power).toEqual({
         generation: 540,
-        consumption: 540,
-        margin: 0,
+        consumption: 480, // This fixture omits the training room.
+        margin: 60,
         sufficient: true,
       })
 
@@ -304,7 +304,7 @@ describe('Mower JSON Compatibility Layer', () => {
   })
 
   describe('Facility Level Inference Rules', () => {
-    it('infers all facilities to max level when there are 3 power plants', () => {
+    it('infers built facilities to max level with 3 power plants and leaves unstaffed dorms unbuilt', () => {
       const threePowerJson = JSON.stringify({
         default: 'plan1',
         plan1: {
@@ -335,8 +335,8 @@ describe('Mower JSON Compatibility Layer', () => {
       expect(facilities.room_1_1.level).toBe(3)
       expect(facilities.room_1_3.level).toBe(3)
       expect(facilities.room_2_2.level).toBe(3)
-      expect(facilities.dormitory_1.level).toBe(5)
-      expect(facilities.dormitory_4.level).toBe(5)
+      expect(facilities.dormitory_1.level).toBe(0)
+      expect(facilities.dormitory_4.level).toBe(0)
       expect(facilities.central.level).toBe(5)
       expect(facilities.meeting.level).toBe(3)
       expect(facilities.contact.level).toBe(3)
@@ -389,7 +389,7 @@ describe('Mower JSON Compatibility Layer', () => {
       expect(f.room_2_1.level).toBe(1)
       expect(f.room_2_2.level).toBe(3)
       expect(f.room_1_3.level).toBe(3)
-      expect(f.dormitory_1.level).toBe(1)
+      expect(f.dormitory_1.level).toBe(0)
     })
 
     it('does not arbitrarily infer levels when power plant count is not 2 or 3', () => {
@@ -1037,7 +1037,7 @@ describe('Mower JSON Compatibility Layer', () => {
       // After user edits room_3_1 via store, room_3_1 is appended at the end
       const store = useRosterWorkbenchStore()
       store.loadWorkspace(ws)
-      store.updateFacility('room_3_1', { type: 'trading', product: 'money' })
+      store.updateFacility('room_3_1', { type: 'trading', product: 'money', level: 1 })
 
       const exportedEdited = JSON.parse(exportMowerJson(store.workspace)) as { plan1: Record<string, unknown> }
       expect(Object.keys(exportedEdited.plan1)).toEqual(['central', 'room_2_3', 'room_1_1', 'room_3_1'])

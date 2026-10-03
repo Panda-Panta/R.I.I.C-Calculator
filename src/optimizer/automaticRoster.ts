@@ -1,4 +1,5 @@
 import { mainPlanOnly } from './mainPlanOnly'
+import { ensureBuiltDormKeepers } from './dormKeepers'
 import {compileOperatorInventory,type OwnedOperatorInput} from '../domain/operatorInventory'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import {isShiftRunOperator} from '../scheduler/scheduleAdapter'
@@ -27,7 +28,7 @@ export interface AutomaticRosterResult {
  trials:AutomaticRosterTrial[];selectedTrial:number|null
 }
 const facilityTypes={manufacture:'MANUFACTURE',trading:'TRADING',power:'POWER',central:'CONTROL'} as const
-const capacity=(r:MowerFacility)=>r.type==='central'?5:r.type==='power'?1:r.level
+const capacity=(r:MowerFacility)=>r.level===0?0:r.type==='central'?5:r.type==='power'?1:r.level
 const mutable=(r:MowerFacility)=>r.type in facilityTypes
 const scheduleIssues=(workspace:RosterWorkspace)=>compileRosterSchedule(workspace).diagnostics.filter(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR')
 const occupied=(w:RosterWorkspace)=>new Set(Object.values(w.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[
@@ -152,9 +153,10 @@ export function generateAutomaticRoster(base:RosterWorkspace,entries:readonly Ow
    if(blocked)break
   }
   if(blocked)continue
+  if(!ensureBuiltDormKeepers(workspace,inventory)){trial.diagnostics.push('已建宿舍缺少可用宿管工位或持有干员。');continue}
   const added:{roomId:MowerRoomId;slotIndex:number;operatorId:string}[]=[]
   for(const room of Object.values(workspace.mainPlan.facilities))for(const [slotIndex,slot]of room.slots.entries()){
-   const original=base.mainPlan.facilities[room.roomId].slots[slotIndex]
+   const original=base.mainPlan.facilities[room.roomId]?.slots[slotIndex]
    if(slot.occupant.kind==='operator'&&original?.occupant.kind!=='operator'){
     added.push({roomId:room.roomId,slotIndex,operatorId:slot.occupant.operatorId})
     const present=workspace.compatibility.importedPresentRooms

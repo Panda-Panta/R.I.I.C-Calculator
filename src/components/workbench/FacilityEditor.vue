@@ -43,7 +43,7 @@
               </template>
               <td>
                 <n-button
-                  v-if="selectedRoom.roomId.startsWith('dorm')"
+                  v-if="selectedRoom.roomId.startsWith('dorm') && selectedRoom.level > 0"
                   ghost
                   type="primary"
                   size="small"
@@ -145,6 +145,7 @@ const rightSideFacilityName = computed<string>(() => {
 })
 
 function getFacilityCapacity(type: MowerFacilityType, level: number): number {
+  if (level === 0) return 0
   if (type === 'power') return 1
   if (type === 'manufacture' || type === 'trading') return Math.max(1, level)
   if (type === 'central' || type === 'dormitory') return 5
@@ -207,10 +208,10 @@ const facilityLevelOptions = computed(() => {
     maxLevel = 3
   }
 
-  return Array.from({ length: maxLevel }, (_, i) => ({
+  return [{ label: '未建造', value: 0 }, ...Array.from({ length: maxLevel }, (_, i) => ({
     label: `${i + 1}级`,
     value: i + 1,
-  }))
+  }))]
 })
 
 const productOptions = computed(() => {

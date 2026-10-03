@@ -130,6 +130,7 @@ const cardVariant = computed<'output' | 'center' | 'support'>(() => {
 })
 
 const isWaiting = computed(() => {
+  if (props.facility.level === 0) return true
   if (!isOutputRoom.value) return false
   return !props.facility.type
 })

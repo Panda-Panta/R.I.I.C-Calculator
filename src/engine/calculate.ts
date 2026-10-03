@@ -15,8 +15,8 @@ import { virtualGoldEquivalent } from '../rules/orderValue'
 
 const OUTPUT_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
 const POWER_GENERATION = { 1: 60, 2: 130, 3: 270 } as const
-const STANDARD_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
-const DORM_POWER_USE = { 1: 10, 2: 20, 3: 30, 4: 45, 5: 65 } as const
+const STANDARD_POWER_USE = { 0: 0, 1: 10, 2: 30, 3: 60 } as const
+const DORM_POWER_USE = { 0: 0, 1: 10, 2: 20, 3: 30, 4: 45, 5: 65 } as const
 
 const MANUFACTURE_FORMULAS: Record<
   ManufactureProduct,
@@ -93,8 +93,8 @@ function calculatePower(config: AppConfig) {
     STANDARD_POWER_USE[facilities.reception] +
     STANDARD_POWER_USE[facilities.office] +
     STANDARD_POWER_USE[facilities.training] +
-    10 +
-    facilities.dormitories.reduce((sum, level) => sum + DORM_POWER_USE[level], 0)
+    (facilities.workshop > 0 ? 10 : 0) +
+    facilities.dormitories.reduce<number>((sum, level) => sum + DORM_POWER_USE[level], 0)
   const consumption = outputConsumption + functionConsumption
   return {
     generation,
@@ -207,7 +207,7 @@ function calculateTrade(
 
 function validateLayout(config: AppConfig): string[] {
   const messages: string[] = []
-  if (config.rooms.length !== 9) messages.push('制造站、贸易站与发电站的总数必须为 9。')
+  if (config.rooms.length > 9) messages.push('制造站、贸易站与发电站的总数不能超过 9。')
   for (const type of ['manufacture', 'trading', 'power'] as const) {
     const count = config.rooms.filter((room) => room.type === type).length
     if (count > ROOM_LIMITS[type]) messages.push(`${type} 数量超过上限 ${ROOM_LIMITS[type]}。`)

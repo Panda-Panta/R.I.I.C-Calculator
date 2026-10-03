@@ -2,6 +2,7 @@ import type { AppConfig, OutputRoom } from '../domain/types'
 import { createDefaultWorkspace } from './defaults'
 import {
   MOWER_OUTPUT_ROOM_IDS,
+  mowerRoomToOutputRoomId,
   type MowerProduct,
   type MowerSlot,
   type RosterWorkspace,
@@ -51,10 +52,16 @@ export function migrateAppConfigToWorkspace(config: AppConfig): RosterWorkspace 
   ws.mainPlan.conf.workaholic = [...(config.workaholicOperatorIds ?? [])]
 
   // 1. Map 9 output rooms (B101..B303)
-  for (let i = 0; i < 9 && i < config.rooms.length; i++) {
-    const legacyRoom = config.rooms[i]
+  const hasStableRoomIds = config.rooms.some(room => /^B[123]0[123]$/.test(room.id))
+  for (let i = 0; i < 9; i++) {
     const roomId = MOWER_OUTPUT_ROOM_IDS[i]
-    if (!legacyRoom || !roomId) continue
+    if (!roomId) continue
+    const legacyRoom = hasStableRoomIds ? config.rooms.find(room => room.id === mowerRoomToOutputRoomId(roomId)) : config.rooms[i]
+    if (!legacyRoom) {
+      facilities[roomId].level = 0
+      facilities[roomId].slots = []
+      continue
+    }
 
     const facility = facilities[roomId]
     facility.type = legacyRoom.type
@@ -64,6 +71,7 @@ export function migrateAppConfigToWorkspace(config: AppConfig): RosterWorkspace 
   }
 
   // 2. Central (control)
+  facilities.central.level = config.facilities.central ?? 5
   if (config.controlOperatorIds) {
     facilities.central.slots = config.controlOperatorIds.map((opId) =>
       createOperatorSlot(opId, config),
@@ -76,9 +84,7 @@ export function migrateAppConfigToWorkspace(config: AppConfig): RosterWorkspace 
     if (!dormId) continue
 
     const dormLevel = config.facilities?.dormitories?.[i]
-    if (dormLevel !== undefined) {
-      facilities[dormId].level = dormLevel
-    }
+    facilities[dormId].level = dormLevel ?? 0
 
     const dormOperators = config.facilityOperatorIds?.dormitories?.[i]
     if (dormOperators) {
@@ -126,6 +132,9 @@ export function migrateAppConfigToWorkspace(config: AppConfig): RosterWorkspace 
   }
 
   // 5. Initial morale and extra simulation fields preserved in compatibility envelope
+  for (const facility of Object.values(facilities)) {
+    if (facility.level === 0) facility.slots = []
+  }
   ws.compatibility.sourceVersion = '7'
   if (Array.isArray(config.operatorGroups) && config.operatorGroups.length > 0) {
     ws.compatibility.unrecognizedFields[COMPAT_OPERATOR_GROUPS_KEY] = structuredClone(

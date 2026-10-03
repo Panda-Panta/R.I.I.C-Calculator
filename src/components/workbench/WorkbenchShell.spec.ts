@@ -638,13 +638,20 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
   it('applies singleton fallback for a limited mixed-level pool', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')
-    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: LIMITED_TEST_OPS.join('\n') }))
+    // Four built dorms also need keepers in addition to mains and independent relief staff.
+    const withKeepers = [...LIMITED_TEST_OPS, '杜林,0,30', '12F,0,30', 'Lancet-2,0,30', '安德切尔,1,55']
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: withKeepers.join('\n') }))
     const vm = mountWithPinia(WorkbenchShell).vm as any
     const original = JSON.stringify(vm.store.workspace)
     vm.handleConfirmSmartRosterConfig({ seed: 42, branchCount: 1, enableDeepSearch: false })
     await flushPromises()
     expect(vm.replaceStatusMessage).toContain('排班成功')
     expect(JSON.stringify(vm.store.workspace)).not.toBe(original)
+    for (const room of Object.values(vm.store.workspace.mainPlan.facilities) as import('../../workbench/model').MowerFacility[]) {
+      if (room.type === 'dormitory' && room.level > 0) {
+        expect(room.slots.some(slot => slot.occupant.kind === 'operator')).toBe(true)
+      }
+    }
   }, 60000)
 
   it('keeps the workspace unchanged when the owned pool truly lacks enough people', async () => {

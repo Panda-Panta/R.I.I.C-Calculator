@@ -23,6 +23,21 @@ const allOwned: OwnedOperatorInput[] = OPERATORS.map((o) => ({
 const inventory = compileOperatorInventory(allOwned)
 
 describe('Molecular Synthesis & Indivisible Atomic Units', () => {
+  it('preserves unbuilt dorm and training room across automatic staffing candidates', async ({ annotate }) => {
+    await annotate('检查自动排班不会补建已省略设施')
+    const base = createDefaultWorkspace()
+    for (const id of ['dormitory_4', 'train'] as const) {
+      base.mainPlan.facilities[id].level = 0
+      base.mainPlan.facilities[id].slots = []
+    }
+    const candidates = generateMolecularCandidates(base, allOwned, inventory, { seed: 42, branchCount: 1 })
+    expect(candidates.length).toBeGreaterThan(0)
+    for (const candidate of candidates) {
+      expect(candidate.workspace.mainPlan.facilities.dormitory_4).toMatchObject({ level: 0, slots: [] })
+      expect(candidate.workspace.mainPlan.facilities.train).toMatchObject({ level: 0, slots: [] })
+    }
+  }, 30000)
+
   it('strictly respects indivisible atomic core members', async ({ annotate }) => {
 
     await annotate('同步计算前确认测试进度已送达')

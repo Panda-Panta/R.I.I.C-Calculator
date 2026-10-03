@@ -121,11 +121,14 @@ export function compileMainPlanToAppConfig(
 ): AppConfig {
   // Deep clone existingConfig to ensure strict immutability of inputs
   const cloned = structuredClone(existingConfig)
+  const hasStableRoomIds = cloned.rooms?.some(room => /^B[123]0[123]$/.test(room.id))
 
   // 1. Map 9 output rooms deterministically to B101..B303
   const rooms: OutputRoom[] = MOWER_OUTPUT_ROOM_IDS.map((roomId: MowerOutputRoomId, index: number) => {
     const facility: MowerFacility | undefined = mainPlan.facilities[roomId]
-    const existingRoom = cloned.rooms?.[index]
+    const existingRoom = hasStableRoomIds
+      ? cloned.rooms.find(room => room.id === mowerRoomToOutputRoomId(roomId))
+      : cloned.rooms?.[index]
 
     const validOperatorIds: string[] = []
     if (facility?.slots) {
@@ -178,6 +181,12 @@ export function compileMainPlanToAppConfig(
       powerStaffed: existingRoom?.powerStaffed ?? false,
     }
   })
+
+  // Preserve stable room IDs while excluding absent production facilities.
+  for (let index = rooms.length - 1; index >= 0; index--) {
+    const facility = mainPlan.facilities[MOWER_OUTPUT_ROOM_IDS[index]!]
+    if (!facility || facility.level === 0) rooms.splice(index, 1)
+  }
 
   // 2. Aggregate group labels and project ordered Mower candidates onto the
   // legacy engine's one-to-one backup map. The workspace remains lossless;
@@ -275,16 +284,17 @@ export function compileMainPlanToAppConfig(
   })
 
   // 3. Central (control)
-  const centralSlots = mainPlan.facilities.central?.slots ?? []
+  const centralSlots = mainPlan.facilities.central?.level ? mainPlan.facilities.central.slots : []
   const controlOperatorIds = centralSlots
     .map((slot) => extractOperatorId(slot))
     .filter((id): id is string => id !== null)
 
   // 4. Dormitories (levels and occupants)
-  const dormLevels = DORMITORY_ROOM_IDS.map((roomId, index) => {
+  const dormLevels = DORMITORY_ROOM_IDS.map((roomId) => {
     const dorm = mainPlan.facilities[roomId]
     const lvl = dorm?.level
-    return (lvl !== undefined && lvl >= 1 && lvl <= 5 ? lvl : (cloned.facilities?.dormitories?.[index] ?? 5)) as
+    return (lvl !== undefined && lvl >= 0 && lvl <= 5 ? lvl : 0) as
+      | 0
       | 1
       | 2
       | 3
@@ -294,51 +304,51 @@ export function compileMainPlanToAppConfig(
 
   const dormOperators: string[][] = DORMITORY_ROOM_IDS.map((roomId) => {
     const dorm = mainPlan.facilities[roomId]
-    if (!dorm?.slots) return []
+    if (!dorm?.level || !dorm.slots) return []
     return dorm.slots
       .map((slot) => extractOperatorId(slot))
       .filter((id): id is string => id !== null)
   })
   const steadyDormitoryOccupancy = DORMITORY_ROOM_IDS.reduce((sum, roomId) => {
     const dorm = mainPlan.facilities[roomId]
-    if (!dorm?.slots) return sum
+    if (!dorm?.level || !dorm.slots) return sum
     return sum + dorm.slots.filter((slot) => slot.occupant.kind !== 'empty').length
   }, 0)
 
   // 5. Functional facilities: meeting (reception), factory (workshop), contact (office), train (training)
   const meetingFac = mainPlan.facilities.meeting
   const receptionLevel =
-    meetingFac?.level !== undefined && meetingFac.level >= 1 && meetingFac.level <= 3
-      ? (meetingFac.level as 1 | 2 | 3)
-      : (cloned.facilities?.reception ?? 3)
-  const receptionOperators = (meetingFac?.slots ?? [])
+    meetingFac?.level !== undefined && meetingFac.level >= 0 && meetingFac.level <= 3
+      ? (meetingFac.level as 0 | 1 | 2 | 3)
+      : 0
+  const receptionOperators = (receptionLevel ? meetingFac?.slots ?? [] : [])
     .map((slot) => extractOperatorId(slot))
     .filter((id): id is string => id !== null)
 
   const factoryFac = mainPlan.facilities.factory
   const workshopLevel =
-    factoryFac?.level !== undefined && factoryFac.level >= 1 && factoryFac.level <= 3
-      ? (factoryFac.level as 1 | 2 | 3)
-      : (cloned.facilities?.workshop ?? 3)
-  const workshopOperators = (factoryFac?.slots ?? [])
+    factoryFac?.level !== undefined && factoryFac.level >= 0 && factoryFac.level <= 3
+      ? (factoryFac.level as 0 | 1 | 2 | 3)
+      : 0
+  const workshopOperators = (workshopLevel ? factoryFac?.slots ?? [] : [])
     .map((slot) => extractOperatorId(slot))
     .filter((id): id is string => id !== null)
 
   const contactFac = mainPlan.facilities.contact
   const officeLevel =
-    contactFac?.level !== undefined && contactFac.level >= 1 && contactFac.level <= 3
-      ? (contactFac.level as 1 | 2 | 3)
-      : (cloned.facilities?.office ?? 3)
-  const officeOperators = (contactFac?.slots ?? [])
+    contactFac?.level !== undefined && contactFac.level >= 0 && contactFac.level <= 3
+      ? (contactFac.level as 0 | 1 | 2 | 3)
+      : 0
+  const officeOperators = (officeLevel ? contactFac?.slots ?? [] : [])
     .map((slot) => extractOperatorId(slot))
     .filter((id): id is string => id !== null)
 
   const trainFac = mainPlan.facilities.train
   const trainingLevel =
-    trainFac?.level !== undefined && trainFac.level >= 1 && trainFac.level <= 3
-      ? (trainFac.level as 1 | 2 | 3)
-      : (cloned.facilities?.training ?? 3)
-  const trainingOperators = (trainFac?.slots ?? [])
+    trainFac?.level !== undefined && trainFac.level >= 0 && trainFac.level <= 3
+      ? (trainFac.level as 0 | 1 | 2 | 3)
+      : 0
+  const trainingOperators = (trainingLevel ? trainFac?.slots ?? [] : [])
     .map((slot) => extractOperatorId(slot))
     .filter((id): id is string => id !== null)
 
@@ -392,6 +402,7 @@ export function compileMainPlanToAppConfig(
     rooms,
     facilities: {
       ...cloned.facilities,
+      central: (mainPlan.facilities.central?.level ?? 0) as 0 | 1 | 2 | 3 | 4 | 5,
       dormitories: dormLevels,
       reception: receptionLevel,
       workshop: workshopLevel,
@@ -411,5 +422,7 @@ export function compileMainPlanToAppConfig(
     operatorGroups,
   }
 
+  // Retain the legacy default shape for full level-five layouts.
+  if (result.facilities.central === 5 && cloned.facilities.central === undefined) delete result.facilities.central
   return result
 }

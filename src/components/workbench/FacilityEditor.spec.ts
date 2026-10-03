@@ -35,6 +35,27 @@ describe('FacilityEditor.vue and subcomponents', () => {
     expect(wrapper.find('.mower-facility-editor').exists()).toBe(false)
   })
 
+  it('can leave a dorm or training room unbuilt, remove staffing, and rebuild empty slots', async () => {
+    const store = useRosterWorkbenchStore()
+    for (const roomId of ['dormitory_4', 'train'] as const) {
+      store.selectRoom(roomId)
+      store.updateSlotOccupant(roomId, 0, { kind: 'operator', operatorId: 'char_002_amiya' })
+      const wrapper = mount(FacilityEditor)
+      const levelSelect = asVueWrapper(wrapper.findComponent('.level-select'))
+      levelSelect.vm.$emit('update:value', 0)
+      await wrapper.vm.$nextTick()
+      expect(store.selectedRoom?.level).toBe(0)
+      expect(store.selectedRoom?.slots).toEqual([])
+      expect(wrapper.findAllComponents(SlotRow)).toHaveLength(0)
+      expect(wrapper.find('.fill-free-btn').exists()).toBe(false)
+      levelSelect.vm.$emit('update:value', 1)
+      await wrapper.vm.$nextTick()
+      expect(store.selectedRoom?.slots).toHaveLength(roomId === 'train' ? 2 : 5)
+      expect(store.selectedRoom?.slots.every(slot => slot.occupant.kind === 'empty')).toBe(true)
+      wrapper.unmount()
+    }
+  })
+
   it('renders header controls and slots table when a room is selected', () => {
     const store = useRosterWorkbenchStore()
     store.selectRoom('room_1_1') // manufacture level 3
@@ -71,25 +92,25 @@ describe('FacilityEditor.vue and subcomponents', () => {
     const levelSelect = wrapper.findComponent('.level-select')
     expect(levelSelect.exists()).toBe(true)
     const outputOptions = (getProps(levelSelect)['options'] as Array<{ value: number }>).map((o) => o.value)
-    expect(outputOptions).toEqual([1, 2, 3])
+    expect(outputOptions).toEqual([0, 1, 2, 3])
 
     store.selectRoom('central') // central max 5
     await wrapper.vm.$nextTick()
     const centralSelect = wrapper.findComponent('.level-select')
     const centralOptions = (getProps(centralSelect)['options'] as Array<{ value: number }>).map((o) => o.value)
-    expect(centralOptions).toEqual([1, 2, 3, 4, 5])
+    expect(centralOptions).toEqual([0, 1, 2, 3, 4, 5])
 
     store.selectRoom('dormitory_1') // dorm max 5
     await wrapper.vm.$nextTick()
     const dormSelect = wrapper.findComponent('.level-select')
     const dormOptions = (getProps(dormSelect)['options'] as Array<{ value: number }>).map((o) => o.value)
-    expect(dormOptions).toEqual([1, 2, 3, 4, 5])
+    expect(dormOptions).toEqual([0, 1, 2, 3, 4, 5])
 
     store.selectRoom('meeting') // right-side max 3
     await wrapper.vm.$nextTick()
     const meetingSelect = wrapper.findComponent('.level-select')
     const meetingOptions = (getProps(meetingSelect)['options'] as Array<{ value: number }>).map((o) => o.value)
-    expect(meetingOptions).toEqual([1, 2, 3])
+    expect(meetingOptions).toEqual([0, 1, 2, 3])
   })
 
   it('atomically adjusts slots capacity when facility type changes (e.g. manufacture to power shrinks to 1)', async () => {

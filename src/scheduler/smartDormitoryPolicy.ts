@@ -121,7 +121,8 @@ export function findLowestRecoveryDormitorySlot(
   workspace: RosterWorkspace,
   excludeOccupied = true,
 ): { roomId: MowerRoomId; slotIndex: number; rate: number } | null {
-  const dormIds: MowerRoomId[] = ['dormitory_1', 'dormitory_2', 'dormitory_3', 'dormitory_4']
+  const dormIds = (['dormitory_1', 'dormitory_2', 'dormitory_3', 'dormitory_4'] as MowerRoomId[])
+    .filter(id => (workspace.mainPlan.facilities[id]?.level ?? 0) > 0)
   const candidates: { roomId: MowerRoomId; slotIndex: number; rate: number }[] = []
 
   for (const dId of dormIds) {
@@ -338,7 +339,8 @@ export function applySmartDormitoryPolicy(
   }
 
   const facilities = workspace.mainPlan.facilities
-  const dormIds: MowerRoomId[] = ['dormitory_1', 'dormitory_2', 'dormitory_3', 'dormitory_4']
+  const dormIds = (['dormitory_1', 'dormitory_2', 'dormitory_3', 'dormitory_4'] as MowerRoomId[])
+    .filter(id => (facilities[id]?.level ?? 0) > 0)
 
   // Find if Fiammetta exists in the incoming workspace (and capture her replacement swap targets)
   let existingFiamSlot: { roomId: MowerRoomId; slotIndex: number; replacements: string[] } | null = null
@@ -368,7 +370,7 @@ export function applySmartDormitoryPolicy(
   )
 
   let fiammettaRoomId: MowerRoomId | null = null
-  if (hasFiammetta) {
+  if (hasFiammetta && dormIds.length) {
     // Find slowest dormitory (lowest level, or dormitory_4 as tie-breaker)
     let slowestRoom: MowerRoomId = 'dormitory_4'
     let lowestLevel = 999

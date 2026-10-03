@@ -1,5 +1,7 @@
 import { toRaw } from 'vue'
 import { EDITION } from '../domain/edition'
+import { normalizeMissingFacilities } from './facilityState'
+import { createDefaultWorkspace } from './defaults'
 import {
   MOWER_ROOM_IDS,
   type MowerFacilityType,
@@ -30,6 +32,7 @@ const productByType: Record<string, readonly MowerProduct[]> = {
 }
 
 function capacity(type: MowerFacilityType, level: number): number {
+  if (level === 0) return 0
   if (type === 'manufacture' || type === 'trading') return level
   if (type === 'central' || type === 'dormitory') return 5
   if (type === 'meeting' || type === 'train') return 2
@@ -43,7 +46,10 @@ function emptySlot(): MowerSlot {
 export function captureFacilityLayout(workspace: RosterWorkspace): Record<MowerRoomId, FacilityLayout> {
   const layout = {} as Record<MowerRoomId, FacilityLayout>
   for (const roomId of MOWER_ROOM_IDS) {
-    const { type, level, product } = workspace.mainPlan.facilities[roomId]
+    const facility = workspace.mainPlan.facilities[roomId]
+    const { type, level, product } = facility ?? {
+      ...createDefaultWorkspace().mainPlan.facilities[roomId], level: 0,
+    }
     layout[roomId] = product === undefined ? { type, level } : { type, level, product }
   }
   return layout
@@ -73,7 +79,7 @@ export function isValidFacilityLayout(value: unknown): value is Record<MowerRoom
     if (expectedType ? room.type !== expectedType : !outputTypes.includes(room.type)) return false
     const maxLevel = roomId === 'central' || roomId.startsWith('dormitory_') ? 5
       : roomId.startsWith('gaming_') ? 1 : 3
-    if (!Number.isInteger(room.level) || room.level < 1 || room.level > maxLevel) return false
+    if (!Number.isInteger(room.level) || room.level < 0 || room.level > maxLevel) return false
     if (room.type === 'manufacture' || room.type === 'trading') {
       return productByType[room.type]?.includes(room.product as MowerProduct) ?? false
     }
@@ -111,6 +117,7 @@ export function writeLayoutPresets(storage: Pick<Storage, 'setItem'>, presets: L
 export function applyFacilityLayout(workspace: RosterWorkspace, layout: Record<MowerRoomId, FacilityLayout>): { workspace: RosterWorkspace; removedAssignments: number } {
   if (!isValidFacilityLayout(layout)) throw new Error('预设布局数据无效')
   const next = structuredClone(toRaw(workspace))
+  normalizeMissingFacilities(next)
   let removedAssignments = 0
   for (const roomId of MOWER_ROOM_IDS) {
     const facility = next.mainPlan.facilities[roomId]
@@ -131,8 +138,8 @@ export function applyFacilityLayout(workspace: RosterWorkspace, layout: Record<M
 
     const metadata = next.compatibility.facilityMetadata?.[roomId]
     if (metadata) {
-      if (facility.type !== workspace.mainPlan.facilities[roomId].type) delete metadata.rawName
-      if (facility.product !== workspace.mainPlan.facilities[roomId].product) delete metadata.rawProduct
+      if (facility.type !== workspace.mainPlan.facilities[roomId]?.type) delete metadata.rawName
+      if (facility.product !== workspace.mainPlan.facilities[roomId]?.product) delete metadata.rawProduct
     }
     const present = next.compatibility.importedPresentRooms
     if (Array.isArray(present) && !present.includes(roomId)) present.push(roomId)

@@ -16,10 +16,10 @@ function fileSha256(relativePath: string): string {
 
 describe('Engine Protection & Calculation Equivalence', () => {
   it('protects engine source files against unauthorized modifications', () => {
-    // Authorized special-order engine baseline (2026-09-29), normalized LF; default arithmetic stays unchanged.
-    expect(fileSha256('engine/calculate.ts')).toBe('96aafb7086aeec4eef85bc7fdc5f8d8bebeee28d304fb1560721f760f06870d3')
-    expect(fileSha256('engine/morale.ts')).toBe('aa42b6ca643cb1f61d1a5904ba1c0e4190a890ff2b82c66a9937119e6063c7de')
-    expect(fileSha256('engine/operatorRules.ts')).toBe('03780885b1af56d45ff88e472805923ec7151dfb687f727d23b113d37391284f')
+    // Authorized unbuilt-facility handling (2026-10-03), normalized LF; default arithmetic stays unchanged.
+    expect(fileSha256('engine/calculate.ts')).toBe('f8e2ee90bddac145d0bdb9790fd4c2873aae62976a8799d471aa08e8de2b4491')
+    expect(fileSha256('engine/morale.ts')).toBe('c985d15c34dc4ce1f632819d1d3362d0999b2d68727298f236ec6ae6071f9e9a')
+    expect(fileSha256('engine/operatorRules.ts')).toBe('69c7821665cf6829bb1232afc189774655dec7907d5e7e4e026026061ae8b8d4')
   })
 
   it('produces deterministic baseline report for default configuration', () => {

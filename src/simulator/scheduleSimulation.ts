@@ -77,11 +77,12 @@ export function projectScheduleState(schedule:CompiledSchedule,state:RuntimeStat
  c.facilityOperatorIds.dormitories=dorms.map(r=>occupants(r.roomId).filter(Boolean))
  c.dormitoryOccupantCount=c.facilityOperatorIds.dormitories.reduce((n,ids)=>n+ids.length,0)
  c.controlOperatorIds=schedule.rooms.filter(r=>r.type==='central').flatMap(r=>occupants(r.roomId).filter(Boolean))
+ c.facilities.central=(schedule.rooms.find(r=>r.type==='central')?.level??0) as 0|1|2|3|4|5
  const auxiliary={meeting:'reception',contact:'office',train:'training',factory:'workshop'} as const
  for(const [type,key] of Object.entries(auxiliary)) {
   const room=schedule.rooms.find(r=>r.type===type)
   c.facilityOperatorIds[key]=room?occupants(room.roomId).filter(Boolean):[]
-  if(room)c.facilities[key]=room.level as 1|2|3
+  c.facilities[key]=(room?.level??0) as 0|1|2|3
  }
  c.efficiencyResources.trainingOperatorIds=[...c.facilityOperatorIds.training]
  c.operatorMorale={...state.morale}

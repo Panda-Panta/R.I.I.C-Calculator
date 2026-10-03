@@ -1,6 +1,7 @@
 import { OPERATOR_MAP, OPERATORS, type OperatorRecord } from '../../domain/operators'
 import { createDefaultWorkspace } from '../defaults'
 import { inferFacilityLevels } from '../levelInference'
+import { hasDormKeeper } from '../facilityState'
 import {
   MOWER_ROOM_IDS,
   type MowerFacilityType,
@@ -211,6 +212,15 @@ export function importMowerJson(text: string): RosterWorkspace {
 
   ws.compatibility.importedPresentRooms = importedPresentRooms
 
+  for (const roomId of MOWER_ROOM_IDS) {
+    const facility = ws.mainPlan.facilities[roomId]
+    if (!importedPresentRooms.includes(roomId) ||
+      (facility.type === 'dormitory' && !hasDormKeeper(facility))) {
+      facility.level = 0
+      facility.slots = []
+    }
+  }
+
   // Infer facility levels strictly according to existing inference rules
   inferFacilityLevels(ws.mainPlan.facilities)
 
@@ -301,6 +311,7 @@ export function exportMowerJson(workspace: RosterWorkspace): string {
 
   for (const roomId of roomIdsToExport) {
     const f = facilities[roomId]
+    if (!f || f.level === 0) continue
     const meta = workspace.compatibility.facilityMetadata?.[roomId]
     const extraMeta: Record<string, unknown> = {}
     if (meta) {

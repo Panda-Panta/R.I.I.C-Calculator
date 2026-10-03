@@ -6,12 +6,14 @@ import { configureRunOrder } from './configureRunOrder'
 import { applySingletonWorkPolicy } from './productionSingletons'
 import { validatePhysicalRoster } from './rosterDraft'
 import { rankStaffingCandidates } from './staffingQuality'
+import { ensureBuiltDormKeepers } from './dormKeepers'
 
 /** Last resort: jointly match independent mains and relief staff at their actual levels.
  * No atomic bonuses, promoted skills, shared backups or unowned staff are assumed.
  */
 export function buildSingletonFallback(base: RosterWorkspace, inventory: OperatorInventory, locked: Set<string>): RosterWorkspace | null {
   const ws = structuredClone(base)
+  if (!ensureBuiltDormKeepers(ws, inventory, locked)) return null
   const reserved = new Set(Object.values(ws.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[
     ...(s.occupant.kind === 'operator' ? [id(s.occupant.operatorId)] : []), ...s.replacements.map(id),
   ])))
@@ -20,6 +22,7 @@ export function buildSingletonFallback(base: RosterWorkspace, inventory: Operato
   const positions: {roomId:MowerRoomId; slotIndex:number; backup:boolean; pool:string[]}[] = []
   const skillTypes: Record<string,string> = {manufacture:'MANUFACTURE',trading:'TRADING',power:'POWER',central:'CONTROL'}
   for (const room of Object.values(ws.mainPlan.facilities)) {
+    if (room.level === 0) continue
     if (room.type === 'dormitory') {
       for (const slot of room.slots) if (slot.occupant.kind === 'empty') slot.occupant = {kind:'free'}
     }

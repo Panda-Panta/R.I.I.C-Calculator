@@ -67,7 +67,7 @@ export function compileRosterSchedule(workspace: RosterWorkspace, options: Parti
   const restPools: CompiledSchedule['restPools'] = []
   const fiammettaPolicies: CompiledSchedule['fiammettaPolicies'] = []
   const runOrderPolicies: CompiledSchedule['runOrderPolicies'] = []
-  const rooms = mowerPlanEntries(workspace.mainPlan.facilities).map(([,facility]) => {
+  const rooms = mowerPlanEntries(workspace.mainPlan.facilities).filter(([, facility]) => facility.level > 0).map(([,facility]) => {
     const freeSlotIndices: number[] = []
     const runCandidates: string[] = []
     const slots = facility.slots.map((slot, slotIndex) => {

@@ -353,7 +353,7 @@ function* smartRosterSteps(
     label: '阶段 3/3: 全局人均产出检测与优化置换...',
   })
 
-  const currentPowerCount = Object.values(finalWorkspace.mainPlan.facilities).filter((r) => r.type === 'power').length
+  const currentPowerCount = Object.values(finalWorkspace.mainPlan.facilities).filter((r) => r.type === 'power' && r.level > 0).length
   const repResult = runGlobalPerCapitaReplacement(finalWorkspace, inventory, {
     powerCount: currentPowerCount,
     lockedPositions,

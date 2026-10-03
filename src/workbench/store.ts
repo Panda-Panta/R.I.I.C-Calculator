@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, toRaw } from 'vue'
 import { createDefaultWorkspace } from './defaults'
 import { inferFacilityLevels } from './levelInference'
+import { normalizeMissingFacilities } from './facilityState'
 import {
   MOWER_OUTPUT_ROOM_IDS,
   type MowerFacility,
@@ -26,6 +27,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
 
   function loadWorkspace(candidate: RosterWorkspace): void {
     workspace.value = structuredClone(toRaw(candidate))
+    normalizeMissingFacilities(workspace.value)
   }
 
   function selectRoom(roomId: MowerRoomId | null): void {

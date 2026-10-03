@@ -51,6 +51,7 @@ export function compileCandidateLayout(candidate:CandidateAvailability):LayoutCo
  return {candidateId:candidate.id,assignments,temporal:TEMPORAL_TEMPLATES.has(candidate.id),uncheckedConditions}
 }
 function capacity(type:MowerFacilityType,level:number){
+ if(level===0)return 0
  if(type==='manufacture'||type==='trading')return level
  if(type==='central'||type==='dormitory')return 5
  if(type==='meeting'||type==='train')return 2
@@ -61,7 +62,8 @@ export function validatePhysicalRoster(workspace:RosterWorkspace):DraftDiagnosti
  const fixed:Partial<Record<MowerRoomId,MowerFacilityType>>={central:'central',meeting:'meeting',factory:'factory',contact:'contact',train:'train'}
  for(const roomId of MOWER_ROOM_IDS){
   const room=workspace.mainPlan.facilities[roomId]
-  if(!room||!Array.isArray(room.slots)){diagnostics.push({code:'MISSING_ROOM',message:`缺少完整设施：${roomId}`});continue}
+  if(!room)continue
+  if(!Array.isArray(room.slots)){diagnostics.push({code:'INVALID_ROOM',message:`设施工位数据无效：${roomId}`});continue}
   if(room.roomId!==roomId)diagnostics.push({code:'ROOM_ID_MISMATCH',message:`${roomId}：设施标识与记录位置不一致`})
   const expected=fixed[roomId]??(roomId.startsWith('dormitory_')?'dormitory':roomId.startsWith('gaming_')?'gaming':undefined)
   if(expected&&room.type!==expected)diagnostics.push({code:'FIXED_ROOM_TYPE',message:`${roomId}：固定功能房类型不能改为${room.type}`})
@@ -70,11 +72,12 @@ export function validatePhysicalRoster(workspace:RosterWorkspace):DraftDiagnosti
  if(diagnostics.length)return diagnostics
  diagnostics.push(...validateRosterWorkspace(workspace).criticalErrors.map(d=>({code:d.code,message:d.message})))
  const counts={manufacture:0,trading:0,power:0}
- for(const id of MOWER_OUTPUT_ROOM_IDS){const t=workspace.mainPlan.facilities[id].type;if(t in counts)counts[t as keyof typeof counts]++}
+ for(const id of MOWER_OUTPUT_ROOM_IDS){const room=workspace.mainPlan.facilities[id];if(!room||room.level===0)continue;const t=room.type;if(t in counts)counts[t as keyof typeof counts]++}
  if(counts.manufacture>5||counts.trading>5||counts.power>3)diagnostics.push({code:'FACILITY_COUNT',message:'实体制造/贸易/发电站最多分别为5/5/3间；虚拟设施不增加工位'})
  const assigned=new Set<string>()
  for(const room of Object.values(workspace.mainPlan.facilities)){
   if(!Number.isInteger(room.level))diagnostics.push({code:'INVALID_LEVEL',message:`${room.roomId}：设施等级须为整数`})
+  if(room.level===0)continue
   if(room.type==='manufacture'){
    if(!room.product)diagnostics.push({code:'PRODUCT_REQUIRED',message:`${room.roomId}：请明确制造配方`})
    if(room.product==='fragment'&&room.level<3)diagnostics.push({code:'RECIPE_LEVEL',message:`${room.roomId}：当前源石碎片配方要求3级制造站`})

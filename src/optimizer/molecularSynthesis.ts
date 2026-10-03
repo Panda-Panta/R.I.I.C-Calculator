@@ -1,4 +1,5 @@
 import { mainPlanOnly } from './mainPlanOnly'
+import { ensureBuiltDormKeepers } from './dormKeepers'
 import { configureRunOrder } from './configureRunOrder'
 import type { MowerFacilityType, MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
@@ -43,6 +44,7 @@ export interface SynthesisOptions {
 }
 
 function capacity(type: MowerFacilityType, level: number): number {
+  if (level === 0) return 0
   if (type === 'manufacture' || type === 'trading') return level
   if (type === 'central' || type === 'dormitory') return 5
   if (type === 'meeting' || type === 'train') return 2
@@ -150,10 +152,10 @@ export function generateMolecularCandidates(
       }
     }
 
-    const powerRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'power')
+    const powerRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'power' && r.level > 0)
     const powerCount = powerRooms.length
-    const tradingRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'trading')
-    const availableManufactureRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'manufacture')
+    const tradingRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'trading' && r.level > 0)
+    const availableManufactureRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'manufacture' && r.level > 0)
     const manufactureRooms = branchIdx === 0 ? availableManufactureRooms : shuffle(availableManufactureRooms, nextRandom)
     const centralRoom = ws.mainPlan.facilities.central
     const contactRoom = ws.mainPlan.facilities.contact
@@ -802,7 +804,7 @@ export function generateMolecularCandidates(
     if (Object.values(ws.mainPlan.facilities).some(room =>
       ['manufacture', 'trading', 'power', 'central'].includes(room.type) &&
       room.slots.some(slot => slot.occupant.kind !== 'operator'))) continue
-    const dormRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'dormitory')
+    const dormRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'dormitory' && r.level > 0)
     for (const dorm of dormRooms) {
       for (const slot of dorm.slots) {
         if (slot.occupant.kind === 'empty' && slot.replacements.length === 0) {
@@ -921,6 +923,7 @@ export function generateMolecularCandidates(
         JSON.stringify(beforeDormitoryPolicy.mainPlan.facilities[roomId as MowerRoomId]?.slots[Number(index)])
     })
     if (changedLock) Object.assign(ws, beforeDormitoryPolicy)
+    if (!ensureBuiltDormKeepers(ws, inventory, lockedPositions)) continue
     for (const room of Object.values(ws.mainPlan.facilities)) if (room.type === 'dormitory') {
       room.slots.forEach((slot, index) => {
         if (slot.occupant.kind === 'empty' && !lockedPositions.has(`${room.roomId}:${index}`)) slot.occupant = { kind: 'free' }
