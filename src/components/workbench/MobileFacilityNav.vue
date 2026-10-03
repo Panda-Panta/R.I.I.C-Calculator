@@ -42,7 +42,11 @@
           </div>
           <div class="chip-bottom">
             <span class="chip-name">{{ item.name }}</span>
-            <span v-if="item.productLabel" class="chip-product">{{ item.productLabel }}</span>
+            <span
+              v-if="item.productLabel"
+              class="chip-product"
+              :class="`product-${item.productKind}`"
+            >{{ item.productLabel }}</span>
           </div>
         </button>
       </div>
@@ -75,6 +79,7 @@ interface FacilityChipData {
   name: string
   type: string
   productLabel?: string
+  productKind?: 'gold' | 'exp' | 'fragment' | 'money' | 'orundum' | 'power'
   staffCount: number
   capacity: number
 }
@@ -110,16 +115,26 @@ function getFacilityInfo(roomId: MowerRoomId, fac?: MowerFacility): FacilityChip
     const code = OUTPUT_ROOM_CODES[roomId]!
     let name = '制造站'
     let productLabel = ''
+    let productKind: FacilityChipData['productKind']
     if (fac.type === 'trading') {
       name = '贸易站'
-      productLabel = fac.product === 'fragment' ? '合成玉' : '赤金'
+      productKind = fac.product === 'orundum' || fac.product === 'fragment' ? 'orundum' : 'money'
+      productLabel = productKind === 'orundum' ? '合成玉' : '龙门币'
     } else if (fac.type === 'power') {
       name = '发电站'
       productLabel = '电力'
+      productKind = 'power'
     } else {
-      if (fac.product === 'exp') productLabel = '作战记录'
-      else if (fac.product === 'fragment') productLabel = '源石碎片'
-      else productLabel = '赤金'
+      if (fac.product === 'exp') {
+        productLabel = '作战记录'
+        productKind = 'exp'
+      } else if (fac.product === 'fragment') {
+        productLabel = '源石碎片'
+        productKind = 'fragment'
+      } else {
+        productLabel = '赤金'
+        productKind = 'gold'
+      }
     }
     return {
       roomId,
@@ -127,6 +142,7 @@ function getFacilityInfo(roomId: MowerRoomId, fac?: MowerFacility): FacilityChip
       name,
       type: fac.type,
       productLabel,
+      productKind,
       staffCount,
       capacity,
     }
@@ -379,6 +395,27 @@ function handleSelectRoom(roomId: MowerRoomId) {
   padding: 1px 3px;
   border-radius: 2px;
   white-space: nowrap;
+}
+
+.chip-product.product-gold {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.14);
+}
+
+.chip-product.product-exp {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.14);
+}
+
+.chip-product.product-fragment,
+.chip-product.product-orundum {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
+}
+
+.chip-product.product-money {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
 }
 
 /* Facility color accents */

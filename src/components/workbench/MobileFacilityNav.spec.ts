@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import MobileFacilityNav from './MobileFacilityNav.vue'
-import { useRosterWorkbenchStore } from '../../workbench/store'
+import { useRosterWorkbenchStore, type MowerFacilityPatch } from '../../workbench/store'
 
 describe('MobileFacilityNav.vue', () => {
   beforeEach(() => {
@@ -23,6 +23,24 @@ describe('MobileFacilityNav.vue', () => {
     const chips = wrapper.findAll('.facility-chip')
     expect(chips.length).toBe(9) // B101 ~ B303
     expect(chips[0]!.text()).toContain('B101')
+  })
+
+  it.each<{ patch: MowerFacilityPatch; label: string; productClass: string }>([
+    { patch: { type: 'manufacture', product: 'gold' }, label: '赤金', productClass: 'product-gold' },
+    { patch: { type: 'manufacture', product: 'exp' }, label: '作战记录', productClass: 'product-exp' },
+    { patch: { type: 'manufacture', product: 'fragment' }, label: '源石碎片', productClass: 'product-fragment' },
+    { patch: { type: 'trading', product: 'money' }, label: '龙门币', productClass: 'product-money' },
+    { patch: { type: 'trading', product: 'orundum' }, label: '合成玉', productClass: 'product-orundum' },
+    { patch: { type: 'trading', product: 'fragment' }, label: '合成玉', productClass: 'product-orundum' },
+    { patch: { type: 'power', product: undefined }, label: '电力', productClass: 'product-power' },
+  ])('renders the correct product badge for $patch.type / $patch.product', ({ patch, label, productClass }) => {
+    const store = useRosterWorkbenchStore()
+    store.updateFacility('room_1_1', patch)
+    const wrapper = mount(MobileFacilityNav)
+    const badge = wrapper.get('[data-test="facility-chip-room_1_1"] .chip-product')
+
+    expect(badge.text()).toBe(label)
+    expect(badge.classes()).toContain(productClass)
   })
 
   it('switches categories when category tab is clicked', async () => {
