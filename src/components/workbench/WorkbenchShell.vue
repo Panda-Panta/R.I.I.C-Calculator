@@ -12,8 +12,7 @@ import CalculationConfigModal, { type CalculationConfig } from './CalculationCon
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import type { TimelineDataset } from '../../workbench/timeline/timelineModel'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
-import { parseOperatorInventory, compileOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
-import { inventoryOperatorRecords } from '../../domain/operatorContext'
+import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 import { normalizeProductionWeights } from '../../domain/productionWeights'
 
 import PlanToolbar from './PlanToolbar.vue'
@@ -151,13 +150,6 @@ const operatorInventory = ref<{
   enabled: true,
   valid: false,
   entries: [],
-})
-
-const previewOperatorContext = computed(() => {
-  const inv = operatorInventory.value
-  return inv.enabled && inv.valid
-    ? { operatorRecords: inventoryOperatorRecords(compileOperatorInventory(inv.entries)) }
-    : undefined
 })
 
 // Calculation report and error state
@@ -1094,8 +1086,6 @@ defineExpose({
       <!-- Tab 2: 设置 (Settings) (Req 3, 4, 5, 6, 7, 9, 12) -->
       <div v-show="activeTab === 'settings'" class="tab-panel settings-tab-panel" data-test="settings-tab-panel">
         <SettingsView
-          :workspace="store.workspace"
-          :operator-context="previewOperatorContext"
           v-model:settings="simSettings"
           @inventory-change="handleInventoryChange"
         />

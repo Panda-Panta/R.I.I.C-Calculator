@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import OperatorInventoryPanel from './OperatorInventoryPanel.vue'
 import ProductionWeightsEditor from './ProductionWeightsEditor.vue'
-import RunOrderGainsPanel from './RunOrderGainsPanel.vue'
 import type { OwnedOperatorInput } from '../../domain/operatorInventory'
-import type { OperatorContext } from '../../domain/operatorContext'
-import type { RosterWorkspace } from '../../workbench/model'
 import { DEFAULT_PRODUCTION_WEIGHTS, type ProductionWeights } from '../../domain/productionWeights'
 
 export interface SimulationSettings {
@@ -27,8 +24,6 @@ export interface SimulationSettings {
 
 const props = defineProps<{
   settings: SimulationSettings
-  workspace?: RosterWorkspace
-  operatorContext?: OperatorContext
 }>()
 
 const emit = defineEmits<{
@@ -146,14 +141,6 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
         <span class="card-subtitle">统一设置计算产出与自动排班的评分偏好</span>
       </div>
       <ProductionWeightsEditor :model-value="settings.productionWeights ?? DEFAULT_PRODUCTION_WEIGHTS" @update:model-value="updateField('productionWeights', $event)" />
-    </section>
-
-    <section class="settings-card" data-test="run-order-gains-settings-card">
-      <div class="card-header">
-        <h3 class="card-title">跑单加权收益预览</h3>
-        <span class="card-subtitle">按当前系数即时比较理论方案与各贸易站主班快照</span>
-      </div>
-      <RunOrderGainsPanel :weights="settings.productionWeights" :workspace="workspace" :operator-context="operatorContext" />
     </section>
 
     <!-- Section 2: 干员库 -->

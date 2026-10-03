@@ -41,6 +41,6 @@ it('uses default weights for old settings and emits weights through shared simul
     productionWeights: { ...DEFAULT_PRODUCTION_WEIGHTS, gold: 0 },
   })
   await wrapper.setProps({ settings: update })
-  expect(wrapper.get('[data-choice="pair22"]').text()).toContain('+62.07%')
+  expect((wrapper.get('[data-test="weight-gold"]').element as HTMLInputElement).value).toBe('0')
   wrapper.unmount()
 })
