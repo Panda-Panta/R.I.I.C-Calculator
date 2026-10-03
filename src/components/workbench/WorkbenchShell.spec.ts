@@ -65,6 +65,7 @@ import { createDefaultConfig } from '../../domain/defaults'
 import { calculate } from '../../engine/calculate'
 import { EDITION } from '../../domain/edition'
 import { OPERATORS } from '../../domain/operators'
+import { DEFAULT_PRODUCTION_WEIGHTS } from '../../domain/productionWeights'
 import sourceRoster from '../../../validation/mower-output-2026-09-27/roster.json'
 import { importMowerJson } from '../../workbench/compat/mowerJson'
 
@@ -125,7 +126,40 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
       wrapper?.unmount()
     }
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     document.body.innerHTML = ''
+  })
+
+  it('saves changed weights before starting a worker and cancels only when those weights change again', async () => {
+    const pending: Array<{ postMessage: ReturnType<typeof vi.fn>; terminate: ReturnType<typeof vi.fn> }> = []
+    vi.stubGlobal('Worker', class {
+      onmessage: ((event: MessageEvent) => void) | null = null
+      postMessage = vi.fn()
+      terminate = vi.fn()
+      constructor() { pending.push(this) }
+    })
+    const wrapper = mountWithPinia(WorkbenchShell)
+    await flushPromises()
+    const original = JSON.stringify(wrapper.vm.store.workspace)
+    wrapper.vm.simSettings.sampleDays = 1
+    await flushPromises()
+    expect(JSON.stringify(wrapper.vm.store.workspace)).toBe(original)
+    const productionWeights = { ...DEFAULT_PRODUCTION_WEIGHTS, exp: 2 }
+    wrapper.vm.handleConfirmCalculation({
+      droneTarget: 'none', droneTradingRoomId: '',
+      useOperatorInventory: false, productionWeights,
+    })
+    await flushPromises()
+    expect(wrapper.vm.isCalculating).toBe(true)
+    expect(pending[0]!.terminate).not.toHaveBeenCalled()
+    const request = pending[0]!.postMessage.mock.calls[0]![0]
+    expect(request.workspace.productionWeights).toEqual(productionWeights)
+    expect(request.options.simulationOptions.productionWeights).toEqual(productionWeights)
+    wrapper.vm.simSettings.productionWeights!.gold = 0
+    await flushPromises()
+    expect(wrapper.vm.isCalculating).toBe(false)
+    expect(pending[0]!.terminate).toHaveBeenCalledOnce()
+    expect(JSON.parse(localStorage.getItem(`arc-income-calculator-sim-settings-v1-${EDITION.storageNamespace}`)!).productionWeights).toEqual({ ...productionWeights, gold: 0 })
   })
 
   // 1. App contains only WorkbenchShell primary entry
@@ -707,6 +741,63 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
   }, 60000)
 
   // 18. Abort roster generation
+  it('cancels a pending roster when weights change and ignores its late callbacks after a new task starts', async () => {
+    class PendingWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null
+      onerror: ((event: ErrorEvent) => void) | null = null
+      postMessage = vi.fn()
+      terminate = vi.fn()
+      constructor() { pending.push(this) }
+    }
+    const pending: PendingWorker[] = []
+    vi.stubGlobal('Worker', PendingWorker)
+    vi.stubEnv('VITEST', '')
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: '温蒂,2,1\n清流,1,1' }))
+    const wrapper = mountWithPinia(WorkbenchShell)
+    await flushPromises()
+    const weightsA = { ...DEFAULT_PRODUCTION_WEIGHTS, exp: 2 }
+    const weightsB = { ...DEFAULT_PRODUCTION_WEIGHTS, exp: 3 }
+    const options = { trials: 1, maxStaticEvals: 500, simulationTopK: 1, simulationSampleHours: 24, simulationWarmupHours: 6, enableDeepSearch: false, droneTarget: 'none' as const, seed: 42 }
+    wrapper.vm.handleConfirmSmartRosterConfig({ ...options, productionWeights: weightsA })
+    expect(wrapper.vm.isGeneratingRoster).toBe(true)
+    expect(pending[0]!.terminate).not.toHaveBeenCalled()
+    expect(pending[0]!.postMessage.mock.calls[0]![0].options.productionWeights).toEqual(weightsA)
+    wrapper.vm.simSettings.productionWeights = { ...weightsA }
+    await flushPromises()
+    expect(wrapper.vm.isGeneratingRoster).toBe(true)
+    expect(pending[0]!.terminate).not.toHaveBeenCalled()
+    const lateMessage = pending[0]!.onmessage!
+    const lateError = pending[0]!.onerror!
+    const outdatedWorkspace = structuredClone(pending[0]!.postMessage.mock.calls[0]![0].base)
+    outdatedWorkspace.name = '过期任务 A 排班'
+    wrapper.vm.simSettings.productionWeights = weightsB
+    await flushPromises()
+    expect(pending[0]!.terminate).toHaveBeenCalledOnce()
+    expect(wrapper.vm.isGeneratingRoster).toBe(false)
+    expect(wrapper.vm.generationProgress).toBeNull()
+    expect(wrapper.vm.replaceStatusMessage).toContain('系数已变更')
+    expect(wrapper.vm.replaceStatusMessage).toContain('重新生成')
+    const unchangedWorkspace = JSON.stringify(wrapper.vm.store.workspace)
+    wrapper.vm.handleConfirmSmartRosterConfig({ ...options, productionWeights: weightsB })
+    expect(pending).toHaveLength(2)
+    expect(wrapper.vm.isGeneratingRoster).toBe(true)
+    const currentProgress = { phase: 'building', phaseProgress: .25, label: '任务 B 运行中' }
+    pending[1]!.onmessage!({ data: { type: 'progress', progress: currentProgress } } as MessageEvent)
+    lateMessage({ data: { type: 'complete', report: { status: 'draft', workspace: outdatedWorkspace, score: 100, diagnostics: [] } } } as MessageEvent)
+    lateMessage({ data: { type: 'progress', progress: { phase: 'building', phaseProgress: .9, label: '过期任务 A' } } } as MessageEvent)
+    lateError({ message: '过期任务 A 错误' } as ErrorEvent)
+    await flushPromises()
+    expect(JSON.stringify(wrapper.vm.store.workspace)).toBe(unchangedWorkspace)
+    expect(wrapper.vm.simSettings.productionWeights).toEqual(weightsB)
+    expect(wrapper.vm.calculationReport).toBeNull()
+    expect(wrapper.vm.isCalculating).toBe(false)
+    expect(wrapper.vm.isGeneratingRoster).toBe(true)
+    expect(wrapper.vm.generationProgress).toEqual(currentProgress)
+    expect(pending[1]!.terminate).not.toHaveBeenCalled()
+    expect(pending).toHaveLength(2)
+    expect(wrapper.vm.replaceStatusMessage).not.toContain('过期任务 A')
+  })
+
   it('aborts active roster generation worker and updates status message', async () => {
     const wrapper = mountWithPinia(WorkbenchShell)
     wrapper.vm.isGeneratingRoster = true

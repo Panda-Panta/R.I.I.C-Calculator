@@ -22,6 +22,7 @@ export interface ScheduleSimulationProgress {
  phase:'warmup'|'sampling'; elapsedHours:number; totalHours:number; warmupHours:number
 }
 export interface ScheduleSimulationOptions {
+ productionWeights?:import('../domain/productionWeights').ProductionWeights
  operatorInventory?:OwnedOperatorInput[]
  jayeElite0?:boolean
  production?:ProductionOptions

@@ -3,11 +3,12 @@ import { createDefaultConfig } from '../domain/defaults'
 import { calculate } from './calculate'
 import type { QualityRule, SpecialOrder } from '../domain/types'
 
-function perOrder(specialOrder: SpecialOrder, quality: QualityRule = 'normal') {
+function perOrder(specialOrder: SpecialOrder, quality: QualityRule = 'normal', level: 1 | 2 | 3 = 3) {
   const config = createDefaultConfig()
   const room = config.rooms.find((value) => value.type === 'trading')!
   room.specialOrder = specialOrder
   room.quality = quality
+  room.level = level
   const trade = calculate(config).trading.find((value) => value.roomId === room.id)!
   return { gold: trade.goldConsumed / trade.orders, lmd: trade.lmd / trade.orders }
 }
@@ -31,6 +32,31 @@ describe('source-backed mutually exclusive order transforms', () => {
     const result = perOrder('shiftRun', 'beta')
     expect(result.gold).toBeCloseTo(4.1)
     expect(result.lmd).toBeCloseTo(2475)
+  })
+  it.each([1, 2] as const)('uses the fixed quality model in level %i static income', (level) => {
+    const alpha = perOrder('none', 'alpha', level)
+    expect(alpha.gold).toBeCloseTo(3.4)
+    expect(alpha.lmd).toBeCloseTo(1700)
+    const beta = perOrder('none', 'beta', level)
+    expect(beta.gold).toBeCloseTo(3.8)
+    expect(beta.lmd).toBeCloseTo(1900)
+    const proviso = perOrder('provisoBeta', 'beta', level)
+    // Only 2/3-gold base orders are converted: .05*4 + .10*5 + .85*4.
+    expect(proviso.gold).toBeCloseTo(4.1)
+    expect(proviso.lmd).toBeCloseTo(2050)
+    for (const disabled of ['tequilaAlpha', 'tequilaBeta'] as const) {
+      expect(perOrder(disabled, 'beta', level).lmd).toBeCloseTo(1900)
+    }
+    expect(perOrder('shiftRun', 'beta', level).lmd).toBeCloseTo(2050)
+    const config = createDefaultConfig()
+    const room = config.rooms.find(value => value.type === 'trading')!
+    room.level = level
+    room.quality = 'alpha'
+    room.specialOrder = 'none'
+    config.droneTarget = 'none'
+    const trade = calculate(config).trading.find(value => value.roomId === room.id)!
+    // Mean acquisition time: .15*144 + .30*210 + .55*276 = 236.4 minutes.
+    expect(trade.orders).toBeCloseTo(1440 * trade.efficiency / 236.4)
   })
   it('reports Pepe fixed throughput without applying room efficiency or unverified trading drones', () => {
     const config = createDefaultConfig()

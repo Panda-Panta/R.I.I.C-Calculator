@@ -10,7 +10,7 @@ import { createDefaultWorkspace } from '../workbench/defaults'
 import { runSmartRoster } from './smartRoster'
 import * as synthesis from './molecularSynthesis'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
-vi.mock('../workbench/scheduleSimulationBridge',()=>({runScheduleSimulationBridge:vi.fn(()=>({report:{success:true,observedHours:72,operators:[],diagnostics:[],production:{success:true,sample:{completed:{exp:1000,gold:100,orderLmd:5000}}}}}))}))
+vi.mock('../workbench/scheduleSimulationBridge',()=>({runScheduleSimulationBridge:vi.fn((_workspace,options)=>({report:{success:true,observedHours:72,elapsedHours:96,assumptions:{warmupHours:24},inputs:{options},operators:[],diagnostics:[],production:{success:true,events:[],manufacturing:[],sample:{completed:{exp:1000,gold:100,orderLmd:5000}}}}}))}))
 const owned=OPERATORS.map(o=>({operator:o.name,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}))
 describe('complete branch admission before any simulation',()=>{
  it('ignores old trial and top-K truncation and simulates all ten distinct branches in ideal mode', async ({ annotate }) => {

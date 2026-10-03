@@ -17,10 +17,23 @@ describe('static control opportunity comparison',()=>{
  it('marks timed run-order projection unavailable without inventing immediate swaps',()=>{const c=config();trade(c).specialOrder='shiftRun';const r=analyzeControlImpact(c);expect(r.baseline.complete).toBe(false);expect(r.baseline.diagnostics.join(' ')).toContain('跑单')})
  it('separates charging efficiency from income and observes exhausted providers',()=>{const c=config();const p=createRoom('P','power');p.operatorIds=[id('埃癸斯')];c.rooms.push(p);c.controlOperatorIds=[id('凯尔希')];c.zeroMoraleOperatorIds=[id('凯尔希')];const r=analyzeControlImpact(c);expect(r.baseline.powerBonusPercent).toBe(20);expect(r.baseline.daily.score).toBe(0);expect(r.members[0]!.delta.baseMoraleReductionPerHour).toBe(0)})
  it('rejects duplicate or elsewhere-occupied replacement control operators',()=>{const c=config();trade(c,2,['摩根']);expect(()=>compareControlConfigurations(c,[id('摩根')])).toThrow();expect(()=>compareControlConfigurations(c,[id('阿米娅'),id('阿米娅')])).toThrow()})
- it('permits level 1 EXP recipe and retains excluded product diagnostics',()=>{const c=config();const m=createRoom('M','manufacture');m.level=1;m.product='exp';c.rooms=[m];expect(analyzeControlImpact(c).baseline.complete).toBe(true);m.level=3;m.product='fragment';expect(analyzeControlImpact(c).baseline.diagnostics.join(' ')).toContain('评分')})
+ it('permits level 1 EXP recipe and weights level 3 fragments',()=>{const c=config();const m=createRoom('M','manufacture');m.level=1;m.product='exp';c.rooms=[m];expect(analyzeControlImpact(c).baseline.complete).toBe(true);m.level=3;m.product='fragment';c.productionWeights={exp:0,gold:0,orders:0,fragments:4,orundum:0};const result=analyzeControlImpact(c).baseline;expect(result.complete).toBe(true);expect(result.daily.score).toBeCloseTo(96)})
 })
 
 describe('control projection preserves snapshot and cross-facility context',()=>{
+ it.each([1,2,3] as const)('restricts fixed-quality Tequila premiums to level 3 in control projections (level %i)',level=>{
+  for(const special of ['tequilaAlpha','tequilaBeta'] as const){
+   const c=config(),room=trade(c,level)
+   room.quality='beta';room.specialOrder=special
+   const result=analyzeControlImpact(c).baseline
+   expect(result.complete).toBe(true)
+   const daily=result.rooms[0]!.daily
+   // Fixed beta expectation is 1900 LMD / 262.8 minutes; eligible L3 premiums are .85*250 or .85*500.
+   const premium=level===3?(special==='tequilaAlpha'?212.5:425):0
+   expect(daily.orderFaceValue).toBeCloseTo(1440*(1900+premium)/262.8)
+   expect(daily.virtualGoldValue??0).toBeCloseTo(1440*premium/262.8)
+  }
+ })
  it('can show a dedicated supporter losing to a general control bonus',()=>{const c=config();trade(c,1,['能天使']);c.controlOperatorIds=[id('阿米娅')];const r=compareControlConfigurations(c,[id('戴菲恩')]);expect(r.delta.rooms[0]!.efficiencyPoints).toBe(-7);expect(r.delta.daily.score).toBeCloseTo(-140)})
  it('rebuilds virtual power sources rather than summing direct control percentages',()=>{const c=config();const m=createRoom('M','manufacture');m.operatorIds=[id('温蒂')];const p=createRoom('P','power');p.operatorIds=[id('Lancet-2')];c.rooms=[m,p];c.controlOperatorIds=[id('森蚺')];const r=analyzeControlImpact(c);expect(r.members[0]!.delta.rooms[0]!.efficiencyPoints).toBe(30);expect(r.members[0]!.delta.powerBonusPercent).toBe(0);expect(r.members[0]!.delta.daily.score).toBeCloseTo(2400)})
  it('respects explicit warmup time while keeping identical production snapshots in all counterfactuals',()=>{const c=config();const m=createRoom('M','manufacture');m.operatorIds=[id('芬')];c.rooms=[m];c.controlOperatorIds=[id('凯尔希')];const fresh=analyzeControlImpact(c,{timeContext:{workHoursByOperator:new Map([[id('芬'),0]])}});const warm=analyzeControlImpact(c,{timeContext:{workHoursByOperator:new Map([[id('芬'),5]])}});expect(warm.baseline.rooms[0]!.efficiencyPercent-fresh.baseline.rooms[0]!.efficiencyPercent).toBe(5);expect(fresh.members[0]!.delta.rooms[0]!.efficiencyPoints).toBe(2);expect(warm.members[0]!.delta.rooms[0]!.efficiencyPoints).toBe(2)})

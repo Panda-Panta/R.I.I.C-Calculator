@@ -12,6 +12,8 @@ import { evaluateOperators } from './operatorRules'
 import { simulateMorale } from './morale'
 import { buildRiicGlobalContext, type RiicGlobalContext } from './globalContext'
 import { virtualGoldEquivalent } from '../rules/orderValue'
+import { getOrderDistribution } from '../rules/orderRules'
+import { scoreProduction } from '../optimizer/productionObjective'
 
 const OUTPUT_POWER_USE = { 1: 10, 2: 30, 3: 60 } as const
 const POWER_GENERATION = { 1: 60, 2: 130, 3: 270 } as const
@@ -36,22 +38,10 @@ interface OrderTemplate {
 }
 
 function distribution(level: number, quality: QualityRule): OrderTemplate[] {
-  if (level === 1) {
-    return [{ probability: 1, cost: 2, reward: 1000, minutes: 144, efficiencyAffected: true }]
-  }
-  if (level === 2) {
-    return [
-      { probability: 0.6, cost: 2, reward: 1000, minutes: 144, efficiencyAffected: true },
-      { probability: 0.4, cost: 3, reward: 1500, minutes: 210, efficiencyAffected: true },
-    ]
-  }
-  const probabilities =
-    quality === 'beta' ? [0.05, 0.1, 0.85] : quality === 'alpha' ? [0.15, 0.3, 0.55] : [0.3, 0.5, 0.2]
-  return [
-    { probability: probabilities[0]!, cost: 2, reward: 1000, minutes: 144, efficiencyAffected: true },
-    { probability: probabilities[1]!, cost: 3, reward: 1500, minutes: 210, efficiencyAffected: true },
-    { probability: probabilities[2]!, cost: 4, reward: 2000, minutes: 276, efficiencyAffected: true },
-  ]
+  return getOrderDistribution(level, quality).map(order => ({
+    probability: order.probability, cost: order.goldCost, reward: order.lmdReward,
+    minutes: order.baseMinutes, efficiencyAffected: order.efficiencyAffected,
+  }))
 }
 
 function transformSpecial(template: OrderTemplate, special: SpecialOrder, roomLevel: number): OrderTemplate {
@@ -67,9 +57,9 @@ function transformSpecial(template: OrderTemplate, special: SpecialOrder, roomLe
     case 'provisoBeta':
       return template.cost < 4 ? { ...template, cost: template.cost + 2, reward: template.reward + 1000 } : template
     case 'tequilaAlpha':
-      return template.cost > 3 ? { ...template, reward: template.reward + 250 } : template
+      return roomLevel === 3 && template.cost > 3 ? { ...template, reward: template.reward + 250 } : template
     case 'tequilaBeta':
-      return template.cost > 3 ? { ...template, reward: template.reward + 500 } : template
+      return roomLevel === 3 && template.cost > 3 ? { ...template, reward: template.reward + 500 } : template
     case 'shiftRun':
       // Contract conversion and Tequila are mutually exclusive. Test the BASE cost.
       if (template.cost < 4) return { ...template, cost: template.cost + 2, reward: template.reward + 1000 }
@@ -337,7 +327,8 @@ export function calculate(config: AppConfig): CalculationReport {
   const fragmentsConsumed = trading.reduce((sum, item) => sum + item.fragmentsConsumed, 0)
   const netGoldCount = goldCount - goldConsumed
   const netGoldValue = netGoldCount * 500
-  const totalScore82 = exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
+  const scoreBreakdown = scoreProduction({ exp, gold: goldCount, virtualGold: virtualGoldCount, orderLmd, fragments, orundum }, 24, config.productionWeights)
+  const totalScore82 = scoreBreakdown.total
   const totalEquivalentLmd = orderLmd + netGoldValue + virtualGoldValue
 
   const summary = {
@@ -354,6 +345,7 @@ export function calculate(config: AppConfig): CalculationReport {
     netGoldCount,
     netGoldValue,
     totalScore82,
+    scoreBreakdown,
     totalEquivalentLmd,
   }
   return {

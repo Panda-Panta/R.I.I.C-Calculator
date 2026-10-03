@@ -12,6 +12,16 @@ import SmartRosterConfigModal, {
 } from './SmartRosterConfigModal.vue'
 
 describe('SmartRosterConfigModal.vue', () => {
+  it('uses the current shared weights rather than stale modal preferences', async () => {
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, JSON.stringify({ ...DEFAULT_CONFIG, productionWeights: { exp: 9, gold: 9, orders: 9, fragments: 9, orundum: 9 } }))
+    const wrapper = mountModal({ initialProductionWeights: { exp: 2, gold: .5, orders: 1, fragments: 0, orundum: 0 } })
+    try {
+      expect(wrapper.get<HTMLInputElement>('[data-test="weight-exp"]').element.value).toBe('2')
+      await wrapper.get('[data-test="weight-orders"]').setValue('0')
+      await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+      expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ productionWeights: { exp: 2, gold: .5, orders: 0, fragments: 0, orundum: 0 } })
+    } finally { wrapper.unmount() }
+  })
   beforeEach(() => {
     localStorage.clear()
   })
@@ -90,6 +100,7 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.emitted('confirm')).toBeTruthy()
     const emittedConfig = wrapper.emitted('confirm')![0]![0] as SmartRosterConfig
     expect(emittedConfig).toEqual({
+      productionWeights: { exp: 1, gold: .8, orders: .2, fragments: 0, orundum: 0 },
       trials: 10,
       maxStaticEvals: 5000,
       simulationTopK: 10,

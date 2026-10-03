@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref,watch,onBeforeUnmount,computed} from 'vue'
-import {scoreProduction} from '../../optimizer/productionObjective'
+import {scoreProduction,scoreSimulationProduction} from '../../optimizer/productionObjective'
 import OperatorInventoryPanel from './OperatorInventoryPanel.vue'
 import ControlImpactPanel from './ControlImpactPanel.vue'
 import RosterIncomeSearchPanel from './RosterIncomeSearchPanel.vue'
@@ -32,9 +32,21 @@ const simulationProduction=computed(()=>({...searchOptions.value.production,outp
 const reportBasis=ref('当前排班')
 const running=ref(false),report=ref<ScheduleSimulationReport|null>(null),error=ref('')
 const timelineData=ref<TimelineDataset|null>(null)
-const completedOutput=computed(()=>{const r=report.value,c=r?.production?.sample.completed;return c&&r.observedHours>0?scoreProduction(c,r.observedHours):null})
+const completedOutputState=computed(()=>{
+ const r=report.value,p=r?.production
+ if(!r||!p)return {score:null,complete:false,error:''}
+ const completed=p.sample?.completed
+ if(!completed||!Number.isFinite(r.observedHours)||r.observedHours<=0||[completed.exp,completed.gold,completed.orderLmd].some(value=>!Number.isFinite(value)||value<0))return {score:null,complete:false,error:'缺少可用的完成产出数据，无法计算加权产出；仍可导出明细核查。'}
+ const complete=r.success&&p.success&&Array.isArray(p.events)&&Array.isArray(p.manufacturing)&&Number.isFinite(r.assumptions?.warmupHours)&&Number.isFinite(r.elapsedHours)&&!!r.inputs?.options
+ try{
+  if(complete)return {score:scoreSimulationProduction(r),complete:true,error:''}
+  return {score:scoreProduction(completed,r.observedHours,r.inputs?.options?.productionWeights??props.workspace.productionWeights),complete:false,error:'报告未完成或缺少完整生产明细，以下仅折算已记录产物；虚拟赤金、碎片与合成玉的完整贡献尚未核验。'}
+ }catch(cause){return {score:null,complete:false,error:`加权产出不可用：${cause instanceof Error?cause.message:String(cause)}`}}
+})
+const completedOutput=computed(()=>completedOutputState.value.score)
+const hasInventorySample=computed(()=>{const sample=report.value?.production?.sample;return !!sample?.opening&&!!sample.closing&&!!sample.inflows&&!!sample.outflows&&!!sample.net})
 const rosterDeferred=computed(()=>report.value?.diagnostics.some(d=>d.code==='group-blocked')??false)
-const productionComplete=computed(()=>report.value?.success===true&&report.value?.production?.success===true&&!rosterDeferred.value)
+const productionComplete=computed(()=>completedOutputState.value.complete&&!rosterDeferred.value)
 const inventory=ref<{enabled:boolean;valid:boolean;entries:OwnedOperatorInput[]}>({enabled:false,valid:true,entries:[]})
 function updateInventory(value:typeof inventory.value){inventory.value=value;clear()}
 let worker:Worker|undefined
@@ -136,17 +148,18 @@ const number=(n:number)=>n.toLocaleString('zh-CN',{maximumFractionDigits:2})
    </details>
    <section v-if="report.production" aria-label="采样产出与库存" class="production-results">
     <p :class="{'simulation-error':!report.production.success}" data-test="production-status">{{report.production.success?'产出计算窗口已完成':'产出策略未完整执行'}}<span v-if="!report.production.success">，原因见下方假设与待核实项。</span></p>
+    <p v-if="report.production.assumptions?.outputMode==='potential'&&completedOutputState.error" data-test="production-score-unavailable" class="simulation-error">{{completedOutputState.error}}</p>
     <template v-if="report.production.assumptions?.outputMode==='potential'&&completedOutput">
-     <p data-test="completed-production-score">{{productionComplete?'每日综合产出':rosterDeferred?'换班延后的折算值（不可作为稳定日均结论）':'未完成采样的折算值（不可作为日均结论）'}}：{{number(completedOutput.total)}} = {{number(completedOutput.exp)}} EXP + 0.8 × {{number(completedOutput.goldValue)}} 赤金价值 + 0.2 × {{number(completedOutput.orderValue)}} 订单面值</p>
+     <p data-test="completed-production-score">{{productionComplete?'每日加权产出':rosterDeferred?'换班延后的折算值（不可作为稳定日均结论）':'未完成采样的折算值（不可作为日均结论）'}}：{{number(completedOutput.total)}} = {{number(completedOutput.weightedExp)}} 经验贡献 + {{number(completedOutput.weightedGold)}} 赤金及虚拟赤金贡献 + {{number(completedOutput.weightedOrders)}} 订单贡献 + {{number(completedOutput.weightedFragments)}} 碎片贡献 + {{number(completedOutput.weightedOrundum)}} 合成玉贡献</p>
      <p class="simulation-note">按采样完成产物折算每日，预热不计入。忽略库存、缺金及存仓/收取阻塞，不扣赤金交易成本。原始完成数量与测算明细可导出。</p>
     </template>
-    <template v-else>
+    <template v-else-if="hasInventorySample">
     <p class="simulation-note">下表只计实际采样期间的收取到账与支出，期初库存包含预热结余。尚未收取的产品不计入到账；净变动不等于总产量。</p>
     <div class="simulation-table"><table><caption>采样期间产出与库存</caption><thead><tr><th>资源</th><th>期初库存</th><th>到账</th><th>支出</th><th>净变动</th><th>期末库存</th></tr></thead><tbody>
      <tr v-for="[key,label] in resourceLabels" :key="key" :data-test="'production-'+key"><td>{{label}}</td><td>{{number(report.production.sample.opening[key]??0)}}</td><td>{{number(report.production.sample.inflows[key]??0)}}</td><td>{{number(report.production.sample.outflows[key]??0)}}</td><td>{{signed(report.production.sample.net[key]??0)}}</td><td>{{number(report.production.sample.closing[key]??0)}}</td></tr>
     </tbody></table></div>
     </template>
-    <p>期末无人机：{{number(report.production.drones.stock)}} / {{number(report.production.drones.capacity)}} 架</p>
+    <p v-if="report.production.drones">期末无人机：{{number(report.production.drones.stock)}} / {{number(report.production.drones.capacity)}} 架</p>
    </section>
    <div class="simulation-table"><table><caption>设施平均效率</caption><thead><tr><th>设施</th><th>总效率</th><th>共同在岗组合数</th></tr></thead><tbody><tr v-for="room in report.rooms" :key="room.roomId"><td>{{getRoomDisplayName(room.roomId,room.roomType)}}</td><td>{{number(room.averageEfficiencyPercent)}}%</td><td>{{room.teams.length}}</td></tr></tbody></table></div>
    <div class="simulation-table"><table><caption>干员工休统计（小时）</caption><thead><tr><th>干员</th><th>工作占比</th><th>主班</th><th>替班</th><th>宿舍休息</th><th>闲置</th><th>疲劳占岗</th><th>末心情</th></tr></thead><tbody><tr v-for="op in report.operators" :key="op.operatorId"><td>{{op.operatorName}}</td><td>{{number(op.workFraction*100)}}%</td><td>{{number(op.mainWorkHours)}}</td><td>{{number(op.substituteWorkHours)}}</td><td>{{number(op.restHours)}}</td><td>{{number(op.idleHours)}}</td><td>{{number(op.exhaustedHours)}}</td><td>{{number(op.finalMorale)}}</td></tr></tbody></table></div>

@@ -8,6 +8,7 @@ import {
 } from './riicAtomicUnits'
 import { placePendantOperator } from '../scheduler/smartDormitoryPolicy'
 import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 import { assignBackups, validatePhysicalRoster } from './rosterDraft'
 import { rankStaffingCandidates } from './staffingQuality'
 import { applySingletonWorkPolicy, productionColleagueBonus, productionTeamTheory } from './productionSingletons'
@@ -26,6 +27,8 @@ export interface ReplacementOptions {
   lockedOperators?: Set<string>
   baselineScore?: number
   evaluator?: (workspace: RosterWorkspace) => number
+  /** Automatic generation must reconsider runners even when no runner was initially profitable. */
+  configureRunOrderCandidates?: boolean
 }
 
 function isPendantOperator(name: string, ws: RosterWorkspace): boolean {
@@ -71,7 +74,7 @@ export function runGlobalPerCapitaReplacement(
   options: ReplacementOptions = {},
 ): ReplacementResult {
   let ws = structuredClone(base)
-  const maintainRunOrder = Object.values(base.mainPlan.facilities).some(r => r.type === 'trading' && r.slots.some(s => s.replacements.some(isShiftRunOperator)))
+  const maintainRunOrder = options.configureRunOrderCandidates ?? Object.values(base.mainPlan.facilities).some(r => r.type === 'trading' && r.slots.some(s => s.replacements.some(isTradeRunOrderOperator)))
   const logs: string[] = []
   let swappedCount = 0
   const repairPositions = new Set<string>()
@@ -85,11 +88,18 @@ export function runGlobalPerCapitaReplacement(
   let currentScore = options.baselineScore ?? (options.evaluator ? options.evaluator(ws) : 0)
 
   const baselineScore = currentScore
-  const preservesLocks = (target: RosterWorkspace) => [...lockedPositions].every(key => {
+  const lockedSlotFingerprint = (target: RosterWorkspace, key: string) => {
     const [roomId, index] = key.split(':')
-    return JSON.stringify(target.mainPlan.facilities[roomId as MowerRoomId]?.slots[Number(index)]) ===
-      JSON.stringify(base.mainPlan.facilities[roomId as MowerRoomId]?.slots[Number(index)])
-  })
+    const room = target.mainPlan.facilities[roomId as MowerRoomId]
+    const slot = room?.slots[Number(index)]
+    // Automatic runner selection is independent of locked physical staffing.
+    // A Closure/Pepe backup outside trading remains an ordinary locked backup.
+    return JSON.stringify(options.configureRunOrderCandidates === true && room?.type === 'trading' && slot
+      ? { ...slot, replacements: slot.replacements.filter(id => !isTradeRunOrderOperator(id)) }
+      : slot)
+  }
+  const preservesLocks = (target: RosterWorkspace) => [...lockedPositions].every(key =>
+    lockedSlotFingerprint(target, key) === lockedSlotFingerprint(base, key))
 
   const ownedNames = new Set(
     inventory.operators.filter((o) => o.matchesMaximumSkills).map((o) => o.name),
@@ -253,7 +263,8 @@ export function runGlobalPerCapitaReplacement(
 
         // The strongest unused singletons enter before simulation budgets are spent.
         // A small frontier also admits alternative bundles when their best members are scarce backups.
-        const unused = inventory.operators.filter(o => availableOperator(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔')
+        const unused = inventory.operators.filter(o => availableOperator(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+          (!options.configureRunOrderCandidates || room.type !== 'trading' || o.name !== '佩佩'))
         const singletonPreview = structuredClone(ws)
         for (const index of slotIndices) {
           const slot = singletonPreview.mainPlan.facilities[room.roomId].slots[index]!
@@ -416,7 +427,8 @@ export function runGlobalPerCapitaReplacement(
     for (let sIdx = 0; sIdx < cap; sIdx++) {
       const slot = room.slots[sIdx]!
       if (slot.occupant.kind !== 'operator' && repairPositions.has(`${room.roomId}:${sIdx}`) && !lockedPositions.has(`${room.roomId}:${sIdx}`)) {
-        const pool = inventory.operators.filter(o => !occupiedAll.has(o.charId) && !lockedOperators.has(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔')
+        const pool = inventory.operators.filter(o => !occupiedAll.has(o.charId) && !lockedOperators.has(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+          (!options.configureRunOrderCandidates || room.type !== 'trading' || o.name !== '佩佩'))
         const freeSingleton = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex: sIdx }, pool.map(o => o.charId), 'main')[0]
         if (freeSingleton) {
           const sId = resolveId(freeSingleton)

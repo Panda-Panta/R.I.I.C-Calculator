@@ -1,8 +1,23 @@
 import { describe, it, expect } from 'vitest'
 import { createDefaultWorkspace } from './defaults'
 import { validateRosterWorkspace } from './validate'
+import { resolveOperatorCharId } from './compat/mowerJson'
 
 describe('validateRosterWorkspace', () => {
+  it.each(['但书','龙舌兰','可露希尔','佩佩','U-Official'])('allows an ideal trading candidate already stationed elsewhere (%s)', name => {
+    const ws = createDefaultWorkspace()
+    const operatorId = resolveOperatorCharId(name)
+    ws.mainPlan.facilities.factory.slots[0] = { occupant: { kind: 'operator', operatorId }, groupId: null, replacements: [] }
+    ws.mainPlan.facilities.room_3_1.slots[0] = { occupant: { kind: 'operator', operatorId: 'char_002_amiya' }, groupId: null, replacements: [operatorId] }
+    expect(validateRosterWorkspace(ws).isValid).toBe(true)
+    // Outside trading the same name is an ordinary physical backup, so still conflicts.
+    ws.mainPlan.facilities.room_1_1.slots[0] = { occupant: { kind: 'operator', operatorId: 'char_102_texas' }, groupId: null, replacements: [operatorId] }
+    const errors = validateRosterWorkspace(ws).criticalErrors
+    expect(errors.filter(e => e.code === 'CONFLICTING_REPLACEMENT').map(e=>e.roomId)).toEqual(['room_1_1'])
+    // Being virtual does not permit duplicate entries within one slot.
+    ws.mainPlan.facilities.room_3_1.slots[0]!.replacements.push(operatorId)
+    expect(validateRosterWorkspace(ws).criticalErrors.some(e=>e.code==='DUPLICATE_REPLACEMENT')).toBe(true)
+  })
   it('passes validation for default workspace with exact balanced power (810/810)', () => {
     const ws = createDefaultWorkspace()
     const result = validateRosterWorkspace(ws)

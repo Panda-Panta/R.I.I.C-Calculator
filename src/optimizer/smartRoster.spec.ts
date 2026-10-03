@@ -1,4 +1,4 @@
-import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
 import { afterEach, describe, expect, it } from 'vitest'
 import { setTimeout as yieldToRunner } from 'node:timers/promises'
 import { OPERATORS } from '../domain/operators'
@@ -54,14 +54,14 @@ describe('smartRoster generation with 3-phase optimization', () => {
       if (['manufacture', 'trading', 'power', 'central'].includes(room.type)) {
         const cap = room.type === 'central' ? 5 : room.type === 'power' ? 1 : room.level
         expect(room.slots.slice(0, cap).every((s) => s.occupant.kind === 'operator')).toBe(true)
-        expect(room.slots.slice(0, cap).every((s) => s.replacements.filter(x => !isShiftRunOperator(x)).length === 1)).toBe(true)
+        expect(room.slots.slice(0, cap).every((s) => s.replacements.filter(x => isOrdinaryReplacementCandidate(x, room.type)).length === 1)).toBe(true)
       }
     }
 
     // Check backups are unique and do not overlap with mains in working facilities
     const workingRooms = Object.values(workspace.mainPlan.facilities).filter((r) => r.type !== 'dormitory')
     const backups = workingRooms.flatMap((r) =>
-      r.slots.flatMap((s) => s.replacements.map(id).filter(x => !isShiftRunOperator(x)))
+      r.slots.flatMap((s) => s.replacements.map(id).filter(x => isOrdinaryReplacementCandidate(x, r.type)))
     )
     expect(new Set(backups).size).toBe(backups.length)
     const mainList = mains(workspace)

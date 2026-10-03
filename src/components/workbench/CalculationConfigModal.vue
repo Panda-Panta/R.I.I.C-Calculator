@@ -1,5 +1,6 @@
 <script lang="ts">
 export interface CalculationConfig {
+  productionWeights?: import('../../domain/productionWeights').ProductionWeights
   droneTarget: 'gold' | 'exp' | 'trading' | 'none'
   droneTradingRoomId: string
   droneRoomId?: string
@@ -12,12 +13,16 @@ import { computed, ref, watch } from 'vue'
 import { NButton, NModal } from 'naive-ui'
 import { droneFacilities } from '../../workbench/droneTargets'
 import type { RosterWorkspace } from '../../workbench/model'
+import ProductionWeightsEditor from './ProductionWeightsEditor.vue'
+import { normalizeProductionWeights } from '../../domain/productionWeights'
 
 const props = defineProps<{ open: boolean; workspace: RosterWorkspace; initial: CalculationConfig }>()
 const emit = defineEmits<{ close: []; confirm: [config: CalculationConfig] }>()
 const room = ref('none')
 const useOperatorInventory = ref(true)
 const jayeElite0 = ref(false)
+const weights = ref(normalizeProductionWeights())
+const weightsValid = ref(true)
 const facilities = computed(() => droneFacilities(props.workspace))
 watch(() => props.open, open => {
   if (!open) return
@@ -27,8 +32,10 @@ watch(() => props.open, open => {
     (saved ? 'none' : facilities.value.find(f => f.target === props.initial.droneTarget)?.roomId ?? 'none')
   useOperatorInventory.value = props.initial.useOperatorInventory ?? true
   jayeElite0.value = props.initial.jayeElite0 ?? false
+  weights.value = normalizeProductionWeights(props.initial.productionWeights)
 }, { immediate: true })
 function confirm() {
+  if (!weightsValid.value) return
   const selected = facilities.value.find(f => f.roomId === room.value)
   emit('confirm', {
     droneTarget: selected?.target ?? 'none',
@@ -36,6 +43,7 @@ function confirm() {
     droneTradingRoomId: selected?.target === 'trading' ? selected.roomId : '',
     useOperatorInventory: useOperatorInventory.value,
     jayeElite0: jayeElite0.value,
+    productionWeights: normalizeProductionWeights(weights.value),
   })
 }
 </script>
@@ -44,6 +52,7 @@ function confirm() {
   <NModal :show="open" preset="card" title="计算产出" :style="{ width: '520px', maxWidth: '95vw' }" @update:show="!$event && emit('close')">
     <div class="calculation-config" data-test="calculation-config">
       <p>选择本次模拟的无人机加速目标。计算将在后台进行，可随时中止。</p>
+      <ProductionWeightsEditor v-model="weights" @validity-change="weightsValid = $event" />
       <label>无人机加速目标
         <select v-model="room" data-test="calculation-drone-target">
           <option value="none">不使用无人机加速</option>
@@ -62,7 +71,7 @@ function confirm() {
     <template #footer>
       <div class="calculation-actions">
         <NButton @click="emit('close')">取消</NButton>
-        <NButton type="primary" data-test="confirm-calculation" @click="confirm">开始计算</NButton>
+        <NButton type="primary" data-test="confirm-calculation" :disabled="!weightsValid" @click="confirm">开始计算</NButton>
       </div>
     </template>
   </NModal>

@@ -20,6 +20,7 @@
       </div>
 
       <!-- Phase 1: Static Layout Exploration -->
+      <ProductionWeightsEditor :model-value="normalizeProductionWeights(form.productionWeights)" @update:model-value="form.productionWeights = $event" @validity-change="weightsValid = $event" />
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
           <span class="phase-badge phase-1">阶段 1</span> 主班组合与跨站初筛
@@ -186,6 +187,7 @@
           <n-button
             class="btn-confirm"
             data-test="confirm-btn"
+            :disabled="!weightsValid"
             type="primary"
             size="small"
             @click="handleConfirm"
@@ -200,6 +202,7 @@
 
 <script lang="ts">
 export interface SmartRosterConfig {
+  productionWeights?: import('../../domain/productionWeights').ProductionWeights
   trials: number
   maxStaticEvals: number
   simulationTopK: number
@@ -230,6 +233,8 @@ import { computed, ref, watch } from 'vue'
 import { NButton, NModal } from 'naive-ui'
 import { droneFacilities } from '../../workbench/droneTargets'
 import type { RosterWorkspace } from '../../workbench/model'
+import ProductionWeightsEditor from './ProductionWeightsEditor.vue'
+import { normalizeProductionWeights, type ProductionWeights } from '../../domain/productionWeights'
 
 const props = withDefaults(
   defineProps<{
@@ -239,6 +244,7 @@ const props = withDefaults(
     to?: string | HTMLElement | undefined
     initialDroneTarget?: 'gold' | 'exp' | 'trading' | 'none'
     initialSeed?: number
+    initialProductionWeights?: ProductionWeights
   }>(),
   {
     open: undefined,
@@ -255,6 +261,7 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = ref(false)
+const weightsValid = ref(true)
 const selectedRoom = ref('none')
 const facilities = computed(() => props.workspace ? droneFacilities(props.workspace) : [])
 function restoreRoom() {
@@ -270,6 +277,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
+        productionWeights: normalizeProductionWeights(props.initialProductionWeights ?? parsed.productionWeights),
         trials: 10,
         maxStaticEvals: Math.max(500, Math.min(10000, Number(parsed.maxStaticEvals) || DEFAULT_CONFIG.maxStaticEvals)),
         simulationTopK: 10,
@@ -286,6 +294,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
   }
   return {
     ...DEFAULT_CONFIG,
+    productionWeights: normalizeProductionWeights(props.initialProductionWeights),
     droneTarget: props.initialDroneTarget,
     seed: props.initialSeed,
   }
@@ -320,6 +329,7 @@ const handleCancel = () => {
 const handleReset = () => {
   form.value = {
     ...DEFAULT_CONFIG,
+    productionWeights: normalizeProductionWeights(),
     droneTarget: props.initialDroneTarget,
     seed: props.initialSeed,
   }
@@ -332,8 +342,10 @@ const handleReset = () => {
 }
 
 const handleConfirm = () => {
+  if (!weightsValid.value) return
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
+    productionWeights: normalizeProductionWeights(form.value.productionWeights),
     trials: 10,
     maxStaticEvals: Math.max(500, Math.min(10000, Math.floor(form.value.maxStaticEvals) || 500)),
     simulationTopK: 10,

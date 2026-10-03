@@ -12,7 +12,9 @@ import CalculationConfigModal, { type CalculationConfig } from './CalculationCon
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import type { TimelineDataset } from '../../workbench/timeline/timelineModel'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
-import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
+import { parseOperatorInventory, compileOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
+import { inventoryOperatorRecords } from '../../domain/operatorContext'
+import { normalizeProductionWeights } from '../../domain/productionWeights'
 
 import PlanToolbar from './PlanToolbar.vue'
 import LayoutPresetBar from './LayoutPresetBar.vue'
@@ -49,6 +51,7 @@ const backupPlansCount = computed(() => {
 
 // Simulation settings state
 const defaultSimSettings: SimulationSettings = {
+  productionWeights: normalizeProductionWeights(),
   sampleDays: 7,
   warmupDays: 3,
   step: 0.25,
@@ -63,6 +66,21 @@ const defaultSimSettings: SimulationSettings = {
   freeRoom: false,
 }
 const simSettings = ref<SimulationSettings>({ ...defaultSimSettings })
+watch(() => simSettings.value.productionWeights, value => {
+  const weights = normalizeProductionWeights(value)
+  const current = normalizeProductionWeights(store.workspace.productionWeights)
+  if ((Object.keys(weights) as Array<keyof typeof weights>).some(key => weights[key] !== current[key])) {
+    if (activeRosterWorker.value) {
+      const worker = activeRosterWorker.value
+      activeRosterWorker.value = null
+      worker.terminate()
+      isGeneratingRoster.value = false
+      generationProgress.value = null
+      replaceStatusMessage.value = '产出加权系数已变更，自动排班计算已中止，请重新生成。'
+    }
+    store.workspace.productionWeights = weights
+  }
+}, { deep: true, flush: 'sync' })
 watch(simSettings, value => {
   if (typeof localStorage !== 'undefined') {
     try { localStorage.setItem(SIM_SETTINGS_STORAGE_KEY, JSON.stringify(value)) } catch { /* storage unavailable */ }
@@ -73,7 +91,7 @@ const timelineData = shallowRef<TimelineDataset | null>(null)
 const isCalculating = ref(false)
 const isGeneratingRoster = ref(false)
 const generationProgress = ref<SmartRosterProgress | null>(null)
-const activeRosterWorker = ref<Worker | null>(null)
+const activeRosterWorker = shallowRef<Worker | null>(null)
 
 const calculationConfigOpen = ref(false)
 const calculationProgress = ref<CalculationProgress | null>(null)
@@ -133,6 +151,13 @@ const operatorInventory = ref<{
   enabled: true,
   valid: false,
   entries: [],
+})
+
+const previewOperatorContext = computed(() => {
+  const inv = operatorInventory.value
+  return inv.enabled && inv.valid
+    ? { operatorRecords: inventoryOperatorRecords(compileOperatorInventory(inv.entries)) }
+    : undefined
 })
 
 // Calculation report and error state
@@ -207,7 +232,9 @@ function initPersistence(): void {
     if (rawSim) {
       const parsedSim = JSON.parse(rawSim)
       if (parsedSim?.sampleDays) {
-        simSettings.value = { ...defaultSimSettings, ...parsedSim }
+        let productionWeights = normalizeProductionWeights()
+        try { productionWeights = normalizeProductionWeights(parsedSim.productionWeights) } catch { /* retain defaults for invalid saved coefficients */ }
+        simSettings.value = { ...defaultSimSettings, ...parsedSim, productionWeights }
       }
     }
 
@@ -466,6 +493,7 @@ function executeCalculation(): void {
         freeRoom: simSettings.value.freeRoom ?? false,
       },
       simulationOptions: {
+        productionWeights: normalizeProductionWeights(simSettings.value.productionWeights),
         warmupHours: simSettings.value.warmupDays * 24,
         sampleHours: simSettings.value.sampleDays * 24,
         maxStepHours: simSettings.value.step,
@@ -596,9 +624,13 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
   }
 
   const baseWorkspace = JSON.parse(JSON.stringify(toRaw(store.workspace)))
+  const weights = normalizeProductionWeights(config?.productionWeights ?? simSettings.value.productionWeights)
+  simSettings.value.productionWeights = weights
+  baseWorkspace.productionWeights = weights
   const cleanEntries: OwnedOperatorInput[] = JSON.parse(JSON.stringify(inventoryEntries))
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
   const runOptions = {
+    productionWeights: weights,
     seed: (config?.seed !== undefined && config.seed >= 0)
       ? config.seed
       : (simSettings.value.seed < 0 ? (isVitest ? 42 : Math.floor(Math.random() * 0xffffffff)) : simSettings.value.seed),
@@ -615,7 +647,7 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
   const onSmartRosterComplete = (report: SmartRosterResult): void => {
     if (report.status === 'draft' && report.workspace) {
       store.loadWorkspace(report.workspace)
-      const scoreStr = report.score !== null ? `（82 预测：${report.score.toFixed(1)} 分/日）` : ''
+      const scoreStr = report.score !== null ? `（加权预测：${report.score.toFixed(1)} 分/日）` : ''
       replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并完成空位组队与动态仿真验证${scoreStr}。`
       simSettings.value.droneTarget = runOptions.droneTarget
       simSettings.value.droneRoomId = runOptions.droneRoomId
@@ -634,6 +666,7 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
       const worker = new Worker(new URL('../../optimizer/smartRosterWorker.ts', import.meta.url), { type: 'module' })
       activeRosterWorker.value = worker
       worker.onmessage = (event) => {
+        if (activeRosterWorker.value !== worker) return
         if (event.data.type === 'progress') {
           generationProgress.value = event.data.progress
         } else if (event.data.type === 'complete') {
@@ -651,6 +684,7 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
         }
       }
       worker.onerror = (err) => {
+        if (activeRosterWorker.value !== worker) return
         replaceStatusMessage.value = `自动排班任务发生错误：${err.message || 'Worker 执行失败'}`
         worker.terminate()
         activeRosterWorker.value = null
@@ -936,12 +970,15 @@ defineExpose({
           >
             <!-- Total 82 Output Score (Req 14) -->
             <div class="metric-card card-score82" data-test="metric-score82">
-              <span class="metric-tag">82 综合日产出</span>
+              <span class="metric-tag">加权总分</span>
               <div class="metric-main">
                 <span class="metric-num text-score82">{{ formatNumber(calculationReport.summary.totalScore82, 1) }}</span>
                 <span class="metric-unit">分/日</span>
               </div>
-              <span class="metric-sub">EXP + 0.8×赤金 + 0.2×龙门币</span>
+              <span class="metric-sub">按本次作战记录、赤金、订单、碎片和合成玉系数评分</span>
+              <span v-if="calculationReport.summary.scoreBreakdown" class="metric-sub" data-test="weighted-score-breakdown">
+                经验 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedExp, 1) }} · 赤金及虚拟赤金 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedGold, 1) }} · 订单 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedOrders, 1) }} · 碎片 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedFragments, 1) }} · 合成玉 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedOrundum, 1) }}
+              </span>
             </div>
 
             <!-- Daily LMD Yield -->
@@ -1057,6 +1094,8 @@ defineExpose({
       <!-- Tab 2: 设置 (Settings) (Req 3, 4, 5, 6, 7, 9, 12) -->
       <div v-show="activeTab === 'settings'" class="tab-panel settings-tab-panel" data-test="settings-tab-panel">
         <SettingsView
+          :workspace="store.workspace"
+          :operator-context="previewOperatorContext"
           v-model:settings="simSettings"
           @inventory-change="handleInventoryChange"
         />
@@ -1117,6 +1156,7 @@ defineExpose({
       :workspace="store.workspace"
       :initial-drone-target="simSettings.droneTarget"
       :initial-seed="simSettings.seed"
+      :initial-production-weights="simSettings.productionWeights"
       @close="smartRosterConfigModalOpen = false"
       @confirm="handleConfirmSmartRosterConfig"
     />

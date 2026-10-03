@@ -97,6 +97,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     if (new Set(ids).size !== ids.length) fail('任务造成重复占岗')
   }
   function evaluate(timing: BackupTiming): boolean {
+    if(state.mowerSource?.queue.tasks.some(task=>task.backupShiftActive))return false
     const next = plans.map((p, i) => {
       const enabled = Boolean(p.condition(state))
       return BACKUP_TIMINGS[enabled ? p.timing : p.exitTiming] <= BACKUP_TIMINGS[timing] ? enabled : active[i]!

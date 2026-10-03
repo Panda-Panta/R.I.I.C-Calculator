@@ -104,6 +104,7 @@ export function mowerCorrectionPlan(data:MowerSchedulingData,skipDorm=false):Mow
  return plan
 }
 export function planMowerCorrection(data:MowerSchedulingData,queue:MowerTaskQueue,force=false,currentTask?:MowerTask,skipDorm=false,onSkip?:()=>void):MowerTask|undefined {
+ if(queue.tasks.some(task=>task.backupShiftActive))return undefined
  const plan=mowerCorrectionPlan(data,skipDorm);if(!Object.keys(plan).length)return undefined
  const next=queue.find(),off=queue.find({type:T.SHIFT_OFF})
  if(!force&&next&&Object.keys(plan).length*toMowerMicros(45/3600)>next.timeMicros-data.nowMicros||off&&!(force&&off===currentTask)){onSkip?.();return undefined}

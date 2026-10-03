@@ -221,8 +221,8 @@ function exportJson(mode: ExportReportMode = 'summary'): void {
       </section>
 
       <section v-if="mowerMetrics" class="log-section">
-        <h4 class="section-heading">82 收益报表（日均）</h4>
-        <p>82 收益 {{ number(mowerMetrics.mower82) }}；经验 {{ number(mowerMetrics.exp) }}；赤金价值 {{ number(mowerMetrics.goldValue) }}；订单 {{ number(mowerMetrics.orderLmd) }}；特殊订单虚拟赤金价值 {{ number(mowerMetrics.virtualGoldValue) }}。</p>
+        <h4 class="section-heading">加权收益报表（日均）</h4>
+        <p>加权总分 {{ number(mowerMetrics.mower82) }}；经验 {{ number(mowerMetrics.exp) }}；赤金价值 {{ number(mowerMetrics.goldValue) }}；订单 {{ number(mowerMetrics.orderLmd) }}；特殊订单虚拟赤金价值 {{ number(mowerMetrics.virtualGoldValue) }}。</p>
         <p>平均订单金额 {{ number(mowerMetrics.meanOrderValue) }}。虚拟赤金 {{ number(mowerMetrics.virtualGoldCount) }} 条/日仅用于报表折算，不增加赤金库存。</p>
         <p v-if="specialOrderRows.length" data-test="special-order-distribution">采样期特殊订单：<template v-for="(item, index) in specialOrderRows" :key="item.kind">{{ index ? ' · ' : '' }}{{ item.label }} {{ number(item.count) }} 单（{{ number(item.lmd) }} 龙门币）</template></p>
         <p>Mower 工休图按心情记录变化估算；下方工作占比统计非疲劳工作时间，不能直接视为同一指标。</p>

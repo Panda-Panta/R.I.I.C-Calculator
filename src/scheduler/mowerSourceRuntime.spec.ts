@@ -82,7 +82,8 @@ describe('integrated Mower source scheduler',()=>{
   advanceRoster(s,500_000/3_600_000_000,rates);settleRoster(s,rates)
   expect(source.execution).toBeUndefined();expect(source.queue.tasks.some(t=>t.type===T.SHIFT_ON)).toBe(true)
   expect(phases.filter(p=>p.phase==='BEGINNING')).toEqual([{phase:'BEGINNING',time:startedAt}])
-  expect(phases.find(p=>p.phase==='BEFORE_DORM')?.time).toBeCloseTo(startedAt+500_000/3_600_000_000,12)
+  // A protected complete shift does not expose its intermediate occupancy to backups.
+  expect(phases.some(p=>p.phase==='BEFORE_DORM')).toBe(false)
   expect(phases.find(p=>p.phase==='BEFORE_PLANNING')?.time).toBeCloseTo(startedAt+1_000_000/3_600_000_000,12)
  })
  it('establishes recovery before an exact dorm no-op and preserves the final list',()=>{

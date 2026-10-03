@@ -61,7 +61,7 @@
           <!-- Income & Output Summary Section (if report present) -->
           <div v-if="calculationReport && calculationReport.summary" class="poster-income-card">
             <div class="income-head">
-              <span class="income-label">基建产出综合测算 (82 综合评分标准)</span>
+              <span class="income-label">基建产出综合测算（自定义加权评分）</span>
               <div class="power-tag" :class="{ danger: !calculationReport.power.sufficient }">
                 ⚡ 发电 {{ calculationReport.power.generation }} / 耗电 {{ calculationReport.power.consumption }} (余量 {{ calculationReport.power.margin >= 0 ? '+' : '' }}{{ calculationReport.power.margin }})
               </div>
@@ -69,7 +69,7 @@
             <div class="income-grid">
               <div class="income-metric highlight">
                 <span class="m-val">{{ formatNumber(calculationReport.summary.totalScore82, 1) }}</span>
-                <span class="m-sub">82 综合日产出</span>
+                <span class="m-sub">加权综合日产出</span>
               </div>
               <div class="income-metric">
                 <span class="m-val text-exp">{{ formatNumber(calculationReport.summary.exp, 0) }}</span>

@@ -11,11 +11,22 @@ describe('order rules', () => {
     expect(() => selectBaseOrder(choices, 1)).toThrow()
     expect(() => selectBaseOrder(choices, NaN)).toThrow()
   })
-  it('does not invent low level quality distributions', () => {
+  it('preserves ordinary distributions for each station level', () => {
     expect(getOrderDistribution(1)[0]?.goldCost).toBe(2)
     expect(getOrderDistribution(2).map(x => x.probability)).toEqual([0.6, 0.4])
     expect(getOrderDistribution(3, 'beta').map(x => x.probability)).toEqual([0.05, 0.1, 0.85])
-    expect(() => getOrderDistribution(2, 'alpha')).toThrow(/unverified/)
+  })
+  it.each([1, 2])('uses the requested fixed tailoring model at level %i', (level) => {
+    for (const [quality, probabilities] of [['alpha', [.15, .3, .55]], ['beta', [.05, .1, .85]]] as const) {
+      const choices = getOrderDistribution(level, quality)
+      expect(choices.map(x => x.probability)).toEqual(probabilities)
+      expect(choices.map(x => x.goldCost)).toEqual([2, 3, 4])
+      expect(choices.reduce((sum, x) => sum + x.probability, 0)).toBeCloseTo(1)
+      expect(selectBaseOrder(choices, .99)).toMatchObject({ goldCost: 4, lmdReward: 2000, baseMinutes: 276 })
+      expect(getOrderDistribution(level, quality, 'closure')).toMatchObject([{ probability: 1, goldCost: 2, lmdReward: 1200, baseMinutes: 144 }])
+      expect(getOrderDistribution(level, quality, 'pepe')).toMatchObject([{ probability: 1, goldCost: 0, lmdReward: 1000, baseMinutes: 270 }])
+      expect(() => getOrderDistribution(level, quality, 'orundum')).toThrow(/level 3/)
+    }
   })
   it.each([[0, 4, 2000, 'proviso'], [0.3, 5, 2500, 'proviso'], [0.8, 4, 2500, 'tequila']] as const)(
     'applies mutually exclusive capture for choice %s', (choice, goldCost, lmdReward, kind) => {

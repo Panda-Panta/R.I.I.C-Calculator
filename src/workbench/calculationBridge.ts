@@ -9,6 +9,8 @@ import type { RosterWorkspace } from './model'
 import { validateRosterWorkspace, type ValidationResult } from './validate'
 import { runScheduleSimulationBridge } from './scheduleSimulationBridge'
 import { virtualGoldEquivalent } from '../rules/orderValue'
+import { scoreSimulationProduction } from '../optimizer/productionObjective'
+import { normalizeProductionWeights } from '../domain/productionWeights'
 import type { ScheduleSimulationOptions, ScheduleSimulationReport, ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 
 export type CalculationEngineKind = 'legacy' | 'simulation'
@@ -64,15 +66,16 @@ export function simulationReportToCalculationReport(
   const virtualGoldCount = sampleOrderEvents.reduce((sum, e) => sum + (e.order ? virtualGoldEquivalent(e.order) : 0), 0) / days
   const virtualGoldValue = virtualGoldCount * 500
 
-  // 82 score: exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
-  const totalScore82 = exp + 0.8 * (goldValue + virtualGoldValue) + 0.2 * orderLmd
+  const scoreBreakdown = scoreSimulationProduction(simReport)
+  const totalScore82 = scoreBreakdown.total
   const totalEquivalentLmd = orderLmd + exp + (netGoldCount + virtualGoldCount) * 500
 
-  const fragments = (inflows?.fragment ?? 0) / days
-  const orundum = (inflows?.orundum ?? 0) / days
+  const fragments = (simReport.production?.manufacturing.filter(r => r.product === 'fragment').reduce((n,r) => n+r.sampleCompletedItems, 0) ?? 0) / days
+  const orundum = sampleOrderEvents.reduce((n,e) => n+(e.order?.orundumReward ?? 0), 0) / days
   const drones = (inflows?.drone ?? 0) / days
 
   const compiledConfig = compileMainPlanToAppConfig(workspace.mainPlan, workspace, baseConfig)
+  compiledConfig.productionWeights = normalizeProductionWeights(simReport.inputs.options.productionWeights)
   if(simReport.inputs.options.operatorInventory)compiledConfig.operatorRecords=inventoryOperatorRecords(compileOperatorInventory(simReport.inputs.options.operatorInventory))
   if(simReport.inputs.options.jayeElite0 || baseConfig.jayeElite0)compiledConfig.jayeElite0=true
   const legacyReport = calculate(compiledConfig)
@@ -91,6 +94,7 @@ export function simulationReportToCalculationReport(
     netGoldCount,
     netGoldValue: netGoldCount * 500,
     totalScore82,
+    scoreBreakdown,
     totalEquivalentLmd,
   }
 
@@ -129,6 +133,7 @@ export function runCalculationBridge(
 
   // Deep clone to strip any Vue reactive proxies before simulation / structuredClone
   const cleanWorkspace: RosterWorkspace = JSON.parse(JSON.stringify(workspace))
+  cleanWorkspace.productionWeights ??= options.baseConfig?.productionWeights
 
   if (engine === 'simulation') {
     const simBridge = runScheduleSimulationBridge(

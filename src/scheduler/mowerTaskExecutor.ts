@@ -4,6 +4,8 @@ import type {BackupTiming} from './backupPlans'
 import {MOWER_TASK_TYPES as T,MowerTask,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
 export interface MowerBackupResult {changed:boolean;generated:MowerTask[]}
 export interface MowerTaskExecutionHooks {
+ /** Enable the alpha complete-arrangement boundary in the application adapter. */
+ protectShift?:boolean
  /** changed is the source solver's new_task result, not any plan-condition change. */
  backup:(phase:BackupTiming,task:MowerTask,context:{appendEmptyTask:boolean;restoreOnDeactivate:boolean;customTimeMicros?:number})=>MowerBackupResult
  /** Physical I/O adapter; this core removes the successfully committed room from the task. */
@@ -16,6 +18,7 @@ export interface MowerTaskExecutionHooks {
 }
 function enqueueGenerated(queue:MowerTaskQueue,generated:MowerTask[]):void {for(const task of generated)if(!queue.tasks.includes(task))queue.tasks.push(task)}
 function enterPhase(phase:'BEFORE_WORK'|'BEFORE_DORM',task:MowerTask,queue:MowerTaskQueue,hooks:MowerTaskExecutionHooks):boolean {
+ if(task.backupShiftActive)return false
  const result=hooks.backup(phase,task,{appendEmptyTask:false,restoreOnDeactivate:true,customTimeMicros:task.timeMicros-1})
  enqueueGenerated(queue,result.generated)
  if(!result.changed)return false
@@ -40,7 +43,10 @@ export interface MowerRoomReturn {room:string;delayMicros:number;nativeRunOrderI
 export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTaskQueue,hooks:MowerTaskExecutionHooks):Generator<MowerRoomReturn,boolean,void> {
  if(task.type===T.RUN_ORDER)throw new Error('理想跑单任务仅用于唤醒，不支持实体换人')
  if(!Object.keys(task.plan).length){queue.consume(task);if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
- let getTime=task.type===T.SHIFT_OFF
+ const protectedShift=!!hooks.protectShift&&Object.keys(task.plan).length>0&&task.type!==T.FIAMMETTA&&task.type!==T.RELEASE_DORM
+ if(protectedShift)task.backupShiftActive=true
+ try {
+ let getTime=task.type===T.SHIFT_OFF||protectedShift&&Object.keys(task.plan).some(room=>room.startsWith('dormitory_'))
  if(task.type===T.RELEASE_DORM){if(!hooks.prepareRelease)throw new Error('Mower release requires the identity and mood-limit validation adapter');getTime=hooks.prepareRelease(task)}
  const rooms=Object.keys(task.plan).sort((a,b)=>Number(a.startsWith('dormitory_'))-Number(b.startsWith('dormitory_'))||(a.startsWith('dormitory_')&&b.startsWith('dormitory_')?Number(a.split('_')[1])-Number(b.split('_')[1]):0))
  let beforeWork=false,beforeDorm=false;const restoration:MowerTaskPlan={}
@@ -58,6 +64,7 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
   queue.tasks.push(new MowerTask({time:queue.tasks[0]?.time??task.time,plan:restoration,type:T.FIAMMETTA}))
   hooks.skip?.()
  }
+ task.backupShiftActive=false
  if(getTime){
   const result=hooks.backup('BEFORE_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)
   if(!result.changed)hooks.metadata()
@@ -73,6 +80,7 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  // infra_main tests the first retained task, without inventing an extra phase.
  if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}
  return true
+ }finally{if(protectedShift)task.backupShiftActive=false}
 }
 
 /** Pure decision replay: the caller owns its clock and may drain all device boundaries. */

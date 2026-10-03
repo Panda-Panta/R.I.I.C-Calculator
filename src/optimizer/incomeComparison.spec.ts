@@ -2,10 +2,16 @@ import {describe,it,expect} from 'vitest'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {runScheduleSimulationBridge} from '../workbench/scheduleSimulationBridge'
 import {summarizeIncome,compareIncome,type IncomeCase} from './incomeComparison'
+import {scoreSimulationProduction} from './productionObjective'
 const report=()=>runScheduleSimulationBridge(createDefaultWorkspace(),{sampleHours:1,warmupHours:0,production:{seed:1,droneTarget:'none'}},{idleOperators:[]}).report!
 const cases=():IncomeCase[]=>[1,2].flatMap(seed=>[.25,.125].map(step=>{const c=summarizeIncome(report());return {...c,seed,step,key:`${seed}:${step}`}}))
 const improved=()=>{const c=cases();c.forEach(x=>{x.daily.lmd+=100;x.closing.lmd+=100});return c}
 describe('actual net income comparison',()=>{
+ it('uses the shared completed-production score with the report weights',()=>{
+  const r=runScheduleSimulationBridge(createDefaultWorkspace(),{sampleHours:24,warmupHours:0,production:{seed:1,droneTarget:'none'}},{idleOperators:[]}).report!
+  r.inputs.options.productionWeights={exp:3,gold:4,orders:5,fragments:6,orundum:7}
+  expect(summarizeIncome(r).output!.daily).toEqual(scoreSimulationProduction(r))
+ })
  it('uses collected net change, not opening inventory or manufactured counters',()=>{
   const r=report(),c=summarizeIncome(r)
   expect(c.eligible).toBe(true)

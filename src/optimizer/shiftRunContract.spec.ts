@@ -15,8 +15,23 @@ import { compiledScheduleToRuntimeConfig, isShiftRunOperator } from '../schedule
 import { captureOrder, getOrderDistribution } from '../rules/orderRules'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { configureRunOrder } from './configureRunOrder'
+import { calculateRunOrderGains } from './runOrderGains'
+import { compileMainPlanToAppConfig } from '../workbench/adapter'
+import { evaluateOperators } from '../engine/operatorRules'
+import { mowerRoomToOutputRoomId, type MowerRoomId, type RosterWorkspace } from '../workbench/model'
+import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 
 const owned = OPERATORS.map(o => ({ operator: o.name, elitePhase: o.rarity < 3 ? 0 : o.rarity === 3 ? 1 : 2, level: o.rarity < 3 ? 30 : o.rarity === 3 ? 55 : o.rarity === 4 ? 70 : o.rarity === 5 ? 80 : 90 }))
+
+function expectedRunners(workspace: RosterWorkspace, roomId: MowerRoomId): string[] {
+  const config = compileMainPlanToAppConfig(workspace.mainPlan, workspace, createDefaultConfig())
+  const room = workspace.mainPlan.facilities[roomId]
+  const evaluation = evaluateOperators(config.rooms.find(r => r.id === mowerRoomToOutputRoomId(roomId))!, config)
+  const choices = calculateRunOrderGains(room.level, evaluation.quality, evaluation.efficiencyPercent / 100, workspace.productionWeights)
+    .filter(c => c.allowed && ['pair22', 'proviso2', 'tequila2', 'closure2'].includes(c.key) && c.delta > 0)
+    .sort((a, b) => b.delta - a.delta)
+  return (choices[0]?.names ?? []).map(id)
+}
 
 // Give progress RPC a turn between synchronous generation/simulation cases.
 beforeEach(() => yieldToRunner(5))
@@ -68,12 +83,13 @@ describe('shift-run branch contract', () => {
     for (const candidate of candidates) {
       const schedule = compileRosterSchedule(candidate.workspace)
       const policy = schedule.runOrderPolicies.find(p => p.roomId === room.roomId)
-      expect(policy?.orderedOperatorIds).toEqual(level === 3 ? [id('但书'), id('龙舌兰')] : [id('但书')])
+      const runners = expectedRunners(candidate.workspace, room.roomId)
+      expect(runners.length).toBeGreaterThan(0)
+      expect(policy?.orderedOperatorIds).toEqual(runners)
       const trade = candidate.workspace.mainPlan.facilities[room.roomId]
-      expect(trade.slots[0]!.replacements[0]).toBe(id('但书'))
-      if (level === 3) expect(trade.slots[1]!.replacements[0]).toBe(id('龙舌兰'))
+      runners.forEach((runner, index) => expect(trade.slots[index]!.replacements[0]).toBe(runner))
       const runtime = compiledScheduleToRuntimeConfig(schedule)
-      expect(runtime.positions.filter(p => p.roomId === room.roomId).every(p => p.candidates.length > 0 && p.candidates.every(x => !isShiftRunOperator(x)))).toBe(true)
+      expect(runtime.positions.filter(p => p.roomId === room.roomId).every(p => p.candidates.length > 0 && p.candidates.every(x => !isTradeRunOrderOperator(x)))).toBe(true)
       for (const r of Object.values(candidate.workspace.mainPlan.facilities).filter(r => r.type === 'trading')) {
         const mains = r.slots.flatMap(s => s.occupant.kind === 'operator' ? [s.occupant.operatorId] : [])
         expect(mains.some(x => ['但书', '龙舌兰'].map(id).includes(id(x)))).toBe(false)
@@ -99,6 +115,7 @@ describe('shift-run branch contract', () => {
     room.level = level
     room.slots = room.slots.slice(0, level)
     const generated = generateMolecularCandidates(workspace, owned, compileOperatorInventory(owned), { seed: 42, branchCount: 1 })[0]!
+    const runners = expectedRunners(generated.workspace, room.roomId)
     const schedule = compileRosterSchedule(generated.workspace)
     schedule.rooms = schedule.rooms.filter(r => r.roomId === room.roomId)
     schedule.restPools = []
@@ -110,17 +127,24 @@ describe('shift-run branch contract', () => {
     const events = result.production!.events
     const insertions = events.filter(e => e.type === 'run-order-ideal')
     const restorations = events.filter(e => e.type === 'run-order-restored')
-    expect(insertions.length).toBeGreaterThan(0)
+    if (runners.includes(id('可露希尔'))) expect(insertions).toHaveLength(0)
+    else {
+      expect(insertions.length).toBeGreaterThan(0)
+      expect(insertions.every(e => runners.every(runner => e.operatorIds?.includes(runner)))).toBe(true)
+    }
     expect(restorations).toHaveLength(0)
-    expect(insertions.every(e => e.operatorIds?.includes(id('但书')))).toBe(true)
     const orders = events.filter(e => e.type === 'order-completed').map(e => e.order!)
-    expect(orders.some(o => o.kind === 'proviso')).toBe(true)
-    if (level === 3) expect(orders.some(o => o.kind === 'tequila')).toBe(true)
-    expect(orders.every(o => ['proviso', 'tequila'].includes(o.kind))).toBe(true)
+    expect(orders.length).toBeGreaterThan(0)
+    if (runners.includes(id('可露希尔'))) expect(orders.every(o => o.kind === 'closure')).toBe(true)
+    else {
+      expect(orders.some(o => o.kind === 'proviso')).toBe(true)
+      if (runners.includes(id('龙舌兰'))) expect(orders.some(o => o.kind === 'tequila')).toBe(true)
+      expect(orders.every(o => ['proviso', 'tequila'].includes(o.kind))).toBe(true)
+    }
+    const initialMains = generated.workspace.mainPlan.facilities[room.roomId].slots.flatMap(s => s.occupant.kind === 'operator' ? [id(s.occupant.operatorId)] : [])
     for (const segment of result.segments) {
       const assigned = Object.values(segment.occupants)
-      expect(assigned.filter(x => x === id('但书')).length).toBeLessThanOrEqual(1)
-      expect(assigned.filter(x => x === id('龙舌兰')).length).toBeLessThanOrEqual(1)
+      expect(assigned).toEqual(initialMains)
     }
   }, 60000)
   it('accepts runners with the unlocked elite 0 reward skills', async ({ annotate }) => {
@@ -141,9 +165,9 @@ describe('shift-run branch contract', () => {
       room.slots.forEach((s,i)=>{s.occupant={kind:'operator',operatorId:id(['芬','克洛丝','空爆'][i]!)}})
     }
     expect(configureRunOrder(ws,inventory)).toBe(true)
-    expect(ws.mainPlan.facilities.room_3_1.slots.flatMap(s=>s.replacements)).toEqual([id('龙舌兰')])
+    expect(ws.mainPlan.facilities.room_3_1.slots.flatMap(s=>s.replacements)).toEqual([id('可露希尔')])
   }, 60000)
-  it('keeps a manually configured Pepe runner in its own trading slot', () => {
+  it('replaces a manual Pepe choice with the best usable runner while preserving ordinary backups', () => {
     const ws = createDefaultWorkspace()
     const room = ws.mainPlan.facilities.room_3_1
     for (const trading of Object.values(ws.mainPlan.facilities).filter(value => value.type === 'trading')) {
@@ -152,8 +176,8 @@ describe('shift-run branch contract', () => {
     room.slots[0]!.replacements = [id('佩佩'), id('能天使')]
     const inventory = compileOperatorInventory(owned)
     expect(configureRunOrder(ws, inventory)).toBe(true)
-    expect(room.slots[0]!.replacements).toEqual([id('佩佩'), id('能天使')])
-    expect(room.slots[1]!.replacements[0]).toBe(id('但书'))
-    expect(room.slots[2]!.replacements[0]).toBe(id('龙舌兰'))
+    expect(room.slots[0]!.replacements).toEqual([id('可露希尔'), id('能天使')])
+    expect(room.slots[1]!.replacements).toEqual([])
+    expect(room.slots[2]!.replacements).toEqual([])
   })
 })

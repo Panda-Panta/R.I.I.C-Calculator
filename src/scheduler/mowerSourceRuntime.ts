@@ -31,6 +31,7 @@ import {prepareMowerDormSelection,mowerArrangementReadIndexes,mowerDormReplaceme
 import {prepareMowerRunEntry} from './mowerRunLifecycle'
 import {ensureMowerDormRecovery} from './mowerDormRecovery'
 import {prepareMowerRelease} from './mowerRelease'
+import {mowerProtectedShift,prepareMowerShiftBeds} from './mowerShiftProtection'
 export interface MowerBackupContext {appendEmptyTask:boolean;restoreOnDeactivate:boolean;customTimeMicros?:number}
 export interface MowerSourceRuntime {
  data:MowerSchedulingData;queue:MowerTaskQueue;config:RuntimeConfig;initial:boolean;firstInit:boolean;error?:boolean
@@ -374,7 +375,8 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   const op=getMowerSourceRuntime(s).data.operators[names[0]!]!,key=op.group?'group:'+op.group:'slot:'+op.room+'_'+op.index,message=key+': insufficient available candidates or beds; original occupants retained'
   if(!s.diagnostics.some(d=>d.code==='group-blocked'&&d.message===message))s.diagnostics.push({code:'group-blocked',message})
  }})
- const backup=(phase:BackupTiming,_task?:MowerTask,context:MowerBackupContext={appendEmptyTask:true,restoreOnDeactivate:false}):MowerBackupResult=>{
+  const backup=(phase:BackupTiming,_task?:MowerTask,context:MowerBackupContext={appendEmptyTask:true,restoreOnDeactivate:false}):MowerBackupResult=>{
+   if(queue.tasks.some(task=>task.backupShiftActive))return {changed:false,generated:[]}
   if(_task?.type===T.FIAMMETTA||queue.tasks.some(t=>t.type===T.FIAMMETTA&&t.timeMicros<=toMowerMicros(s.time)))return {changed:false,generated:[]}
   const previousConfig=s.config
   s.mowerBackupContext=context;s.mowerBackupGenerated=[]
@@ -428,7 +430,17 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   let skipPlanning=runningPhase?.skipPlanning??false
   if(task){
    try {
-   source.activeTask=task
+    source.activeTask=task
+    if(!running&&mowerProtectedShift(task)){
+     const prepared=prepareMowerShiftBeds(data,task,queue.tasks)
+     if(!prepared.ready){
+      task.timeMicros=prepared.retryAtMicros;queue.sort()
+      const message=prepared.names.map(name=>data.operators[name]!.nativeName).join('、')+': forced dorm task waits for valid recovery beds'
+      if(!s.diagnostics.some(d=>d.code==='mower-shift-bed-conflict'&&d.message===message))s.diagnostics.push({code:'mower-shift-bed-conflict',message})
+      delete source.activeTask;skip();break
+     }
+     task.plan=prepared.plan
+    }
    if(!running){source.trace.push({timeMicros:data.nowMicros,type:task.type.key,plan:structuredClone(task.plan),metadata:task.metadata});if(source.trace.length>300)source.trace.shift()}
    if([T.CLUE,T.CLUE_PARTY].includes(task.type)){
     const steps=running?.steps??(function*():Generator<MowerRoomReturn,boolean,void>{
@@ -478,7 +490,8 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
     queue.consume(task)
     if(queue.tasks[0]?.type===T.SHIFT_ON)backup('AFTER_PLANNING',task)
    }else{
-    const intent=running?.intent??structuredClone(task.plan),steps=running?.steps??executeMowerTaskArrangementSteps(task,queue,{
+     const intent=running?.intent??structuredClone(task.plan),steps=running?.steps??executeMowerTaskArrangementSteps(task,queue,{
+      protectShift:mowerProtectedShift(task),
      backup,
      arrangeRoom:(room,names,getTime,current,restoration)=>arrangeRoomSteps(s,rates,room,names,getTime,current,restoration),
      metadata:()=>planMowerMetadata(getMowerSourceRuntime(s).data,queue),
@@ -503,7 +516,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
     skipPlanning=!success||task.type===T.RE_ORDER
     if(success&&[T.SHIFT_OFF,T.SHIFT_ON,T.SELF_CORRECTION].includes(task.type)){
      const names=task.type===T.SHIFT_OFF?Object.values(eventData.operators).filter(op=>op.isHigh()&&!op.room.startsWith('dorm')&&Object.entries(intent).some(([room,slots])=>op.room===room&&slots[op.index]!=='Current'&&slots[op.index]!==op.name)).map(o=>o.name):Object.values(intent).flat().filter(n=>eventData.operators[n]?.isHigh()&&!eventData.operators[n]!.room.startsWith('dorm'))
-     if(task.type===T.SHIFT_ON)for(const name of names){
+      if(task.type===T.SHIFT_ON||task.type===T.SELF_CORRECTION)for(const name of names){
       const op=eventData.operators[name]!
       if(op.currentRoom===op.room&&op.currentIndex===op.index)eventData.recentShiftOnByRestUnit.set(mowerRestUnitKey(op),eventData.nowMicros)
      }
@@ -511,6 +524,8 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
     }
    }
    }catch(error){
+    // The driver can fail after a yield, outside the executor's try/finally.
+    task.backupShiftActive=false
     rethrowMowerInfraFatal(error)
     s.diagnostics.push({code:'mower-task-exception',message:error instanceof Error?error.message:String(error)})
     delete source.execution

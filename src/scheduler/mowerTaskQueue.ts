@@ -28,6 +28,8 @@ export class MowerTask {
  timeMicros:number;type:MowerTaskType;plan:MowerTaskPlan;metadata:string;adjusted:boolean;strictMoodLimit:boolean;moodLimit:number|undefined
  observedOrderDueMicros?:number;wakeOnlyCompletion=false
  productShiftLocked=false
+ /** A complete physical arrangement must finish before backup/return replanning. */
+ backupShiftActive=false
  dormRecoveryRestore:string[]=[]
  constructor(options:MowerTaskOptions={},now=0){this.timeMicros=toMowerMicros(options.time??now);this.type=setMowerTaskType(options.type);this.plan=options.plan??{};this.metadata=options.metadata??'';this.adjusted=options.adjusted??false;this.strictMoodLimit=options.strictMoodLimit??false;this.moodLimit=options.moodLimit}
  get time(){return fromMowerMicros(this.timeMicros)}
@@ -45,8 +47,8 @@ export class MowerTaskQueue {
  }
  /** infra_main removes every reference to the completed object, not every equal task. */
  consume(task:MowerTask):void {this.tasks=this.tasks.filter(t=>t!==task)}
- /** plan_metadata rebuilds these two types; locked experimental shifts retain identity. */
- removeDerived(experimental=false):void {this.tasks=this.tasks.filter(t=>![MOWER_TASK_TYPES.SHIFT_ON,MOWER_TASK_TYPES.RELEASE_DORM].includes(t.type)||experimental&&t.productShiftLocked)}
+ /** plan_metadata rebuilds these types; active arrangements and experimental locks retain identity. */
+ removeDerived(experimental=false):void {this.tasks=this.tasks.filter(t=>t.backupShiftActive||![MOWER_TASK_TYPES.SHIFT_ON,MOWER_TASK_TYPES.RELEASE_DORM].includes(t.type)||experimental&&t.productShiftLocked)}
  /** Default handle_error branch: any queued task strictly inside 2.5h suppresses a fallback. */
  ensureFallback(now:number):MowerTask|undefined {
   if(this.find({time:now+2.5}))return undefined

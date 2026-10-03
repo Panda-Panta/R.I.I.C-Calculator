@@ -13,6 +13,8 @@ import {simulateCandidate,type CandidateSimulationBatch,type CandidateSimulation
 import {validatePhysicalRoster} from './rosterDraft'
 import {generateBackupNeighbors,type BackupNeighbor} from './backupNeighborhood'
 import {compareIncome,type IncomeCase,type IncomeComparison} from './incomeComparison'
+import { configureRunOrder } from './configureRunOrder'
+import { normalizeProductionWeights } from '../domain/productionWeights'
 
 export type IncomeSearchMode='single-pass'|'hill-climb'|'multi-start'
 export type IncomeSearchMove=BackupNeighbor['move']|ControlMainNeighbor['move']|ProductionMainNeighbor['move']|PrimaryBackupNeighbor['move']
@@ -22,6 +24,8 @@ export interface IncomeSearchRequest {
  options?:ScheduleSimulationOptions;assumptions?:Partial<SimulationAssumptions>
  mode?:IncomeSearchMode;maxDepth?:number;searchSeed?:number;restarts?:number;includeControlMains?:boolean;includeProductionMains?:boolean
  lockedPositions?:string[]
+ /** Automatic generation reranks ideal runners; single-pass/hill-climb without a supplied draft. */
+ configureRunOrderCandidates?:boolean
  objective?:IncomeObjective;maxCandidates?:number;seeds?:[number,number];steps?:[number,number];conditional?:boolean
 }
 export interface IncomeSearchEvaluation {
@@ -34,6 +38,7 @@ export interface IncomeSearchSettings {
  seeds:[number,number];steps:[number,number];objective:IncomeObjective;maxCandidates:number;mode:IncomeSearchMode;maxDepth:number
  searchSeed:number;restarts:number;includeControlMains:boolean;includeProductionMains:boolean
  lockedPositions?:string[]
+ configureRunOrderCandidates?:boolean
 }
 export interface IncomeSearchResult {
  validation?:MultiStartValidation
@@ -46,6 +51,7 @@ function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
  assertRunOrderMode(request.options?.production?.runOrderMode)
  const mode=request.mode??'single-pass',maxDepth=request.maxDepth??3
  if(!['single-pass','hill-climb','multi-start'].includes(mode)||!Number.isInteger(maxDepth)||maxDepth<1||maxDepth>8)throw new Error('搜索模式无效或深度不在 1–8 整数范围')
+ if(request.configureRunOrderCandidates&&(mode==='multi-start'||request.draft))throw new Error('自动跑单候补重选仅支持不含草案的单轮或爬山搜索')
  const seed=request.options?.production?.seed??1,step=request.options?.maxStepHours??.25
  const maxCandidates=request.maxCandidates??4,seeds=request.seeds??[seed,(seed+1)>>>0],steps=request.steps??[step,step/2],objective=request.objective??'lmd'
  const budgetLimit=mode==='multi-start'?200:20
@@ -59,6 +65,7 @@ function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
  const inventory=compileOperatorInventory(request.inventory)
  if(!inventory.valid)throw new Error(inventory.diagnostics.map(d=>d.message).join('；'))
  const options:ScheduleSimulationOptions={sampleHours:48,warmupHours:24,maxEvents:200000,...structuredClone(request.options),operatorInventory:structuredClone(request.inventory),recordSegments:false}
+ options.productionWeights=normalizeProductionWeights(options.productionWeights??request.baseline.productionWeights)
  // Every case uses the same explicit extra idle roster; registered backups remain part of its schedule.
  const assumptions:Partial<SimulationAssumptions>={...structuredClone(request.assumptions)}
  assumptions.idleOperators=assumptions.idleOperators===undefined?[]:[...assumptions.idleOperators].map(resolveId)
@@ -73,7 +80,7 @@ function normalize(request:IncomeSearchRequest):IncomeSearchSettings {
  finite(options);finite(assumptions)
  const lockedPositions=request.lockedPositions??[]
  if(!Array.isArray(lockedPositions)||lockedPositions.some(key=>typeof key!=='string'))throw new Error('锁定工位列表无效')
- return {options,assumptions,seeds:[...seeds],steps:[...steps],objective,maxCandidates,mode,maxDepth,searchSeed,restarts,includeControlMains,includeProductionMains,lockedPositions:[...lockedPositions]}
+ return {options,assumptions,seeds:[...seeds],steps:[...steps],objective,maxCandidates,mode,maxDepth,searchSeed,restarts,includeControlMains,includeProductionMains,lockedPositions:[...lockedPositions],configureRunOrderCandidates:request.configureRunOrderCandidates??false}
 }
 
 /** Compatibility entry point: replacement-only neighborhood used by existing callers. */
@@ -117,6 +124,7 @@ export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?
  const settings=normalize(request)
  if(settings.mode==='multi-start')return runMultiStartSearch(request,settings,onProgress)
  const baseline=structuredClone(request.baseline),baseErrors=validatePhysicalRoster(baseline)
+ const inventory=settings.configureRunOrderCandidates?compileOperatorInventory(request.inventory):null
  if(baseErrors.length)throw new Error(baseErrors.map(d=>d.message).join('；'))
  const initial:IncomeSearchEvaluation={id:'baseline',label:'原排班',workspace:baseline,cases:[],comparison:null,cached:false,parentId:null,parentComparison:null,depth:0,origin:'baseline',conditional:false,move:null}
  const result:IncomeSearchResult={baseline:initial,candidates:[],bestCandidateId:null,bestWorkspace:structuredClone(baseline),evaluatedCandidates:0,simulatedCandidates:0,budgetExhausted:false,issues:[],settings,request:structuredClone(request),bestPath:['baseline'],exploredDepth:0,depthLimitReached:false,stopReason:'neighborhood-exhausted'}
@@ -187,7 +195,19 @@ export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?
   const available:SearchNeighbor[]=[]
   for(let index=0;streams.some(stream=>index<stream.length);index++)for(const stream of streams){
    const neighbor=stream[index]
-   if(neighbor&&!neighbor.move.positions.some(key=>locked.has(key)))available.push(neighbor)
+   if(neighbor&&!neighbor.move.positions.some(key=>locked.has(key))){
+    if(inventory){
+     const addsPhysicalPepe=Object.values(neighbor.workspace.mainPlan.facilities).some(room=>room.type==='trading'&&room.slots.some((slot,index)=>{
+      const previous=parent.workspace.mainPlan.facilities[room.roomId].slots[index]?.occupant
+      return slot.occupant.kind==='operator'&&resolveId(slot.occupant.operatorId)===resolveId('佩佩')&&
+       (previous?.kind!=='operator'||resolveId(previous.operatorId)!==resolveId('佩佩'))
+     }))
+     if(addsPhysicalPepe)continue
+     neighbor.workspace.productionWeights=normalizeProductionWeights(settings.options.productionWeights)
+     if(!configureRunOrder(neighbor.workspace,inventory)||validatePhysicalRoster(neighbor.workspace).length)continue
+    }
+    available.push(neighbor)
+   }
   }
   return available
  }

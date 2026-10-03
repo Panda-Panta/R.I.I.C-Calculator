@@ -16,8 +16,8 @@ function fileSha256(relativePath: string): string {
 
 describe('Engine Protection & Calculation Equivalence', () => {
   it('protects engine source files against unauthorized modifications', () => {
-    // Authorized unbuilt-facility handling (2026-10-03), normalized LF; default arithmetic stays unchanged.
-    expect(fileSha256('engine/calculate.ts')).toBe('f8e2ee90bddac145d0bdb9790fd4c2873aae62976a8799d471aa08e8de2b4491')
+    // Authorized weighted scoring and shared fixed quality rules for all station levels (2026-10-04), normalized LF.
+    expect(fileSha256('engine/calculate.ts')).toBe('74a372700bc8faf91423b8c73de18bc8f0a2875eb825b2af3d1537beae0b7efb')
     expect(fileSha256('engine/morale.ts')).toBe('c985d15c34dc4ce1f632819d1d3362d0999b2d68727298f236ec6ae6071f9e9a')
     expect(fileSha256('engine/operatorRules.ts')).toBe('69c7821665cf6829bb1232afc189774655dec7907d5e7e4e026026061ae8b8d4')
   })
@@ -50,6 +50,17 @@ describe('Engine Protection & Calculation Equivalence', () => {
       virtualGoldCount: expect.closeTo(2.83, 1),
       virtualGoldValue: expect.closeTo(1415.93, 1),
       totalScore82: expect.closeTo(39787.61, 1),
+      scoreBreakdown: {
+        exp: 0,
+        goldValue: 40000,
+        orderValue: expect.closeTo(33274.34, 1),
+        weightedExp: 0,
+        weightedGold: expect.closeTo(33132.74, 1),
+        weightedOrders: expect.closeTo(6654.87, 1),
+        weightedFragments: 0,
+        weightedOrundum: 0,
+        total: expect.closeTo(39787.61, 1),
+      },
       totalEquivalentLmd: expect.closeTo(42831.86, 1),
     })
   })

@@ -18,7 +18,8 @@ import {
   findLowestRecoveryDormitorySlot,
 } from '../scheduler/smartDormitoryPolicy'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
-import { scoreProduction } from './productionObjective'
+import { scoreSimulationProduction } from './productionObjective'
+import { normalizeProductionWeights } from '../domain/productionWeights'
 import { rankStaffingCandidates } from './staffingQuality'
 import { buildSingletonFallback } from './singletonFallback'
 
@@ -183,6 +184,7 @@ export function generateMolecularCandidates(
 
     const bestSingleton = (roomId: MowerRoomId, slotIndex: number, metalcraftOnly = false): string | undefined => {
       const pool = inventory.operators.filter(o => !occupied.has(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+        (ws.mainPlan.facilities[roomId].type !== 'trading' || o.name !== '佩佩') &&
         (!metalcraftOnly || o.skills.some(s => s.roomType === 'MANUFACTURE' && /^金属工艺·[αβγ]$/.test(s.name))))
       return rankStaffingCandidates(ws, inventory, { roomId, slotIndex }, pool.map(o => o.charId), 'main')[0]
     }
@@ -204,7 +206,7 @@ export function generateMolecularCandidates(
       }
       const room = ws.mainPlan.facilities[roomId]
       if (!room) return false
-      if (room.type === 'trading' && isShiftRunOperator(charId)) return false
+      if (room.type === 'trading' && (isShiftRunOperator(charId) || charId === resolveId('佩佩'))) return false
       const cap = capacity(room.type, room.level)
       if (slotIdx >= cap || slotIdx >= room.slots.length) return false
       const slot = room.slots[slotIdx]!
@@ -793,6 +795,7 @@ export function generateMolecularCandidates(
       for (const index of emptyIndices(room.roomId)) {
         const pool = inventory.operators.filter(o => !occupied.has(o.charId) &&
           !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+          (room.type !== 'trading' || o.name !== '佩佩') &&
           o.skills.some(s => s.roomType === skillType))
         const selected = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex: index }, pool.map(o => o.charId), 'main')[0]
         if (selected) placeOperator(room.roomId, index, selected)
@@ -969,7 +972,7 @@ export function generateMolecularCandidates(
 }
 
 /**
- * Evaluates molecular candidates using dynamic 24h warmup + 72h sample simulation (82 score formula)
+ * Evaluates molecular candidates using dynamic 24h warmup + 72h sample weighted production
  * and returns ranked candidates.
  */
 export function evaluateMolecularCandidates(
@@ -998,6 +1001,7 @@ export function evaluateMolecularCandidates(
         warmupHours,
         sampleHours,
         maxStepHours: 0.25,
+        productionWeights: normalizeProductionWeights(candidate.workspace.productionWeights),
         production: {
           outputMode: 'potential',
           runOrderMode: 'ideal',
@@ -1015,7 +1019,7 @@ export function evaluateMolecularCandidates(
     if (simResponse.report?.success && simResponse.report.production?.success) {
       const rep = simResponse.report
       if (rep.production?.sample.completed) {
-        const prodScore = scoreProduction(rep.production.sample.completed, rep.observedHours)
+        const prodScore = scoreSimulationProduction(rep)
         candidate.simScore = prodScore.total
       } else {
         candidate.simScore = 0

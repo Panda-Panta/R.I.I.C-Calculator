@@ -35,6 +35,8 @@ describe('request-local simulation cache', () => {
       j => { j.options!.warmupHours = 12 }, j => { j.options!.sampleHours = 48 },
       j => { j.options!.maxStepHours = 0.125 }, j => { j.options!.production!.seed = 43 },
       j => { j.options!.production!.droneTarget = 'none' },
+      j => { j.options!.productionWeights = { exp: 2, gold: .8, orders: .2, fragments: 0, orundum: 0 } },
+      j => { j.workspace.productionWeights = { exp: 0, gold: 1, orders: 0, fragments: 0, orundum: 0 } },
       j => { j.options!.operatorInventory![0]!.elitePhase = 0 },
       j => { j.assumptions!.restingThreshold = 0.5 },
       j => { j.workspace.mainPlan.conf.workaholic = ['砾'] },

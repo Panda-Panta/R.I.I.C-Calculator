@@ -60,7 +60,7 @@ describe('Mower alpha default dorm and position reconciliation',()=>{
   const schedule=compileRosterSchedule(createDefaultWorkspace(),{freeRoom:'false' as unknown as boolean})
   expect(schedule.diagnostics).toContainEqual(expect.objectContaining({code:'INVALID_ASSUMPTION',path:'assumptions.freeRoom',severity:'error'}))
  })
- it('recovers a displaced primary through native correction and a real return task after backup exit',()=>{
+ it('preserves a displaced primary in recovery across a complete backup transition and returns it afterwards',()=>{
   const ws=createDefaultWorkspace()
   ws.mainPlan.facilities.room_1_1.slots[0]={occupant:{kind:'operator',operatorId:'阿米娅'},groupId:null,replacements:['芬']}
   nativeDorm(ws)
@@ -73,8 +73,9 @@ describe('Mower alpha default dorm and position reconciliation',()=>{
   const op=getMowerSourceRuntime(s).data.operators[id('芬')]!
   s.morale[op.name]=24;op.mood=24;op.timeStampMicros=getMowerSourceRuntime(s).data.nowMicros;op.depletionRate=0
   controller.evaluate('END');enqueueBackup(s)
-  driveUntil(s,controller,()=>Object.values(s.bedOccupants).includes(id('阿米娅'))&&s.events.some(e=>e.type==='shift-off'&&e.operators.includes(id('阿米娅'))))
-  expect(s.events.some(e=>e.type==='shift-off'&&e.operators.includes(id('阿米娅')))).toBe(true)
+  // The old intermediate correction/SHIFT_OFF cycle is no longer required.
+  driveUntil(s,controller,()=>controller.active[0]===false&&Object.values(s.bedOccupants).includes(id('阿米娅')))
+  expect(s.morale[id('阿米娅')]).toBeGreaterThanOrEqual(8)
   driveUntil(s,controller,()=>s.occupants.room_1_1_0===id('阿米娅')&&s.events.some(e=>e.type==='shift-on'&&!e.reason&&e.operators.includes(id('阿米娅'))))
   expect(s.events.some(e=>e.type==='shift-on'&&e.operators.includes(id('阿米娅')))).toBe(true)
   expect(s.morale[id('阿米娅')]).toBeGreaterThan(23)

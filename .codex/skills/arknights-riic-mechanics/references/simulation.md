@@ -151,3 +151,13 @@ alpha average_mood 是非宿舍高效主班的平均值，排除工作狂/显式
 当前证据在 validation/mower-output-2026-09-27。schedulerScopeFinal9-source-snapshot/manifest.json 记录冻结源文件；schedulerScopeFinal9.json记录最终7天预热、9天采样。综合口径为82=经验+0.8*(赤金价值+龙舌兰额外)+0.2*订单龙门币，仅该综合误差<=0.5%是用户数值门槛，普通生产干员异常0心情进驻和停留仍应为0。native-current-acceptance.json必须分别记录数值/红脸验收与fullNativeLogicParity，禁止用数字接近或测试通过代替完整原生循环证明。
 
 选人重试的缺闲人测试与原表重复Current目标应分开统计。selection-retry-cause-2026-09-28.md记录已确认入口及其生成链尚未证明的边界；scheduling-external-conditions-2026-09-28.md列出会影响结果的固定/可配置条件。
+
+## 2026-10-03 完整换班任务保护
+
+应用调度器在 9 月 27 日默认宿舍规则上增加完整安排的过程锁，参照 10 月 3 日 alpha b2d9ac85fe070e805aadf0d5f44fc095c1e95253 的 backup_shift_active 边界。普通上下班、纠错、排序及显式宿舍任务执行期间，不以工作岗已变、宿舍未完成的中间占位重新评估副表、重建返岗任务或启动位置纠错；全部房间完成后才解除并重新规划。异常退出同时解除锁，保留尚未执行的任务安排。独立冻结默认源码回放仍可关闭该应用扩展；不能把此扩展声称为完整最新 alpha 移植。
+
+显式宿舍安排执行前投影完整任务：被挤出的未完成普通主班必须保有合法恢复床，按现有默认床位规则另安排床位；尊重本任务和其他待执行任务的显式床位目标。不能满足时不提交部分换人，保留并延后任务，报告 mower-shift-bed-conflict。完成恢复的合法待命不必再占床。实际换人和新床位恢复期限仍来自物理安排及观察，而不是仅靠预留标记。
+
+成功 SELF_CORRECTION 召回和普通 SHIFT_ON 共用 recentShiftOnByRestUnit 记录，写入前确认干员已在主岗位。此记录的现有十分钟稳定性判断和过程锁是不同保护；过程锁没有新增固定副表冷却时间。
+
+本轮原图 72h 预热、168h 采样的 seed42 赤金无人机回放消除了红松五人休息后约五秒纠错召回；重复占岗、非法槽位、普通生产干员零心情进驻仍为零。仍有其他完整任务之间的短时返岗/再下班标记，不能声明所有瞬时换班均已消失。最新 alpha 的整轮最终安排收敛尚未完整接入；现场 WebView2 和原版 Mower 设备操作也未验证。证据及新回归入口：validation/shift-protection-2026-10-03 和 src/scheduler/mowerShiftProtection.spec.ts。

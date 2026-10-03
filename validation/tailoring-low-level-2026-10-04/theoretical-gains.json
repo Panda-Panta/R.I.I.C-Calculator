@@ -1,0 +1,1721 @@
+[
+  {
+    "level": 1,
+    "quality": "normal",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4000,
+        "score": 6000,
+        "delta": 2000,
+        "gainPercent": 50
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": false,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4000,
+        "score": 8000,
+        "delta": 4000,
+        "gainPercent": 100
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": false,
+        "baselineScore": 4000,
+        "score": 4000,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4000,
+        "score": 8000,
+        "delta": 4000,
+        "gainPercent": 100
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4000,
+        "score": 5333.333333333334,
+        "delta": 1333.333333333334,
+        "gainPercent": 33.33333333333335
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "quality": "alpha",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4690.355329949239,
+        "delta": 548.2233502538065,
+        "gainPercent": 13.235294117647042
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5238.578680203046,
+        "delta": 1096.446700507614,
+        "gainPercent": 26.470588235294105
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 8000,
+        "delta": 3857.868020304568,
+        "gainPercent": 93.13725490196076
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5333.333333333334,
+        "delta": 1191.2013536379018,
+        "gainPercent": 28.758169934640517
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "quality": "beta",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4328.767123287671,
+        "delta": 164.38356164383458,
+        "gainPercent": 3.9473684210526057
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4493.150684931507,
+        "delta": 328.767123287671,
+        "gainPercent": 7.894736842105256
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 8000,
+        "delta": 3835.6164383561636,
+        "gainPercent": 92.1052631578947
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 5333.333333333334,
+        "delta": 1168.9497716894975,
+        "gainPercent": 28.070175438596483
+      }
+    ]
+  },
+  {
+    "level": 2,
+    "quality": "normal",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4056.338028169015,
+        "score": 5746.478873239438,
+        "delta": 1690.140845070423,
+        "gainPercent": 41.66666666666667
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": false,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4056.338028169015,
+        "score": 7436.61971830986,
+        "delta": 3380.281690140845,
+        "gainPercent": 83.33333333333331
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": false,
+        "baselineScore": 4056.338028169015,
+        "score": 4056.338028169015,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4056.338028169015,
+        "score": 8000,
+        "delta": 3943.661971830985,
+        "gainPercent": 97.22222222222217
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4056.338028169015,
+        "score": 5333.333333333334,
+        "delta": 1276.9953051643188,
+        "gainPercent": 31.48148148148146
+      }
+    ]
+  },
+  {
+    "level": 2,
+    "quality": "alpha",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4690.355329949239,
+        "delta": 548.2233502538065,
+        "gainPercent": 13.235294117647042
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5238.578680203046,
+        "delta": 1096.446700507614,
+        "gainPercent": 26.470588235294105
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": false,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 8000,
+        "delta": 3857.868020304568,
+        "gainPercent": 93.13725490196076
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5333.333333333334,
+        "delta": 1191.2013536379018,
+        "gainPercent": 28.758169934640517
+      }
+    ]
+  },
+  {
+    "level": 2,
+    "quality": "beta",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4328.767123287671,
+        "delta": 164.38356164383458,
+        "gainPercent": 3.9473684210526057
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4493.150684931507,
+        "delta": 328.767123287671,
+        "gainPercent": 7.894736842105256
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": false,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 8000,
+        "delta": 3835.6164383561636,
+        "gainPercent": 92.1052631578947
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 5333.333333333334,
+        "delta": 1168.9497716894975,
+        "gainPercent": 28.070175438596483
+      }
+    ]
+  },
+  {
+    "level": 3,
+    "quality": "normal",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 5946.902654867257,
+        "delta": 1840.70796460177,
+        "gainPercent": 44.827586206896555
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 7079.646017699115,
+        "delta": 2973.4513274336277,
+        "gainPercent": 72.41379310344826
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 6654.867256637169,
+        "delta": 2548.6725663716816,
+        "gainPercent": 62.06896551724137
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 7787.610619469028,
+        "delta": 3681.415929203541,
+        "gainPercent": 89.65517241379312
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 5238.938053097347,
+        "delta": 1132.7433628318595,
+        "gainPercent": 27.586206896551747
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 4814.159292035399,
+        "delta": 707.9646017699115,
+        "gainPercent": 17.241379310344826
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 4106.194690265487,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 4106.194690265487,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 6371.681415929204,
+        "delta": 2265.486725663717,
+        "gainPercent": 55.172413793103445
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 5522.12389380531,
+        "delta": 1415.929203539823,
+        "gainPercent": 34.48275862068965
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 8000,
+        "delta": 3893.805309734513,
+        "gainPercent": 94.82758620689653
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4106.194690265487,
+        "score": 5333.333333333334,
+        "delta": 1227.1386430678467,
+        "gainPercent": 29.885057471264364
+      }
+    ]
+  },
+  {
+    "level": 3,
+    "quality": "alpha",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 6365.482233502538,
+        "delta": 2223.350253807106,
+        "gainPercent": 53.67647058823527
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 6913.705583756345,
+        "delta": 2771.5736040609127,
+        "gainPercent": 66.91176470588232
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 8040.609137055839,
+        "delta": 3898.4771573604066,
+        "gainPercent": 94.11764705882352
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 8588.832487309644,
+        "delta": 4446.700507614212,
+        "gainPercent": 107.35294117647054
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4690.355329949239,
+        "delta": 548.2233502538065,
+        "gainPercent": 13.235294117647042
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5817.258883248731,
+        "delta": 1675.1269035532987,
+        "gainPercent": 40.44117647058821
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 4142.131979695432,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5238.578680203046,
+        "delta": 1096.446700507614,
+        "gainPercent": 26.470588235294105
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 7492.385786802031,
+        "delta": 3350.253807106599,
+        "gainPercent": 80.88235294117646
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 8000,
+        "delta": 3857.868020304568,
+        "gainPercent": 93.13725490196076
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4142.131979695432,
+        "score": 5333.333333333334,
+        "delta": 1191.2013536379018,
+        "gainPercent": 28.758169934640517
+      }
+    ]
+  },
+  {
+    "level": 3,
+    "quality": "beta",
+    "efficiency": 2,
+    "rows": [
+      {
+        "key": "pair00",
+        "label": "龙舌兰＋但书 00",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 6657.534246575343,
+        "delta": 2493.1506849315065,
+        "gainPercent": 59.86842105263156
+      },
+      {
+        "key": "pair02",
+        "label": "龙舌兰＋但书 02",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1,
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 6821.917808219178,
+        "delta": 2657.534246575342,
+        "gainPercent": 63.815789473684184
+      },
+      {
+        "key": "pair20",
+        "label": "龙舌兰＋但书 20",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 8986.301369863013,
+        "delta": 4821.917808219177,
+        "gainPercent": 115.78947368421046
+      },
+      {
+        "key": "pair22",
+        "label": "龙舌兰＋但书 22",
+        "names": [
+          "但书",
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2,
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 9150.68493150685,
+        "delta": 4986.301369863014,
+        "gainPercent": 119.73684210526314
+      },
+      {
+        "key": "proviso0",
+        "label": "但书 精0",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 1
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4328.767123287671,
+        "delta": 164.38356164383458,
+        "gainPercent": 3.9473684210526057
+      },
+      {
+        "key": "tequila0",
+        "label": "龙舌兰 精0",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 1
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 6493.150684931507,
+        "delta": 2328.767123287671,
+        "gainPercent": 55.921052631578924
+      },
+      {
+        "key": "closure0",
+        "label": "可露希尔 精0",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "pepe0",
+        "label": "佩佩 精0",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {},
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4164.383561643836,
+        "delta": 0,
+        "gainPercent": 0
+      },
+      {
+        "key": "proviso2",
+        "label": "但书 精2",
+        "names": [
+          "但书"
+        ],
+        "capture": {
+          "proviso": 2
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 4493.150684931507,
+        "delta": 328.767123287671,
+        "gainPercent": 7.894736842105256
+      },
+      {
+        "key": "tequila2",
+        "label": "龙舌兰 精2",
+        "names": [
+          "龙舌兰"
+        ],
+        "capture": {
+          "tequila": 2
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 8821.91780821918,
+        "delta": 4657.534246575343,
+        "gainPercent": 111.84210526315788
+      },
+      {
+        "key": "closure2",
+        "label": "可露希尔 精2",
+        "names": [
+          "可露希尔"
+        ],
+        "capture": {
+          "closure": true
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 8000,
+        "delta": 3835.6164383561636,
+        "gainPercent": 92.1052631578947
+      },
+      {
+        "key": "pepe2",
+        "label": "佩佩 精2",
+        "names": [
+          "佩佩"
+        ],
+        "capture": {
+          "pepe": true
+        },
+        "allowed": true,
+        "baselineScore": 4164.383561643836,
+        "score": 5333.333333333334,
+        "delta": 1168.9497716894975,
+        "gainPercent": 28.070175438596483
+      }
+    ]
+  }
+]

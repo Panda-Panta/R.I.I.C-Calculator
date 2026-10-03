@@ -1,5 +1,5 @@
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
-import { scoreProduction } from './productionObjective'
+import { scoreSimulationProduction } from './productionObjective'
 import { hasConsumptionSkill } from './fixedDuty'
 import type { SpecialOperatorSimData } from './smartRoster'
 import { summarizeIncome, type IncomeCase } from './incomeComparison'
@@ -52,7 +52,7 @@ export function simulateCandidate(job: CandidateSimulationJob): CandidateSimulat
   return {
     completed: report.observedHours > 0,
     simScore: report.production.sample.completed && report.observedHours > 0
-      ? scoreProduction(report.production.sample.completed, report.observedHours).total : 0,
+      ? scoreSimulationProduction(report).total : 0,
     diagnostics: [],
     specialOperators: report.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
       operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,

@@ -4,7 +4,8 @@ import type { RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
-import { scoreProduction } from './productionObjective'
+import { scoreSimulationProduction } from './productionObjective'
+import { normalizeProductionWeights, type ProductionWeights } from '../domain/productionWeights'
 import { hasConsumptionSkill } from './fixedDuty'
 import { rosterIncomeSearchSteps, type IncomeSearchResult } from './rosterIncomeSearch'
 import { validatePhysicalRoster } from './rosterDraft'
@@ -26,6 +27,7 @@ export interface SmartRosterOptions {
   enableDeepSearch?: boolean
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
+  productionWeights?: ProductionWeights
 }
 
 export interface SmartRosterProgress {
@@ -122,7 +124,7 @@ function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress)
     completed++; bestScore = Math.max(bestScore, result.simScore)
     onProgress?.({ phase: 'simulating', phaseProgress: completed / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/2: 动态拟真进度 ${completed}/${total}（82分: ${result.simScore.toFixed(1)}）` })
+      label: `阶段 2/2: 动态拟真进度 ${completed}/${total}（加权产出: ${result.simScore.toFixed(1)}）` })
   }
 }
 
@@ -154,6 +156,7 @@ function* smartRosterSteps(
   onProgress?: (p: SmartRosterProgress) => void,
 ): Generator<CandidateSimulationBatch, SmartRosterResult, CandidateSimulationResult[]> {
  base = mainPlanOnly(base)
+  base.productionWeights = normalizeProductionWeights(options.productionWeights ?? base.productionWeights)
   const result: SmartRosterResult = {
     status: 'blocked',
     workspace: null,
@@ -270,7 +273,7 @@ function* smartRosterSteps(
   if (uniqueCandidates.length < branchCount) result.diagnostics.push({code:'FEWER_DISTINCT_BRANCHES',message:`生成 ${uniqueCandidates.length}/${branchCount} 个有效候选，使用全部现有候选继续模拟。`})
 
   // ==========================================
-  // Phase 2: Dynamic Simulation Verification (1+3 Days, 82 Formula)
+  // Phase 2: Dynamic Simulation Verification (1+3 Days, weighted production)
   // Admit the complete distinct, physically valid branch set before simulating every member.
   // ==========================================
   const simCandidates = [...uniqueCandidates]
@@ -278,7 +281,7 @@ function* smartRosterSteps(
     phase: 'simulating',
     phaseProgress: 0,
     totalTrials: simCandidates.length,
-    label: `阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，82 综合评分）...`,
+    label: `阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，加权产出评分）...`,
   })
 
   const cache = new CandidateSimulationCache()
@@ -288,6 +291,7 @@ function* smartRosterSteps(
       warmupHours: options.simulationWarmupHours ?? 24,
       sampleHours: options.simulationSampleHours ?? 72,
       maxStepHours: 0.25,
+      productionWeights: normalizeProductionWeights(workspace.productionWeights),
       production: {
         outputMode: 'potential',
         runOrderMode: 'ideal',
@@ -317,7 +321,8 @@ function* smartRosterSteps(
     if (summary.specialOperators) candidate.specialOperators = summary.specialOperators
   }
 
-  simCandidates.sort((a, b) => (b.simScore ?? 0) - (a.simScore ?? 0))
+  const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed ? [uniqueCandidates[index]!.id] : []))
+  simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) || (b.simScore ?? 0) - (a.simScore ?? 0))
   const bestSimCandidate = simCandidates[0]!
   result.phases.static = {
     candidates: simCandidates,
@@ -328,14 +333,14 @@ function* smartRosterSteps(
     bestScore: bestSimCandidate.simScore ?? 0,
   }
 
-  if (bestSimCandidate.simScore === null || bestSimCandidate.simScore <= 0) {
+  if (!completedIds.has(bestSimCandidate.id)) {
     result.status = 'blocked'
     result.workspace = bestSimCandidate.workspace
     result.score = 0
     const allCandidateDiags = Array.from(new Set(simCandidates.flatMap(c => c.diagnostics)))
     result.diagnostics.push({
       code: 'SIMULATION_EVALUATION_FAILED',
-      message: `动态拟真计算未完成或产出为0。原因：${allCandidateDiags.length ? allCandidateDiags.join('；') : '候选方案未能通过动态拟真准入校验'}`,
+      message: `动态拟真计算未完成。原因：${allCandidateDiags.length ? allCandidateDiags.join('；') : '候选方案未能通过动态拟真准入校验'}`,
     })
     return result
   }
@@ -359,6 +364,7 @@ function* smartRosterSteps(
     lockedPositions,
     lockedOperators,
     baselineScore: finalScore,
+    configureRunOrderCandidates: true,
     evaluator: (candidateWs) => {
       try {
         const job = simulationJob(candidateWs)
@@ -402,11 +408,13 @@ function* smartRosterSteps(
           objective: 'composite',
           includeControlMains: true,
           includeProductionMains: true,
+          configureRunOrderCandidates: true,
           assumptions: { restingThreshold: 0.65, operationDurationHours: 0 },
           options: {
             warmupHours: options.simulationWarmupHours ?? 24,
             sampleHours: options.simulationSampleHours ?? 72,
             maxStepHours: 0.25,
+            productionWeights: normalizeProductionWeights(finalWorkspace.productionWeights),
             production: {
               outputMode: 'potential',
               runOrderMode: 'ideal',
@@ -480,7 +488,7 @@ function* smartRosterSteps(
         verified?.diagnostics.map(d => d.message).join('；') ?? '最终排班模拟未完成' })
       return result
     }
-    finalScore = scoreProduction(verified.production.sample.completed, verified.observedHours).total
+    finalScore = scoreSimulationProduction(verified).total
     result.specialOperators = verified.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
       operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
       workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,
@@ -496,7 +504,7 @@ function* smartRosterSteps(
     phase: 'done',
     phaseProgress: 1,
     bestScore: finalScore,
-    label: `一键智能排班已完成，最终 82 综合评分：${finalScore.toFixed(1)} 分/日`,
+    label: `一键智能排班已完成，最终加权产出评分：${finalScore.toFixed(1)} 分/日`,
   })
 
   return result

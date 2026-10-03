@@ -422,6 +422,7 @@ export function compileMainPlanToAppConfig(
     operatorGroups,
   }
 
+  if (baseWorkspace.productionWeights) result.productionWeights = { ...baseWorkspace.productionWeights }
   // Retain the legacy default shape for full level-five layouts.
   if (result.facilities.central === 5 && cloned.facilities.central === undefined) delete result.facilities.central
   return result

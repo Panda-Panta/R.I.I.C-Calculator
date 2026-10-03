@@ -25,6 +25,34 @@ function candidates() {
 }
 
 describe('parallel smart roster preserves serial semantics', () => {
+  it('propagates explicit weights to synthesis and every worker without changing the source preference', async () => {
+    const base = baseWorkspace(), inherited = { exp: 2, gold: 3, orders: 4, fragments: 5, orundum: 6 }
+    base.productionWeights = inherited
+    const before = structuredClone(base), weights = { exp: 0, gold: 7, orders: 0, fragments: 0, orundum: 0 }
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(source => {
+      expect(source.productionWeights).toEqual(weights)
+      return candidates().map(candidate => ({ ...candidate, workspace: { ...candidate.workspace, productionWeights: source.productionWeights } }))
+    })
+    const result = await runSmartRosterParallel(base, entries, { ...options, productionWeights: weights, enableDeepSearch: true }, async jobs => {
+      expect(jobs.every(job => JSON.stringify(job.options?.productionWeights) === JSON.stringify(weights))).toBe(true)
+      return jobs.map(simulateCandidate)
+    })
+    expect(result.status).toBe('draft')
+    expect(result.workspace!.productionWeights).toEqual(weights)
+    expect(base).toEqual(before)
+  })
+  it('inherits the source weights and accepts a completed zero-score objective', () => {
+    const base = baseWorkspace(), weights = { exp: 0, gold: 0, orders: 0, fragments: 0, orundum: 0 }
+    base.productionWeights = weights
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(source => {
+      expect(source.productionWeights).toEqual(weights)
+      return candidates().map(candidate => ({ ...candidate, workspace: { ...candidate.workspace, productionWeights: source.productionWeights } }))
+    })
+    const result = runSmartRoster(base, entries, options)
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(0)
+    expect(result.diagnostics.some(d => d.code === 'SIMULATION_EVALUATION_FAILED')).toBe(false)
+  })
   it('preserves the fully verified second-stage result when a deep-search worker fails', async () => {
     vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)
     const result = await runSmartRosterParallel(baseWorkspace(), entries, { ...options, enableDeepSearch: true }, async (jobs, done) => {

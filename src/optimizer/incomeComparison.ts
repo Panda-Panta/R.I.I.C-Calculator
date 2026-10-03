@@ -1,5 +1,5 @@
 import {assertRunOrderMode} from '../simulator/productionTimeline'
-import {scoreProduction,type ProductionScore,type IncomeObjective} from './productionObjective'
+import {scoreSimulationProduction,type ProductionScore,type IncomeObjective} from './productionObjective'
 import type {ScheduleSimulationReport} from '../simulator/scheduleSimulation'
 import type {ResourceAmounts,ResourceKind} from '../simulator/resourceLedger'
 export const INCOME_RESOURCES:ResourceKind[]=['lmd','exp','gold','fragment','orundum','drone','orirock','device']
@@ -68,7 +68,7 @@ export function summarizeIncome(report:ScheduleSimulationReport):IncomeCase {
  const {levelSource,importSource,...assumptions}=report.inputs.schedule.assumptions
  const context=canonical({options:{...options,production},assumptions,sampleHours:a.sampleHours,warmupHours:a.warmupHours,layout:report.inputs.schedule.rooms.map(r=>({id:r.roomId,type:r.type,level:r.level,product:r.product}))})
  let output:IncomeCase['output']
- if(p?.sample.completed&&report.observedHours>0){try{output={mode:p.assumptions.outputMode??'settled',daily:scoreProduction(p.sample.completed,report.observedHours)}}catch{add('完成产出数值无效')}}
+ if(p?.sample.completed&&report.observedHours>0){try{output={mode:p.assumptions.outputMode??'settled',daily:scoreSimulationProduction(report)}}catch{add('完成产出数值无效')}}
  return {output,key:`${seed}:${step}`,seed,step,context,eligible:issues.length===0,issues,daily:amounts(Object.fromEntries(INCOME_RESOURCES.map(k=>[k,(p?.sample.net[k]??0)*24/report.observedHours]))),opening:amounts(p?.sample.opening),closing:amounts(p?.sample.closing),assumptions:report.diagnostics.filter(d=>ALLOWED.has(d.code))}
 }
 export function incomeObjectiveValue(c:IncomeCase,objective:IncomeObjective):number{return objective==='composite'?c.output?.daily.total??NaN:c.daily[objective]}

@@ -3,6 +3,7 @@ import {describe,it,expect,vi,afterEach} from 'vitest'
 import {mount} from '@vue/test-utils'
 import {createDefaultWorkspace} from '../../workbench/defaults'
 import ScheduleSimulationPanel from './ScheduleSimulationPanel.vue'
+import {captureOrder,getOrderDistribution} from '../../rules/orderRules'
 const instances:any[]=[]
 it('ignores saved physical run-order settings and offers only ideal run-order',async()=>{
  localStorage.setItem('riic-mower-simulation-settings-v1',JSON.stringify({runOrderMode:'grandet',runOrderLeadSeconds:90,runOrderBufferSeconds:-1}))
@@ -157,5 +158,34 @@ it('does not present unresolved shift deferrals as stable daily output',async()=
  await w.vm.$nextTick()
  expect(w.get('[data-test=roster-deferred]').text()).toContain('换班延后')
  expect(w.get('[data-test=completed-production-score]').text()).toContain('不可作为稳定日均结论')
+ w.unmount()
+})
+
+it('keeps malformed production reports reviewable without inventing a score or crashing',async()=>{
+ vi.stubGlobal('Worker',MockWorker)
+ const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}})
+ await w.get('[data-test=simulate-schedule]').trigger('click')
+ instances[0].onmessage({data:{report:{success:true,observedHours:24,rooms:[],operators:[],diagnostics:[],production:{success:true,assumptions:{outputMode:'potential'},sample:{},drones:{stock:0,capacity:235}}}}})
+ await w.vm.$nextTick()
+ expect(w.find('[data-test=completed-production-score]').exists()).toBe(false)
+ expect(w.get('[data-test=production-score-unavailable]').text()).toContain('缺少可用的完成产出数据')
+ expect(w.text()).toContain('导出明细 JSON')
+ expect(w.text()).not.toContain('NaN')
+ w.unmount()
+})
+
+it('renders a complete report with frozen user weights, virtual gold and fragments',async()=>{
+ vi.stubGlobal('Worker',MockWorker)
+ const w=mount(ScheduleSimulationPanel,{props:{workspace:createDefaultWorkspace()}})
+ await w.get('[data-test=simulate-schedule]').trigger('click')
+ const productionWeights={exp:2,gold:.8,orders:.2,fragments:5,orundum:0}
+ const order=captureOrder(getOrderDistribution(3,'normal','closure')[0]!,{closure:true},12)
+ instances[0].onmessage({data:{report:{success:true,observedHours:24,elapsedHours:24,assumptions:{warmupHours:0},inputs:{options:{productionWeights}},rooms:[],operators:[],diagnostics:[],production:{success:true,assumptions:{outputMode:'potential'},sample:{completed:{exp:1000,gold:2,orderLmd:1200}},events:[{type:'order-completed',time:12,order}],manufacturing:[{product:'fragment',sampleCompletedItems:3}],drones:{stock:0,capacity:235}}}}})
+ await w.vm.$nextTick()
+ const score=w.get('[data-test=completed-production-score]').text()
+ expect(score).toContain('每日加权产出：3,215')
+ expect(score).toContain('960 赤金及虚拟赤金贡献')
+ expect(score).toContain('15 碎片贡献')
+ expect(w.find('[data-test=production-score-unavailable]').exists()).toBe(false)
  w.unmount()
 })

@@ -29,7 +29,9 @@ export function buildSingletonFallback(base: RosterWorkspace, inventory: Operato
     if (!skillTypes[room.type]) continue
     const cap = room.type === 'central' ? 5 : room.type === 'power' ? 1 : room.level
     while (room.slots.length < cap) room.slots.push({occupant:{kind:'empty'},groupId:null,replacements:[]})
-    const pool = rankStaffingCandidates(ws, inventory, {roomId:room.roomId,slotIndex:0}, available.map(o=>o.charId), 'main', {allowNeutral:true})
+    // Pepe remains an ideal runner; neutral E0 admission must not create a physical trade main.
+    const mainPool = available.filter(o => room.type !== 'trading' || o.name !== '佩佩')
+    const pool = rankStaffingCandidates(ws, inventory, {roomId:room.roomId,slotIndex:0}, mainPool.map(o=>o.charId), 'main', {allowNeutral:true})
     // Keep skilled auxiliary staff ahead of people contributing only a base staffing effect.
     if (room.type === 'power' || room.type === 'central') pool.sort((a,b)=>
       Number(available.find(o=>o.charId===b)!.skills.some(s=>s.roomType===skillTypes[room.type])) -

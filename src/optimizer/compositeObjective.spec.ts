@@ -6,7 +6,7 @@ import {scoreProduction} from './productionObjective'
 const cases=()=>[1,2].flatMap(seed=>[.25,.125].map(maxStepHours=>summarizeIncome(runScheduleSimulationBridge(createDefaultWorkspace(),{sampleHours:1,warmupHours:0,maxStepHours,production:{outputMode:'potential',droneTarget:'none',seed}},{idleOperators:[]}).report!)))
 describe('user-defined conventional composite output',()=>{
  it('applies EXP + .8 * gold value + .2 * order face value without double-counting inventory',()=>{
-  expect(scoreProduction({exp:1000,gold:2,orderLmd:1500},24)).toEqual({exp:1000,goldValue:1000,orderValue:1500,weightedExp:1000,weightedGold:800,weightedOrders:300,total:2100})
+  expect(scoreProduction({exp:1000,gold:2,orderLmd:1500},24)).toEqual({exp:1000,goldValue:1000,orderValue:1500,weightedExp:1000,weightedGold:800,weightedOrders:300,weightedFragments:0,weightedOrundum:0,total:2100})
  })
  it('can accept a better weighted mix while some component and stock values fall',()=>{
   const b=cases(),c=structuredClone(b)

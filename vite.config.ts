@@ -31,6 +31,7 @@ export default defineConfig({
       'artifacts/**',
       'scratch/**',
       'validation/**',
+      'release/**',
     ],
   },
 })
