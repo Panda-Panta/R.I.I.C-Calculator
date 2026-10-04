@@ -6,7 +6,7 @@ import {projectMowerArrangements} from './mowerObservations'
 import {MOWER_TASK_TYPES as T,type MowerTask,type MowerTaskPlan} from './mowerTaskQueue'
 
 export const alphaPosition=(room:string,index:number)=>room+'\0'+index
-export function alphaRestingTier(data:MowerSchedulingData,name:string):number{
+export function alphaRestingTier(data:MowerSchedulingData,name:string,referencedReplacements?:ReadonlySet<string>):number{
  const op=data.operators[name]
  if(data.freeBlacklist.includes(name)||op?.workaholic)return 7
  if(data.restingPriorityNames.includes(name))return 0
@@ -16,7 +16,7 @@ export function alphaRestingTier(data:MowerSchedulingData,name:string):number{
   if(op.isHigh())return op.restingPriority==='standby'&&op.standbyLowPriority?2:{high:1,low:2,standby:4}[op.restingPriority]
   if(op.restingFromTrain)return replacement
  }
- return Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&owner.replacement.includes(name))?replacement:6
+ return (referencedReplacements?.has(name)??Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&owner.replacement.includes(name)))?replacement:6
 }
 export function alphaRestingKey(data:MowerSchedulingData,name:string):[number,number]{return [alphaRestingTier(data,name),restingMood(data.operators[name],data.nowMicros)-(data.operators[name]?.upperLimit??24)]}
 export const compareAlphaKeys=(a:readonly number[],b:readonly number[])=>a[0]!-b[0]!||a[1]!-b[1]!

@@ -5,6 +5,13 @@ import { simulateCandidate } from './candidateSimulation'
 import * as synthesis from './molecularSynthesis'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as replacement from './globalPerCapitaReplacement'
+import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
+import { compiledScheduleToRuntimeConfig } from '../scheduler/scheduleAdapter'
+import { createRosterRuntime } from '../scheduler/rosterRuntime'
+import { getMowerSourceRuntime } from '../scheduler/mowerSourceRuntime'
+import { planMowerMetadata } from '../scheduler/mowerMetadata'
+import { MowerTaskQueue, MOWER_TASK_TYPES as T, toMowerMicros } from '../scheduler/mowerTaskQueue'
+import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 
 afterEach(() => vi.restoreAllMocks())
 const entries = [{ operator: '砾', elitePhase: 1, level: 60 }, { operator: '芬', elitePhase: 1, level: 55 }]
@@ -25,6 +32,50 @@ function candidates() {
 }
 
 describe('parallel smart roster preserves serial semantics', () => {
+  it('lets a mixed-mood group recover before returning instead of immediately repeating its shift', async () => {
+    const source = baseWorkspace()
+    source.mainPlan.facilities.room_3_1.slots = ['食铁兽', '铅踝'].map(name => ({
+      occupant: { kind: 'operator', operatorId: id(name) }, groupId: 'mixed-mood', replacements: [id(name === '铅踝' ? '泡泡' : '红云')],
+    }))
+    source.mainPlan.facilities.dormitory_1.slots = Array.from({ length: 5 }, () => ({ occupant: { kind: 'free' }, groupId: null, replacements: [] }))
+    const before = structuredClone(source)
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([{ ...candidates()[0]!, workspace: structuredClone(source) }])
+    await runSmartRosterParallel(source, entries, options, async jobs => jobs.map(job => {
+      const state = createRosterRuntime(compiledScheduleToRuntimeConfig(compileRosterSchedule(job.workspace)))
+      state.time = 32
+      const data = getMowerSourceRuntime(state).data
+      for (const [index, name] of ['食铁兽', '铅踝'].entries()) {
+        const op = data.operators[id(name)]!
+        op.currentRoom = 'dormitory_1'; op.currentIndex = index; op.mood = index ? 22 : 23.94
+        op.timeStampMicros = data.nowMicros; op.depletionRate = 0
+        const bed = data.dorms.find(b => b.position[0] === 'dormitory_1' && b.position[1] === index)!
+        bed.name = op.name; bed.timeMicros = toMowerMicros(index ? 32.74 : 32.02)
+      }
+      const queue = new MowerTaskQueue()
+      planMowerMetadata(data, queue)
+      const returning = queue.tasks.find(t => t.type === T.SHIFT_ON && Object.values(t.plan).flat().includes(id('铅踝')))!
+      expect(returning.timeMicros).toBeGreaterThan(toMowerMicros(32.5))
+      expect(job.workspace.mainPlan.conf.rest_in_full.map(id)).toContain(id('铅踝'))
+      return { completed: false, simScore: 0, diagnostics: ['test stops after dispatch'] }
+    }))
+    expect(source).toEqual(before)
+  })
+  it('marks incomplete simulations as unknown in both scores and progress', async () => {
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue(candidates().slice(0, 1))
+    const progress: SmartRosterProgress[] = []
+    const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => jobs.map((_, index) => {
+      const result = { completed: false, simScore: 0, diagnostics: ['SIMULATION_EVENT_LIMIT'] }
+      done(result, index)
+      return result
+    }), p => progress.push(p))
+    expect(result.status).toBe('blocked')
+    expect(result.score).toBeNull()
+    expect(result.phases.simulation?.bestScore).toBeNull()
+    expect(result.phases.simulation?.candidates[0]?.simScore).toBeNull()
+    expect(progress[progress.length - 1]?.bestScore).toBeUndefined()
+    expect(progress[progress.length - 1]?.label).toContain('未完成')
+    expect(progress[progress.length - 1]?.label).not.toContain('加权产出: 0')
+  })
   it('propagates explicit weights to synthesis and every worker without changing the source preference', async () => {
     const base = baseWorkspace(), inherited = { exp: 2, gold: 3, orders: 4, fragments: 5, orundum: 6 }
     base.productionWeights = inherited
@@ -90,6 +141,8 @@ describe('parallel smart roster preserves serial semantics', () => {
     const simulate = vi.spyOn(bridge, 'runScheduleSimulationBridge')
     const result = runSmartRoster(baseWorkspace(), entries, options)
     expect(result.status).toBe('draft')
+    expect(result.calculationReport?.summary?.totalScore82).toBe(result.score)
+    expect(result.calculationReport?.summary?.goldValue).toBeGreaterThan(0)
     expect(simulate).toHaveBeenCalledTimes(2)
   })
   it('simulates the final input again when replacement changes an unevaluated field', () => {

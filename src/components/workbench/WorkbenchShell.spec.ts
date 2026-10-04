@@ -600,7 +600,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(parsed.compatibility.unrecognizedFields.custom_flag_x).toBe(9999)
   })
 
-  it('upgrades untouched legacy 4-gold default workspace in localStorage to 2-gold and 2-exp', async () => {
+  it('restores saved default-named recipes without guessing that they are obsolete defaults', async () => {
     localStorage.clear()
     const expectedKey = `arc-income-calculator-workspace-v8-${EDITION.storageNamespace}`
     const legacyWs = createDefaultWorkspace()
@@ -614,8 +614,63 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
 
     expect(store.workspace.mainPlan.facilities.room_1_1.product).toBe('gold')
     expect(store.workspace.mainPlan.facilities.room_1_2.product).toBe('gold')
-    expect(store.workspace.mainPlan.facilities.room_2_1.product).toBe('exp')
-    expect(store.workspace.mainPlan.facilities.room_2_2.product).toBe('exp')
+    expect(store.workspace.mainPlan.facilities.room_2_1.product).toBe('gold')
+    expect(store.workspace.mainPlan.facilities.room_2_2.product).toBe('gold')
+  })
+
+  it('restores an empty 252 two-gold 21-trade preset without changing its two gold recipes', async () => {
+    const workspace = createDefaultWorkspace()
+    const layout = [
+      ['room_1_1', 'manufacture', 3, 'exp'], ['room_1_2', 'trading', 2, 'money'], ['room_1_3', 'power', 3],
+      ['room_2_1', 'manufacture', 3, 'gold'], ['room_2_2', 'manufacture', 2, 'gold'], ['room_2_3', 'manufacture', 3, 'exp'],
+      ['room_3_1', 'manufacture', 3, 'exp'], ['room_3_2', 'trading', 1, 'money'], ['room_3_3', 'power', 3],
+    ] as const
+    for (const [id, type, level, product] of layout) {
+      const room = workspace.mainPlan.facilities[id]
+      room.type = type; room.level = level
+      if (product) room.product = product
+      else delete room.product
+      room.slots = Array.from({ length: type === 'power' ? 1 : level }, () => ({ occupant: { kind: 'empty' }, groupId: null, replacements: [] }))
+    }
+    localStorage.setItem(`arc-income-calculator-workspace-v8-${EDITION.storageNamespace}`, JSON.stringify(workspace))
+    const wrapper = mountWithPinia(WorkbenchShell)
+    await wrapper.vm.$nextTick()
+    const restored = useRosterWorkbenchStore().workspace
+    for (const [id, type, level, product] of layout) {
+      expect(restored.mainPlan.facilities[id]).toMatchObject({ type, level, ...(product ? { product } : {}) })
+    }
+  })
+
+  it('uses the completed generation report without starting another income worker', async () => {
+    const workers: { onmessage: ((event: MessageEvent) => void) | null; terminate: ReturnType<typeof vi.fn> }[] = []
+    vi.stubGlobal('Worker', class {
+      onmessage: ((event: MessageEvent) => void) | null = null
+      terminate = vi.fn()
+      postMessage = vi.fn()
+      constructor() { workers.push(this) }
+    })
+    vi.stubEnv('VITEST', '')
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: true, text: '砾,1,60\n芬,1,55' }))
+    const wrapper = mountWithPinia(WorkbenchShell)
+    wrapper.vm.simSettings.sampleDays = 7
+    wrapper.vm.simSettings.warmupDays = 3
+    const workspace = JSON.parse(JSON.stringify(wrapper.vm.store.workspace)) as RosterWorkspace
+    const calculationReport = calculate(compileMainPlanToAppConfig(workspace.mainPlan, workspace, createDefaultConfig()))
+    if (!calculationReport.summary) throw new Error('Fixture calculation must have a complete summary')
+    calculationReport.summary.totalScore82 = 12345
+    calculationReport.summary.goldValue = 6789
+    wrapper.vm.handleConfirmSmartRosterConfig({ seed: 42, trials: 10, maxStaticEvals: 3000, simulationTopK: 10,
+      simulationWarmupHours: 24, simulationSampleHours: 72, enableDeepSearch: false, droneTarget: 'gold' })
+    workers[0]!.onmessage!({ data: { type: 'complete', report: {
+      status: 'draft', workspace, score: 12345, calculationReport, diagnostics: [], specialOperators: [], phases: {},
+    } } } as MessageEvent)
+    await flushPromises()
+    expect(workers).toHaveLength(1)
+    expect(wrapper.vm.calculationReport).toEqual(calculationReport)
+    expect(wrapper.vm.isCalculating).toBe(false)
+    expect(wrapper.vm.simSettings.sampleDays).toBe(7)
+    expect(wrapper.vm.simSettings.warmupDays).toBe(3)
+    expect(wrapper.get('[data-test="metric-gold"]').text()).toContain('6,789')
   })
 
   // 13. Responsive outer shell structure with non-distorting scrollable Mower board
@@ -885,7 +940,9 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(JSON.stringify(vm.store.workspace)).not.toBe(originalWorkspace)
     expect(vm.calculationConfigOpen).toBe(false)
     expect(vm.calculationReport?.summary).toBeDefined()
-    expect(vm.simulationReport?.inputs.options.production.droneTarget).toBe('gold')
+    expect(vm.simSettings.droneTarget).toBe('gold')
+    expect(vm.simulationReport).toBeNull()
+    expect(vm.calculationStatus).toContain('本次排班验证产出')
     expect(wrapper.get('[data-test="results-panel"]').isVisible()).toBe(true)
   }, 60000)
 })

@@ -1,6 +1,6 @@
 // Shared dorm candidates and observed-card estimates, Mower alpha b2d9ac8 (MIT).
 import {hasRestingMood,restingMood} from './mowerOperatorState'
-import {alphaRestingTier,alphaRestingKey,compareAlphaKeys,alphaPosition,alphaSlotTakable,alphaPrioritizeRecovery,alphaRestoreDisplaced,alphaDormResidents} from './mowerAlphaDorm'
+import {alphaRestingTier,compareAlphaKeys,alphaPosition,alphaSlotTakable,alphaPrioritizeRecovery,alphaRestoreDisplaced,alphaDormResidents} from './mowerAlphaDorm'
 import type {MowerSchedulingData} from './mowerSchedulingData'
 import {toMowerMicros,MowerTask,MOWER_TASK_TYPES as T,type MowerTaskPlan,type MowerTaskQueue} from './mowerTaskQueue'
 import {simplifyMowerAlphaDormFill} from './mowerAlphaTaskProtection'
@@ -11,8 +11,11 @@ export function mowerDormCandidateMood(data:MowerSchedulingData,name:string):num
  return estimate&&elapsed>=0&&elapsed<toMowerMicros(1)?estimate[0]:undefined
 }
 export function mowerAlphaDormCandidates(data:MowerSchedulingData,excluded=new Set<string>(),currentResidents=new Set<string>()){
+ // Candidate state is fixed during this synchronous pass; rebuild keys on every call.
+ const referenced=new Set(Object.values(data.operators).flatMap(op=>op.nativeName==='菲亚梅塔'?[]:op.replacement)),tiers=new Map<string,number>()
+ const tier=(name:string):number=>{let value=tiers.get(name);if(value===undefined){value=alphaRestingTier(data,name,referenced);tiers.set(name,value)}return value}
  const support=data.currentOperator('train',0)?.name
- const eligible=Object.values(data.operators).filter(op=>!excluded.has(op.name)&&!data.busyRestingNames.has(op.name)&&op.name!==support&&(!op.isHigh()||data.isStandby(op.name))&&(!op.currentRoom||currentResidents.has(op.name)&&op.isResting())&&!data.restMoodComplete(op.name)&&alphaRestingTier(data,op.name)!==7)
+ const eligible=Object.values(data.operators).filter(op=>!excluded.has(op.name)&&!data.busyRestingNames.has(op.name)&&op.name!==support&&(!op.isHigh()||data.isStandby(op.name))&&(!op.currentRoom||currentResidents.has(op.name)&&op.isResting())&&!data.restMoodComplete(op.name)&&tier(op.name)!==7)
  const recovering:string[]=[],full:string[]=[],unknown:string[]=[]
  for(const op of eligible){
   if(!hasRestingMood(op,data.nowMicros)){if(!op.isHigh()&&!op.restMoodLimit)unknown.push(op.name)}
@@ -20,9 +23,11 @@ export function mowerAlphaDormCandidates(data:MowerSchedulingData,excluded=new S
   else if(!op.isHigh()&&!op.restMoodLimit)full.push(op.name)
  }
  unknown.push(...data.unregisteredIdleNames.filter(n=>!data.operators[n]&&!excluded.has(n)&&!data.freeBlacklist.includes(n)&&!data.busyRestingNames.has(n)))
- const estimateKey=(name:string):[number,number]=>[mowerDormCandidateMood(data,name)??24,alphaRestingTier(data,name)]
+ const estimates=new Map<string,[number,number]>(),recoveryKeys=new Map<string,[number,number]>()
+ const estimateKey=(name:string):[number,number]=>{let key=estimates.get(name);if(!key){key=[mowerDormCandidateMood(data,name)??24,tier(name)];estimates.set(name,key)}return key}
+ const recoveryKey=(name:string):[number,number]=>{let key=recoveryKeys.get(name);if(!key){key=[tier(name),restingMood(data.operators[name],data.nowMicros)-(data.operators[name]?.upperLimit??24)];recoveryKeys.set(name,key)}return key}
  const compare=(a:string,b:string)=>compareAlphaKeys(estimateKey(a),estimateKey(b))
- recovering.sort((a,b)=>compareAlphaKeys(alphaRestingKey(data,a),alphaRestingKey(data,b)));full.sort(compare);unknown.sort(compare)
+ recovering.sort((a,b)=>compareAlphaKeys(recoveryKey(a),recoveryKey(b)));full.sort(compare);unknown.sort(compare)
  const filling=[...recovering,...full,...unknown].sort(compare),searchUnknown=unknown.filter(n=>(mowerDormCandidateMood(data,n)??0)<24)
  return {recovering,full,unknown:searchUnknown,estimatedRecovering:searchUnknown.filter(n=>{const mood=mowerDormCandidateMood(data,n);return mood!==undefined&&mood<(data.operators[n]?.upperLimit??24)}),filling}
 }

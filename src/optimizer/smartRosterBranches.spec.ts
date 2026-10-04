@@ -34,7 +34,7 @@ describe('complete branch admission before any simulation',()=>{
   const result=runSmartRoster(createDefaultWorkspace(),owned,{seed:20260919,enableDeepSearch:false})
   const firstInput=vi.mocked(runScheduleSimulationBridge).mock.calls[0]![0]
   const failed=result.phases.simulation!.candidates.find(c=>JSON.stringify(c.workspace.mainPlan)===JSON.stringify(firstInput.mainPlan))!
-  expect(failed.simScore).toBe(0)
+  expect(failed.simScore).toBeNull()
   expect(result.phases.simulation!.candidates[0]!.id).not.toBe(failed.id)
  },180000)
  it('does not start simulation if the required set cannot be constructed', async ({ annotate }) => {

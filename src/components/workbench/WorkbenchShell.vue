@@ -187,18 +187,8 @@ function initPersistence(): void {
     if (rawWs) {
       const parsed = JSON.parse(rawWs)
       if (parsed?.schemaVersion === 8 && parsed?.mainPlan?.facilities) {
-        const facs = parsed.mainPlan.facilities
-        const isUntouchedDefault =
-          parsed.name === '默认排班' &&
-          facs.room_2_1?.product === 'gold' &&
-          facs.room_2_2?.product === 'gold' &&
-          Object.values(facs).every((f: any) =>
-            f.slots.every((s: any) => s.occupant.kind === 'empty' || s.occupant.kind === 'free'),
-          )
-        if (isUntouchedDefault) {
-          if (facs.room_2_1) facs.room_2_1.product = 'exp'
-          if (facs.room_2_2) facs.room_2_2.product = 'exp'
-        }
+        // A default name and empty seats also describe a user-selected preset.
+        // Restore saved recipes exactly; new workspaces already use current defaults.
         store.loadWorkspace(parsed as RosterWorkspace)
       }
     } else {
@@ -646,7 +636,13 @@ function executeAutoGenerate(inventoryEntries: OwnedOperatorInput[], config?: Sm
       simSettings.value.droneTradingRoomId = runOptions.droneTarget === 'trading' ? runOptions.droneRoomId : ''
       simSettings.value.useOperatorInventory = true
       activeTab.value = 'workbench'
-      executeCalculation()
+      calculationReport.value = report.calculationReport ?? null
+      simulationReport.value = null
+      timelineData.value = null
+      calculationError.value = null
+      calculationStatus.value = report.calculationReport
+        ? `当前显示本次排班验证产出（预热 ${runOptions.simulationWarmupHours} 小时，采样 ${runOptions.simulationSampleHours} 小时）。点击「计算产出」可按收益设置独立计算并生成时间轴。`
+        : '排班已生成。点击「计算产出」可按收益设置计算产出并生成时间轴。'
     } else {
       const msgs = report.diagnostics.map(d => d.message).join('；')
       replaceStatusMessage.value = `自动生成排班未成功：${msgs || '未能生成满足约束的方案'}`

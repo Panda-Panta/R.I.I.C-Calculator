@@ -15,6 +15,9 @@ import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulatio
 export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import { normalizeProductionShifts } from './combinationAllocation'
+import type { CalculationReport } from '../domain/types'
+import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
+import { applyGeneratedRecoveryPolicy } from './generatedRecoveryPolicy'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -66,6 +69,8 @@ export interface SmartRosterResult {
   score: number | null
   diagnostics: { code: string; message: string }[]
   specialOperators: SpecialOperatorSimData[]
+  /** Completed output of the exact returned roster and generation settings. */
+  calculationReport?: CalculationReport
   phases: {
     static: {
       candidates: SmartRosterCandidate[]
@@ -120,12 +125,13 @@ export function runSmartRoster(
 }
 
 function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress) => void) {
-  let completed = 0, bestScore = 0
+  let completed = 0, bestScore: number | undefined
   return (result: CandidateSimulationResult, _index: number) => {
-    completed++; bestScore = Math.max(bestScore, result.simScore)
+    completed++
+    if (result.completed) bestScore = Math.max(bestScore ?? -Infinity, result.simScore)
     onProgress?.({ phase: 'simulating', phaseProgress: completed / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/3: 动态拟真进度 ${completed}/${total}（加权产出: ${result.simScore.toFixed(1)}）` })
+      label: `阶段 2/3: 动态拟真进度 ${completed}/${total}（${result.completed ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
   }
 }
 
@@ -286,7 +292,10 @@ function* smartRosterSteps(
   })
 
   const cache = new CandidateSimulationCache()
-  const simulationJob = (workspace: RosterWorkspace): CandidateSimulationJob => ({
+  const simulationJob = (workspace: RosterWorkspace): CandidateSimulationJob => {
+    // Persist the policy in the candidate itself before caching and verification.
+    applyGeneratedRecoveryPolicy(workspace)
+    return {
     workspace,
     options: {
       warmupHours: options.simulationWarmupHours ?? 24,
@@ -306,7 +315,8 @@ function* smartRosterSteps(
       restingThreshold: 0.65,
       operationDurationHours: 0,
     },
-  })
+    }
+  }
   const jobs = simCandidates.map(candidate => simulationJob(candidate.workspace))
   // Capture keys before dispatch; later policy/placement changes must not turn
   // a report of the original input into a report of the modified workspace.
@@ -316,8 +326,8 @@ function* smartRosterSteps(
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!
     cache.remember(inputKeys[idx]!, summary)
-    candidate.simScore = summary.simScore
-    candidate.staticScore = summary.simScore
+    candidate.simScore = summary.completed ? summary.simScore : null
+    if (summary.completed) candidate.staticScore = summary.simScore
     candidate.diagnostics.push(...summary.diagnostics)
     if (summary.specialOperators) candidate.specialOperators = summary.specialOperators
   }
@@ -327,17 +337,17 @@ function* smartRosterSteps(
   const bestSimCandidate = simCandidates[0]!
   result.phases.static = {
     candidates: simCandidates,
-    bestScore: bestSimCandidate.simScore ?? 0,
+    bestScore: bestSimCandidate.simScore,
   }
   result.phases.simulation = {
     candidates: simCandidates,
-    bestScore: bestSimCandidate.simScore ?? 0,
+    bestScore: bestSimCandidate.simScore,
   }
 
   if (!completedIds.has(bestSimCandidate.id)) {
     result.status = 'blocked'
     result.workspace = bestSimCandidate.workspace
-    result.score = 0
+    result.score = null
     const allCandidateDiags = Array.from(new Set(simCandidates.flatMap(c => c.diagnostics)))
     result.diagnostics.push({
       code: 'SIMULATION_EVALUATION_FAILED',
@@ -362,6 +372,9 @@ function* smartRosterSteps(
   })
 
   const currentPowerCount = Object.values(finalWorkspace.mainPlan.facilities).filter((r) => r.type === 'power' && r.level > 0).length
+  const replacementBudget = Math.min(12, Math.max(1, Math.floor(288 / Math.max(1,
+    (options.simulationWarmupHours ?? 24) + (options.simulationSampleHours ?? 72)))))
+  let replacementTrials = 0
   const repResult = runGlobalPerCapitaReplacement(finalWorkspace, inventory, {
     powerCount: currentPowerCount,
     lockedPositions,
@@ -369,14 +382,16 @@ function* smartRosterSteps(
     baselineScore: finalScore,
     // Bound simulated hours rather than wall time, preserving serial/parallel
     // replay while avoiding many full 96-hour trials on mixed-stage inventories.
-    maxEvaluations: Math.min(12, Math.max(1, Math.floor(288 / Math.max(1,
-      (options.simulationWarmupHours ?? 24) + (options.simulationSampleHours ?? 72))))),
+    maxEvaluations: replacementBudget,
     configureRunOrderCandidates: true,
     evaluator: (candidateWs) => {
       try {
         const job = simulationJob(candidateWs)
         const cached = cache.get(job)
         if (cached) return cached.completed ? cached.simScore : Number.NaN
+        replacementTrials++
+        onProgress?.({ phase: 'searching', phaseProgress: 0.1 + 0.4 * Math.min(1, replacementTrials / replacementBudget),
+          label: `阶段 3/3: 动态验证散件置换 ${replacementTrials}/${replacementBudget}...` })
         const key = cache.key(job), summary = simulateCandidate(job)
         cache.remember(key, summary)
         if (summary.completed) return summary.simScore
@@ -497,6 +512,7 @@ function* smartRosterSteps(
   if (cachedFinal?.completed) {
     finalScore = cachedFinal.simScore
     result.specialOperators = cachedFinal.specialOperators ?? []
+    result.calculationReport = cachedFinal.calculationReport
   } else {
     const finalSimulation = runScheduleSimulationBridge(finalJob.workspace, finalJob.options, finalJob.assumptions)
     const verified = finalSimulation.report
@@ -507,6 +523,7 @@ function* smartRosterSteps(
       return result
     }
     finalScore = scoreSimulationProduction(verified).total
+    result.calculationReport = simulationReportToCalculationReport(finalWorkspace, verified)
     result.specialOperators = verified.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
       operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
       workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,

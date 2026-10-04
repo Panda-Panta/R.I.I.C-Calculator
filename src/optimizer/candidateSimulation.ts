@@ -3,6 +3,8 @@ import { scoreSimulationProduction } from './productionObjective'
 import { hasConsumptionSkill } from './fixedDuty'
 import type { SpecialOperatorSimData } from './smartRoster'
 import { summarizeIncome, type IncomeCase } from './incomeComparison'
+import type { CalculationReport } from '../domain/types'
+import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
 
 export interface CandidateSimulationJob {
   workspace: Parameters<typeof runScheduleSimulationBridge>[0]
@@ -20,6 +22,8 @@ export interface CandidateSimulationResult {
   diagnostics: string[]
   specialOperators?: SpecialOperatorSimData[]
   incomeCase?: IncomeCase
+  /** Compact display report of this same completed run; no timeline/segment payload. */
+  calculationReport?: CalculationReport
 }
 
 export interface CandidateSimulationBatch {
@@ -54,6 +58,8 @@ export function simulateCandidate(job: CandidateSimulationJob): CandidateSimulat
     simScore: report.production.sample.completed && report.observedHours > 0
       ? scoreSimulationProduction(report).total : 0,
     diagnostics: [],
+    ...(report.production.sample.completed && report.observedHours > 0
+      ? { calculationReport: simulationReportToCalculationReport(job.workspace, report) } : {}),
     specialOperators: report.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
       operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
       workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,
