@@ -1,17 +1,21 @@
 // Port of default agent_arrange / infra_main arrangement handling in Mower alpha.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import type {BackupTiming} from './backupPlans'
+import {MowerRoomArrangementDeferred} from './mowerNativeErrors'
 import {MOWER_TASK_TYPES as T,MowerTask,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
 export interface MowerBackupResult {changed:boolean;generated:MowerTask[]}
 export interface MowerTaskExecutionHooks {
  /** Enable the alpha complete-arrangement boundary in the application adapter. */
  protectShift?:boolean
+ alpha?:boolean
  /** changed is the source solver's new_task result, not any plan-condition change. */
  backup:(phase:BackupTiming,task:MowerTask,context:{appendEmptyTask:boolean;restoreOnDeactivate:boolean;customTimeMicros?:number})=>MowerBackupResult
  /** Physical I/O adapter; this core removes the successfully committed room from the task. */
  arrangeRoom:(room:string,names:string[],getTime:boolean,task:MowerTask,restoration:MowerTaskPlan)=>MowerTaskPlan|void|Generator<MowerRoomReturn,MowerTaskPlan|void,void>
  /** prepare_release_dorm validates identity/cap and clears stale plans. */
  prepareRelease?:(task:MowerTask)=>boolean
+ /** A critical task may postpone the remaining dorm rooms without ending this shift. */
+ deferRoom?:(room:string,task:MowerTask)=>boolean
  metadata:()=>void
  corrections?:()=>MowerTask[]
  skip?:()=>void
@@ -45,8 +49,9 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  if(!Object.keys(task.plan).length){queue.consume(task);if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
  const protectedShift=!!hooks.protectShift&&Object.keys(task.plan).length>0&&task.type!==T.FIAMMETTA&&task.type!==T.RELEASE_DORM
  if(protectedShift)task.backupShiftActive=true
+ let retainedLock=false
  try {
- let getTime=task.type===T.SHIFT_OFF||protectedShift&&Object.keys(task.plan).some(room=>room.startsWith('dormitory_'))
+ let getTime=task.type===T.SHIFT_OFF||protectedShift&&(hooks.alpha||Object.keys(task.plan).some(room=>room.startsWith('dormitory_')))||!!hooks.alpha&&[T.SELF_CORRECTION,T.RE_ORDER,T.FILL_DORM,T.NOT_SPECIFIC].includes(task.type)
  if(task.type===T.RELEASE_DORM){if(!hooks.prepareRelease)throw new Error('Mower release requires the identity and mood-limit validation adapter');getTime=hooks.prepareRelease(task)}
  const rooms=Object.keys(task.plan).sort((a,b)=>Number(a.startsWith('dormitory_'))-Number(b.startsWith('dormitory_'))||(a.startsWith('dormitory_')&&b.startsWith('dormitory_')?Number(a.split('_')[1])-Number(b.split('_')[1]):0))
  let beforeWork=false,beforeDorm=false;const restoration:MowerTaskPlan={}
@@ -54,9 +59,11 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
   if(!room.startsWith('dormitory_')&&!beforeWork){beforeWork=true;if(enterPhase('BEFORE_WORK',task,queue,hooks)){if(!Object.keys(task.plan).length)queue.consume(task);return false}}
   if(room.startsWith('dormitory_')&&!beforeDorm){beforeDorm=true;if(enterPhase('BEFORE_DORM',task,queue,hooks)){if(!Object.keys(task.plan).length)queue.consume(task);return false}}
   const names=task.plan[room];if(!names)continue
+  if(hooks.alpha&&hooks.deferRoom?.(room,task)){retainedLock=true;return false}
   const arrangement=hooks.arrangeRoom(room,names,getTime,task,restoration)
   const additional=arrangement&&'next' in arrangement&&typeof arrangement.next==='function'?yield* (arrangement as Generator<MowerRoomReturn,MowerTaskPlan|void,void>):arrangement
   if(additional)Object.assign(restoration,additional)
+  if(task.arrangementRetryRoom===room){delete task.arrangementRetryRoom;delete task.arrangementRetryCount}
   delete task.plan[room];task.dormRecoveryRestore=task.dormRecoveryRestore.filter(r=>r!==room);yield {room,delayMicros:500_000}
  }
  const restoreRooms=Object.keys(restoration)
@@ -80,7 +87,8 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  // infra_main tests the first retained task, without inventing an extra phase.
  if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}
  return true
- }finally{if(protectedShift)task.backupShiftActive=false}
+ }catch(error){if(hooks.alpha&&error instanceof MowerRoomArrangementDeferred)retainedLock=true;throw error}
+ finally{if(protectedShift&&!retainedLock)task.backupShiftActive=false}
 }
 
 /** Pure decision replay: the caller owns its clock and may drain all device boundaries. */

@@ -55,3 +55,14 @@ it('keeps one arrangement and its phase flags alive across the source room-retur
  expect(steps.next()).toEqual({done:true,value:true});expect(q.tasks).not.toContain(t)
  expect(trace).toEqual([{what:'BEFORE_WORK',at:0},{what:'room_1_1',at:0},{what:'BEFORE_DORM',at:500_000},{what:'dormitory_1',at:500_000},{what:'BEFORE_PLANNING',at:1_000_000},{what:'metadata',at:1_000_000}])
 })
+
+it('retains the alpha process lock and only uncommitted rooms when a priority deadline defers a dorm',()=>{
+ const q=new MowerTaskQueue(),t=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['R'],dormitory_1:['A'],dormitory_2:['B']}});q.tasks=[t]
+ let deferred=true;const committed:string[]=[],hooks:MowerTaskExecutionHooks&{deferRoom:(room:string)=>boolean}={alpha:true,protectShift:true,
+  backup:()=>({changed:false,generated:[]}),deferRoom:room=>room==='dormitory_2'&&deferred,
+  arrangeRoom:room=>{committed.push(room)},metadata:()=>{expect(t.backupShiftActive).toBe(false)}}
+ expect(executeMowerTaskArrangement(t,q,hooks)).toBe(false)
+ expect(t.plan).toEqual({dormitory_2:['B']});expect(t.backupShiftActive).toBe(true);expect(q.tasks).toContain(t)
+ deferred=false;expect(executeMowerTaskArrangement(t,q,hooks)).toBe(true)
+ expect(committed).toEqual(['room_1_1','dormitory_1','dormitory_2']);expect(t.backupShiftActive).toBe(false);expect(q.tasks).not.toContain(t)
+})

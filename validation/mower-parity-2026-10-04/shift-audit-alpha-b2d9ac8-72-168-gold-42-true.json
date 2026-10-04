@@ -1,0 +1,119 @@
+{
+  "evidence": "alpha-b2d9ac8 source simulated occupancy and event trace, not live Mower or desktop UI",
+  "variant": "alpha-b2d9ac8",
+  "seed": 42,
+  "droneTarget": "gold",
+  "fiammettaFool": true,
+  "sampleHours": 168,
+  "warmupHours": 72,
+  "seconds": 1.6227246999999998,
+  "success": false,
+  "segments": 0,
+  "events": {},
+  "diagnostics": [
+    {
+      "code": "TIME_INTEGRATION_MODEL",
+      "message": "使用整小时暖机，最大步长 0.25 h；复制取整等非线性效率采用区间中点数值积分，可缩小步长检查敏感性"
+    },
+    {
+      "code": "SINGLE_RECOVERY_TARGET_ASSUMPTION",
+      "message": "已按 Mower 确认流程固定的目标使用入驻顺序标记；未确认或目标已满时采用槽位顺序，后续游戏自动选取规则尚未实测"
+    },
+    {
+      "code": "MOWER_IO_CLOCK_MODEL",
+      "message": "Mower 每房返回 0.5 秒及无临近任务时的通知检查 1 秒已纳入时间线；识别与其他点击耗时按 0 处理。已完成 run 后仍有同刻任务时，外层单调时钟推进 1 微秒；该适配步长不改任务时刻。"
+    },
+    {
+      "code": "POTENTIAL_OUTPUT_MODEL",
+      "message": "直观产出模式：忽略材料库存不足，设施容量与收取按 Mower 排班执行，完成即计产出；账本为测算辅助，不代表实际到账。无人机仍按所选策略及实际生成量使用。"
+    },
+    {
+      "code": "IDEAL_RUN_ORDER_ASSUMPTIONS",
+      "message": "理想跑单按已解锁的佩佩/可露希尔候选决定新单模式，在普通订单完成时应用 U-Official/但书/龙舌兰效果；保留 Mower 任务读取、排序与唤醒，不临时换人、不等待、不消耗跑单干员心情或无人机。常规排班和无人机目标策略仍执行。"
+    },
+    {
+      "code": "DRONE_ALLOCATION_POLICY",
+      "message": "无人机完全由 Mower 的任务阶段使用：默认每 3 小时待办检查、100 架判断门槛；按所选设施加速，不额外消耗跑单无人机。"
+    },
+    {
+      "code": "MOWER_CLUE_OBSERVATION_MODEL",
+      "message": "线索交流固定关闭，Party Time 为空，不执行线索待办及交流任务。"
+    },
+    {
+      "code": "MOWER_ORDER_OBSERVATION_MODEL",
+      "message": "理想跑单在新单开始时锁定佩佩/可露希尔模式，在普通订单完成时转换但书/龙舌兰收益；保留 Mower 订单读取、任务排序与唤醒，不执行临时换人；常规换班、收取及无人机任务仍按 Mower 时间线执行。"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "factory / 特克诺：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 褐果：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 桃金娘：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "factory / 年：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 夕：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 余：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "BACKUP_EXECUTION_FAILED",
+      "message": "上下班副表推演出现循环，保留原任务，暂不执行换人"
+    },
+    {
+      "code": "mower-task-exception",
+      "message": "上下班副表推演出现循环，保留原任务，暂不执行换人"
+    },
+    {
+      "code": "group-blocked",
+      "message": "slot:meeting_1: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "group-blocked",
+      "message": "group:深海: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "group-blocked",
+      "message": "group:感知: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "group-blocked",
+      "message": "group:红松: insufficient available candidates or beds; original occupants retained"
+    }
+  ],
+  "continuityErrors": 0,
+  "duplicateOccupancy": 0,
+  "invalidSlotOccupancy": 0,
+  "moraleOutOfRange": 0,
+  "ordinaryZeroProductionEntries": 0,
+  "ordinaryZeroProductionEpisodes": 0,
+  "ordinaryZeroProductionHours": 0,
+  "rapidRoomReturnCount": 0,
+  "rapidShiftReversalCount": 0,
+  "redpineBounces": [],
+  "maxRoomChangesInMinute": 0,
+  "roomChanges": {},
+  "samples": {
+    "duplicates": [],
+    "invalidSlots": [],
+    "zeroEntries": [],
+    "zeroEpisodes": [],
+    "rapidRoomReturns": [],
+    "rapidShiftReversals": [],
+    "densestMinutes": []
+  },
+  "disabledBackups": [],
+  "elapsedHours": 18.51842798027777,
+  "observedHours": 0
+}

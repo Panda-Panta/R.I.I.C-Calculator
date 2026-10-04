@@ -135,6 +135,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  let backups:ReturnType<typeof createBackupPlanController> | undefined
  try{
   const runtimeConfig=compiledScheduleToRuntimeConfig(schedule)
+  runtimeConfig.mowerAlpha=true
   // Mower scans unregistered global cards too. The imported library is the idle-card pool;
   // without it, every catalog operator is eligible, subject to native task/room exclusions.
   runtimeConfig.availableIdleOperators=inventory

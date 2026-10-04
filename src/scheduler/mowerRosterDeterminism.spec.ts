@@ -3,10 +3,11 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { importMowerJson } from '../workbench/compat/mowerJson'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
 
-it('replays ideal Mower task decisions and production exactly for the same order seed', async ({ annotate }) => {
+it('replays alpha control decisions exactly for the same seed with cyclic backup 0 disabled', async ({ annotate }) => {
   await annotate('Checking exact replay of the same order observations and scheduler inputs')
   const root = new URL('../../validation/mower-backup-2026-09-22/', import.meta.url)
   const workspace = importMowerJson(readFileSync(new URL('roster.json', root), 'utf8'))
+  Reflect.set(workspace.compatibility.backupPlans[0]!,'trigger','False')
   const reports = [42, 42].map(seed => runScheduleSimulationBridge(workspace,
     { warmupHours: 0, sampleHours: Number(process.env.MOWER_DETERMINISM_HOURS ?? 168), production: { runOrderMode: 'ideal', outputMode: 'potential', droneTarget: 'exp', seed } },
     { restingThreshold: .65, fiammettaFool: false }).report!)

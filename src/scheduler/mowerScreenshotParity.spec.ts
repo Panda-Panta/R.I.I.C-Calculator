@@ -11,16 +11,17 @@ const scenarios = process.env.MOWER_PARITY_CONFIRMED
   ? (process.env.MOWER_PARITY_LONG ? [.65] : [.65,.675,.7]).map(restingThreshold=>({droneTarget:'exp' as const,assumptions:{restingThreshold,fiammettaFool:false}}))
   : (['none','gold','exp'] as const).map(droneTarget=>({droneTarget,assumptions:{}}))
 
-it.each(scenarios)('records screenshot steady-window scenario: $droneTarget / $assumptions', async ({droneTarget, assumptions}) => {
+it.each(scenarios)('records alpha screenshot control with cyclic backup 0 disabled: $droneTarget / $assumptions', async ({droneTarget, assumptions}) => {
   // Vitest throttles task updates by 100ms. Drain their RPC before the long
   // synchronous calculation; keep each scenario a separate reported test.
   await new Promise(resolve => setTimeout(resolve, 150))
-  const result = runScheduleSimulationBridge(workspace, { warmupHours: 168, sampleHours: process.env.MOWER_PARITY_LONG ? 672 : 168, recordSegments: false, production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget, seed: Number(process.env.MOWER_PARITY_SEED ?? 42) } }, assumptions)
+  const control=structuredClone(workspace);Reflect.set(control.compatibility.backupPlans[0]!,'trigger','False')
+  const result = runScheduleSimulationBridge(control, { warmupHours: 72, sampleHours: process.env.MOWER_PARITY_LONG ? 672 : 168, recordSegments: false, production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget, seed: Number(process.env.MOWER_PARITY_SEED ?? 42) } }, assumptions)
   if (!result.report?.success) writeFileSync(new URL('screenshot-failure.json',root),JSON.stringify(result,null,2))
   expect(result.report?.success, result.error ?? JSON.stringify(result.report?.diagnostics)).toBe(true)
   const r = result.report!
-  summaries.push({ droneTarget, configuredAssumptions: assumptions, assumptions: r.assumptions, metrics: mowerReportMetrics(r), operators: r.operators, rooms: r.rooms, production: r.production, rosterEvents: r.events, diagnostics: r.diagnostics })
+  summaries.push({ controlDisabledBackups:[0],droneTarget, configuredAssumptions: assumptions, assumptions: r.assumptions, metrics: mowerReportMetrics(r), operators: r.operators, rooms: r.rooms, production: r.production, rosterEvents: r.events, diagnostics: r.diagnostics })
   writeFileSync(new URL(process.env.MOWER_PARITY_OUTPUT ?? 'screenshot-scenarios.json', root), JSON.stringify(summaries, null, 2))
-  // Full 336h ideal runs can exceed ten minutes on a busy CPU.
-  // Keep the original windows and assertions; budget twenty minutes per scenario.
+  // The default control matches the user's three-day warmup and seven-day sample.
+  // Later cyclic combinations are tested separately against the native preview.
 }, 1200000)

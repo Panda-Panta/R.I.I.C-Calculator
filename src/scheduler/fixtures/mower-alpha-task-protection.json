@@ -1,0 +1,424 @@
+{
+  "scope": "Execute unmodified scheduling ASTs from the user-selected immutable alpha.\n\nThe clock, configured plan, and read observations are fixture inputs. Device,\nSQLite, inventory, mastery and card recognition are outside this oracle.\n",
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "cases": [
+    {
+      "name": "dorm-deadline",
+      "input": [
+        {
+          "type": "SHIFT_ON",
+          "time": 0.0,
+          "plan": {
+            "dormitory_1": [
+              "A"
+            ],
+            "dormitory_2": [
+              "A"
+            ],
+            "dormitory_3": [
+              "A"
+            ],
+            "dormitory_4": [
+              "A"
+            ]
+          },
+          "metadata": "",
+          "strict": false
+        },
+        {
+          "type": "RUN_ORDER",
+          "time": 0.05,
+          "plan": {},
+          "metadata": "room_1_1",
+          "strict": false
+        }
+      ],
+      "output": [
+        {
+          "index": 1,
+          "type": "RUN_ORDER",
+          "timeMicros": 180000000,
+          "plan": {},
+          "metadata": "room_1_1",
+          "simple": false,
+          "targets": {}
+        },
+        {
+          "index": 0,
+          "type": "SHIFT_ON",
+          "timeMicros": 181000000,
+          "plan": {
+            "dormitory_1": [
+              "A"
+            ],
+            "dormitory_2": [
+              "A"
+            ],
+            "dormitory_3": [
+              "A"
+            ],
+            "dormitory_4": [
+              "A"
+            ]
+          },
+          "metadata": "",
+          "simple": false,
+          "targets": {}
+        }
+      ]
+    },
+    {
+      "name": "priority-order-already-due",
+      "input": [
+        {
+          "type": "RELEASE_DORM",
+          "time": -0.008333333333333333,
+          "plan": {
+            "dormitory_1": [
+              "Free"
+            ]
+          },
+          "metadata": "A",
+          "strict": true
+        },
+        {
+          "type": "RUN_ORDER",
+          "time": 0.0,
+          "plan": {},
+          "metadata": "room_1_1",
+          "strict": false
+        }
+      ],
+      "output": [
+        {
+          "index": 1,
+          "type": "RUN_ORDER",
+          "timeMicros": 0,
+          "plan": {},
+          "metadata": "room_1_1",
+          "simple": false,
+          "targets": {}
+        },
+        {
+          "index": 0,
+          "type": "RELEASE_DORM",
+          "timeMicros": -120000000,
+          "plan": {
+            "dormitory_1": [
+              "Free"
+            ]
+          },
+          "metadata": "A",
+          "simple": false,
+          "targets": {
+            "A": [
+              "dormitory_1",
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "swap-before-order",
+      "input": [
+        {
+          "type": "SWAP_SUPPORT",
+          "time": 0.05555555555555555,
+          "plan": {
+            "train": [
+              "A",
+              "B"
+            ]
+          },
+          "metadata": "",
+          "strict": false
+        },
+        {
+          "type": "RUN_ORDER",
+          "time": 0.05,
+          "plan": {},
+          "metadata": "room_1_1",
+          "strict": false
+        },
+        {
+          "type": "SHIFT_OFF",
+          "time": 0.0,
+          "plan": {
+            "room_1_2": [
+              "C"
+            ]
+          },
+          "metadata": "",
+          "strict": false
+        }
+      ],
+      "output": [
+        {
+          "index": 0,
+          "type": "SWAP_SUPPORT",
+          "timeMicros": 119000000,
+          "plan": {
+            "train": [
+              "A",
+              "B"
+            ]
+          },
+          "metadata": "",
+          "simple": false,
+          "targets": {}
+        },
+        {
+          "index": 1,
+          "type": "RUN_ORDER",
+          "timeMicros": 180000000,
+          "plan": {},
+          "metadata": "room_1_1",
+          "simple": false,
+          "targets": {}
+        },
+        {
+          "index": 2,
+          "type": "SHIFT_OFF",
+          "timeMicros": 299000000,
+          "plan": {
+            "room_1_2": [
+              "C"
+            ]
+          },
+          "metadata": "",
+          "simple": false,
+          "targets": {}
+        }
+      ]
+    },
+    {
+      "name": "strict-limit-before-blocker",
+      "input": [
+        {
+          "type": "RELEASE_DORM",
+          "time": 0.05,
+          "plan": {
+            "dormitory_1": [
+              "Free"
+            ]
+          },
+          "metadata": "A",
+          "strict": true
+        },
+        {
+          "type": "SHIFT_ON",
+          "time": 0.016666666666666666,
+          "plan": {
+            "room_1_1": [
+              "B"
+            ]
+          },
+          "metadata": "",
+          "strict": false
+        }
+      ],
+      "output": [
+        {
+          "index": 0,
+          "type": "RELEASE_DORM",
+          "timeMicros": -31000000,
+          "plan": {
+            "dormitory_1": [
+              "Free"
+            ]
+          },
+          "metadata": "A",
+          "simple": false,
+          "targets": {
+            "A": [
+              "dormitory_1",
+              0
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "type": "SHIFT_ON",
+          "timeMicros": 60000000,
+          "plan": {
+            "room_1_1": [
+              "B"
+            ]
+          },
+          "metadata": "",
+          "simple": false,
+          "targets": {}
+        }
+      ]
+    },
+    {
+      "name": "strict-deadline-stable",
+      "input": [
+        {
+          "type": "RELEASE_DORM",
+          "time": 0.06666666666666667,
+          "plan": {
+            "dormitory_1": [
+              "Free"
+            ]
+          },
+          "metadata": "A",
+          "strict": true
+        },
+        {
+          "type": "RELEASE_DORM",
+          "time": 0.06666666666666667,
+          "plan": {
+            "dormitory_2": [
+              "Free"
+            ]
+          },
+          "metadata": "B",
+          "strict": true
+        }
+      ],
+      "output": [
+        {
+          "index": 0,
+          "type": "RELEASE_DORM",
+          "timeMicros": 60000000,
+          "plan": {
+            "dormitory_1": [
+              "Free"
+            ]
+          },
+          "metadata": "A",
+          "simple": false,
+          "targets": {
+            "A": [
+              "dormitory_1",
+              0
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "type": "RELEASE_DORM",
+          "timeMicros": 150000000,
+          "plan": {
+            "dormitory_2": [
+              "Free"
+            ]
+          },
+          "metadata": "B",
+          "simple": false,
+          "targets": {
+            "B": [
+              "dormitory_2",
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "identity-preserving-merge",
+      "input": [
+        {
+          "type": "RELEASE_DORM",
+          "time": 0.03333333333333333,
+          "plan": {
+            "dormitory_1": [
+              "Free",
+              "Current"
+            ]
+          },
+          "metadata": "A",
+          "strict": false
+        },
+        {
+          "type": "RELEASE_DORM",
+          "time": 0.11666666666666667,
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Free"
+            ]
+          },
+          "metadata": "B",
+          "strict": false
+        }
+      ],
+      "output": [
+        {
+          "index": 1,
+          "type": "RELEASE_DORM",
+          "timeMicros": 420000000,
+          "plan": {
+            "dormitory_1": [
+              "Free",
+              "Free"
+            ]
+          },
+          "metadata": "A,B",
+          "simple": false,
+          "targets": {
+            "A": [
+              "dormitory_1",
+              0
+            ],
+            "B": [
+              "dormitory_1",
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "fill-simplification",
+      "input": [
+        {
+          "type": "FILL_DORM",
+          "time": 0.0,
+          "plan": {
+            "dormitory_1": [
+              "A",
+              "B"
+            ]
+          },
+          "metadata": "",
+          "strict": false
+        },
+        {
+          "type": "RUN_ORDER",
+          "time": 0.05,
+          "plan": {},
+          "metadata": "room_1_1",
+          "strict": false
+        }
+      ],
+      "output": [
+        {
+          "index": 0,
+          "type": "FILL_DORM",
+          "timeMicros": 0,
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "B"
+            ]
+          },
+          "metadata": "",
+          "simple": true,
+          "targets": {}
+        },
+        {
+          "index": 1,
+          "type": "RUN_ORDER",
+          "timeMicros": 180000000,
+          "plan": {},
+          "metadata": "room_1_1",
+          "simple": false,
+          "targets": {}
+        }
+      ]
+    }
+  ]
+}

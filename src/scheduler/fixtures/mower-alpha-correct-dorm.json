@@ -1,0 +1,62 @@
+{
+  "scope": "Unmodified alpha correct_dorm over a cached completed bed, explicit observation times.",
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "cases": [
+    {
+      "kind": "real-above-limit",
+      "input": {
+        "mood": 22,
+        "limit": 12,
+        "observed": true
+      },
+      "output": {
+        "mood": 22,
+        "stampSeconds": -1800.0,
+        "prediction": false,
+        "depletion": 0
+      }
+    },
+    {
+      "kind": "real-at-limit",
+      "input": {
+        "mood": 12,
+        "limit": 12,
+        "observed": true
+      },
+      "output": {
+        "mood": 12,
+        "stampSeconds": -1800.0,
+        "prediction": false,
+        "depletion": 0
+      }
+    },
+    {
+      "kind": "unfinished",
+      "input": {
+        "mood": 10,
+        "limit": 24,
+        "observed": true
+      },
+      "output": {
+        "mood": 24,
+        "stampSeconds": -3600.0,
+        "prediction": true,
+        "depletion": 0
+      }
+    },
+    {
+      "kind": "unobserved",
+      "input": {
+        "mood": 22,
+        "limit": 12,
+        "observed": false
+      },
+      "output": {
+        "mood": 12,
+        "stampSeconds": -3600.0,
+        "prediction": true,
+        "depletion": 0
+      }
+    }
+  ]
+}

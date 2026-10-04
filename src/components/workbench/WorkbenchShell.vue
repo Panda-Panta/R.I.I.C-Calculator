@@ -967,10 +967,6 @@ defineExpose({
                 <span class="metric-num text-score82">{{ formatNumber(calculationReport.summary.totalScore82, 1) }}</span>
                 <span class="metric-unit">分/日</span>
               </div>
-              <span class="metric-sub">按本次作战记录、赤金、订单、碎片和合成玉系数评分</span>
-              <span v-if="calculationReport.summary.scoreBreakdown" class="metric-sub" data-test="weighted-score-breakdown">
-                经验 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedExp, 1) }} · 赤金及虚拟赤金 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedGold, 1) }} · 订单 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedOrders, 1) }} · 碎片 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedFragments, 1) }} · 合成玉 {{ formatNumber(calculationReport.summary.scoreBreakdown.weightedOrundum, 1) }}
-              </span>
             </div>
 
             <!-- Daily LMD Yield -->

@@ -30,10 +30,27 @@ export class MowerTask {
  productShiftLocked=false
  /** A complete physical arrangement must finish before backup/return replanning. */
  backupShiftActive=false
+ backupShiftIntent?:MowerTaskPlan;backupShiftConditions?:boolean[];dormFillPlan:MowerTaskPlan={};simpleDormFill=false;arrangementRetryDueMicros?:number
  dormRecoveryRestore:string[]=[]
+ arrangementRetryRoom?:string;arrangementRetryCount?:number
+ dormMoodResidents:string[]=[];idleDormSearchNames:Record<string,string[]>={};idleDormShiftGroups?:Record<string,string[]>
+ releaseTargets?:Record<string,[string,number]>;releaseStartMicros?:number
+ moodLimitDeadlineMicros?:number;advanceSupportSwap=false
+ productLockNames:Set<string>=new Set();productLockSlots:Set<string>=new Set()
  constructor(options:MowerTaskOptions={},now=0){this.timeMicros=toMowerMicros(options.time??now);this.type=setMowerTaskType(options.type);this.plan=options.plan??{};this.metadata=options.metadata??'';this.adjusted=options.adjusted??false;this.strictMoodLimit=options.strictMoodLimit??false;this.moodLimit=options.moodLimit}
  get time(){return fromMowerMicros(this.timeMicros)}
  set time(value:number){this.timeMicros=toMowerMicros(value)}
+ releaseDormTargets():Record<string,[string,number]> {
+  if(this.type!==MOWER_TASK_TYPES.RELEASE_DORM)return {}
+  let targets=this.releaseTargets
+  if(!targets){const slots=Object.entries(this.plan).flatMap(([room,row])=>row.flatMap((name,index)=>name==='Free'?[[room,index] as [string,number]]:[]));if(slots.length!==1||!this.metadata||this.metadata.includes(','))return {};targets={[this.metadata]:slots[0]!}}
+  return Object.fromEntries(Object.entries(targets).filter(([, [room,index]])=>this.plan[room]?.[index]==='Free'))
+ }
+ removeReleaseDormOperator(name:string):void {
+  const targets=this.releaseDormTargets(),position=targets[name];delete targets[name]
+  if(position){const [room,index]=position;this.plan[room]![index]='Current';if(this.plan[room]!.every(n=>n==='Current'))delete this.plan[room]}
+  this.releaseTargets=targets;this.metadata=Object.keys(targets).join(',')
+ }
  equals(other:MowerTask):boolean {const keys=Object.keys(this.plan);return this.type===other.type&&Math.abs(this.timeMicros-other.timeMicros)<1_500_000&&keys.length===Object.keys(other.plan).length&&keys.every(k=>other.plan[k]?.length===this.plan[k]!.length&&this.plan[k]!.every((name,i)=>other.plan[k]![i]===name))}
 }
 export interface MowerTaskQuery {time?:number;type?:MowerTaskType;comparison?:'<'|'='|'>';metadata?:string}

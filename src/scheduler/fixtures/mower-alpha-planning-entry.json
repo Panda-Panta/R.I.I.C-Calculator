@@ -1,0 +1,217 @@
+{
+  "scope": "Unmodified alpha fill and forced error recovery, with known fixture scene and no recognition I/O.",
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "entry": [
+    {
+      "kind": "empty",
+      "result": true,
+      "tasks": [
+        {
+          "type": "FILL_DORM",
+          "timeMicros": 0,
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "R",
+              "Current",
+              "Current"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "primary-planned",
+      "result": true,
+      "tasks": [
+        {
+          "type": "FILL_DORM",
+          "timeMicros": 0,
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "R",
+              "Current",
+              "Current"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "due-fill-primary-needs-rest",
+      "result": false,
+      "tasks": [
+        {
+          "type": "SHIFT_OFF",
+          "timeMicros": 0,
+          "plan": {
+            "room_1_1": [
+              "R"
+            ],
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "A",
+              "Current",
+              "Current"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "due-fill-no-primary-need",
+      "result": false,
+      "tasks": [
+        {
+          "type": "FILL_DORM",
+          "timeMicros": 0,
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "R",
+              "Current",
+              "Current"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "future-fill",
+      "result": false,
+      "tasks": [
+        {
+          "type": "FILL_DORM",
+          "timeMicros": 3600000000,
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "R",
+              "Current",
+              "Current"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "due-shift",
+      "result": false,
+      "tasks": [
+        {
+          "type": "SHIFT_ON",
+          "timeMicros": 0,
+          "plan": {
+            "room_1_1": [
+              "A"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "stale": {
+    "input": [
+      [
+        "SHIFT_OFF",
+        -1200
+      ],
+      [
+        "FIAMMETTA",
+        -1800
+      ],
+      [
+        "SKILL_UPGRADE",
+        -1800
+      ],
+      [
+        "SWAP_SUPPORT",
+        -1800
+      ],
+      [
+        "REFRESH_TIME",
+        -1800
+      ],
+      [
+        "SWITCH_PRODUCT",
+        -1800
+      ],
+      [
+        "RUN_ORDER",
+        3600
+      ],
+      [
+        "RUN_ORDER",
+        -600
+      ],
+      [
+        "FURNITURE",
+        3600
+      ],
+      [
+        "DEPOT",
+        3600
+      ],
+      [
+        "CLUE",
+        3600
+      ],
+      [
+        "WORKSHOP",
+        3600
+      ]
+    ],
+    "tasks": [
+      {
+        "type": "FIAMMETTA",
+        "timeMicros": -1800000000
+      },
+      {
+        "type": "SKILL_UPGRADE",
+        "timeMicros": -1800000000
+      },
+      {
+        "type": "SWAP_SUPPORT",
+        "timeMicros": -1800000000
+      },
+      {
+        "type": "REFRESH_TIME",
+        "timeMicros": -1800000000
+      },
+      {
+        "type": "SWITCH_PRODUCT",
+        "timeMicros": -1800000000
+      },
+      {
+        "type": "RUN_ORDER",
+        "timeMicros": 3600000000
+      },
+      {
+        "type": "FURNITURE",
+        "timeMicros": 3600000000
+      },
+      {
+        "type": "DEPOT",
+        "timeMicros": 3600000000
+      },
+      {
+        "type": "CLUE",
+        "timeMicros": 3600000000
+      },
+      {
+        "type": "WORKSHOP",
+        "timeMicros": 3600000000
+      },
+      {
+        "type": "NOT_SPECIFIC",
+        "timeMicros": 0
+      }
+    ]
+  }
+}

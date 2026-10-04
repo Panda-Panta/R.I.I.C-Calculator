@@ -1,0 +1,1251 @@
+{
+  "evidence": "alpha-control-disable-0 source simulated occupancy and event trace, not live Mower or desktop UI",
+  "variant": "alpha-control-disable-0",
+  "seed": 42,
+  "droneTarget": "gold",
+  "fiammettaFool": true,
+  "sampleHours": 168,
+  "warmupHours": 72,
+  "seconds": 32.9011592,
+  "success": true,
+  "segments": 8773,
+  "events": {
+    "backup-plan": 197,
+    "shift-off": 105,
+    "shift-on": 114,
+    "fiammetta": 36
+  },
+  "diagnostics": [
+    {
+      "code": "TIME_INTEGRATION_MODEL",
+      "message": "使用整小时暖机，最大步长 0.25 h；复制取整等非线性效率采用区间中点数值积分，可缩小步长检查敏感性"
+    },
+    {
+      "code": "SINGLE_RECOVERY_TARGET_ASSUMPTION",
+      "message": "已按 Mower 确认流程固定的目标使用入驻顺序标记；未确认或目标已满时采用槽位顺序，后续游戏自动选取规则尚未实测"
+    },
+    {
+      "code": "MOWER_IO_CLOCK_MODEL",
+      "message": "Mower 每房返回 0.5 秒及无临近任务时的通知检查 1 秒已纳入时间线；识别与其他点击耗时按 0 处理。已完成 run 后仍有同刻任务时，外层单调时钟推进 1 微秒；该适配步长不改任务时刻。"
+    },
+    {
+      "code": "POTENTIAL_OUTPUT_MODEL",
+      "message": "直观产出模式：忽略材料库存不足，设施容量与收取按 Mower 排班执行，完成即计产出；账本为测算辅助，不代表实际到账。无人机仍按所选策略及实际生成量使用。"
+    },
+    {
+      "code": "IDEAL_RUN_ORDER_ASSUMPTIONS",
+      "message": "理想跑单按已解锁的佩佩/可露希尔候选决定新单模式，在普通订单完成时应用 U-Official/但书/龙舌兰效果；保留 Mower 任务读取、排序与唤醒，不临时换人、不等待、不消耗跑单干员心情或无人机。常规排班和无人机目标策略仍执行。"
+    },
+    {
+      "code": "DRONE_ALLOCATION_POLICY",
+      "message": "无人机完全由 Mower 的任务阶段使用：默认每 3 小时待办检查、100 架判断门槛；按所选设施加速，不额外消耗跑单无人机。"
+    },
+    {
+      "code": "MOWER_CLUE_OBSERVATION_MODEL",
+      "message": "线索交流固定关闭，Party Time 为空，不执行线索待办及交流任务。"
+    },
+    {
+      "code": "MOWER_ORDER_OBSERVATION_MODEL",
+      "message": "理想跑单在新单开始时锁定佩佩/可露希尔模式，在普通订单完成时转换但书/龙舌兰收益；保留 Mower 订单读取、任务排序与唤醒，不执行临时换人；常规换班、收取及无人机任务仍按 Mower 时间线执行。"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "factory / 特克诺：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 褐果：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 桃金娘：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "factory / 年：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 夕：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "PASSIVE_AUXILIARY_OCCUPANCY",
+      "message": "train / 余：本次只模拟闲置进驻，不执行加工或训练任务，心情消耗 0/h"
+    },
+    {
+      "code": "group-blocked",
+      "message": "slot:meeting_1: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "SHIFT_DEFERRED_RECOVERED",
+      "message": "group:深海: insufficient available candidates or beds; original occupants retained; 14 次延后均已由后续完整分组下班事件确认恢复"
+    },
+    {
+      "code": "SHIFT_DEFERRED_RECOVERED",
+      "message": "group:感知: insufficient available candidates or beds; original occupants retained; 8 次延后均已由后续完整分组下班事件确认恢复"
+    },
+    {
+      "code": "group-blocked",
+      "message": "group:红松: insufficient available candidates or beds; original occupants retained"
+    },
+    {
+      "code": "SHIFT_DEFERRED_RECOVERED",
+      "message": "group:自动化: insufficient available candidates or beds; original occupants retained; 7 次延后均已由后续完整分组下班事件确认恢复"
+    },
+    {
+      "code": "group-blocked",
+      "message": "slot:meeting_0: insufficient available candidates or beds; original occupants retained"
+    }
+  ],
+  "continuityErrors": 0,
+  "duplicateOccupancy": 0,
+  "invalidSlotOccupancy": 0,
+  "moraleOutOfRange": 0,
+  "ordinaryZeroProductionEntries": 0,
+  "ordinaryZeroProductionEpisodes": 0,
+  "ordinaryZeroProductionHours": 0,
+  "rapidRoomReturnCount": 47,
+  "rapidShiftReversalCount": 38,
+  "redpineBounces": [],
+  "maxRoomChangesInMinute": 35,
+  "roomChanges": {
+    "central": 95,
+    "meeting": 36,
+    "factory": 45,
+    "contact": 45,
+    "train": 53,
+    "dormitory_1": 244,
+    "dormitory_2": 222,
+    "dormitory_3": 240,
+    "dormitory_4": 210,
+    "room_1_1": 45,
+    "room_1_2": 45,
+    "room_1_3": 18,
+    "room_2_1": 57,
+    "room_2_2": 33,
+    "room_2_3": 18,
+    "room_3_1": 26,
+    "room_3_2": 99,
+    "room_3_3": 21
+  },
+  "samples": {
+    "duplicates": [],
+    "invalidSlots": [],
+    "zeroEntries": [],
+    "zeroEpisodes": [],
+    "rapidRoomReturns": [
+      {
+        "roomId": "central",
+        "startedAt": 89.92619241833334,
+        "returnedAt": 89.9263313075,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "令",
+          "",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 128.4595441683333,
+        "returnedAt": 128.45968305749997,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "令",
+          "",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 140.02513616972217,
+        "returnedAt": 140.02527505888884,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "重岳",
+          "",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 164.45230734138886,
+        "returnedAt": 164.45244623055552,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "重岳",
+          "",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 169.6098879511111,
+        "returnedAt": 169.61002684027775,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "令",
+          "",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 180.58851662416672,
+        "returnedAt": 180.58865551333338,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "重岳",
+          "",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 198.94444725071835,
+        "returnedAt": 198.94458613988502,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "令",
+          "",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 214.15104429829546,
+        "returnedAt": 214.15118318746212,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "重岳",
+          "",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "重岳",
+          "歌蕾蒂娅",
+          "森蚺",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "central",
+        "startedAt": 216.4209147674203,
+        "returnedAt": 216.42105365658696,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "during": [
+          "令",
+          "",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ],
+        "after": [
+          "令",
+          "歌蕾蒂娅",
+          "夕",
+          "焰尾",
+          "薇薇安娜"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 73.72463356601968,
+        "returnedAt": 73.72491134416667,
+        "seconds": 1.0000013291801224,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ],
+        "during": [
+          "阿罗玛",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 100.80329116913693,
+        "returnedAt": 100.80356894722223,
+        "seconds": 1.0000011070985693,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "during": [
+          "歌蕾蒂娅",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 104.80922878277778,
+        "returnedAt": 104.80950656083334,
+        "seconds": 1.0000010000226212,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "during": [
+          "歌蕾蒂娅",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 110.66388464722223,
+        "returnedAt": 110.66416242527778,
+        "seconds": 1.000000999971462,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ],
+        "during": [
+          "阿罗玛",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 143.8473824647222,
+        "returnedAt": 143.84766024277778,
+        "seconds": 1.0000010001249393,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "during": [
+          "歌蕾蒂娅",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 148.51166528242823,
+        "returnedAt": 148.51194306055555,
+        "seconds": 1.0000012583759599,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ],
+        "during": [
+          "阿罗玛",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 184.40405558827416,
+        "returnedAt": 184.40461114438529,
+        "seconds": 2.0000020000452423,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          ""
+        ],
+        "during": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          ""
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 185.7613770787864,
+        "returnedAt": 185.76165485694443,
+        "seconds": 1.0000013688795661,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ],
+        "during": [
+          "阿罗玛",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 222.36872075431344,
+        "returnedAt": 222.3689985325,
+        "seconds": 1.0000014716069927,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ],
+        "during": [
+          "阿罗玛",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "阿罗玛"
+        ]
+      },
+      {
+        "roomId": "dormitory_1",
+        "startedAt": 238.40502260966406,
+        "returnedAt": 238.40530038799739,
+        "seconds": 1.0000019999779397,
+        "before": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "during": [
+          "歌蕾蒂娅",
+          "菲亚梅塔",
+          "",
+          "",
+          ""
+        ],
+        "after": [
+          "冰酿",
+          "闪灵",
+          "菲亚梅塔",
+          "赫默",
+          "歌蕾蒂娅"
+        ]
+      },
+      {
+        "roomId": "dormitory_2",
+        "startedAt": 184.40419447716306,
+        "returnedAt": 184.40475003327418,
+        "seconds": 2.0000020000452423,
+        "before": [
+          "流明",
+          "琴柳",
+          "",
+          "伺夜",
+          "见行者"
+        ],
+        "during": [
+          "流明",
+          "琴柳",
+          "斯卡蒂",
+          "伺夜",
+          "见行者"
+        ],
+        "after": [
+          "流明",
+          "琴柳",
+          "",
+          "伺夜",
+          "见行者"
+        ]
+      },
+      {
+        "roomId": "dormitory_3",
+        "startedAt": 110.66513464777775,
+        "returnedAt": 110.66596798194439,
+        "seconds": 3.0000029999143862,
+        "before": [
+          "塑心",
+          "蜜莓",
+          "",
+          "乌有",
+          ""
+        ],
+        "during": [
+          "塑心",
+          "蜜莓",
+          "苍苔",
+          "乌有",
+          "引星棘刺"
+        ],
+        "after": [
+          "塑心",
+          "蜜莓",
+          "",
+          "乌有",
+          ""
+        ]
+      },
+      {
+        "roomId": "dormitory_4",
+        "startedAt": 184.40447225494086,
+        "returnedAt": 184.40488892216308,
+        "seconds": 1.500002000011591,
+        "before": [
+          "杜林",
+          "车尔尼",
+          "爱丽丝",
+          "",
+          "陈"
+        ],
+        "during": [
+          "杜林",
+          "车尔尼",
+          "爱丽丝",
+          "安哲拉",
+          "陈"
+        ],
+        "after": [
+          "杜林",
+          "车尔尼",
+          "爱丽丝",
+          "",
+          "陈"
+        ]
+      },
+      {
+        "roomId": "room_2_2",
+        "startedAt": 184.40350003271857,
+        "returnedAt": 184.40475003327418,
+        "seconds": 4.500002000213499,
+        "before": [
+          "斯卡蒂",
+          "幽灵鲨"
+        ],
+        "during": [
+          "多萝西",
+          "娜斯提"
+        ],
+        "after": [
+          "斯卡蒂",
+          "幽灵鲨"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 85.58260626194445,
+        "returnedAt": 85.58274515111111,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "during": [
+          "",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "after": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 97.26686751972223,
+        "returnedAt": 97.26700640888889,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "during": [
+          "",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "after": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 103.12326417802748,
+        "returnedAt": 103.12340306719415,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "砾",
+          "乌尔比安",
+          "安哲拉"
+        ],
+        "during": [
+          "",
+          "乌尔比安",
+          "安哲拉"
+        ],
+        "after": [
+          "砾",
+          "乌尔比安",
+          "安哲拉"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 110.6647179811111,
+        "returnedAt": 110.66596798194439,
+        "seconds": 4.500002999861863,
+        "before": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "during": [
+          "砾",
+          "乌尔比安",
+          "安哲拉"
+        ],
+        "after": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 121.21629990861112,
+        "returnedAt": 121.21643879777778,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "during": [
+          "",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "after": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 126.83690756906292,
+        "returnedAt": 126.83704645822958,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "砾",
+          "乌尔比安",
+          "安哲拉"
+        ],
+        "during": [
+          "",
+          "乌尔比安",
+          "安哲拉"
+        ],
+        "after": [
+          "砾",
+          "乌尔比安",
+          "安哲拉"
+        ]
+      },
+      {
+        "roomId": "room_3_2",
+        "startedAt": 136.82598116050696,
+        "returnedAt": 136.82612004967362,
+        "seconds": 0.5000009999889699,
+        "before": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "during": [
+          "",
+          "苍苔",
+          "引星棘刺"
+        ],
+        "after": [
+          "砾",
+          "苍苔",
+          "引星棘刺"
+        ]
+      }
+    ],
+    "rapidShiftReversals": [
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 85.58274515083333,
+        "toTime": 85.58302292888888,
+        "seconds": 1.000000999971462
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 89.92633130722223,
+        "toTime": 89.92660908527778,
+        "seconds": 1.000000999971462
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 97.26700640861111,
+        "toTime": 97.26728418666666,
+        "seconds": 1.000000999971462
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 103.12340306691637,
+        "toTime": 103.12368084497191,
+        "seconds": 1.000000999971462
+      },
+      {
+        "operator": "乌尔比安",
+        "from": "shift-on",
+        "to": "shift-off",
+        "fromTime": 110.66541242555552,
+        "toTime": 110.66666242638881,
+        "seconds": 4.500002999861863
+      },
+      {
+        "operator": "安哲拉",
+        "from": "shift-on",
+        "to": "shift-off",
+        "fromTime": 110.66541242555552,
+        "toTime": 110.66666242638881,
+        "seconds": 4.500002999861863
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 121.2164387975,
+        "toTime": 121.21671657555555,
+        "seconds": 1.000000999971462
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 126.8370464579518,
+        "toTime": 126.83732423600735,
+        "seconds": 1.000000999971462
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 128.4596830572222,
+        "toTime": 128.45996083527777,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 136.82612004939585,
+        "toTime": 136.82639782745142,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 140.02527505861107,
+        "toTime": 140.02555283666666,
+        "seconds": 1.0000010001249393
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 142.22022259352994,
+        "toTime": 142.2205003715855,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "乌尔比安",
+        "from": "shift-on",
+        "to": "shift-off",
+        "fromTime": 148.5131930608334,
+        "toTime": 148.51444306166678,
+        "seconds": 4.500003000168817
+      },
+      {
+        "operator": "安哲拉",
+        "from": "shift-on",
+        "to": "shift-off",
+        "fromTime": 148.5131930608334,
+        "toTime": 148.51444306166678,
+        "seconds": 4.500003000168817
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 157.18164269486172,
+        "toTime": 157.18192047291728,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 161.76341527877898,
+        "toTime": 161.76369305683454,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 164.45244623027776,
+        "toTime": 164.45272400833332,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 167.84246080277774,
+        "toTime": 167.84273858083333,
+        "seconds": 1.0000010001249393
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 169.61002684,
+        "toTime": 169.61030461805555,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 177.49029188305553,
+        "toTime": 177.4905696611111,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 180.5886555130556,
+        "toTime": 180.58893329111118,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 183.87043828493083,
+        "toTime": 183.8707160629864,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 184.40461114382975,
+        "toTime": 184.40558336660757,
+        "seconds": 3.5000020001461962
+      },
+      {
+        "operator": "斯卡蒂",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 184.40461114382975,
+        "toTime": 184.40558336660757,
+        "seconds": 3.5000020001461962
+      },
+      {
+        "operator": "幽灵鲨",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 184.40461114382975,
+        "toTime": 184.40558336660757,
+        "seconds": 3.5000020001461962
+      },
+      {
+        "operator": "乌尔比安",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 184.40461114382975,
+        "toTime": 184.40558336660757,
+        "seconds": 3.5000020001461962
+      },
+      {
+        "operator": "安哲拉",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 184.40461114382975,
+        "toTime": 184.40558336660757,
+        "seconds": 3.5000020001461962
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 195.46462698416664,
+        "toTime": 195.4649047622222,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 198.94458613960725,
+        "toTime": 198.94486391766281,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 207.88529054047487,
+        "toTime": 207.88556831853043,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 211.7086398121979,
+        "toTime": 211.70891759025346,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 214.15118318718436,
+        "toTime": 214.15146096523992,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "歌蕾蒂娅",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 216.4210536563092,
+        "toTime": 216.42133143436476,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 219.8960007061111,
+        "toTime": 219.89627848416666,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "乌尔比安",
+        "from": "shift-on",
+        "to": "shift-off",
+        "fromTime": 222.37080408833344,
+        "toTime": 222.37205408916682,
+        "seconds": 4.500003000168817
+      },
+      {
+        "operator": "安哲拉",
+        "from": "shift-on",
+        "to": "shift-off",
+        "fromTime": 222.37080408833344,
+        "toTime": 222.37205408916682,
+        "seconds": 4.500003000168817
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 233.0011788246779,
+        "toTime": 233.00145660273347,
+        "seconds": 1.0000010000226212
+      },
+      {
+        "operator": "砾",
+        "from": "shift-off",
+        "to": "shift-on",
+        "fromTime": 236.95633327322676,
+        "toTime": 236.95661105128232,
+        "seconds": 1.0000010000226212
+      }
+    ],
+    "densestMinutes": [
+      {
+        "timeHours": 184.4,
+        "count": 35
+      },
+      {
+        "timeHours": 222.36666666666667,
+        "count": 32
+      },
+      {
+        "timeHours": 87.06666666666666,
+        "count": 26
+      },
+      {
+        "timeHours": 195.06666666666666,
+        "count": 26
+      },
+      {
+        "timeHours": 110.65,
+        "count": 25
+      },
+      {
+        "timeHours": 140.85,
+        "count": 25
+      },
+      {
+        "timeHours": 154.5,
+        "count": 24
+      },
+      {
+        "timeHours": 164.85,
+        "count": 24
+      },
+      {
+        "timeHours": 214.7,
+        "count": 24
+      },
+      {
+        "timeHours": 79.13333333333334,
+        "count": 23
+      }
+    ]
+  },
+  "disabledBackups": [
+    0
+  ],
+  "elapsedHours": 240,
+  "observedHours": 167.99999998442374
+}

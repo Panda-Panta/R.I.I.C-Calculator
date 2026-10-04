@@ -21,7 +21,7 @@ export interface MowerRestingPriorityState {
  operators:Record<string,MowerRegisteredRestingOperator>;groups:Record<string,string[]>
 }
 export interface MowerRegisteredRestingOperator extends MowerOperatorState {
- refreshDrained?:boolean;arrangeOrder?:unknown;dormMoodFallback?:string;dormMoodPeers?:Record<string,unknown>
+ refreshDrained?:boolean;arrangeOrder?:unknown
 }
 export interface MowerRestingRegistrationState extends MowerRestingPriorityState {
  shadowCopy:Record<string,MowerRegisteredRestingOperator>;agentArrangeOrder:Readonly<Record<string,unknown>>

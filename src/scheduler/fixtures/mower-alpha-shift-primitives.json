@@ -1,0 +1,190 @@
+{
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "scope": "Execute unmodified scheduling ASTs from the user-selected immutable alpha.\n\nThe clock, configured plan, and read observations are fixture inputs. Device,\nSQLite, inventory, mastery and card recognition are outside this oracle.\n",
+  "matching": [
+    {
+      "input": {
+        "A": [
+          "R",
+          "S"
+        ],
+        "B": [
+          "R"
+        ]
+      },
+      "output": {
+        "B": "R",
+        "A": "S"
+      }
+    },
+    {
+      "input": {
+        "A": [
+          "R"
+        ],
+        "B": [
+          "R"
+        ]
+      },
+      "output": null
+    },
+    {
+      "input": {
+        "A": [
+          "R",
+          "S"
+        ],
+        "B": [
+          "S",
+          "T"
+        ],
+        "C": [
+          "R"
+        ]
+      },
+      "output": {
+        "C": "R",
+        "A": "S",
+        "B": "T"
+      }
+    }
+  ],
+  "projections": [
+    {
+      "input": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "A"
+        ]
+      },
+      "output": [
+        {
+          "position": [
+            "dormitory_1",
+            2
+          ],
+          "name": "",
+          "time": null
+        },
+        {
+          "position": [
+            "dormitory_1",
+            3
+          ],
+          "name": "A",
+          "time": null
+        },
+        {
+          "position": [
+            "dormitory_1",
+            4
+          ],
+          "name": "",
+          "time": null
+        }
+      ]
+    },
+    {
+      "input": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "A"
+        ]
+      },
+      "output": [
+        {
+          "position": [
+            "dormitory_1",
+            2
+          ],
+          "name": "A",
+          "time": 3.0
+        },
+        {
+          "position": [
+            "dormitory_1",
+            3
+          ],
+          "name": "",
+          "time": null
+        },
+        {
+          "position": [
+            "dormitory_1",
+            4
+          ],
+          "name": "",
+          "time": null
+        }
+      ]
+    },
+    {
+      "input": {
+        "room_1_1": [
+          "A"
+        ]
+      },
+      "output": [
+        {
+          "position": [
+            "dormitory_1",
+            2
+          ],
+          "name": "",
+          "time": null
+        },
+        {
+          "position": [
+            "dormitory_1",
+            3
+          ],
+          "name": "",
+          "time": null
+        },
+        {
+          "position": [
+            "dormitory_1",
+            4
+          ],
+          "name": "",
+          "time": null
+        }
+      ]
+    }
+  ],
+  "restore": [
+    {
+      "standby": false,
+      "output": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Free",
+          "N",
+          "Current"
+        ],
+        "room_1_1": [
+          "A"
+        ],
+        "room_1_2": [
+          "B"
+        ]
+      }
+    },
+    {
+      "standby": true,
+      "output": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "N",
+          "Current"
+        ]
+      }
+    }
+  ]
+}

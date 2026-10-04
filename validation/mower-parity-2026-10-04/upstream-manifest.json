@@ -1,0 +1,66 @@
+{
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "checkedAt": "2026-10-03T20:47:00.7576663Z",
+  "files": [
+    {
+      "file": "solvers/base_schedule.py",
+      "sha256": "9f733a1618614c8a9ca3df96fa6403a345a323cb6054eab092c7f11de873cecc",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/solvers/base_schedule.py"
+    },
+    {
+      "file": "utils/dorm_candidates.py",
+      "sha256": "7033b3625e26dcd739063b316a1d53ec31fd6c08ad09c23c572633f23372dbce",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/dorm_candidates.py"
+    },
+    {
+      "file": "utils/exhaust_replacement.py",
+      "sha256": "e42e07b9d5b3de959d368e882c93d105af6faec698abfe3e2be81acc5fca4df6",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/exhaust_replacement.py"
+    },
+    {
+      "file": "utils/logic_expression.py",
+      "sha256": "7fd23c2724f7eabbe35cec64ca86c13d3609460e90200f68537226bf92e880e9",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/logic_expression.py"
+    },
+    {
+      "file": "utils/operation_timing.py",
+      "sha256": "8cb09181d2e18be69d1a84c93ea14b8f1bc7d53fedcfc32d1ebeeb2cec0e0a12",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/operation_timing.py"
+    },
+    {
+      "file": "utils/operators.py",
+      "sha256": "b2764204708f91275c668351efe6689495e4988662a8894219c560755add39ee",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/operators.py"
+    },
+    {
+      "file": "utils/plan.py",
+      "sha256": "8b9abe229d2a9e6c6c16dce4951f8327350f42d4e97ef96fdffecfb8e7d9961d",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/plan.py"
+    },
+    {
+      "file": "utils/resting_correction.py",
+      "sha256": "79422716e68186c8f7427e09f2d2f2447ecf2549b588e594940a021ac8145769",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/resting_correction.py"
+    },
+    {
+      "file": "utils/resting_priority.py",
+      "sha256": "a66cb431f52876dd1b2dac3c1338109fe8c9bc487d0f4453b1429e22515e3139",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/resting_priority.py"
+    },
+    {
+      "file": "utils/scheduler_task.py",
+      "sha256": "8da4494980a2feabb734d2b52881740992cb30511c03a964e00e6ff9d17c6d4e",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/scheduler_task.py"
+    },
+    {
+      "file": "utils/dorm_recovery.py",
+      "sha256": "8916e10baba7fe42de5cd0165f61881414a633d0a75ac056410bbb6e35345ad1",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/dorm_recovery.py"
+    },
+    {
+      "file": "utils/config/plan.py",
+      "sha256": "cb2063e7102029f13de6027e735cbc77706bb9ee215bfd4c4a5dd3ecfe3aa6c5",
+      "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/b2d9ac85fe070e805aadf0d5f44fc095c1e95253/arknights_mower/utils/config/plan.py"
+    }
+  ]
+}

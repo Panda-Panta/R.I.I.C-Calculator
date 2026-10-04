@@ -1,0 +1,1762 @@
+[
+  {
+    "index": 0,
+    "timeHours": 6.1227267575,
+    "type": "SHIFT_OFF",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "Current",
+          "夕",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "斯卡蒂",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "幽灵鲨",
+          "Free",
+          "乌尔比安"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "安哲拉",
+          "Current"
+        ],
+        "room_2_2": [
+          "多萝西",
+          "娜斯提"
+        ],
+        "room_3_2": [
+          "Current",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 6.1227267575,
+      "error": null,
+      "plan": {
+        "central": [
+          "Current",
+          "夕",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "斯卡蒂",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "幽灵鲨",
+          "Free",
+          "乌尔比安"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "安哲拉",
+          "Current"
+        ],
+        "room_2_2": [
+          "多萝西",
+          "娜斯提"
+        ],
+        "room_3_2": [
+          "Current",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "index": 1,
+    "timeHours": 8.276787019722223,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "重岳",
+          "歌蕾蒂娅",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "factory": [
+          "年"
+        ],
+        "contact": [
+          "桑葚"
+        ],
+        "train": [
+          "夕",
+          "余"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "刺玫",
+          "絮雨"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "图耶",
+          "槐琥",
+          "迷迭香"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "黑键",
+          "Free",
+          "绮良"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "鸿雪",
+          "Free"
+        ],
+        "room_1_1": [
+          "伺夜",
+          "能天使",
+          "蕾缪安"
+        ],
+        "room_1_2": [
+          "乌有"
+        ],
+        "room_2_1": [
+          "苍苔",
+          "引星棘刺",
+          "Current"
+        ],
+        "room_2_2": [
+          "斯卡蒂",
+          "幽灵鲨"
+        ],
+        "room_3_2": [
+          "Current",
+          "乌尔比安",
+          "安哲拉"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Free",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Free"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 8.276787019722223,
+      "error": null,
+      "plan": {
+        "central": [
+          "重岳",
+          "歌蕾蒂娅",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "factory": [
+          "年"
+        ],
+        "contact": [
+          "桑葚"
+        ],
+        "train": [
+          "夕",
+          "余"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "刺玫",
+          "絮雨"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "图耶",
+          "槐琥",
+          "迷迭香"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "黑键",
+          "Free",
+          "绮良"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "鸿雪",
+          "Free"
+        ],
+        "room_1_1": [
+          "伺夜",
+          "能天使",
+          "蕾缪安"
+        ],
+        "room_1_2": [
+          "乌有"
+        ],
+        "room_2_1": [
+          "苍苔",
+          "引星棘刺",
+          "Current"
+        ],
+        "room_2_2": [
+          "斯卡蒂",
+          "幽灵鲨"
+        ],
+        "room_3_2": [
+          "Current",
+          "乌尔比安",
+          "安哲拉"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Free",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Free"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "index": 2,
+    "timeHours": 10.186511519444444,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "令",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "factory": [
+          "特克诺"
+        ],
+        "contact": [
+          "絮雨"
+        ],
+        "train": [
+          "褐果",
+          "桃金娘"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "苍苔"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "引星棘刺",
+          "Free",
+          "Free"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "夕",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "重岳",
+          "Current"
+        ],
+        "room_1_1": [
+          "黑键",
+          "绮良",
+          "鸿雪"
+        ],
+        "room_1_2": [
+          "图耶"
+        ],
+        "room_2_1": [
+          "槐琥",
+          "迷迭香",
+          "Current"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "苍苔"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "引星棘刺",
+          "Free",
+          "Free"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "夕",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "重岳",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 10.186511519444444,
+      "error": null,
+      "plan": {
+        "central": [
+          "令",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "factory": [
+          "特克诺"
+        ],
+        "contact": [
+          "絮雨"
+        ],
+        "train": [
+          "褐果",
+          "桃金娘"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "苍苔"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "引星棘刺",
+          "Free",
+          "Free"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "夕",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "重岳",
+          "Current"
+        ],
+        "room_1_1": [
+          "黑键",
+          "绮良",
+          "鸿雪"
+        ],
+        "room_1_2": [
+          "图耶"
+        ],
+        "room_2_1": [
+          "槐琥",
+          "迷迭香",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "苍苔"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "引星棘刺",
+          "Free",
+          "Free"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "夕",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "重岳",
+          "Current"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "index": 3,
+    "timeHours": 11.361879659166666,
+    "type": "SHIFT_OFF",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "Current",
+          "夕",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "幽灵鲨",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "斯卡蒂",
+          "Free",
+          "安哲拉"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "乌尔比安",
+          "Free"
+        ],
+        "room_2_2": [
+          "多萝西",
+          "娜斯提"
+        ],
+        "room_3_2": [
+          "Current",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Free"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 11.361879659166666,
+      "error": null,
+      "plan": {
+        "central": [
+          "Current",
+          "夕",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "赫默",
+          "歌蕾蒂娅"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "幽灵鲨",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "斯卡蒂",
+          "Free",
+          "安哲拉"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "乌尔比安",
+          "Free"
+        ],
+        "room_2_2": [
+          "多萝西",
+          "娜斯提"
+        ],
+        "room_3_2": [
+          "Current",
+          "苍苔",
+          "引星棘刺"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Free"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "index": 4,
+    "timeHours": 11.913967866111111,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "Current",
+          "歌蕾蒂娅",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "刺玫",
+          "Free"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Free",
+          "Current"
+        ],
+        "room_2_2": [
+          "斯卡蒂",
+          "幽灵鲨"
+        ],
+        "room_3_2": [
+          "Current",
+          "乌尔比安",
+          "安哲拉"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Free"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Free",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 11.913967866111111,
+      "error": null,
+      "plan": {
+        "central": [
+          "Current",
+          "歌蕾蒂娅",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "刺玫",
+          "Free"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Free",
+          "Current"
+        ],
+        "room_2_2": [
+          "斯卡蒂",
+          "幽灵鲨"
+        ],
+        "room_3_2": [
+          "Current",
+          "乌尔比安",
+          "安哲拉"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Free"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Free",
+          "Current",
+          "Free"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Free",
+          "Current"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "index": 5,
+    "timeHours": 13.810859251111111,
+    "type": "SHIFT_OFF",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "Current",
+          "Current",
+          "夕",
+          "Current",
+          "Current"
+        ],
+        "meeting": [
+          "见行者",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "赫默",
+          "承曦格雷伊"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "清流",
+          "Free",
+          "塞雷娅"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "温蒂",
+          "苍苔",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "森蚺",
+          "Current"
+        ],
+        "room_1_3": [
+          "缪尔赛思"
+        ],
+        "room_2_3": [
+          "澄闪"
+        ],
+        "room_3_3": [
+          "多萝西",
+          "娜斯提"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 13.810859251111111,
+      "error": null,
+      "plan": {
+        "central": [
+          "Current",
+          "Current",
+          "夕",
+          "Current",
+          "Current"
+        ],
+        "meeting": [
+          "见行者",
+          "Current"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "赫默",
+          "承曦格雷伊"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "清流",
+          "Free",
+          "塞雷娅"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "温蒂",
+          "苍苔",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "森蚺",
+          "Current"
+        ],
+        "room_1_3": [
+          "缪尔赛思"
+        ],
+        "room_2_3": [
+          "澄闪"
+        ],
+        "room_3_3": [
+          "多萝西",
+          "娜斯提"
+        ]
+      },
+      "conditions": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "index": 6,
+    "timeHours": 13.812387029444444,
+    "type": "SHIFT_OFF",
+    "match": true,
+    "expected": {
+      "plan": {
+        "meeting": [
+          "Current",
+          "陈"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "伊芙利特",
+          "Current"
+        ]
+      },
+      "fill": {
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 13.812387029444444,
+      "error": null,
+      "plan": {
+        "meeting": [
+          "Current",
+          "陈"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "伊芙利特",
+          "Current"
+        ]
+      },
+      "conditions": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  },
+  {
+    "index": 7,
+    "timeHours": 16.81898476638889,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "plan": {
+        "central": [
+          "重岳",
+          "Current",
+          "森蚺",
+          "Current",
+          "Current"
+        ],
+        "meeting": [
+          "Current",
+          "伊芙利特"
+        ],
+        "factory": [
+          "年"
+        ],
+        "contact": [
+          "桑葚"
+        ],
+        "train": [
+          "夕",
+          "余"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "刺玫",
+          "绮良"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "图耶",
+          "鸿雪",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "迷迭香",
+          "黑键",
+          "絮雨"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "槐琥",
+          "澄闪"
+        ],
+        "room_1_1": [
+          "伺夜",
+          "能天使",
+          "蕾缪安"
+        ],
+        "room_1_2": [
+          "乌有"
+        ],
+        "room_1_3": [
+          "承曦格雷伊"
+        ],
+        "room_2_1": [
+          "苍苔",
+          "引星棘刺",
+          "Current"
+        ],
+        "room_2_3": [
+          "Lancet-2"
+        ],
+        "room_3_3": [
+          "清流",
+          "温蒂"
+        ]
+      },
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "澄闪"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 16.81898476638889,
+      "error": null,
+      "plan": {
+        "central": [
+          "重岳",
+          "Current",
+          "森蚺",
+          "Current",
+          "Current"
+        ],
+        "meeting": [
+          "Current",
+          "伊芙利特"
+        ],
+        "factory": [
+          "年"
+        ],
+        "contact": [
+          "桑葚"
+        ],
+        "train": [
+          "夕",
+          "余"
+        ],
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "刺玫",
+          "绮良"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "图耶",
+          "鸿雪",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "迷迭香",
+          "黑键",
+          "絮雨"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "槐琥",
+          "澄闪"
+        ],
+        "room_1_1": [
+          "伺夜",
+          "能天使",
+          "蕾缪安"
+        ],
+        "room_1_2": [
+          "乌有"
+        ],
+        "room_1_3": [
+          "承曦格雷伊"
+        ],
+        "room_2_1": [
+          "苍苔",
+          "引星棘刺",
+          "Current"
+        ],
+        "room_2_3": [
+          "Lancet-2"
+        ],
+        "room_3_3": [
+          "清流",
+          "温蒂"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_1": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_3": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "Current"
+        ],
+        "dormitory_4": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "澄闪"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  },
+  {
+    "index": 8,
+    "timeHours": 18.051582480833332,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "plan": {
+        "meeting": [
+          "塞雷娅",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "见行者"
+        ]
+      },
+      "fill": {
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "见行者"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "remaining": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "error": null
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 18.051582480833332,
+      "error": null,
+      "plan": {
+        "meeting": [
+          "塞雷娅",
+          "Current"
+        ],
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "见行者"
+        ]
+      },
+      "conditions": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "fill": {
+        "dormitory_2": [
+          "Current",
+          "Current",
+          "Current",
+          "Current",
+          "见行者"
+        ]
+      },
+      "remaining": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  },
+  {
+    "index": 9,
+    "timeHours": 18.518427980277778,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "error": "MowerShiftPreviewError: 上下班副表推演出现循环，保留原任务，暂不执行换人",
+      "preserved": true
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 18.518427980277778,
+      "error": "ValueError: 上下班副表推演出现循环，保留原任务，暂不执行换人",
+      "preserved": true
+    }
+  }
+]

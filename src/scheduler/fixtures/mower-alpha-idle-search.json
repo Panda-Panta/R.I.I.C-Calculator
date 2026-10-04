@@ -1,0 +1,70 @@
+{
+  "scope": "Unmodified alpha shared idle search, fallback peers and estimate expiry.",
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "refresh": [
+    {
+      "hours": 0.5,
+      "changed": false,
+      "stopped": true,
+      "stampUnchanged": true,
+      "fallback": "dormitory_1",
+      "checked": true,
+      "estimates": true,
+      "bedName": "N",
+      "bedTime": 0.0
+    },
+    {
+      "hours": 1,
+      "changed": true,
+      "stopped": false,
+      "stampUnchanged": true,
+      "fallback": "",
+      "checked": false,
+      "estimates": false,
+      "bedName": "N",
+      "bedTime": 0.0
+    }
+  ],
+  "peers": {
+    "A": {
+      "mood": 8,
+      "checked": true
+    },
+    "B": {
+      "mood": 10,
+      "checked": true
+    }
+  },
+  "estimates": [
+    {
+      "hours": -0.1,
+      "mood": null
+    },
+    {
+      "hours": 0.5,
+      "mood": 8
+    },
+    {
+      "hours": 1,
+      "mood": null
+    }
+  ],
+  "candidates": {
+    "recovering": [
+      "B"
+    ],
+    "full": [],
+    "unknown": [
+      "A",
+      "U"
+    ],
+    "estimated_recovering": [
+      "A"
+    ],
+    "filling": [
+      "A",
+      "B",
+      "U"
+    ]
+  }
+}

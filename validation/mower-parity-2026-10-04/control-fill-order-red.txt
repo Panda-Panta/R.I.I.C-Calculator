@@ -1,0 +1,121 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/R.I.I.C-Calculator - Codex
+
+ ❯ src/scheduler/mowerAlphaFullPreview.spec.ts (15 tests | 4 failed) 397ms
+   ✓ complete preview against frozen Mower alpha Python results > 0: SHIFT_OFF at 6.1227267575h 37ms
+   ✓ complete preview against frozen Mower alpha Python results > 1: SHIFT_ON at 8.276787019722223h 39ms
+   ✓ complete preview against frozen Mower alpha Python results > 2: SHIFT_ON at 10.186511519444444h 29ms
+   ✓ complete preview against frozen Mower alpha Python results > 3: SHIFT_OFF at 11.361879659166666h 26ms
+   ✓ complete preview against frozen Mower alpha Python results > 4: SHIFT_ON at 11.913967866111111h 26ms
+   ✓ complete preview against frozen Mower alpha Python results > 5: SHIFT_OFF at 13.810859251111111h 21ms
+   ✓ complete preview against frozen Mower alpha Python results > 6: SHIFT_OFF at 13.812387029444444h 14ms
+   ✓ complete preview against frozen Mower alpha Python results > 7: SHIFT_ON at 16.81898476638889h 37ms
+   ✓ complete preview against frozen Mower alpha Python results > 8: SHIFT_ON at 18.051582480833332h 20ms
+   ✓ complete preview against frozen Mower alpha Python results > 9: SHIFT_ON at 18.518427980277778h 22ms
+   ✓ complete preview against frozen Mower alpha Python results > 0: SHIFT_ON at 277.05452077166666h 20ms
+   × complete preview against frozen Mower alpha Python results > 0: SHIFT_ON at 26.89205646222222h 34ms
+     → expected { …(13) } to deeply equal { …(13) }
+   × complete preview against frozen Mower alpha Python results > 1: SHIFT_ON at 32.48663577722222h 26ms
+     → expected { …(12) } to deeply equal { …(12) }
+   × complete preview against frozen Mower alpha Python results > 2: SHIFT_ON at 51.21106218638889h 22ms
+     → expected { …(12) } to deeply equal { …(12) }
+   × complete preview against frozen Mower alpha Python results > 3: SHIFT_ON at 102.9774571986111h 24ms
+     → expected { …(12) } to deeply equal { …(12) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/scheduler/mowerAlphaFullPreview.spec.ts > complete preview against frozen Mower alpha Python results > 0: SHIFT_ON at 26.89205646222222h
+AssertionError: expected { …(13) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+@@ -19,11 +19,11 @@
+    "dormitory_2": [
+      "Current",
+      "Current",
+      "苍苔",
+      "斩业星熊",
+-     "酒神",
++     "夕",
+    ],
+    "dormitory_3": [
+      "塑心",
+      "Current",
+      "引星棘刺",
+@@ -32,11 +32,11 @@
+    ],
+    "dormitory_4": [
+      "Current",
+      "Current",
+      "爱丽丝",
+-     "夕",
++     "酒神",
+      "Free",
+    ],
+    "factory": [
+      "特克诺",
+    ],
+
+ ❯ src/scheduler/mowerAlphaFullPreview.spec.ts:43:44
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/scheduler/mowerAlphaFullPreview.spec.ts > complete preview against frozen Mower alpha Python results > 1: SHIFT_ON at 32.48663577722222h
+ FAIL  src/scheduler/mowerAlphaFullPreview.spec.ts > complete preview against frozen Mower alpha Python results > 2: SHIFT_ON at 51.21106218638889h
+ FAIL  src/scheduler/mowerAlphaFullPreview.spec.ts > complete preview against frozen Mower alpha Python results > 3: SHIFT_ON at 102.9774571986111h
+AssertionError: expected { …(12) } to deeply equal { …(12) }
+
+- Expected
++ Received
+
+@@ -12,31 +12,31 @@
+    "dormitory_1": [
+      "Current",
+      "Current",
+      "Current",
+      "Current",
+-     "陈",
++     "见行者",
+    ],
+    "dormitory_2": [
+      "Current",
+      "Current",
+-     "见行者",
+-     "夕",
++     "陈",
++     "引星棘刺",
+      "Free",
+    ],
+    "dormitory_3": [
+      "塑心",
+      "Current",
+-     "重岳",
+-     "引星棘刺",
++     "夕",
++     "桑葚",
+      "斩业星熊",
+    ],
+    "dormitory_4": [
+      "Current",
+      "Current",
+      "爱丽丝",
+-     "桑葚",
++     "重岳",
+      "Current",
+    ],
+    "factory": [
+      "特克诺",
+    ],
+
+ ❯ src/scheduler/mowerAlphaFullPreview.spec.ts:43:44
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 11 passed (15)
+   Start at  07:55:38
+   Duration  1.88s (transform 352ms, setup 0ms, collect 595ms, tests 397ms, environment 0ms, prepare 109ms)

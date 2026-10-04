@@ -1,0 +1,21 @@
+
+> riic-calculator@1.1.2 build
+> vue-tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2972 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                        0.64 kB │ gzip:   0.42 kB
+dist/assets/candidateSimulationWorker-BpXb9wDe.js  1,056.79 kB
+dist/assets/calculationWorker-DWa_2Wlc.js          1,080.97 kB
+dist/assets/smartRosterWorker-BAVjNkP4.js          1,177.82 kB
+dist/assets/index-D0P-BYa4.css                       128.14 kB │ gzip:  22.74 kB
+dist/assets/index-DkvwyAqJ.js                      2,960.32 kB │ gzip: 749.35 kB
+✓ built in 10.33s
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

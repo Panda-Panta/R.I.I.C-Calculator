@@ -1,0 +1,287 @@
+[
+  {
+    "expression": "(op_data.operators['薇薇安娜'].is_resting() and op_data.operators['阿罗玛'].is_working())",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "central",
+        4
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": ""
+  },
+  {
+    "expression": "((op_data.operators['薇薇安娜'].is_working() != True)  )",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "central",
+        4
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": ""
+  },
+  {
+    "expression": "(((op_data.operators['远牙'].current_mood() > op_data.operators['薇薇安娜'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['野鬃'].current_mood())) or ((op_data.operators['远牙'].current_mood() > op_data.operators['焰尾'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['灰毫'].current_mood())))",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "central",
+        4
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": ""
+  },
+  {
+    "expression": "(op_data.operators['薇薇安娜'].is_resting() and op_data.operators['阿罗玛'].is_working())",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "central",
+        4
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": ""
+  },
+  {
+    "expression": "((op_data.operators['薇薇安娜'].is_working() != True)  )",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "central",
+        4
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": ""
+  },
+  {
+    "expression": "(((op_data.operators['远牙'].current_mood() > op_data.operators['薇薇安娜'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['野鬃'].current_mood())) or ((op_data.operators['远牙'].current_mood() > op_data.operators['焰尾'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['灰毫'].current_mood())))",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "central",
+        4
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": ""
+  },
+  {
+    "expression": "(op_data.operators['薇薇安娜'].is_resting() and op_data.operators['阿罗玛'].is_working())",
+    "value": true,
+    "positions": {
+      "薇薇安娜": [
+        "dormitory_3",
+        3
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "薇薇安娜"
+  },
+  {
+    "expression": "((op_data.operators['薇薇安娜'].is_working() != True)  )",
+    "value": true,
+    "positions": {
+      "薇薇安娜": [
+        "dormitory_3",
+        3
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "薇薇安娜"
+  },
+  {
+    "expression": "(((op_data.operators['远牙'].current_mood() > op_data.operators['薇薇安娜'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['野鬃'].current_mood())) or ((op_data.operators['远牙'].current_mood() > op_data.operators['焰尾'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['灰毫'].current_mood())))",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "dormitory_3",
+        3
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "薇薇安娜"
+  },
+  {
+    "expression": "(op_data.operators['薇薇安娜'].is_resting() and op_data.operators['阿罗玛'].is_working())",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "",
+        -1
+      ],
+      "娜斯提": [
+        "dormitory_3",
+        3
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "娜斯提"
+  },
+  {
+    "expression": "((op_data.operators['薇薇安娜'].is_working() != True)  )",
+    "value": true,
+    "positions": {
+      "薇薇安娜": [
+        "",
+        -1
+      ],
+      "娜斯提": [
+        "dormitory_3",
+        3
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "娜斯提"
+  },
+  {
+    "expression": "(((op_data.operators['远牙'].current_mood() > op_data.operators['薇薇安娜'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['野鬃'].current_mood())) or ((op_data.operators['远牙'].current_mood() > op_data.operators['焰尾'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['灰毫'].current_mood())))",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "",
+        -1
+      ],
+      "娜斯提": [
+        "dormitory_3",
+        3
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "娜斯提"
+  },
+  {
+    "expression": "(op_data.operators['薇薇安娜'].is_resting() and op_data.operators['阿罗玛'].is_working())",
+    "value": true,
+    "positions": {
+      "薇薇安娜": [
+        "dormitory_3",
+        3
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "薇薇安娜"
+  },
+  {
+    "expression": "((op_data.operators['薇薇安娜'].is_working() != True)  )",
+    "value": true,
+    "positions": {
+      "薇薇安娜": [
+        "dormitory_3",
+        3
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "薇薇安娜"
+  },
+  {
+    "expression": "(((op_data.operators['远牙'].current_mood() > op_data.operators['薇薇安娜'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['野鬃'].current_mood())) or ((op_data.operators['远牙'].current_mood() > op_data.operators['焰尾'].current_mood()) or (op_data.operators['远牙'].current_mood() > op_data.operators['灰毫'].current_mood())))",
+    "value": false,
+    "positions": {
+      "薇薇安娜": [
+        "dormitory_3",
+        3
+      ],
+      "娜斯提": [
+        "",
+        -1
+      ],
+      "阿罗玛": [
+        "room_2_1",
+        2
+      ]
+    },
+    "dorm3slot3": "薇薇安娜"
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "index": 0,
+    "timeHours": 277.05452077166666,
+    "type": "SHIFT_ON",
+    "match": true,
+    "expected": {
+      "error": "MowerShiftPreviewError: 上下班副表推演出现循环，保留原任务，暂不执行换人",
+      "preserved": true
+    },
+    "actual": {
+      "scope": "Frozen alpha complete preview over identical cached observations; mastery, emergency, product changes and device I/O disabled.",
+      "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+      "timeHours": 277.05452077166666,
+      "error": "ValueError: 上下班副表推演出现循环，保留原任务，暂不执行换人",
+      "preserved": true
+    }
+  }
+]

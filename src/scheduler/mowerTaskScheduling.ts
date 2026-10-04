@@ -1,9 +1,12 @@
 // Port of scheduler_task.scheduling and its queue helpers.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import {MOWER_TASK_TYPES as T,toMowerMicros,type MowerTask} from './mowerTaskQueue'
+import {mergeMowerAlphaReleases} from './mowerDormTasks'
+import {protectMowerAlphaTasks,sortMowerAlphaDispatch} from './mowerAlphaTaskProtection'
 export interface MowerTaskSchedulingOptions {
  runOrderDelayMinutes?:number;executionMinutes?:number;configuredDelayMinutes?:number
  enableMastery?:boolean;experimental?:boolean
+ alpha?:boolean;grandet?:boolean;mergeIntervalMinutes?:number
  maintenance?:[startMicros:number,endMicros:number];dormDurations?:Record<string,number[]>
 }
 const minutes=(value:number)=>toMowerMicros(value/60)
@@ -65,7 +68,7 @@ function scheduleOrders(tasks:MowerTask[],now:number,delay:number,execution:numb
   const task=tasks[index]!
   if(task.type.priority===1&&now>task.timeMicros)totalExecution+=(now-task.timeMicros)/60_000_000
   if(task.type.priority===1){
-   if(previous&&task.timeMicros-previous.timeMicros<minutes(delay)&&now<previous.timeMicros&&!task.adjusted)return [previous,task]
+   if((!options.alpha||options.grandet===true)&&previous&&task.timeMicros-previous.timeMicros<minutes(delay)&&now<previous.timeMicros&&!task.adjusted)return [previous,task]
    previous=task;totalExecution=0
   }else{
    let nextIndex=-1
@@ -118,12 +121,22 @@ function protectSwaps(tasks:MowerTask[],now:number,delay:number,execution:number
  sort(tasks);return conflict
 }
 export function protectMowerSupportSwaps(tasks:MowerTask[],nowMicros:number,options:MowerTaskSchedulingOptions={}):[MowerTask,MowerTask]|undefined {
+ if(options.alpha)return
  if(options.enableMastery===false)return
  return protectSwaps(tasks,nowMicros,options.runOrderDelayMinutes??5,options.executionMinutes??.75,options.configuredDelayMinutes??3)
 }
 /** All mutations retain native task identities; I/O timings and maintenance are explicit inputs. */
 export function scheduleMowerTasks(tasks:MowerTask[],nowMicros:number,options:MowerTaskSchedulingOptions={}):[MowerTask,MowerTask]|undefined {
  const delay=options.runOrderDelayMinutes??5,execution=options.executionMinutes??.75,enabled=options.enableMastery??true,configuredDelay=options.configuredDelayMinutes??3
+ if(options.alpha){
+  mergeMowerAlphaReleases(tasks,options.mergeIntervalMinutes??10)
+  const fixed=new Set(tasks.filter(t=>t.strictMoodLimit||t.type===T.FILL_DORM||enabled&&t.type===T.SWAP_SUPPORT)),ordinary=fixed.size?tasks.filter(t=>!fixed.has(t)):tasks
+  const conflict=scheduleOrders(ordinary,nowMicros,delay,execution,{...options,experimental:true})
+  if(fixed.size){const retained=new Set(ordinary);tasks.splice(0,tasks.length,...tasks.filter(t=>fixed.has(t)||retained.has(t)))}
+  protectMowerAlphaTasks(tasks,nowMicros,options)
+  if(enabled&&tasks.some(t=>t.type===T.SWAP_SUPPORT&&t.timeMicros<=nowMicros+minutes(ordinaryMinutes(t,execution)+1)))return
+  sortMowerAlphaDispatch(tasks,nowMicros,options);return conflict
+ }
  const fixed=new Set(tasks.filter(task=>task.strictMoodLimit||options.experimental&&task.type===T.FILL_DORM||enabled&&task.type===T.SWAP_SUPPORT))
  const ordinary=fixed.size?tasks.filter(task=>!fixed.has(task)):tasks
  const conflict=scheduleOrders(ordinary,nowMicros,delay,execution,options)

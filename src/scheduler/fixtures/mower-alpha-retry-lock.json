@@ -1,0 +1,154 @@
+{
+  "scope": "Unmodified alpha metadata, migration and task-coalescing decision oracle.\n\nPhysical reads, inventory and skill flags are explicit fixture inputs. No UI,\nSQLite or game execution is claimed by these fixtures.\n",
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "retries": [
+    {
+      "room": "dormitory_1",
+      "count": 1,
+      "timeMicros": 60000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_1",
+      "count": 2,
+      "timeMicros": 120000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_1",
+      "count": 3,
+      "timeMicros": 180000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_1",
+      "count": 4,
+      "timeMicros": 240000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_1",
+      "count": 5,
+      "timeMicros": 300000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_1",
+      "count": 6,
+      "timeMicros": 300000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_1",
+      "count": 7,
+      "timeMicros": 300000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    },
+    {
+      "room": "dormitory_2",
+      "count": 1,
+      "timeMicros": 60000000,
+      "dueMicros": 0,
+      "locked": true,
+      "plan": {
+        "dormitory_1": [
+          "A"
+        ]
+      }
+    }
+  ],
+  "admissions": [
+    {
+      "type": "FILL_DORM",
+      "previous": [
+        "",
+        -1
+      ],
+      "ordinary": false,
+      "high": false,
+      "temporary": true
+    },
+    {
+      "type": "SHIFT_OFF",
+      "previous": [
+        "",
+        -1
+      ],
+      "ordinary": true,
+      "high": false,
+      "temporary": true
+    },
+    {
+      "type": "SHIFT_OFF",
+      "previous": [
+        "",
+        -1
+      ],
+      "ordinary": false,
+      "high": false,
+      "temporary": false
+    },
+    {
+      "type": "FILL_DORM",
+      "previous": [
+        "dormitory_2",
+        2
+      ],
+      "ordinary": false,
+      "high": false,
+      "temporary": false
+    },
+    {
+      "type": "FILL_DORM",
+      "previous": [
+        "",
+        -1
+      ],
+      "ordinary": false,
+      "high": true,
+      "temporary": false
+    }
+  ]
+}

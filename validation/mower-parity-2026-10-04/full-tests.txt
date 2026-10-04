@@ -1,0 +1,379 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/R.I.I.C-Calculator - Codex
+
+ ✓ src/scheduler/mowerRosterDeterminism.spec.ts (1 test) 70669ms
+   ✓ replays alpha control decisions exactly for the same seed with cyclic backup 0 disabled  70668ms
+ ✓ src/scheduler/backupPlans.long.spec.ts (5 tests) 40793ms
+   ✓ decodes the supplied image byte-for-data without losing any backup settings  363ms
+   ✓ rejects the original cyclic alpha roster within a 24 hour request  3414ms
+   ✓ rejects the original cyclic alpha roster within a 168 hour request  3128ms
+   ✓ completes the explicit control with backup 0 disabled for 24 hours  3906ms
+   ✓ completes the explicit control with backup 0 disabled for 168 hours  29980ms
+ ✓ src/scheduler/mowerScreenshotParity.spec.ts (3 tests) 138785ms
+   ✓ records alpha screenshot control with cyclic backup 0 disabled: 'none' / {}  51282ms
+   ✓ records alpha screenshot control with cyclic backup 0 disabled: 'gold' / {}  44628ms
+   ✓ records alpha screenshot control with cyclic backup 0 disabled: 'exp' / {}  42874ms
+ ✓ src/optimizer/molecularSynthesis.spec.ts (5 tests) 36680ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > preserves unbuilt dorm and training room across automatic staffing candidates  1514ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > strictly respects indivisible atomic core members  7534ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > generates correct 2-power adaptive automation conf with Lancet-2 in workaholic  5042ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > configures Aroma and Waai Fu in exhaust_require and rest_in_full  4220ms
+   ✓ Molecular Synthesis & Indivisible Atomic Units > runs full smartRoster end-to-end with 82 dynamic simulation scoring  18369ms
+ ✓ src/optimizer/automaticRoster.spec.ts (10 tests) 36787ms
+   ✓ bounded complete automatic roster drafts > builds complete 243 mains with unique backups and retains the source layout  2615ms
+   ✓ bounded complete automatic roster drafts > uses actual dorm residents rather than Free beds in every static projection  1669ms
+   ✓ bounded complete automatic roster drafts > is repeatable and selects the highest complete pair ranking score among trials  8210ms
+   ✓ bounded complete automatic roster drafts > preserves a learned cross-room group and its chosen backups after filling and optimization  10761ms
+   ✓ bounded complete automatic roster drafts > adapts to a 252 layout with two-seat trade and keeps fixed auxiliary occupants and Free  2543ms
+   ✓ bounded complete automatic roster drafts > builds from a reduced owned roster without borrowing missing or locked high-efficiency staff  4298ms
+   ✓ bounded complete automatic roster drafts > protects occupied policies and generates a main-only draft without modifying imported backups  1334ms
+   ✓ bounded complete automatic roster drafts > rejects unsupported product and invalid options without gating preserved staff on idle-library stage  5298ms
+ ✓ src/optimizer/smartRoster.spec.ts (4 tests) 32829ms
+   ✓ smartRoster generation with 3-phase optimization > builds complete 243 mains with backups and simulation validation  12254ms
+   ✓ smartRoster generation with 3-phase optimization > preserves user-locked operators when starting from a partial layout  5338ms
+   ✓ smartRoster generation with 3-phase optimization > adapts to 252 layout with two-seat trading room  5042ms
+   ✓ smartRoster generation with 3-phase optimization > handles user inventory with unmaxed/low-level operators without simulation abort or unsupported diagnostics  10193ms
+ ✓ src/optimizer/shiftRunContract.spec.ts (20 tests) 23625ms
+   ✓ shift-run branch contract > constructs ten distinct physically valid branches before simulation  13966ms
+   ✓ shift-run branch contract > generates executable runners plus ordinary backups at trade level 1  2687ms
+   ✓ shift-run branch contract > generates executable runners plus ordinary backups at trade level 2  2818ms
+   ✓ shift-run branch contract > generates executable runners plus ordinary backups at trade level 3  1790ms
+   ✓ shift-run branch contract > executes generated level 1 ideal rewards without physical swaps  653ms
+   ✓ shift-run branch contract > executes generated level 2 ideal rewards without physical swaps  651ms
+   ✓ shift-run branch contract > executes generated level 3 ideal rewards without physical swaps  652ms
+ ✓ src/optimizer/smartRosterBranches.spec.ts (3 tests) 18614ms
+   ✓ complete branch admission before any simulation > ignores old trial and top-K truncation and simulates all ten distinct branches in ideal mode  13939ms
+   ✓ complete branch admission before any simulation > does not rank a partial simulation even when its incomplete production is very high  4642ms
+ ✓ src/optimizer/inventoryFallback.spec.ts (6 tests) 18087ms
+   ✓ actual-level singleton fallback > builds complete mains and unique backups from an entirely E0 level 1 pool  975ms
+   ✓ actual-level singleton fallback > admits ordinary rosters without owning either runner and accepts fewer distinct branches  5713ms
+   ✓ actual-level singleton fallback > reports a pool of 2 operators without inventing or duplicating staff  814ms
+   ✓ actual-level singleton fallback > simulates a low-level fallback without runners and preserves locked staff  10561ms
+ ✓ src/optimizer/mixedLevelInventory.spec.ts (1 test) 16959ms
+   ✓ validates mixed actual levels through 24h warmup and 72h dynamic roster simulation  16959ms
+stdout | src/optimizer/roster252.spec.ts > 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied
+=== 252 AUTO ROSTER TRACKING SUMMARY ===
+Score: 105600.00000809744
+Phases count: 8
+Phases: [
+  '[building] 阶段 1/2: 不可分割原子组合与多分支分子合成...',
+  '[building] 阶段 1/2: 分子合成候选生成 1/2 完成',
+  '[building] 阶段 1/2: 分子合成候选生成 2/2 完成',
+  '[simulating] 阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，加权产出评分）...',
+  '[simulating] 阶段 2/2: 动态拟真进度 1/2（加权产出: 105600.0）',
+  '[simulating] 阶段 2/2: 动态拟真进度 2/2（加权产出: 103466.7）',
+  '[searching] 阶段 3/3: 全局人均产出检测与优化置换...',
+  '[done] 一键智能排班已完成，最终加权产出评分：105600.0 分/日'
+]
+Replacement logs: []
+[room_1_1] (manufacture lv3): 迷迭香, 阿罗玛, 槐琥 | 替补: 铅踝 ; 雪猎 ; 温米
+[room_1_2] (manufacture lv3): 温蒂, 清流, 冬时 | 替补: 梅尔 ; 维伊 ; 水月
+[room_1_3] (power lv3): 承曦格雷伊 | 替补: 澄闪
+[room_2_1] (manufacture lv3): 红云, 酒神, Miss.Christine | 替补: 淬羽赫默 ; 断罪者 ; 食铁兽
+[room_2_2] (manufacture lv3): 泡泡, 火神, 贝娜 | 替补: 裂响 ; 弑君者 ; 机械师
+[room_2_3] (power lv3): Lancet-2 | 替补:
+[room_3_1] (trading lv2): 鸿雪, 图耶 | 替补: 可露希尔,贝洛内 ; 赫德雷
+[room_3_2] (trading lv1): 黑键 | 替补: 但书,伺夜
+[room_3_3] (manufacture lv2): 苍苔, 引星棘刺 | 替补: 砾 ; 多萝西
+[central] (central lv5): 森蚺, 夕, Mon3tr, 阿斯卡纶, 丰川祥子 | 替补: 若叶睦 ; 薇薇安娜 ; 凯尔希 ; 阿米娅 ; 八幡海铃
+[dormitory_1] (dormitory lv1): 桃金娘, 黑, free, free, free | 替补:  ;  ;  ;  ;
+[dormitory_2] (dormitory lv1): 杜林, 琴柳, free, free, free | 替补:  ;  ;  ;  ;
+[dormitory_3] (dormitory lv1): 斥罪, 闪灵, free, free, free | 替补:  ;  ;  ;  ;
+[dormitory_4] (dormitory lv1): 菲亚梅塔, 纯烬艾雅法拉, 新约能天使, free, free | 替补: 阿罗玛,槐琥,红云 ;  ;  ;  ;
+[meeting] (meeting lv3): 伊内丝, 晓歌 | 替补: 提丰 ; 远山
+[factory] (factory lv3): 至简 | 替补: 特克诺
+[contact] (contact lv3): 絮雨 | 替补: 林
+[train] (train lv3): 褐果, 火龙S黑角 | 替补: 艾丽妮 ; 鞭刃
+
+ ✓ src/optimizer/roster252.spec.ts (1 test) 11675ms
+   ✓ 252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power) > generates a fully valid 252 roster with complete tracking and all rules satisfied  11675ms
+ ✓ src/simulator/specialOrdersSameRoster.spec.ts (17 tests) 15277ms
+   ✓ same imported Mower roster with one trading operator changed > 普通订单  1291ms
+   ✓ same imported Mower roster with one trading operator changed > 但书  1433ms
+   ✓ same imported Mower roster with one trading operator changed > 龙舌兰  1285ms
+   ✓ same imported Mower roster with one trading operator changed > 佩佩  1353ms
+   ✓ same imported Mower roster with one trading operator changed > 可露希尔  1547ms
+   ✓ same imported Mower roster with one trading operator changed > U-Official  1410ms
+   ✓ same imported Mower roster with one trading operator changed > ideal: 但书 follows its roster role without temporary staffing  1242ms
+   ✓ same imported Mower roster with one trading operator changed > ideal: 龙舌兰 follows its roster role without temporary staffing  1285ms
+   ✓ same imported Mower roster with one trading operator changed > ideal: 佩佩 follows its roster role without temporary staffing  1412ms
+   ✓ same imported Mower roster with one trading operator changed > ideal: 可露希尔 follows its roster role without temporary staffing  1462ms
+   ✓ same imported Mower roster with one trading operator changed > ideal: U-Official follows its roster role without temporary staffing  1541ms
+ ✓ src/workbench/compat/mowerBackupAudit.spec.ts (12 tests) 10259ms
+   ✓ supplied nine-backup Mower roster > executes backup decisions before rejecting the original alpha cycle  10244ms
+ ✓ src/simulator/specialOrdersLaterReplacement.spec.ts (5 tests) 9439ms
+   ✓ run-order candidates after ordinary trading replacements > 但书 stays out of ordinary shifts and runs its order  1608ms
+   ✓ run-order candidates after ordinary trading replacements > 龙舌兰 stays out of ordinary shifts and runs its order  1815ms
+   ✓ run-order candidates after ordinary trading replacements > 佩佩 stays out of ordinary shifts and runs its order  2065ms
+   ✓ run-order candidates after ordinary trading replacements > 可露希尔 stays out of ordinary shifts and runs its order  1882ms
+   ✓ run-order candidates after ordinary trading replacements > U-Official stays out of ordinary shifts and runs its order  2066ms
+ ✓ src/optimizer/multiStartSearch.spec.ts (9 tests) 9436ms
+   ✓ finds and independently revalidates a real control improvement without altering the layout or source  4884ms
+   ✓ does not promote a one-day gain when completed-item granularity leaves a zero lower bound  458ms
+   ✓ uses a shared distinct-plan budget and reproduces search candidates with a fixed seed  495ms
+   ✓ keeps the baseline when new-seed validation rejects the exploratory winner  3329ms
+ ✓ src/simulator/specialOrdersLaterIdeal.spec.ts (5 tests) 9296ms
+   ✓ ideal run-order mode recognizes every later trading replacement > 但书  1767ms
+   ✓ ideal run-order mode recognizes every later trading replacement > 龙舌兰  1755ms
+   ✓ ideal run-order mode recognizes every later trading replacement > 佩佩  1913ms
+   ✓ ideal run-order mode recognizes every later trading replacement > 可露希尔  1962ms
+   ✓ ideal run-order mode recognizes every later trading replacement > U-Official  1896ms
+ ✓ src/workbench/specialOrderReporting.spec.ts (3 tests) 7446ms
+   ✓ main calculation reports special orders from trading replacements > '可露希尔'  2424ms
+   ✓ main calculation reports special orders from trading replacements > '佩佩'  2622ms
+   ✓ main calculation reports special orders from trading replacements > '龙舌兰'  2398ms
+ ✓ src/simulator/productionRunOrder.spec.ts (11 tests) 5690ms
+   ✓ ideal-only run-order integration > retains captured special costs while an unfunded queue fills and blocks acquisition  5318ms
+ ✓ src/workbench/weightedReporting.spec.ts (3 tests) 4489ms
+   ✓ shares weights and virtual gold across calculation, log and optimizer scores  4480ms
+ ✓ src/workbench/unbuiltFacilities.spec.ts (10 tests) 4735ms
+   ✓ unbuilt facilities > imports three staffed dorms and no training room without phantom power, beds or operators  414ms
+   ✓ unbuilt facilities > supports omitted production and auxiliary facilities without counting them as built  363ms
+   ✓ unbuilt facilities > completes actual 24-hour simulation with three staffed dorms and no training room  3940ms
+ ✓ src/workbench/compat/mowerQrCodec.spec.ts (30 tests) 3443ms
+   ✓ Mower QR Codec > Decoding real mower JPG fixture > decodes mower-252-sample.jpg and deep equals mower-252-3gold.json  432ms
+   ✓ Mower QR Codec > Decoding real mower JPG fixture > decodes mower-252-sample.jpg scaled down to 75% and deep equals mower-252-3gold.json  391ms
+   ✓ Mower QR Codec > Decoding real mower JPG fixture > decodes mower-252-sample.jpg scaled down to 50% and deep equals mower-252-3gold.json  310ms
+   ✓ Mower QR Codec > Self-generated RGBA roundtrip (light and dark themes) > remains decodable after JPEG lossy compression  562ms
+   ✓ Mower QR Codec > Error handling > throws clear error when fewer than 16 QR codes are found  561ms
+   ✓ Mower QR Codec > Bounded Loop Behavior and Termination > stops scanning immediately when 16 QR codes are found, skipping global full scan  413ms
+ ✓ src/optimizer/rosterIncomeSearch.spec.ts (23 tests) 3828ms
+   ✓ bounded ordinary backup income search > evaluates the real 252 fixture under four common production scenarios without changing it  1362ms
+   ✓ bounded ordinary backup income search > selects an actual EXP improvement over a full week of morale shifts without spending other resources  2035ms
+ ✓ src/simulator/productionTimeline.spec.ts (11 tests) 2089ms
+   ✓ joint production event clock > crosses coincident roster and fractional manufacturing endpoints in the real 252 fixture  1935ms
+ ✓ src/optimizer/mainPlanOnly.spec.ts (2 tests) 1984ms
+   ✓ generates only main-plan candidates without mutating the source  1981ms
+ ✓ src/domain/gamedataImport.spec.ts (11 tests) 1583ms
+ ✓ src/workbench/mowerReportMetrics.spec.ts (2 tests) 1692ms
+   ✓ matches Mower 82 arithmetic without adding virtual gold to the ledger  1689ms
+ ✓ src/optimizer/rosterDraft.spec.ts (17 tests) 937ms
+   ✓ executes a generated main/backup team through real morale and production events  660ms
+ ✓ src/simulator/idealRunOrder.spec.ts (5 tests) 1363ms
+   ✓ ideal-only run-order scheduling > converts base four-gold orders with Tequila and never stacks Proviso on them  324ms
+   ✓ ideal-only run-order scheduling > keeps virtual runners out of physical rooms after Mower backup-plan recompilation  603ms
+ ✓ src/scheduler/backupPlans.spec.ts (20 tests) 822ms
+   ✓ Mower backup source contract > does not mutate a compiled schedule across repeated simulations  741ms
+ ✓ src/simulator/scheduleAdmission.spec.ts (5 tests) 560ms
+ ✓ src/scheduler/mowerAlphaFullPreview.spec.ts (15 tests) 492ms
+ ✓ src/workbench/compat/mowerJson.spec.ts (38 tests) 424ms
+   ✓ Mower JSON Compatibility Layer > Real Mower Fixtures & Layouts > runs the real 252 2-gold fixture through the legacy calculation bridge  385ms
+ ✓ src/optimizer/backupNeighborhood.spec.ts (15 tests) 374ms
+ ✓ src/test/goldenScenarios.spec.ts (2 tests) 372ms
+   ✓ 252 Golden Scenarios and External Baselines > evaluates current calculation bridge against external reference without concealing discrepancy  369ms
+ ✓ src/workbench/tailoringQuality.spec.ts (18 tests) 321ms
+ ✓ src/simulator/mowerNativeProductionIO.spec.ts (5 tests) 317ms
+ ✓ src/simulator/scheduleSimulation.spec.ts (19 tests) 303ms
+ ✓ src/optimizer/smartRosterParallel.spec.ts (12 tests) 288ms
+ ✓ src/optimizer/rosterHillClimb.spec.ts (9 tests) 283ms
+ ✓ src/optimizer/incomeComparison.spec.ts (11 tests) 289ms
+ ✓ src/optimizer/rosterIncomeSearchParallel.spec.ts (4 tests) 255ms
+ ✓ src/optimizer/weightedAutomaticSearch.spec.ts (6 tests) 261ms
+ ✓ src/optimizer/rosterSearchRoutes.spec.ts (3 tests) 238ms
+ ✓ src/simulator/potentialProduction.spec.ts (9 tests) 241ms
+ ✓ src/simulator/productionResources.spec.ts (10 tests) 212ms
+ ✓ src/optimizer/backupEfficiency.spec.ts (15 tests) 187ms
+ ✓ src/optimizer/globalPerCapitaReplacement.spec.ts (6 tests) 128ms
+ ✓ src/simulator/skillStages.spec.ts (5 tests) 125ms
+ ✓ src/simulator/specialOrders.spec.ts (8 tests) 140ms
+ ✓ src/optimizer/primaryNeighborhood.spec.ts (22 tests) 142ms
+ ✓ src/scheduler/mowerPhaseRelease.spec.ts (5 tests) 113ms
+ ✓ src/simulator/productionDroneTargets.spec.ts (6 tests) 107ms
+ ✓ src/optimizer/productionSingletons.spec.ts (27 tests) 88ms
+ ✓ src/workbench/calculationBridge.spec.ts (7 tests) 92ms
+ ✓ src/optimizer/controlNeighborhood.spec.ts (21 tests) 86ms
+ ✓ src/optimizer/jointRosterRefinement.spec.ts (9 tests) 85ms
+ ✓ src/optimizer/inventoryAdmission.spec.ts (7 tests) 63ms
+ ✓ src/optimizer/compositeObjective.spec.ts (3 tests) 58ms
+ ✓ src/engine/calculate.spec.ts (13 tests) 61ms
+ ✓ src/scheduler/mowerReconciliation.spec.ts (18 tests) 62ms
+ ✓ src/simulator/mowerManufactureIO.spec.ts (1 test) 57ms
+ ✓ src/simulator/mowerEfficiencyCache.spec.ts (5 tests) 53ms
+ ✓ src/workbench/calculationProgress.spec.ts (1 test) 43ms
+ ✓ src/optimizer/mowerLearnedCandidates.spec.ts (4 tests) 39ms
+ ✓ src/optimizer/automaticPepeMain.spec.ts (6 tests) 41ms
+ ✓ src/scheduler/backupSourceCompatibility.spec.ts (14 tests) 38ms
+ ✓ src/optimizer/crossRoomTemplates.spec.ts (5 tests) 44ms
+ ✓ src/optimizer/dailyTarget.spec.ts (3 tests) 38ms
+ ✓ src/optimizer/candidateSimulationPool.spec.ts (7 tests) 35ms
+ ✓ src/scheduler/mowerSourceRuntime.spec.ts (12 tests) 33ms
+ ✓ src/engine/operatorRules.spec.ts (48 tests) 35ms
+ ✓ src/scheduler/mowerBackupConvergence.spec.ts (7 tests) 36ms
+ ✓ src/scheduler/mowerShiftProtection.spec.ts (8 tests) 31ms
+ ✓ src/workbench/adapter.spec.ts (18 tests) 33ms
+ ✓ src/simulator/productionNativeObservations.spec.ts (5 tests) 26ms
+ ✓ src/workbench/operatorHelpers.spec.ts (16 tests) 26ms
+ ✓ src/scheduler/mowerClueLifecycle.spec.ts (36 tests) 32ms
+ ✓ src/scheduler/mowerSourceContract.spec.ts (21 tests) 20ms
+ ✓ src/optimizer/inventorySeed.spec.ts (19 tests) 23ms
+ ✓ src/scheduler/mowerServicesRuntime.spec.ts (8 tests) 22ms
+ ✓ src/scheduler/mowerRestingPriority.spec.ts (75 tests) 21ms
+ ✓ src/scheduler/mowerRunOrderDroneAdjustment.spec.ts (40 tests) 21ms
+ ✓ src/engine/morale.spec.ts (19 tests) 20ms
+ ✓ src/optimizer/fixedDuty.spec.ts (6 tests) 20ms
+ ✓ src/scheduler/mowerDroneInterface.spec.ts (45 tests) 22ms
+ ✓ src/optimizer/controlImpact.spec.ts (20 tests) 17ms
+ ✓ src/scheduler/mowerBedPool.spec.ts (3 tests) 19ms
+ ✓ src/optimizer/combinationPriority.spec.ts (8 tests) 18ms
+ ✓ src/optimizer/weightedRunOrder.spec.ts (19 tests) 18ms
+ ✓ src/scheduler/mowerRunOrderRuntime.spec.ts (4 tests) 15ms
+ ✓ src/domain/operatorInventory.spec.ts (7 tests) 17ms
+ ✓ src/scheduler/mowerPolicyParity.spec.ts (8 tests) 14ms
+ ✓ src/scheduler/mowerLimitedRest.spec.ts (10 tests) 15ms
+ ✓ src/scheduler/rosterRuntime.spec.ts (15 tests) 17ms
+ ✓ src/workbench/store.spec.ts (17 tests) 15ms
+ ✓ src/engine/jayeCoverageAudit.spec.ts (35 tests) 16ms
+ ✓ src/scheduler/mowerNativeExpressionParity.spec.ts (8 tests) 15ms
+ ✓ src/scheduler/scheduleAdapter.spec.ts (7 tests) 15ms
+ ✓ src/workbench/compat/base45.spec.ts (13 tests) 14ms
+ ✓ src/scheduler/mowerPhaseFlags.spec.ts (3 tests) 13ms
+ ✓ src/optimizer/combinationCatalogAdditions.spec.ts (10 tests) 14ms
+ ✓ src/engine/orderRegression.spec.ts (11 tests) 14ms
+ ✓ src/workbench/timeline/timelineModel.spec.ts (3 tests) 15ms
+ ✓ src/scheduler/mowerAlphaTaskProtection.spec.ts (7 tests) 13ms
+ ✓ src/scheduler/mowerDormOrder.spec.ts (5 tests) 13ms
+ ✓ src/scheduler/mowerBedTakeover.spec.ts (12 tests) 12ms
+ ✓ src/scheduler/compileRosterSchedule.spec.ts (5 tests) 12ms
+ ✓ src/scheduler/mowerGlobalRestPolicy.spec.ts (10 tests) 12ms
+ ✓ src/scheduler/mowerPlanOrder.spec.ts (2 tests) 11ms
+ ✓ src/engine/unquantifiedSkillsCoverage.spec.ts (8 tests) 12ms
+ ✓ src/scheduler/mowerExhaustSupport.spec.ts (9 tests) 12ms
+ ✓ src/scheduler/mowerRunOrderRefresh.spec.ts (17 tests) 14ms
+ ✓ src/engine/timeDependentSkills.spec.ts (10 tests) 9ms
+ ✓ src/scheduler/mowerAlphaPlanningEntry.spec.ts (7 tests) 10ms
+ ✓ src/optimizer/combinationEfficiency.spec.ts (5 tests) 10ms
+ ✓ src/workbench/__tests__/engine-protection.spec.ts (2 tests) 12ms
+ ✓ src/engine/dormitoryRecovery.spec.ts (36 tests) 12ms
+ ✓ src/scheduler/mowerAcceptOrder.spec.ts (24 tests) 12ms
+ ✓ src/scheduler/mowerSkipFlags.spec.ts (1 test) 11ms
+ ✓ src/scheduler/mowerOrdinaryPlanning.spec.ts (18 tests) 10ms
+ ✓ src/scheduler/mowerTaskScheduling.spec.ts (23 tests) 9ms
+ ✓ src/scheduler/mowerAlphaShift.spec.ts (7 tests) 7ms
+ ✓ src/scheduler/mowerNotification.spec.ts (34 tests) 9ms
+ ✓ src/scheduler/mowerTodoTask.spec.ts (36 tests) 7ms
+ ✓ src/scheduler/mowerReload.spec.ts (22 tests) 9ms
+ ✓ src/workbench/validate.spec.ts (20 tests) 9ms
+ ✓ src/scheduler/mowerAlphaExhaustSupport.spec.ts (6 tests) 8ms
+ ✓ src/scheduler/smartDormitoryPolicy.spec.ts (8 tests) 9ms
+ ✓ src/scheduler/mowerWorkaholicGroup.spec.ts (5 tests) 7ms
+ ✓ src/scheduler/mowerAlphaResting.spec.ts (6 tests) 9ms
+ ✓ src/engine/orderCapacity.spec.ts (5 tests) 8ms
+ ✓ src/scheduler/mowerBatchPlanning.spec.ts (3 tests) 7ms
+ ✓ src/scheduler/mowerAlphaMetadata.spec.ts (5 tests) 8ms
+ ✓ src/optimizer/combinationCandidates.spec.ts (7 tests) 6ms
+ ✓ src/scheduler/mowerMetadata.spec.ts (15 tests) 7ms
+ ✓ src/scheduler/mowerTaskExecutor.spec.ts (10 tests) 7ms
+ ✓ src/scheduler/mowerDormAssignment.spec.ts (23 tests) 7ms
+ ✓ src/workbench/backupPlanHelpers.spec.ts (15 tests) 8ms
+ ✓ src/domain/operatorImport.spec.ts (13 tests) 7ms
+ ✓ src/scheduler/mowerDormRecovery.spec.ts (11 tests) 6ms
+ ✓ src/rules/orderRules.spec.ts (9 tests) 6ms
+ ✓ src/workbench/migrate.spec.ts (5 tests) 7ms
+ ✓ src/scheduler/mowerAlphaMoodLimits.spec.ts (4 tests) 5ms
+ ✓ src/optimizer/runOrderGains.spec.ts (20 tests) 5ms
+ ✓ src/scheduler/mowerRunOrderBridge.spec.ts (8 tests) 6ms
+ ✓ src/scheduler/mowerAlphaSelection.spec.ts (8 tests) 4ms
+ ✓ src/scheduler/mowerObservations.spec.ts (11 tests) 5ms
+ ✓ src/optimizer/candidateSimulationCache.spec.ts (4 tests) 4ms
+ ✓ src/scheduler/mowerAlphaRetryLock.spec.ts (7 tests) 5ms
+ ✓ src/simulator/orderTimeline.spec.ts (5 tests) 4ms
+ ✓ src/scheduler/mowerGroupReturnStability.spec.ts (1 test) 4ms
+ ✓ src/workbench/timeline/timelineDisplay.spec.ts (2 tests) 4ms
+ ✓ src/workbench/reportExport.spec.ts (4 tests) 4ms
+ ✓ src/engine/currentRates.spec.ts (2 tests) 4ms
+ ✓ src/scheduler/mowerSelection.spec.ts (11 tests) 4ms
+ ✓ src/scheduler/mowerRunLifecycle.spec.ts (6 tests) 6ms
+ ✓ src/domain/operators.spec.ts (4 tests) 4ms
+ ✓ src/simulator/resourceLedger.spec.ts (4 tests) 4ms
+ ✓ src/scheduler/mowerFiammetta.spec.ts (7 tests) 3ms
+ ✓ src/scheduler/mowerTaskQueue.spec.ts (9 tests) 4ms
+ ✓ src/scheduler/fiammettaPolicy.spec.ts (1 test) 4ms
+ ✓ src/scheduler/mowerRunOrderPlanning.spec.ts (2 tests) 4ms
+ ✓ src/scheduler/mowerOperatorState.spec.ts (9 tests) 4ms
+ ✓ src/workbench/levelInference.spec.ts (7 tests) 3ms
+ ✓ src/workbench/defaults.spec.ts (3 tests) 4ms
+ ✓ src/simulator/manufacturingTimeline.spec.ts (7 tests) 4ms
+ ✓ src/scheduler/mowerAlphaIdleSearch.spec.ts (3 tests) 3ms
+ ✓ src/scheduler/mowerSchedulingData.spec.ts (2 tests) 3ms
+ ✓ src/scheduler/mowerDormTasks.spec.ts (4 tests) 3ms
+ ✓ src/optimizer/templateSampling.spec.ts (2 tests) 4ms
+ ✓ src/scheduler/mowerSelectionOrder.spec.ts (6 tests) 3ms
+ ✓ src/simulator/droneTimeline.spec.ts (3 tests) 3ms
+ ✓ src/optimizer/productionWeights.spec.ts (6 tests) 3ms
+ ✓ src/utils/assets.spec.ts (4 tests) 3ms
+ ✓ src/scheduler/mowerAlphaCorrectDorm.spec.ts (4 tests) 4ms
+ ✓ src/engine/rosterEditor.spec.ts (3 tests) 2ms
+ ✓ src/scheduler/moraleEndpoints.spec.ts (2 tests) 2ms
+ ✓ src/scheduler/mowerTiming.spec.ts (3 tests) 2ms
+ ✓ src/domain/edition.spec.ts (1 test) 2ms
+ ↓ scripts/test-audit.spec.ts (1 test | 1 skipped)
+ ✓ src/workbench/__tests__/visual-qa.spec.ts (10 tests) 2247ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 1920x1080 (Desktop Full HD) > renders unclipped full-page shell with reachable toolbar and centered 980px canvas  687ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 1366x768 (Standard Laptop) > maintains fixed 980px canvas without clipping and allows full toolbar interaction  320ms
+   ✓ WorkbenchShell Multi-Resolution Responsive QA > Viewport: 720x900 (Narrow Viewport / Split Screen) > enables horizontal scroll container without squishing or distorting the 980px canvas  382ms
+ ✓ src/components/workbench/PlanToolbar.spec.ts (21 tests) 1923ms
+   ✓ PlanToolbar.vue > JPG Import > imports real Mower JPG fixture and updates store atomically  422ms
+   ✓ PlanToolbar.vue > JPG Import > does not mutate store and shows error when JPG contains no QR codes  838ms
+ ✓ src/workbench/fileHelpers.spec.ts (11 tests) 1855ms
+   ✓ fileHelpers.ts > Real Mower JPG Fixture Import > imports mower-252-sample.jpg and matches mower-252-3gold.json  435ms
+   ✓ fileHelpers.ts > Generated Image Export & Decode Roundtrip > captures base-map element, encodes 16 QRs, and decodes back into identical workspace  609ms
+   ✓ fileHelpers.ts > Cancellation and Error Handling > throws meaningful error on invalid image without QR codes  801ms
+ ✓ src/components/workbench/CalculationFlow.spec.ts (5 tests) 1808ms
+   ✓ asks for drone settings before launching a cancellable background calculation  652ms
+   ✓ estimates remaining time from real progress and resets timing on restart  387ms
+ ✓ src/components/workbench/GlobalReplaceModal.spec.ts (16 tests) 1677ms
+ ✓ src/components/workbench/FacilityEditor.spec.ts (21 tests) 1529ms
+   ✓ FacilityEditor.vue and subcomponents > can leave a dorm or training room unbuilt, remove staffing, and rebuild empty slots  314ms
+ ✓ src/components/workbench/BackupPlanEditor.spec.ts (10 tests) 870ms
+ ✓ src/components/workbench/ScheduleSimulationPanel.spec.ts (18 tests) 810ms
+ ✓ src/components/workbench/OperatorSelectModal.spec.ts (13 tests) 793ms
+ ✓ src/components/workbench/RiicSkillsBrowser.spec.ts (6 tests) 728ms
+ ✓ src/components/workbench/PolicyEditor.spec.ts (7 tests) 614ms
+ ✓ src/components/workbench/WorkbenchShell.spec.ts (29 tests) 38503ms
+   ✓ WorkbenchShell.vue and App primary entry integration > saves changed weights before starting a worker and cancels only when those weights change again  580ms
+   ✓ WorkbenchShell.vue and App primary entry integration > renders complete Mower main roster UI as primary full page with all required components  308ms
+   ✓ WorkbenchShell.vue and App primary entry integration > opens OperatorSelectModal in main mode and writes back selected operator to slot  337ms
+   ✓ WorkbenchShell.vue and App primary entry integration > hides 可露希尔 special order details and consumed gold in the main result  1894ms
+   ✓ WorkbenchShell.vue and App primary entry integration > hides 佩佩 special order details and consumed gold in the main result  1450ms
+   ✓ WorkbenchShell.vue and App primary entry integration > displays compact results panel with actual report fields and refreshes on repeat calculation  448ms
+   ✓ WorkbenchShell.vue and App primary entry integration > calculates with the imported library as idle candidates while retaining assigned workers  412ms
+   ✓ WorkbenchShell.vue and App primary entry integration > updates all views immediately on file import and clears stale calculation state on reset  355ms
+   ✓ WorkbenchShell.vue and App primary entry integration > applies singleton fallback for a limited mixed-level pool  6233ms
+   ✓ WorkbenchShell.vue and App primary entry integration > keeps the workspace unchanged when the owned pool truly lacks enough people  371ms
+   ✓ WorkbenchShell.vue and App primary entry integration > triggers smart roster generation, keeps user placed operators, and updates store  9504ms
+   ✓ WorkbenchShell.vue and App primary entry integration > switches between workbench and skills tab, displaying riic skills browser  342ms
+   ✓ WorkbenchShell.vue and App primary entry integration > switches to backup-plans tab, displaying backup plan editor and updating badge  345ms
+   ✓ WorkbenchShell.vue and App primary entry integration > runs a custom configuration successfully with ideal run orders  12624ms
+ ✓ src/components/workbench/SmartRosterConfigModal.spec.ts (7 tests) 338ms
+ ✓ src/components/workbench/RosterIncomeSearchPanel.spec.ts (24 tests) 352ms
+node : stderr | src/components/workbench/RosterPosterModal.spec.ts
+At D:\Project\Arknights\R.I.I.C-Calculator - Codex\validation\mower-parity-2026-10-04\run-full-tests.ps1:22 char:5
++     node node_modules/vitest/vitest.mjs run --exclude 'release/**' -- ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | src/co...erModal.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+Not implemented: navigation to another Document
+
+ ✓ src/components/workbench/RosterPosterModal.spec.ts (4 tests) 289ms
+ ✓ src/components/workbench/OperatorImportModal.spec.ts (5 tests) 306ms
+stderr | src/components/workbench/ScheduleTimelineGantt.spec.ts
+Not implemented: navigation to another Document
+
+ ✓ src/components/workbench/ScheduleTimelineGantt.spec.ts (15 tests) 282ms
+ ✓ src/components/workbench/CalculationConfigModal.spec.ts (4 tests) 254ms
+ ✓ src/components/workbench/BaseMap.spec.ts (15 tests) 201ms
+ ✓ src/components/workbench/RosterDraftPanel.spec.ts (11 tests) 193ms
+ ✓ src/components/workbench/OperatorInventoryPanel.spec.ts (7 tests) 169ms
+ ✓ src/components/workbench/SimulationLogView.spec.ts (6 tests) 127ms
+ ✓ src/components/workbench/MobileFacilityNav.spec.ts (11 tests) 70ms
+ ✓ src/components/workbench/ControlImpactPanel.spec.ts (3 tests) 94ms
+ ✓ src/components/workbench/ProductionWeightsEditor.spec.ts (8 tests) 58ms
+ ✓ src/components/workbench/LayoutPresetBar.spec.ts (4 tests) 62ms
+ ✓ src/components/workbench/ValidationPanel.spec.ts (4 tests) 41ms
+ ✓ src/components/workbench/SettingsView.spec.ts (2 tests) 46ms
+
+ Test Files  207 passed | 1 skipped (208)
+      Tests  2190 passed | 1 skipped (2191)
+   Start at  08:00:30
+   Duration  367.13s (transform 4.49s, setup 0ms, collect 50.20s, tests 603.91s, environment 22.39s, prepare 18.79s)

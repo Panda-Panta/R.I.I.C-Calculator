@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 D:/Project/Arknights/R.I.I.C-Calculator - Codex
+
+ ✓ src/scheduler/mowerAlphaResting.spec.ts (6 tests) 8ms
+ ✓ src/scheduler/mowerAlphaPlanningEntry.spec.ts (7 tests) 10ms
+ ✓ src/scheduler/mowerAlphaShift.spec.ts (7 tests) 9ms
+ ✓ src/scheduler/mowerAlphaFullPreview.spec.ts (15 tests) 402ms
+
+ Test Files  4 passed (4)
+      Tests  35 passed (35)
+   Start at  07:59:36
+   Duration  1.95s (transform 630ms, setup 0ms, collect 1.33s, tests 429ms, environment 1ms, prepare 598ms)

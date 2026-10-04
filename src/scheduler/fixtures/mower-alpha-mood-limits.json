@@ -1,0 +1,355 @@
+{
+  "scope": "Unmodified alpha mood-limit precedence and cached recovery timer conversion.",
+  "revision": "b2d9ac85fe070e805aadf0d5f44fc095c1e95253",
+  "cases": [
+    {
+      "input": {
+        "rows": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "夕",
+            "room": "central",
+            "index": 1,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "A",
+            "room": "central",
+            "index": 2,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "B",
+            "room": "room_1_1",
+            "index": 0,
+            "replacement": [
+              "R"
+            ],
+            "operator_type": "high",
+            "current_room": "dormitory_1",
+            "current_index": 2,
+            "mood": 8
+          },
+          {
+            "name": "R",
+            "room": ""
+          },
+          {
+            "name": "闲人",
+            "room": ""
+          }
+        ],
+        "plan": {
+          "central": [
+            "令",
+            "夕",
+            "A"
+          ],
+          "room_1_1": [
+            "B"
+          ],
+          "dormitory_1": [
+            "K1",
+            "K2",
+            "Free"
+          ]
+        },
+        "beds": [
+          {
+            "position": [
+              "dormitory_1",
+              2
+            ],
+            "name": "B",
+            "time": 4
+          }
+        ],
+        "mode": 0,
+        "globalLimit": {
+          "lower": 2,
+          "upper": 18
+        },
+        "personal": {}
+      },
+      "output": {
+        "operators": {
+          "令": {
+            "lower": 0,
+            "upper": 24,
+            "strict": false
+          },
+          "夕": {
+            "lower": 0,
+            "upper": 24,
+            "strict": false
+          },
+          "A": {
+            "lower": 0,
+            "upper": 24,
+            "strict": false
+          },
+          "B": {
+            "lower": 2,
+            "upper": 18,
+            "strict": false
+          },
+          "R": {
+            "lower": 2,
+            "upper": 18,
+            "strict": false
+          },
+          "闲人": {
+            "lower": 0,
+            "upper": 24,
+            "strict": false
+          }
+        },
+        "bedTime": 2.5
+      }
+    },
+    {
+      "input": {
+        "rows": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "夕",
+            "room": "central",
+            "index": 1,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "A",
+            "room": "central",
+            "index": 2,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "B",
+            "room": "room_1_1",
+            "index": 0,
+            "replacement": [
+              "R"
+            ],
+            "operator_type": "high",
+            "current_room": "dormitory_1",
+            "current_index": 2,
+            "mood": 8
+          },
+          {
+            "name": "R",
+            "room": ""
+          },
+          {
+            "name": "闲人",
+            "room": ""
+          }
+        ],
+        "plan": {
+          "central": [
+            "令",
+            "夕",
+            "A"
+          ],
+          "room_1_1": [
+            "B"
+          ],
+          "dormitory_1": [
+            "K1",
+            "K2",
+            "Free"
+          ]
+        },
+        "beds": [
+          {
+            "position": [
+              "dormitory_1",
+              2
+            ],
+            "name": "B",
+            "time": 4
+          }
+        ],
+        "mode": 1,
+        "globalLimit": {
+          "lower": 2,
+          "upper": 18
+        },
+        "personal": {}
+      },
+      "output": {
+        "operators": {
+          "令": {
+            "lower": 0,
+            "upper": 12,
+            "strict": true
+          },
+          "夕": {
+            "lower": 12,
+            "upper": 24,
+            "strict": false
+          },
+          "A": {
+            "lower": 12,
+            "upper": 24,
+            "strict": false
+          },
+          "B": {
+            "lower": 2,
+            "upper": 18,
+            "strict": false
+          },
+          "R": {
+            "lower": 2,
+            "upper": 18,
+            "strict": false
+          },
+          "闲人": {
+            "lower": 0,
+            "upper": 24,
+            "strict": false
+          }
+        },
+        "bedTime": 2.5
+      }
+    },
+    {
+      "input": {
+        "rows": [
+          {
+            "name": "令",
+            "room": "central",
+            "index": 0,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "夕",
+            "room": "central",
+            "index": 1,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "A",
+            "room": "central",
+            "index": 2,
+            "group": "g",
+            "operator_type": "high"
+          },
+          {
+            "name": "B",
+            "room": "room_1_1",
+            "index": 0,
+            "replacement": [
+              "R"
+            ],
+            "operator_type": "high",
+            "current_room": "dormitory_1",
+            "current_index": 2,
+            "mood": 8
+          },
+          {
+            "name": "R",
+            "room": ""
+          },
+          {
+            "name": "闲人",
+            "room": ""
+          }
+        ],
+        "plan": {
+          "central": [
+            "令",
+            "夕",
+            "A"
+          ],
+          "room_1_1": [
+            "B"
+          ],
+          "dormitory_1": [
+            "K1",
+            "K2",
+            "Free"
+          ]
+        },
+        "beds": [
+          {
+            "position": [
+              "dormitory_1",
+              2
+            ],
+            "name": "B",
+            "time": 4
+          }
+        ],
+        "mode": 2,
+        "globalLimit": null,
+        "personal": {
+          "令": {
+            "lower": 3,
+            "upper": 20
+          },
+          "B": {
+            "lower": 2,
+            "upper": 12
+          },
+          "R": {
+            "lower": 1,
+            "upper": 10
+          }
+        }
+      },
+      "output": {
+        "operators": {
+          "令": {
+            "lower": 3,
+            "upper": 20,
+            "strict": true
+          },
+          "夕": {
+            "lower": 0,
+            "upper": 12,
+            "strict": true
+          },
+          "A": {
+            "lower": 12,
+            "upper": 24,
+            "strict": false
+          },
+          "B": {
+            "lower": 2,
+            "upper": 12,
+            "strict": true
+          },
+          "R": {
+            "lower": 1,
+            "upper": 10,
+            "strict": true
+          },
+          "闲人": {
+            "lower": 0,
+            "upper": 24,
+            "strict": false
+          }
+        },
+        "bedTime": 1.0
+      }
+    }
+  ]
+}
