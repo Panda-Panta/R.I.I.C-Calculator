@@ -30,10 +30,16 @@ export interface AtomicUnit {
   preferredFacilityType: 'manufacture' | 'trading'
   preferredProduct?: 'gold' | 'exp' | 'any'
   coreMembers: AtomicMember[]
+  /** Complete alternative core sets. Never require every alternative at once. */
+  coreVariants?: { members: AtomicMember[]; requiredPowerCount?: number }[]
   nonCoreMembers?: AtomicMember[]
+  nonCoreSkillClasses?: string[]
+  allowProductionFillers?: boolean
   thirdMemberWhitelist?: string[]
   perCapitaOutput?: number
   externalRequirements?: ExternalCountRequirement[]
+  /** Optional actual-presence plans, not ownership/admission thresholds. */
+  presenceBoosts?: { whenMember?: string; pool: string[]; maximumUsefulCount: number }[]
   confPolicy?: AtomicUnitConfPolicy
   adaptToPowerCount?: (powerCount: number, product?: 'gold' | 'exp') => {
     coreMembers: AtomicMember[]
@@ -79,6 +85,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
       { name: '安哲拉', roomType: 'manufacture' },
       { name: '幽灵鲨', roomType: 'manufacture' },
     ],
+    nonCoreMembers: [{ name: '深巡', roomType: 'trading' }],
     confPolicy: {
       restingPriorityLow: ['乌尔比安', '斯卡蒂', '幽灵鲨', '安哲拉'],
       restingPriorityHigh: ['歌蕾蒂娅'],
@@ -91,7 +98,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     name: '自动化体系',
     description: '温蒂+森蚺+承曦格雷伊。3电森蚺进制造，2电森蚺进中枢且Lancet-2进发电站。同站第3人严禁普通散件。',
     preferredFacilityType: 'manufacture',
-    preferredProduct: 'gold',
+    preferredProduct: 'any',
     perCapitaOutput: 47.5,
     coreMembers: [
       { name: '温蒂', roomType: 'manufacture' },
@@ -201,31 +208,30 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 7. 莱茵生命 (2人核心/3人赤金核心)
+  // 7. 莱茵生命：多萝西单核心，可选增强按实际技能和在场人数计算。
   {
     id: 'rhine_lab',
     name: '莱茵生命',
-    description: '多萝西+淬羽赫默制造站。赤金站娜斯提为第3核心，需基建内存在3名莱茵干员。',
+    description: '多萝西单核心。淬羽赫默与其他增强成员可选；娜斯提按实际入驻的莱茵成员数计算赤金增益，不设人数门槛。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'any',
     perCapitaOutput: 35,
     coreMembers: [
       { name: '多萝西', roomType: 'manufacture' },
-      { name: '淬羽赫默', roomType: 'manufacture' },
     ],
     nonCoreMembers: [
+      { name: '淬羽赫默', roomType: 'manufacture' },
       { name: '娜斯提', roomType: 'manufacture', product: 'gold' },
       { name: '白面鸮', roomType: 'manufacture' },
       { name: '赫默', roomType: 'manufacture' },
       { name: '星源', roomType: 'manufacture' },
       { name: '梅尔', roomType: 'manufacture' },
+      { name: '溯光星源', roomType: 'manufacture' },
     ],
-    externalRequirements: [
-      {
-        name: '莱茵生命基建计数',
-        count: 3,
-        pool: ['白面鸮', '赫默', '星源', '梅尔', '缪尔赛思', '塞雷娅', '伊芙利特', '麦哲伦'],
-      },
+    nonCoreSkillClasses: ['莱茵科技'],
+    presenceBoosts: [
+      { whenMember: '娜斯提', maximumUsefulCount: 5,
+        pool: ['赫默', '伊芙利特', '塞雷娅', '白面鸮', '梅尔', '麦哲伦', '多萝西', '星源', '缪尔赛思', '娜斯提'] },
     ],
   },
 
@@ -233,7 +239,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
   {
     id: 'cantabile_metalcraft',
     name: '苍苔金属工艺',
-    description: '苍苔进驻赤金制造站，从6人金属工艺池中匹配2人进驻。',
+    description: '苍苔单核心，按实际已解锁金属工艺技能比较零、一、两名增强成员。',
     preferredFacilityType: 'manufacture',
     preferredProduct: 'gold',
     perCapitaOutput: 35,
@@ -247,6 +253,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
       { name: '夜烟', roomType: 'manufacture', product: 'gold' },
       { name: '温米', roomType: 'manufacture', product: 'gold' },
     ],
+    nonCoreSkillClasses: ['金属工艺'],
   },
 
   // 9. 槐琥阿罗玛 (2人核心，无第三人)
@@ -285,19 +292,19 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 11. 纯感知信息体系 (3人核心)
+  // 11. 纯感知信息体系：迷迭香与絮雨双核心，黑键可选。
   {
     id: 'pure_perception',
     name: '纯感知信息体系',
-    description: '迷迭香制造站、絮雨办公室、黑键贸易站。爱丽丝与车尔尼进驻宿舍。独立于人间烟火。',
-    preferredFacilityType: 'trading',
+    description: '迷迭香制造站、絮雨办公室为核心。黑键贸易站及宿舍/中枢支持可选。独立于人间烟火。',
+    preferredFacilityType: 'manufacture',
     perCapitaOutput: 35,
     coreMembers: [
       { name: '迷迭香', roomType: 'manufacture' },
       { name: '絮雨', roomType: 'office' },
-      { name: '黑键', roomType: 'trading' },
     ],
     nonCoreMembers: [
+      { name: '黑键', roomType: 'trading' },
       { name: '爱丽丝', roomType: 'dormitory' },
       { name: '车尔尼', roomType: 'dormitory' },
       { name: '琴柳', roomType: 'central' },
@@ -330,7 +337,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
   {
     id: 'pozemka_durin',
     name: '鸿雪4杜林体系',
-    description: '鸿雪+图耶进驻贸易站，4杜林（杜林/桃金娘/至简/褐果）进驻基建制造/宿舍。第3人匹配绮良（虚拟赤金线）。',
+    description: '鸿雪+图耶贸易核心。绮良与杜林在场支持可选，按实际人数和虚拟赤金线计算，不设人数准入门槛。',
     preferredFacilityType: 'trading',
     perCapitaOutput: 46,
     coreMembers: [
@@ -340,12 +347,8 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     nonCoreMembers: [
       { name: '绮良', roomType: 'trading' },
     ],
-    externalRequirements: [
-      {
-        name: '4名杜林族进驻基建',
-        count: 4,
-        pool: ['杜林', '桃金娘', '褐果', '至简'],
-      },
+    presenceBoosts: [
+      { maximumUsefulCount: 4, pool: ['杜林', '桃金娘', '褐果', '至简'] },
     ],
   },
 
@@ -362,9 +365,8 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
     nonCoreMembers: [
       { name: '能天使', roomType: 'trading' },
-      { name: '伺夜', roomType: 'trading' },
-      { name: '雪雉', roomType: 'trading' },
     ],
+    allowProductionFillers: true,
   },
 
   // 15. 拉特兰商道 (2人双核心，无第三人)
@@ -429,6 +431,39 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
       { name: '琳琅诗怀雅', roomType: 'trading' },
     ],
   },
+  {
+    id: 'monster_hunter',
+    name: '怪物猎人',
+    description: '焰狐龙梓兰与雷狼龙S空爆贸易双核心，按实际解锁的泡影国狩猎小队技能计算。',
+    preferredFacilityType: 'trading',
+    coreMembers: [
+      { name: '焰狐龙梓兰', roomType: 'trading' },
+      { name: '雷狼龙S空爆', roomType: 'trading' },
+    ],
+  },
+  {
+    id: 'laterano_alter',
+    name: '拉特兰商道-2',
+    description: '蕾缪安、新约能天使与安比尔或空弦同站。空弦仅在三座已建造电站的布局下使用。',
+    preferredFacilityType: 'trading',
+    coreMembers: [
+      { name: '蕾缪安', roomType: 'trading' },
+      { name: '新约能天使', roomType: 'trading' },
+    ],
+    coreVariants: [
+      { members: [{ name: '蕾缪安', roomType: 'trading' }, { name: '新约能天使', roomType: 'trading' }, { name: '安比尔', roomType: 'trading' }] },
+      { members: [{ name: '蕾缪安', roomType: 'trading' }, { name: '新约能天使', roomType: 'trading' }, { name: '空弦', roomType: 'trading' }], requiredPowerCount: 3 },
+    ],
+  },
+  {
+    id: 'mizuki_standardization',
+    name: '水月组',
+    description: '水月单核心，按当前已解锁的标准化类技能展开可选成员并比较整站效率。',
+    preferredFacilityType: 'manufacture',
+    preferredProduct: 'any',
+    coreMembers: [{ name: '水月', roomType: 'manufacture' }],
+    nonCoreSkillClasses: ['标准化'],
+  },
 ] as const
 
 export const HIGH_EFFICIENCY_SINGLETONS = {
@@ -438,5 +473,5 @@ export const HIGH_EFFICIENCY_SINGLETONS = {
 } as const
 
 export const ALL_ATOMIC_CORE_NAMES: ReadonlySet<string> = new Set(
-  ATOMIC_UNITS.flatMap((u) => u.coreMembers.map((m) => m.name)),
+  ATOMIC_UNITS.flatMap((u) => [...u.coreMembers, ...(u.coreVariants?.flatMap(v => v.members) ?? [])].map((m) => m.name)),
 )

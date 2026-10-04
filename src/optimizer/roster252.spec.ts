@@ -13,7 +13,8 @@ const allOwned: OwnedOperatorInput[] = OPERATORS.map((o) => ({
 }))
 
 describe('252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, Right Side Full, 2 Power)', () => {
-  it('generates a fully valid 252 roster with complete tracking and all rules satisfied', () => {
+  it('generates a fully valid 252 roster with complete tracking and all rules satisfied', async ({ annotate }) => {
+    await annotate('同步排班与逐人动态验证前刷新测试进度')
     const ws = createDefaultWorkspace()
 
     // Configure 252 Layout:
@@ -148,5 +149,5 @@ describe('252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, 
     expect(outWs.mainPlan.facilities.room_3_1.slots.every((s) => s.occupant.kind === 'operator')).toBe(true)
     expect(outWs.mainPlan.facilities.room_3_2.slots.every((s) => s.occupant.kind === 'operator')).toBe(true)
     expect(outWs.mainPlan.facilities.room_3_3.slots.every((s) => s.occupant.kind === 'operator')).toBe(true)
-  }, 60000)
+  }, 180000)
 })

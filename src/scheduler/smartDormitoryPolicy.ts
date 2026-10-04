@@ -2,6 +2,7 @@ import { OPERATOR_MAP, OPERATORS, type OperatorRecord } from '../domain/operator
 import { compileOperatorInventory, type OwnedOperatorInput, type OperatorInventory } from '../domain/operatorInventory'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { hasRiicTag } from '../domain/riicTags'
+import { inventoryOperatorRecords } from '../domain/operatorContext'
 import type { MowerRoomId, RosterWorkspace } from '../workbench/model'
 
 export interface SmartDormitoryOptions {
@@ -9,6 +10,8 @@ export interface SmartDormitoryOptions {
   candidateOperatorIds?: string[]
   /** Owned operator inventory entries with elite and level information. */
   entries?: readonly OwnedOperatorInput[]
+  /** Preserve the entire contents of user-locked slots during automatic cleanup. */
+  lockedPositions?: ReadonlySet<string>
   /** Force run even if disable_auto_dorm_keeper is enabled. */
   force?: boolean
 }
@@ -169,7 +172,7 @@ export function placePendantOperator(
     slot.occupant = { kind: 'operator', operatorId: charId }
     slot.groupId = null
     const backup = inventory?.operators.find(
-      (o) => o.matchesMaximumSkills && !reserved.has(o.charId) && o.name !== operatorName && (o.name === '特克诺' || o.name === '年' || o.name === '锡兰'),
+      (o) => o.skills.some(s => s.roomType === 'WORKSHOP') && !reserved.has(o.charId) && o.name !== operatorName && (o.name === '特克诺' || o.name === '年' || o.name === '锡兰'),
     )
     if (backup) {
       slot.replacements = [backup.charId]
@@ -186,7 +189,7 @@ export function placePendantOperator(
       slot.occupant = { kind: 'operator', operatorId: charId }
       slot.groupId = null
       const backup = inventory?.operators.find(
-        (o) => o.matchesMaximumSkills && !reserved.has(o.charId) && o.name !== operatorName && (o.name === '达利尔' || o.name === '艾丽妮' || o.name === '左乐'),
+        (o) => o.skills.some(s => s.roomType === 'TRAINING') && !reserved.has(o.charId) && o.name !== operatorName && (o.name === '达利尔' || o.name === '艾丽妮' || o.name === '左乐'),
       )
       if (backup) {
         slot.replacements = [backup.charId]
@@ -259,7 +262,7 @@ function removeOperatorEverywhere(
 export function findTopPerCapitaProductionOperators(
   workspace: RosterWorkspace,
   targetCount = 3,
-  ownedOps?: Map<string, { matchesMaximumSkills: boolean }> | null,
+  ownedOps?: ReadonlyMap<string, unknown> | null,
 ): string[] {
   const productionRooms = Object.values(workspace.mainPlan.facilities).filter(
     (r) => r.type === 'manufacture' || r.type === 'trading',
@@ -270,7 +273,7 @@ export function findTopPerCapitaProductionOperators(
     for (const slot of room.slots) {
       if (slot.occupant.kind === 'operator') {
         const opId = resolveId(slot.occupant.operatorId)
-        if (ownedOps && (!ownedOps.has(opId) || !ownedOps.get(opId)!.matchesMaximumSkills)) continue
+        if (ownedOps && !ownedOps.has(opId)) continue
         const grp = slot.groupId ?? `solo_${room.roomId}_${opId}`
         if (!groupMembers.has(grp)) groupMembers.set(grp, [])
         groupMembers.get(grp)!.push(opId)
@@ -311,7 +314,7 @@ export function findTopPerCapitaProductionOperators(
       for (const slot of room.slots) {
         if (slot.occupant.kind === 'operator') {
           const id = resolveId(slot.occupant.operatorId)
-          if (ownedOps && (!ownedOps.has(id) || !ownedOps.get(id)!.matchesMaximumSkills)) continue
+          if (ownedOps && !ownedOps.has(id)) continue
           if (!targets.includes(id)) {
             targets.push(id)
             if (targets.length >= targetCount) return targets
@@ -358,11 +361,14 @@ export function applySmartDormitoryPolicy(
   // If owned entries are provided, compile them to check actually unlocked skills
   const ownedMap = options.entries ? compileOperatorInventory(options.entries) : null
   const ownedOps = ownedMap && ownedMap.valid ? new Map(ownedMap.operators.map(o => [o.charId, o])) : null
-  const isOpMaxSkill = (id: string) => !ownedOps || Boolean(ownedOps.get(id)?.matchesMaximumSkills)
+  const isOwned = (id: string) => !ownedOps || ownedOps.has(id)
+  const records = ownedMap?.valid ? inventoryOperatorRecords(ownedMap) : null
+  const getOperator = (id: string) => records ? records[resolveId(id)] : OPERATOR_MAP.get(resolveId(id))
+  const locked = (roomId: string, index: number) => Boolean(options.lockedPositions?.has(`${roomId}:${index}`))
 
   // 1. Determine Fiammetta placement if present in incoming workspace or candidates
   const fiamOp = ownedOps?.get('char_300_phenxi')
-  const fiamValid = !ownedOps || (fiamOp && fiamOp.matchesMaximumSkills)
+  const fiamValid = !ownedOps || fiamOp?.skills.some(s => s.buffId.startsWith('dorm_exchangeAp'))
   const hasFiammetta = Boolean(fiamValid) && (
     Boolean(existingFiamSlot) ||
     Boolean(options.candidateOperatorIds?.some((id) => resolveId(id) === 'char_300_phenxi')) ||
@@ -370,6 +376,7 @@ export function applySmartDormitoryPolicy(
   )
 
   let fiammettaRoomId: MowerRoomId | null = null
+  let fiammettaSlotIndex = 0
   if (hasFiammetta && dormIds.length) {
     // Find slowest dormitory (lowest level, or dormitory_4 as tie-breaker)
     let slowestRoom: MowerRoomId = 'dormitory_4'
@@ -381,23 +388,36 @@ export function applySmartDormitoryPolicy(
         slowestRoom = dId
       }
     }
-    fiammettaRoomId = slowestRoom
+    const fixedFiam = existingFiamSlot && locked(existingFiamSlot.roomId, existingFiamSlot.slotIndex)
+    if (fixedFiam && facilities[existingFiamSlot!.roomId].type === 'dormitory') {
+      fiammettaRoomId = existingFiamSlot!.roomId
+      fiammettaSlotIndex = existingFiamSlot!.slotIndex
+    } else if (!fixedFiam) {
+      const availableDorms = [slowestRoom, ...dormIds.filter(id => id !== slowestRoom)]
+      for (const dId of availableDorms) {
+        const index = facilities[dId].slots.findIndex((slot, index) => !locked(dId, index) &&
+          slot.occupant.kind !== 'current' && (!slot.groupId || slot.occupant.kind === 'operator' && resolveId(slot.occupant.operatorId) === 'char_300_phenxi'))
+        if (index >= 0) { fiammettaRoomId = dId; fiammettaSlotIndex = index; break }
+      }
+    }
 
     // Clear Fiammetta from everywhere else in the base
-    removeOperatorEverywhere(workspace, 'char_300_phenxi', slowestRoom, 0)
+    if (fiammettaRoomId && !fixedFiam) removeOperatorEverywhere(workspace, 'char_300_phenxi', fiammettaRoomId, fiammettaSlotIndex)
 
     // Place Fiammetta in slowest room slot 0 with her replacements transferred or computed
-    const targetRoom = facilities[slowestRoom]
-    if (targetRoom && targetRoom.slots.length > 0 && targetRoom.slots[0]) {
-      targetRoom.slots[0].occupant = { kind: 'operator', operatorId: 'char_300_phenxi' }
+    const targetSlot = fiammettaRoomId ? facilities[fiammettaRoomId].slots[fiammettaSlotIndex] : undefined
+    if (targetSlot && !fixedFiam) {
+      targetSlot.occupant = { kind: 'operator', operatorId: 'char_300_phenxi' }
       const topOps = findTopPerCapitaProductionOperators(workspace, 3, ownedOps)
-      const validExistingReps = existingFiamSlot ? existingFiamSlot.replacements.filter(isOpMaxSkill) : []
+      const activeProduction = new Set(Object.values(facilities).filter(r => ['manufacture', 'trading'].includes(r.type))
+        .flatMap(r => r.slots.flatMap(s => s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : [])))
+      const validExistingReps = existingFiamSlot ? existingFiamSlot.replacements.filter(id => isOwned(resolveId(id)) && activeProduction.has(resolveId(id))) : []
       if (topOps.length >= 3 && (!existingFiamSlot || validExistingReps.length < 3 || options.force)) {
-        targetRoom.slots[0].replacements = topOps
+        targetSlot.replacements = topOps
       } else if (validExistingReps.length >= 3) {
-        targetRoom.slots[0].replacements = validExistingReps
+        targetSlot.replacements = validExistingReps
       } else {
-        targetRoom.slots[0].replacements = topOps
+        targetSlot.replacements = topOps
       }
     }
   }
@@ -407,9 +427,9 @@ export function applySmartDormitoryPolicy(
     const fac = facilities[dId]
     if (!fac) continue
     for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
-      if (dId === fiammettaRoomId && sIdx === 0) continue
+      if (locked(dId, sIdx) || dId === fiammettaRoomId && sIdx === fiammettaSlotIndex) continue
       const slot = fac.slots[sIdx]
-      if (slot && (!slot.groupId || (slot.occupant.kind === 'operator' && !isOpMaxSkill(resolveId(slot.occupant.operatorId))))) {
+      if (slot && (!slot.groupId || (slot.occupant.kind === 'operator' && !isOwned(resolveId(slot.occupant.operatorId))))) {
         slot.occupant = { kind: 'free' }
         slot.replacements = []
         slot.groupId = null
@@ -421,8 +441,8 @@ export function applySmartDormitoryPolicy(
   const assignedWorkingIds = new Set<string>()
   for (const [rId, fac] of Object.entries(facilities)) {
     if (rId.startsWith('dormitory')) {
-      for (const slot of fac.slots) {
-        if (slot.occupant.kind === 'operator' && slot.groupId) {
+      for (const [index, slot] of fac.slots.entries()) {
+        if (slot.occupant.kind === 'operator' && (slot.groupId || locked(rId, index))) {
           assignedWorkingIds.add(resolveId(slot.occupant.operatorId))
         }
       }
@@ -443,19 +463,19 @@ export function applySmartDormitoryPolicy(
 
   // Operator pool: candidates if provided, else all operators excluding working operators
   const poolIds = (options.candidateOperatorIds && options.candidateOperatorIds.length > 0)
-    ? options.candidateOperatorIds.map(resolveId).filter((id) => !assignedWorkingIds.has(id) && isOpMaxSkill(id))
+    ? options.candidateOperatorIds.map(resolveId).filter((id) => !assignedWorkingIds.has(id) && isOwned(id))
     : (options.entries && options.entries.length > 0)
-      ? options.entries.map(e => resolveId(e.operator)).filter((id) => !assignedWorkingIds.has(id) && isOpMaxSkill(id))
-      : OPERATORS.map((o) => o.charId).filter((id) => !assignedWorkingIds.has(id) && isOpMaxSkill(id))
+      ? options.entries.map(e => resolveId(e.operator)).filter((id) => !assignedWorkingIds.has(id) && isOwned(id))
+      : OPERATORS.map((o) => o.charId).filter((id) => !assignedWorkingIds.has(id) && isOwned(id))
 
   const uniquePoolIds = Array.from(new Set(poolIds))
-  const poolOps = uniquePoolIds.map((id) => OPERATOR_MAP.get(id)).filter((o): o is OperatorRecord => Boolean(o))
+  const poolOps = uniquePoolIds.map(getOperator).filter((o): o is OperatorRecord => Boolean(o))
 
   // Find AOE and Single dorm keepers considering unlocked skills if owned inventory was supplied
   const isCandidateAoe = (op: OperatorRecord): boolean => {
     if (ownedOps) {
       const owned = ownedOps.get(op.charId)
-      if (!owned || !owned.matchesMaximumSkills) return false
+      if (!owned) return false
       return owned.skills.some(
         (s) =>
           s.roomType === 'DORMITORY' &&
@@ -471,7 +491,7 @@ export function applySmartDormitoryPolicy(
   const isCandidateSingle = (op: OperatorRecord): boolean => {
     if (ownedOps) {
       const owned = ownedOps.get(op.charId)
-      if (!owned || !owned.matchesMaximumSkills) return false
+      if (!owned) return false
       return owned.skills.some(
         (s) =>
           s.roomType === 'DORMITORY' &&
@@ -525,9 +545,9 @@ export function applySmartDormitoryPolicy(
     const fac = facilities[dId]
     if (!fac) continue
     for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
-      if (dId === fiammettaRoomId && sIdx === 0) continue
+      if (dId === fiammettaRoomId && sIdx === fiammettaSlotIndex) continue
       const slot = fac.slots[sIdx]
-      if (slot?.occupant.kind === 'operator' && slot.groupId) {
+      if (slot?.occupant.kind === 'operator' && (slot.groupId || locked(dId, sIdx))) {
         currentPermanentCount++
       }
     }
@@ -540,7 +560,7 @@ export function applySmartDormitoryPolicy(
 
     // Check if fac already has an assigned AOE keeper
     const existingAoeSlot = fac.slots.find(
-      (s) => s.occupant.kind === 'operator' && isCandidateAoe(OPERATOR_MAP.get(resolveId(s.occupant.operatorId))!),
+      (s) => s.occupant.kind === 'operator' && Boolean(getOperator(s.occupant.operatorId)) && isCandidateAoe(getOperator(s.occupant.operatorId)!),
     )
     if (existingAoeSlot && existingAoeSlot.occupant.kind === 'operator') {
       const opId = resolveId(existingAoeSlot.occupant.operatorId)
@@ -555,10 +575,10 @@ export function applySmartDormitoryPolicy(
 
       if (currentPermanentCount < maxPermanentAllowed && aoeOp) {
         let targetIdx = -1
-        if (fac.slots[aoeSlotIndex] && fac.slots[aoeSlotIndex]!.occupant.kind !== 'operator') {
+        if (fac.slots[aoeSlotIndex] && !locked(dId, aoeSlotIndex) && fac.slots[aoeSlotIndex]!.occupant.kind !== 'operator') {
           targetIdx = aoeSlotIndex
         } else {
-          targetIdx = fac.slots.findIndex((s, idx) => idx !== (isFiamRoom ? 0 : -1) && s.occupant.kind !== 'operator')
+          targetIdx = fac.slots.findIndex((s, idx) => !locked(dId, idx) && idx !== (isFiamRoom ? fiammettaSlotIndex : -1) && s.occupant.kind !== 'operator')
         }
         if (targetIdx !== -1 && fac.slots[targetIdx]) {
           removeOperatorEverywhere(workspace, aoeOp.charId, dId, targetIdx)
@@ -577,7 +597,7 @@ export function applySmartDormitoryPolicy(
     const existingSingleSlot = fac.slots.find(
       (s) =>
         s.occupant.kind === 'operator' &&
-        isCandidateSingle(OPERATOR_MAP.get(resolveId(s.occupant.operatorId))!) &&
+        Boolean(getOperator(s.occupant.operatorId)) && isCandidateSingle(getOperator(s.occupant.operatorId)!) &&
         resolveId(s.occupant.operatorId) !== keeperReport[dId]?.aoe,
     )
     if (existingSingleSlot && existingSingleSlot.occupant.kind === 'operator') {
@@ -595,10 +615,10 @@ export function applySmartDormitoryPolicy(
 
       if (currentPermanentCount < maxPermanentAllowed && singleOp) {
         let targetIdx = -1
-        if (fac.slots[singleSlotIndex] && fac.slots[singleSlotIndex]!.occupant.kind !== 'operator') {
+        if (fac.slots[singleSlotIndex] && !locked(dId, singleSlotIndex) && fac.slots[singleSlotIndex]!.occupant.kind !== 'operator') {
           targetIdx = singleSlotIndex
         } else {
-          targetIdx = fac.slots.findIndex((s, idx) => idx !== (isFiamRoom ? 0 : -1) && s.occupant.kind !== 'operator')
+          targetIdx = fac.slots.findIndex((s, idx) => !locked(dId, idx) && idx !== (isFiamRoom ? fiammettaSlotIndex : -1) && s.occupant.kind !== 'operator')
         }
         if (targetIdx !== -1 && fac.slots[targetIdx]) {
           removeOperatorEverywhere(workspace, singleOp.charId, dId, targetIdx)
@@ -616,7 +636,7 @@ export function applySmartDormitoryPolicy(
     // Fill remaining unassigned slots in dormitory with 'free' so resting workers have beds
     for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
       const slot = fac.slots[sIdx]
-      if (slot && slot.occupant.kind === 'empty') {
+      if (slot && !locked(dId, sIdx) && slot.occupant.kind === 'empty') {
         slot.occupant = { kind: 'free' }
       }
     }
@@ -660,7 +680,7 @@ export function applySmartDormitoryPolicy(
         if (!fac) continue
         for (let sIdx = 0; sIdx < fac.slots.length; sIdx++) {
           const slot = fac.slots[sIdx]
-          if (slot && (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free')) {
+          if (slot && !locked(auxId, sIdx) && (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free')) {
             removeOperatorEverywhere(workspace, op.charId, auxId, sIdx)
             slot.occupant = { kind: 'operator', operatorId: op.charId }
             slot.groupId = slot.groupId || 'durin_synergy'
@@ -682,7 +702,7 @@ export function applySmartDormitoryPolicy(
           const fac = facilities[lowestSlot.roomId]
           if (fac) {
             const slot = fac.slots[lowestSlot.slotIndex]
-            if (slot && (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free')) {
+            if (slot && !locked(lowestSlot.roomId, lowestSlot.slotIndex) && (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free')) {
               removeOperatorEverywhere(workspace, op.charId, lowestSlot.roomId, lowestSlot.slotIndex)
               slot.occupant = { kind: 'operator', operatorId: op.charId }
               slot.groupId = slot.groupId || 'durin_synergy'
@@ -708,8 +728,8 @@ export function applySmartDormitoryPolicy(
   for (const dId of dormIds) {
     const fac = facilities[dId]
     if (!fac) continue
-    for (const slot of fac.slots) {
-      if (slot.occupant.kind === 'empty') {
+    for (const [index, slot] of fac.slots.entries()) {
+      if (!locked(dId, index) && slot.occupant.kind === 'empty') {
         slot.occupant = { kind: 'free' }
       }
     }

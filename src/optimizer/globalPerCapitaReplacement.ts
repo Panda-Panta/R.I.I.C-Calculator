@@ -13,6 +13,8 @@ import { assignBackups, validatePhysicalRoster } from './rosterDraft'
 import { rankStaffingCandidates } from './staffingQuality'
 import { applySingletonWorkPolicy, productionColleagueBonus, productionTeamTheory } from './productionSingletons'
 import { getRoomDisplayName } from '../workbench/operatorHelpers'
+import { availableCoreVariants } from './combinationModel'
+import { completeShiftScore, normalizeProductionShifts, regroupCombination } from './combinationAllocation'
 
 export interface ReplacementResult {
   workspace: RosterWorkspace
@@ -29,6 +31,8 @@ export interface ReplacementOptions {
   evaluator?: (workspace: RosterWorkspace) => number
   /** Automatic generation must reconsider runners even when no runner was initially profitable. */
   configureRunOrderCandidates?: boolean
+  maxEvaluations?: number
+  maxAcceptedChanges?: number
 }
 
 function isPendantOperator(name: string, ws: RosterWorkspace): boolean {
@@ -82,7 +86,7 @@ export function runGlobalPerCapitaReplacement(
   const lockedPositions = options.lockedPositions ?? new Set<string>()
   const lockedOperators = options.lockedOperators ?? new Set<string>()
 
-  const powerRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'power')
+  const powerRooms = Object.values(ws.mainPlan.facilities).filter((r) => r.type === 'power' && r.level > 0)
   const powerCount = options.powerCount ?? powerRooms.length
 
   let currentScore = options.baselineScore ?? (options.evaluator ? options.evaluator(ws) : 0)
@@ -101,9 +105,7 @@ export function runGlobalPerCapitaReplacement(
   const preservesLocks = (target: RosterWorkspace) => [...lockedPositions].every(key =>
     lockedSlotFingerprint(target, key) === lockedSlotFingerprint(base, key))
 
-  const ownedNames = new Set(
-    inventory.operators.filter((o) => o.matchesMaximumSkills).map((o) => o.name),
-  )
+  const ownedNames = new Set(inventory.operators.map(o => o.name))
 
   // ----------------------------------------------------
   // Step 1: Detect and Relocate Misplaced Pendants
@@ -180,7 +182,9 @@ export function runGlobalPerCapitaReplacement(
   // ----------------------------------------------------
   // Step 2: Global Per-Capita Detection & Swap Loop (Rule 6)
   // ----------------------------------------------------
-  const MAX_ITERATIONS = 3
+  const MAX_ITERATIONS = Math.max(1, options.maxAcceptedChanges ?? 6)
+  const evaluationBudget = Math.max(1, options.maxEvaluations ?? 12)
+  let totalEvaluated = 0
   const triedSwaps = new Set<string>()
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
@@ -209,6 +213,7 @@ export function runGlobalPerCapitaReplacement(
       independent: boolean
       candidatePerCapita: number
       gain: number
+      preview?: RosterWorkspace
     }
 
     const swapProposals: ProposedSwap[] = []
@@ -240,16 +245,15 @@ export function runGlobalPerCapitaReplacement(
         const slotIndices = targetOps.map(op => op.slotIdx)
         const targetIds = new Set(targetOps.map(op => op.id))
         if (targetOps.some(op => lockedPositions.has(`${room.roomId}:${op.slotIdx}`) || lockedOperators.has(op.id))) continue
-        if (targetOps.some(op => op.groupId && !op.groupId.includes('散件') &&
+        if (targetOps.length > 1 && targetOps.some(op => op.groupId && !op.groupId.includes('散件') &&
           Object.values(ws.mainPlan.facilities).some(f => f.slots.some(slot => slot.groupId === op.groupId &&
             slot.occupant.kind === 'operator' && !targetIds.has(resolveId(slot.occupant.operatorId)))))) continue
         const K = targetOps.length
         const availableOperator = (id: string) => !lockedOperators.has(id) && (!occupied.has(id) || targetIds.has(id))
         const available = (name: string) => ownedNames.has(name) && availableOperator(resolveId(name))
 
-        const candidates: { unit: AtomicUnit; independent: boolean }[] = ATOMIC_UNITS.flatMap(unit => {
-          const adapted = unit.adaptToPowerCount?.(powerCount, product === 'exp' ? 'exp' : 'gold')
-          const u = adapted ? { ...unit, coreMembers: adapted.coreMembers, confPolicy: { ...unit.confPolicy, ...adapted.confPolicy } } : unit
+        const candidates: { unit: AtomicUnit; independent: boolean }[] = ATOMIC_UNITS.flatMap(unit => availableCoreVariants(unit, inventory, powerCount, product === 'exp' ? 'exp' : 'gold').flatMap(adapted => {
+          const u = { ...unit, coreMembers: adapted.coreMembers, confPolicy: adapted.confPolicy }
           if (u.coreMembers.length !== K || u.preferredFacilityType !== room.type || u.coreMembers.some(m => m.roomType !== room.type)) return []
           if (isManufacture && u.preferredProduct && u.preferredProduct !== 'any' && u.preferredProduct !== product) return []
           if (u.coreMembers.some(m => !available(m.name) || (m.minLevel !== undefined && room.level < m.minLevel))) return []
@@ -259,11 +263,11 @@ export function runGlobalPerCapitaReplacement(
             slot.occupant.kind === 'operator' ? [resolveId(slot.occupant.operatorId)] : [])))
           if (u.externalRequirements?.some(req => req.pool.filter(name => stationed.has(resolveId(name))).length < req.count)) return []
           return [{ unit: u, independent: false }]
-        })
+        }))
 
         // The strongest unused singletons enter before simulation budgets are spent.
         // A small frontier also admits alternative bundles when their best members are scarce backups.
-        const unused = inventory.operators.filter(o => availableOperator(o.charId) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+        const unused = inventory.operators.filter(o => (K === 1 ? !lockedOperators.has(o.charId) : availableOperator(o.charId)) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
           (!options.configureRunOrderCandidates || room.type !== 'trading' || o.name !== '佩佩'))
         const singletonPreview = structuredClone(ws)
         for (const index of slotIndices) {
@@ -273,7 +277,7 @@ export function runGlobalPerCapitaReplacement(
         // Remove the outgoing team's suppression before ranking its replacements.
         const ranked = rankStaffingCandidates(singletonPreview, inventory, { roomId: room.roomId, slotIndex: slotIndices[0]! },
           unused.map(o => o.charId), 'main')
-        const frontier = ranked.slice(0, Math.max(6, K))
+        const frontier = K === 1 ? ranked : ranked.slice(0, Math.max(6, K))
         // 吉星 needs colleagues. An empty-team probe must not eliminate her before
         // a complete two/three-person bundle can be evaluated below.
         const colleagueCounter = unused.filter(o => productionColleagueBonus(o.skills) > 0)
@@ -298,30 +302,35 @@ export function runGlobalPerCapitaReplacement(
           if (cand.coreMembers.every(m => targetIds.has(resolveId(m.name)))) continue
           const swapKey = `${room.roomId}:${targetOps.map(o => o.name).sort().join('+')}->${cand.id}`
           if (triedSwaps.has(swapKey)) continue
-          const preview = structuredClone(ws)
-          cand.coreMembers.forEach((m, index) => {
+          const preview = K === 1 ? regroupCombination(ws, inventory, {
+            id: cand.id, definitionId: 'singleton', name: cand.name, coreOperatorIds: cand.coreMembers.map(m => resolveId(m.name)), optionalOperatorIds: [], policy: cand.confPolicy ?? {},
+            placements: [{ roomId: room.roomId, slotIndex: slotIndices[0]!, operatorId: resolveId(cand.coreMembers[0]!.name), role: 'main' }],
+          }, 'main', { lockedPositions, lockedOperators }) : structuredClone(ws)
+          if (!preview) continue
+          if (K > 1) cand.coreMembers.forEach((m, index) => {
             preview.mainPlan.facilities[room.roomId].slots[slotIndices[index]!]!.occupant = { kind: 'operator', operatorId: resolveId(m.name) }
           })
           const candidateTheory = productionTeamTheory(preview, inventory, room.roomId)
           if (candidateTheory === undefined || candidateTheory <= currentTheory) continue
           swapProposals.push({ roomId: room.roomId, slotIndices, oldOps: targetOps, independent,
             oldPerCapita: currentTheory / currentOps.length, candidate: cand,
-            candidatePerCapita: candidateTheory / currentOps.length, gain: (candidateTheory - currentTheory) / currentOps.length })
+            candidatePerCapita: candidateTheory / currentOps.length, gain: (candidateTheory - currentTheory) / currentOps.length,
+            preview: K === 1 ? preview : undefined })
         }
       }
     }
 
     if (swapProposals.length === 0) break
 
-    swapProposals.sort((a, b) => b.candidatePerCapita - a.candidatePerCapita || b.gain - a.gain)
-    let evaluatedCount = 0
+    swapProposals.sort((a, b) => Number(a.slotIndices.length > 1) - Number(b.slotIndices.length > 1) ||
+      a.oldPerCapita - b.oldPerCapita || b.candidatePerCapita - a.candidatePerCapita || b.gain - a.gain)
 
     for (const proposal of swapProposals) {
-      if (options.evaluator && evaluatedCount >= 3) break
+      if (totalEvaluated >= evaluationBudget) break
       const swapKey = `${proposal.roomId}:${proposal.oldOps.map((o) => o.name).sort().join('+')}->${proposal.candidate.id}`
       if (triedSwaps.has(swapKey)) continue
 
-      const draftWs = structuredClone(ws)
+      const draftWs = structuredClone(proposal.preview ?? ws)
       const targetRoom = draftWs.mainPlan.facilities[proposal.roomId]!
 
       const pendantNames = proposal.oldOps.filter(oldOp =>
@@ -329,8 +338,9 @@ export function runGlobalPerCapitaReplacement(
         (isPendantOperator(oldOp.name, ws) || oldOp.groupId?.includes('挂件'))).map(op => op.name)
       const pendantLogs: string[] = []
 
-      // 2. Clear old slots
-      for (const sIdx of proposal.slotIndices) {
+      // Single-seat transactions already preserve shift timing and repair the source.
+      // Larger alternative bundles keep the existing whole-group path.
+      for (const sIdx of proposal.preview ? [] : proposal.slotIndices) {
         targetRoom.slots[sIdx]!.occupant = { kind: 'empty' }
         targetRoom.slots[sIdx]!.groupId = null
         targetRoom.slots[sIdx]!.replacements = []
@@ -338,7 +348,7 @@ export function runGlobalPerCapitaReplacement(
 
       // 3. Place new candidate core members
       const newGroupId = `优化_${proposal.candidate.name}`
-      proposal.candidate.coreMembers.forEach((m, idx) => {
+      if (!proposal.preview) proposal.candidate.coreMembers.forEach((m, idx) => {
         const slotIdx = proposal.slotIndices[idx]!
         const mId = resolveId(m.name)
         targetRoom.slots[slotIdx]!.occupant = { kind: 'operator', operatorId: mId }
@@ -369,13 +379,18 @@ export function runGlobalPerCapitaReplacement(
 
       // 5. Ensure valid backups across draftWs
       if (!ensureValidBackups(draftWs)) continue
+      normalizeProductionShifts(draftWs, inventory, { lockedPositions, lockedOperators })
+      const actualTheory = productionTeamTheory(draftWs, inventory, proposal.roomId)
+      if (actualTheory === undefined || actualTheory <= proposal.oldPerCapita * targetRoom.slots.filter(s => s.occupant.kind === 'operator').length + 1e-9) continue
       if (maintainRunOrder && !configureRunOrder(draftWs, inventory)) continue
+      const before = completeShiftScore(ws, inventory), after = completeShiftScore(draftWs, inventory)
+      if (before === undefined || after === undefined || after + 1e-7 < before) { triedSwaps.add(swapKey); continue }
 
       // 6. Dynamic simulation check (Requirement 1 & Monotonicity)
       if (options.evaluator) {
-        evaluatedCount++
+        totalEvaluated++
         const simScore = options.evaluator(draftWs)
-        if (simScore > currentScore) {
+        if (Number.isFinite(simScore) && simScore > currentScore + 1e-6) {
           logs.push(...pendantLogs)
           logs.push(
             `[全局置换] 设施 ${getRoomDisplayName(proposal.roomId)}：当前全站理论人均 ${proposal.oldPerCapita.toFixed(1)}% 成功替换为 ${proposal.candidate.name} (全站理论人均 ${proposal.candidatePerCapita.toFixed(1)}%)，动态拟真评分从 ${currentScore.toFixed(1)} 提升至 ${simScore.toFixed(1)} 分/日`,
@@ -388,11 +403,12 @@ export function runGlobalPerCapitaReplacement(
           break
         } else {
           logs.push(
-            `[置换放弃] 设施 ${getRoomDisplayName(proposal.roomId)} 尝试置换为 ${proposal.candidate.name} 后动态拟真评分未提升 (${simScore.toFixed(1)} <= ${currentScore.toFixed(1)})，已回滚保持原状。`,
+            Number.isFinite(simScore) ? `[置换放弃] 设施 ${getRoomDisplayName(proposal.roomId)} 尝试置换为 ${proposal.candidate.name} 后动态拟真评分未提升 (${simScore.toFixed(1)} <= ${currentScore.toFixed(1)})，已回滚保持原状。` : `[置换未知] ${proposal.candidate.name} 的完整动态验证未完成，保留原排班。`,
           )
           triedSwaps.add(swapKey)
         }
       } else {
+        totalEvaluated++
         logs.push(...pendantLogs)
         logs.push(
           `[全局置换] 设施 ${getRoomDisplayName(proposal.roomId)}：当前全站理论人均 ${proposal.oldPerCapita.toFixed(1)}% 替换为 ${proposal.candidate.name} (全站理论人均 ${proposal.candidatePerCapita.toFixed(1)}%)`,
@@ -407,6 +423,7 @@ export function runGlobalPerCapitaReplacement(
 
     if (!changed) break
   }
+  if (totalEvaluated >= evaluationBudget) logs.push(`逐人/组合替换达到 ${evaluationBudget} 次完整验证预算；未穷尽的候选保留待验证，不视为无可用提升。`)
 
   // Ensure all production slots are filled
   const occupiedAll = new Set<string>()
@@ -446,7 +463,7 @@ export function runGlobalPerCapitaReplacement(
   }
   if (options.evaluator && JSON.stringify(ws) !== JSON.stringify(base)) {
     const finalScore = options.evaluator(ws)
-    if (!(finalScore > baselineScore)) return { workspace: structuredClone(base), swappedCount: 0, score: baselineScore, logs: [...logs, '最终补位后的完整排班未提高评分，保留原排班。'] }
+    if (!Number.isFinite(finalScore) || !(finalScore > baselineScore + 1e-6)) return { workspace: structuredClone(base), swappedCount: 0, score: baselineScore, logs: [...logs, '最终补位后的完整排班未提高评分，保留原排班。'] }
     currentScore = finalScore
   }
 

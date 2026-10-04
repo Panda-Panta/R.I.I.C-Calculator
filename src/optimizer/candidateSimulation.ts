@@ -50,7 +50,7 @@ export function simulateCandidate(job: CandidateSimulationJob): CandidateSimulat
     ] }
   }
   return {
-    completed: report.observedHours > 0,
+    completed: report.production.sample.completed && report.observedHours > 0,
     simScore: report.production.sample.completed && report.observedHours > 0
       ? scoreSimulationProduction(report).total : 0,
     diagnostics: [],

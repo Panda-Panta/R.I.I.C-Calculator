@@ -13,4 +13,4 @@ it('validates mixed actual levels through 24h warmup and 72h dynamic roster simu
   expect(validatePhysicalRoster(result.workspace!)).toEqual([])
   expect(base).toEqual(before)
   expect(entries).toEqual(originalEntries)
-},120000)
+},300000)

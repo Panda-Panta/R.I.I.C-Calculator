@@ -87,16 +87,16 @@ describe('smartDormitoryPolicy', () => {
     expect(dorm1.slots[4]?.occupant.kind).toBe('free')
   })
 
-  it('respects skill unlock stages and maximum skills when owned entries are provided', () => {
+  it('uses actually unlocked recovery skills without a maximum-skill gate', () => {
     const ws = createDefaultWorkspace()
-    // Operators not matching maximum skills (e.g. E0 Lv1) should NOT be assigned as dorm keepers
+    // Both have lower recovery versions already unlocked at E0 level 1.
     const unmaxedEntries = [
       { operator: '杜林', elitePhase: 0, level: 1 },
       { operator: '闪灵', elitePhase: 0, level: 1 },
     ]
     const unmaxedReport = applySmartDormitoryPolicy(ws, { entries: unmaxedEntries })
-    expect(unmaxedReport.dormitoryKeepers.dormitory_1?.aoe).toBeUndefined()
-    expect(unmaxedReport.dormitoryKeepers.dormitory_1?.single).toBeUndefined()
+    expect(unmaxedReport.dormitoryKeepers.dormitory_1?.aoe).toBe(id('杜林'))
+    expect(unmaxedReport.dormitoryKeepers.dormitory_1?.single).toBe(id('闪灵'))
 
     // Operators matching maximum skills (杜林 E0 Lv30, 闪灵 E2 Lv1) should be assigned
     const ws2 = createDefaultWorkspace()
@@ -108,6 +108,17 @@ describe('smartDormitoryPolicy', () => {
     expect(report.applied).toBe(true)
     expect(report.dormitoryKeepers.dormitory_1?.aoe).toBe(id('杜林'))
     expect(report.dormitoryKeepers.dormitory_1?.single).toBe(id('闪灵'))
+  })
+
+  it('keeps presence support and a locked slot when Fiammetta chooses her dorm', () => {
+    const ws = createDefaultWorkspace(), slot = ws.mainPlan.facilities.dormitory_4.slots[0]!
+    slot.occupant = { kind: 'operator', operatorId: id('伊芙利特') }; slot.groupId = '组合驻留_rhine_lab'
+    const locked = ws.mainPlan.facilities.dormitory_4.slots[2]!, before = structuredClone(locked)
+    applySmartDormitoryPolicy(ws, { entries: [{ operator: '伊芙利特', elitePhase: 0, level: 1 },
+      { operator: '菲亚梅塔', elitePhase: 0, level: 1 }], lockedPositions: new Set(['dormitory_4:2']) })
+    expect(slot.occupant).toEqual({ kind: 'operator', operatorId: id('伊芙利特') })
+    expect(ws.mainPlan.facilities.dormitory_4.slots[1]!.occupant).toEqual({ kind: 'operator', operatorId: id('菲亚梅塔') })
+    expect(locked).toEqual(before)
   })
 
   it('prevents duplicate operators when Fiammetta and Pianst already exist in dorms', () => {

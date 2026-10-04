@@ -12,7 +12,7 @@ export interface PrimaryBackupNeighbor {
   move: { kind: 'primary-backup'; positions: string[] }
 }
 
-/** Reverse complete ordinary shifts; leave named policies and virtual runners attached to their owners. */
+/** Reverse complete ordinary shifts using unlocked facility skills; preserve named policies and virtual runners. */
 export function generatePrimaryBackupNeighbors(workspace: RosterWorkspace, entries: OwnedOperatorInput[], limit = 20,
   options: { lockedPositions?: readonly string[]; protectedIds?: string[]; includeControl?: boolean; includeProduction?: boolean } = {},
 ): PrimaryBackupNeighbor[] {
@@ -46,7 +46,6 @@ export function generatePrimaryBackupNeighbors(workspace: RosterWorkspace, entri
   const owned = new Map(inventory.operators.map(o => [o.charId, o]))
   const results: PrimaryBackupNeighbor[] = []
   for (const [group, positions] of groups) {
-    const atomicGroup = positions.length > 1 && !group.includes('散件')
     if (positions.some(p => locked.has(`${p.roomId}_${p.index}`))) continue
     if (positions.some(p => {
       const type = workspace.mainPlan.facilities[p.roomId].type
@@ -60,7 +59,7 @@ export function generatePrimaryBackupNeighbors(workspace: RosterWorkspace, entri
       const backups = p.slot.replacements.map((value, index) => ({ id: resolveId(value), index })).filter(b => isOrdinaryReplacementCandidate(b.id, room.type))
       if (backups.length !== 1 || isShiftRunOperator(main) || protectedIds.has(main) || protectedIds.has(backups[0]!.id)) return []
       const backup = backups[0]!
-      if (![main, backup.id].every(id => (!atomicGroup || owned.get(id)?.matchesMaximumSkills) && owned.get(id)?.skills.some(s => s.roomType === types[room.type]))) return []
+      if (![main, backup.id].every(id => owned.get(id)?.skills.some(s => s.roomType === types[room.type]))) return []
       return [{ ...p, main, backup }]
     })
     if (edits.length !== positions.length) continue

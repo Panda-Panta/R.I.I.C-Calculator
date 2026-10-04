@@ -14,6 +14,7 @@ import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
 import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
 export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
+import { normalizeProductionShifts } from './combinationAllocation'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -124,7 +125,7 @@ function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress)
     completed++; bestScore = Math.max(bestScore, result.simScore)
     onProgress?.({ phase: 'simulating', phaseProgress: completed / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/2: 动态拟真进度 ${completed}/${total}（加权产出: ${result.simScore.toFixed(1)}）` })
+      label: `阶段 2/3: 动态拟真进度 ${completed}/${total}（加权产出: ${result.simScore.toFixed(1)}）` })
   }
 }
 
@@ -227,7 +228,7 @@ function* smartRosterSteps(
     phaseProgress: 0,
     currentTrial: 0,
     totalTrials: trials,
-    label: '阶段 1/2: 不可分割原子组合与多分支分子合成...',
+    label: '阶段 1/3: 汇总可用组合并按实际技能评估效率...',
   })
 
   const branchCount = trials
@@ -252,9 +253,9 @@ function* smartRosterSteps(
     uniqueCandidates.push({
       id: branch.id,
       workspace: branch.workspace,
-      staticScore: 0,
+      staticScore: branch.staticScore,
       simScore: null,
-      diagnostics: [],
+      diagnostics: [...branch.diagnostics],
     })
 
     onProgress?.({
@@ -262,7 +263,7 @@ function* smartRosterSteps(
       phaseProgress: (bIdx + 1) / molecularBranches.length,
       currentTrial: bIdx + 1,
       totalTrials: molecularBranches.length,
-      label: `阶段 1/2: 分子合成候选生成 ${bIdx + 1}/${molecularBranches.length} 完成`,
+      label: `阶段 2/3: 主替联合分配及再组合 ${bIdx + 1}/${molecularBranches.length} 完成`,
     })
   }
 
@@ -281,7 +282,7 @@ function* smartRosterSteps(
     phase: 'simulating',
     phaseProgress: 0,
     totalTrials: simCandidates.length,
-    label: `阶段 2/2: 全量动态拟真评估（预热 1 天 + 采样 3 天，加权产出评分）...`,
+    label: `阶段 2/3: 验证全部分配候选（预热与采样，加权产出评分）...`,
   })
 
   const cache = new CandidateSimulationCache()
@@ -347,6 +348,8 @@ function* smartRosterSteps(
 
   let finalWorkspace = structuredClone(bestSimCandidate.workspace)
   let finalScore = bestSimCandidate.simScore ?? 0
+  result.diagnostics.push(...bestSimCandidate.diagnostics.filter(message => message.includes('次完整主替评估预算') || message.includes('替班人均较高'))
+    .map(message => ({ code: message.includes('替班人均较高') ? 'PRODUCTION_SHIFT_CONSTRAINT' : 'COMBINATION_SEARCH_LIMIT', message })))
   result.specialOperators = bestSimCandidate.specialOperators ?? []
 
   // ==========================================
@@ -364,19 +367,23 @@ function* smartRosterSteps(
     lockedPositions,
     lockedOperators,
     baselineScore: finalScore,
+    // Bound simulated hours rather than wall time, preserving serial/parallel
+    // replay while avoiding many full 96-hour trials on mixed-stage inventories.
+    maxEvaluations: Math.min(12, Math.max(1, Math.floor(288 / Math.max(1,
+      (options.simulationWarmupHours ?? 24) + (options.simulationSampleHours ?? 72))))),
     configureRunOrderCandidates: true,
     evaluator: (candidateWs) => {
       try {
         const job = simulationJob(candidateWs)
         const cached = cache.get(job)
-        if (cached) return cached.simScore
+        if (cached) return cached.completed ? cached.simScore : Number.NaN
         const key = cache.key(job), summary = simulateCandidate(job)
         cache.remember(key, summary)
         if (summary.completed) return summary.simScore
       } catch {
         // simulation error
       }
-      return 0
+      return Number.NaN
     },
   })
   result.phases.replacement = {
@@ -440,8 +447,19 @@ function* smartRosterSteps(
           gain,
           result: searchResult,
         }
-        finalWorkspace = searchResult.bestWorkspace
-        finalScore += gain
+        const candidate = structuredClone(searchResult.bestWorkspace)
+        const ordering = normalizeProductionShifts(candidate, inventory, { lockedPositions, lockedOperators })
+        result.diagnostics.push(...ordering.map(message => ({ code: 'PRODUCTION_SHIFT_CONSTRAINT', message })))
+        const job = simulationJob(candidate), cached = cache.get(job)
+        const verified = cached ?? simulateCandidate(job)
+        if (!cached) cache.remember(cache.key(job), verified)
+        if (verified.completed && verified.simScore > finalScore + 1e-6) {
+          finalWorkspace = candidate
+          finalScore = verified.simScore
+        } else {
+          result.phases.search.improved = false
+          result.phases.search.gain = 0
+        }
       } else {
         result.phases.search = {
           improved: false,
@@ -476,13 +494,13 @@ function* smartRosterSteps(
   }
   const finalJob = simulationJob(finalWorkspace)
   const cachedFinal = cache.get(finalJob)
-  if (cachedFinal) {
+  if (cachedFinal?.completed) {
     finalScore = cachedFinal.simScore
     result.specialOperators = cachedFinal.specialOperators ?? []
   } else {
     const finalSimulation = runScheduleSimulationBridge(finalJob.workspace, finalJob.options, finalJob.assumptions)
     const verified = finalSimulation.report
-    if (!verified?.success || !verified.production?.success || verified.observedHours <= 0) {
+    if (!verified?.success || !verified.production?.success || !verified.production.sample.completed || verified.observedHours <= 0) {
       result.workspace = finalWorkspace
       result.diagnostics.push({ code: 'FINAL_ROSTER_SIMULATION_FAILED', message: finalSimulation.error ??
         verified?.diagnostics.map(d => d.message).join('；') ?? '最终排班模拟未完成' })

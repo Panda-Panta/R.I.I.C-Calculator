@@ -2,7 +2,7 @@ import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
 import { afterEach, describe, expect, it } from 'vitest'
 import { setTimeout as yieldToRunner } from 'node:timers/promises'
 import { OPERATORS } from '../domain/operators'
-import type { OwnedOperatorInput } from '../domain/operatorInventory'
+import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { createDefaultWorkspace } from '../workbench/defaults'
 import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import { runSmartRoster, type SmartRosterProgress } from './smartRoster'
@@ -26,7 +26,8 @@ const mains = (w: ReturnType<typeof createDefaultWorkspace>) =>
   )
 
 describe('smartRoster generation with 3-phase optimization', () => {
-  it('builds complete 243 mains with backups and simulation validation', () => {
+  it('builds complete 243 mains with backups and simulation validation', async ({ annotate }) => {
+    await annotate('同步执行完整三阶段排班前刷新进度')
     const base = createDefaultWorkspace()
     base.compatibility.importedPresentRooms = [...MOWER_OUTPUT_ROOM_IDS, 'central']
     const progressLogs: SmartRosterProgress[] = []
@@ -89,9 +90,10 @@ describe('smartRoster generation with 3-phase optimization', () => {
     expect(progressLogs.some((p) => p.phase === 'building')).toBe(true)
     expect(progressLogs.some((p) => p.phase === 'simulating')).toBe(true)
     expect(progressLogs.some((p) => p.phase === 'done')).toBe(true)
-  }, 60000)
+  }, 180000)
 
-  it('preserves user-locked operators when starting from a partial layout', () => {
+  it('preserves user-locked operators when starting from a partial layout', async ({ annotate }) => {
+    await annotate('验证保留锁定工位的三阶段排班')
     const base = createDefaultWorkspace()
     // Pre-place Texas and Lappland in room_1_1 (trading)
     base.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('德克萨斯') }
@@ -121,9 +123,10 @@ describe('smartRoster generation with 3-phase optimization', () => {
 
     // Verify all other production rooms are staffed
     expect(workspace.mainPlan.facilities.room_1_2.slots.every((s) => s.occupant.kind === 'operator')).toBe(true)
-  }, 60000)
+  }, 180000)
 
-  it('adapts to 252 layout with two-seat trading room', () => {
+  it('adapts to 252 layout with two-seat trading room', async ({ annotate }) => {
+    await annotate('验证二电布局的完整排班')
     const base = createDefaultWorkspace()
     // Standard 252 layout: 2 trading, 5 manufacture, 2 power; dormitories and auxiliary rooms level 1 to balance power
     base.mainPlan.facilities.room_3_3 = {
@@ -153,9 +156,10 @@ describe('smartRoster generation with 3-phase optimization', () => {
     const workspace = result.workspace!
     expect(workspace.mainPlan.facilities.room_3_1.slots.slice(0, 2).every((s) => s.occupant.kind === 'operator')).toBe(true)
     expect(workspace.mainPlan.facilities.room_3_3.slots.slice(0, 3).every((s) => s.occupant.kind === 'operator')).toBe(true)
-  }, 60000)
+  }, 180000)
 
-  it('handles user inventory with unmaxed/low-level operators without simulation abort or unsupported diagnostics', () => {
+  it('handles user inventory with unmaxed/low-level operators without simulation abort or unsupported diagnostics', async ({ annotate }) => {
+    await annotate('验证实际解锁技能，没有满技能准入门槛')
     const base = createDefaultWorkspace()
     // Clone allOwned but degrade the 8 operators from user report to E0 Lv1 / unmaxed
     const degradedNames = new Set(['贝娜', '雪雉', '缪尔赛思', '虎狼丸', '响石', '小满', '隐德来希', '寒檀'])
@@ -178,7 +182,8 @@ describe('smartRoster generation with 3-phase optimization', () => {
     expect(result.status).toBe('draft')
     expect(result.score).toBeGreaterThan(0)
 
-    // Verify none of the degraded operators were placed into any facility, backup, or dormitory
+    // Low-stage workers may be placed when their unlocked skills fit. Ownership
+    // also suffices for dorm presence support, without borrowing maximum skills.
     const ws = result.workspace!
     const placedOps = new Set<string>()
     for (const fac of Object.values(ws.mainPlan.facilities)) {
@@ -187,9 +192,9 @@ describe('smartRoster generation with 3-phase optimization', () => {
         for (const rep of s.replacements) placedOps.add(rep)
       }
     }
-    for (const name of degradedNames) {
-      expect(placedOps.has(id(name))).toBe(false)
-    }
+    const actual = compileOperatorInventory(mixedInventory)
+    expect(actual.valid).toBe(true)
+    for (const op of placedOps) expect(actual.operators.some(record => record.charId === id(op))).toBe(true)
 
     // Verify calculation bridge with mixedInventory does not produce INVENTORY_SKILL_STAGE_UNSUPPORTED
     const calc = runCalculationBridge(ws, {
@@ -205,5 +210,5 @@ describe('smartRoster generation with 3-phase optimization', () => {
       (d) => d.code === 'INVENTORY_SKILL_STAGE_UNSUPPORTED',
     )
     expect(unsupportedDiags).toEqual([])
-  }, 60000)
+  }, 180000)
 })

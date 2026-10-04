@@ -41,7 +41,7 @@ export function isProductionSingletonCandidate(workspace: RosterWorkspace, roomI
   const room = workspace.mainPlan.facilities[roomId]
   if (room.type !== 'manufacture' && room.type !== 'trading') return false
   const relevant = skills.filter(s => s.roomType === (room.type === 'manufacture' ? 'MANUFACTURE' : 'TRADING'))
-  const powerCount = Object.values(workspace.mainPlan.facilities).filter(r => r.type === 'power').length
+  const powerCount = Object.values(workspace.mainPlan.facilities).filter(r => r.type === 'power' && r.level > 0).length
   if (powerCount <= 2 && relevant.some(s => /^manu_prod_spd_bd\[1[01]0\]$/.test(s.buffId))) return false
   const conditional = room.type === 'manufacture'
     ? /^(manu_prod_spd_train&lv|manu_prod_spd&trade|manu_prod_cost_min|manu_prod_spd_reduce|manu_prod_spd_addition&cost|manu_skill_spd1|manu_formula_spd&bd|manu_constrLv)\[\d+\]$|^manu_prod_spd_bd\[1[01]0\]$/

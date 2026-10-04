@@ -91,6 +91,12 @@ describe('user reference singleton admission and theoretical ranking', () => {
     w.mainPlan.facilities.room_3_3.type = 'manufacture'
     expect(rankStaffingCandidates(w, inventory, { roomId: 'room_1_1', slotIndex: 0 }, [id('至简')], 'main')).toEqual([])
   })
+  it('excludes unbuilt power rooms from singleton admission', () => {
+    const w = createDefaultWorkspace()
+    w.mainPlan.facilities.room_3_3.level = 0
+    w.mainPlan.facilities.room_3_3.slots = []
+    expect(rankStaffingCandidates(w, inventory, { roomId: 'room_1_1', slotIndex: 0 }, [id('至简')], 'main')).toEqual([])
+  })
   it('admits fully upgraded three-power Minimalist without treating robot supply as unquantified output', () => {
     const w = createDefaultWorkspace()
     place(w, 'room_1_1', ['至简'])
