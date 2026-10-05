@@ -7,6 +7,15 @@ import { enumerateCombinationVariants } from './combinationEnumeration'
 const inventory = (names: string[]) => compileOperatorInventory(fullCatalogIdleInventory().filter(o => names.some(name => id(name) === o.operator)))
 
 describe('complete core and optional enumeration', () => {
+  it('enumerates only pure perception even when all former fireworks cores are owned', () => {
+    const variants = enumerateCombinationVariants(createDefaultWorkspace(), inventory(['迷迭香', '絮雨', '黑键', '乌有', '夕', '令']))
+    expect(variants.some(v => v.definitionId === 'perception_fireworks')).toBe(false)
+    const pure = variants.filter(v => v.definitionId === 'pure_perception')
+    expect(pure.length).toBeGreaterThan(0)
+    expect(pure.every(v => v.coreOperatorIds.length === 2 && v.coreOperatorIds.includes(id('迷迭香')) && v.coreOperatorIds.includes(id('絮雨')))).toBe(true)
+    expect(pure.some(v => v.optionalOperatorIds.includes(id('黑键')))).toBe(true)
+    expect(pure.every(v => !v.placements.some(p => ['乌有', '夕', '令'].some(name => p.operatorId === id(name))))).toBe(true)
+  })
   it.each([2, 3])('enumerates experience automation on %i built power stations', powerCount => {
     const base = createDefaultWorkspace()
     for (const room of Object.values(base.mainPlan.facilities)) {

@@ -3,7 +3,7 @@ import { ensureBuiltDormKeepers } from './dormKeepers'
 import { configureRunOrder } from './configureRunOrder'
 import type { MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
-import { type OperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
+import { compileOperatorInventory, type OperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
 import { isOrdinaryReplacementCandidate, isShiftRunOperator } from '../scheduler/scheduleAdapter'
 import { ATOMIC_UNITS, type AtomicMember, type AtomicUnit, type AtomicUnitConfPolicy } from './riicAtomicUnits'
 import { assignBackups, validatePhysicalRoster } from './rosterDraft'
@@ -14,11 +14,12 @@ import { normalizeProductionWeights } from '../domain/productionWeights'
 import { rankStaffingCandidates } from './staffingQuality'
 import { buildSingletonFallback } from './singletonFallback'
 import { applySingletonWorkPolicy } from './productionSingletons'
-import { availableCoreVariants, facilityCapacity } from './combinationModel'
+import { availableCoreVariants, facilityCapacity, type CombinationPool, type CombinationVariant } from './combinationModel'
 import { buildCombinationPool } from './combinationEvaluation'
-import { allocateCombinationSkeleton, appliedMainCombinations, completeShiftScore, normalizeProductionShifts, refineCombinationAllocation } from './combinationAllocation'
+import { allocateCombinationSkeleton, appliedMainCombinations, completeShiftScore, hasCompleteRestrictedProduction, normalizeProductionShifts, refineCombinationAllocation } from './combinationAllocation'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
+import { compareProductionEfficiency } from './productionEfficiencyPriority'
 
 export interface MolecularCandidate {
   id: string
@@ -49,6 +50,29 @@ export function checkAtomicAvailability(
 const skillTypes: Record<string, string> = {
   manufacture: 'MANUFACTURE', trading: 'TRADING', central: 'CONTROL', power: 'POWER',
   contact: 'HIRE', meeting: 'MEETING', factory: 'WORKSHOP', train: 'TRAINING',
+}
+
+/** Retry different production footprints in measured order when the best footprint cannot be completed. */
+export function combinationAllocationAlternatives(base: RosterWorkspace, pool: CombinationPool, definitionId: string): CombinationVariant[] {
+  const seen = new Set<string>()
+  return pool.values.filter(v => v.status === 'evaluated' && v.variant.definitionId === definitionId && hasCompleteRestrictedProduction(base, v.variant)).flatMap(value => {
+    const counts = new Map<string, number>()
+    for (const p of value.variant.placements) {
+      const room = base.mainPlan.facilities[p.roomId]
+      if (room.type === 'manufacture' || room.type === 'trading') counts.set(p.roomId, (counts.get(p.roomId) ?? 0) + 1)
+    }
+    const footprint = [...counts].map(([roomId, count]) => {
+      const room = base.mainPlan.facilities[roomId as MowerRoomId]
+      return [room.type, room.product, room.level, count]
+    }).sort()
+    const preferred = ATOMIC_UNITS.find(u => u.id === definitionId)?.preferredNonCoreMembers ?? []
+    const signature = JSON.stringify([footprint, [...value.variant.coreOperatorIds].sort(),
+      preferred.filter(n => value.variant.optionalOperatorIds.includes(resolveId(n))),
+      value.variant.placements.filter(p => base.mainPlan.facilities[p.roomId].type === 'dormitory').length])
+    if (seen.has(signature)) return []
+    seen.add(signature)
+    return [value.variant]
+  })
 }
 function finishSkeleton(source: RosterWorkspace, entries: readonly OwnedOperatorInput[], inventory: OperatorInventory, options: SynthesisOptions): RosterWorkspace | null {
   const ws = structuredClone(source)
@@ -122,32 +146,36 @@ export function generateMolecularCandidates(base: RosterWorkspace, entries: read
   const allocationOptions = { ...options, enforceRecoveryCapacity: true }
   const count = Math.max(1, options.branchCount ?? 8)
   const candidates: MolecularCandidate[] = [], seen = new Set<string>(), skeletons = new Set<string>()
-  const families = new Set(pool.values.filter(v => v.status === 'evaluated').map(v => v.variant.definitionId))
-  const attempts = Math.max(count, families.size + 1)
-  for (let branch = 0; branch < attempts && candidates.length < count; branch++) {
-    const allocation = allocateCombinationSkeleton(base, pool, branch, allocationOptions)
-    const fingerprint = JSON.stringify(allocation.workspace.mainPlan)
-    if (skeletons.has(fingerprint)) continue
-    skeletons.add(fingerprint)
-    const completed = finishSkeleton(allocation.workspace, entries, inventory, options)
-    if (!completed) continue
-    const refined = refineCombinationAllocation(completed, inventory, pool, allocationOptions)
-    const ws = finishSkeleton(refined.workspace, entries, inventory, options)
-    if (!ws) continue
-    const ordering = normalizeProductionShifts(ws, inventory, options)
-    if (!configureRunOrder(ws, inventory) || validatePhysicalRoster(ws).length) continue
-    // Group labels alone do not create another physical staffing branch.
-    const fp = JSON.stringify(Object.values(ws.mainPlan.facilities).map(room => [room.roomId,
-      room.slots.map(slot => [slot.occupant.kind === 'operator' ? resolveId(slot.occupant.operatorId) : '', slot.replacements.map(resolveId)])]))
-    if (seen.has(fp)) continue
-    seen.add(fp)
-    const appliedAtoms = appliedMainCombinations(ws, pool)
-    candidates.push({ id: `branch_${branch + 1}`, name: `组合候选 ${branch + 1}: ${appliedAtoms.map(key => ATOMIC_UNITS.find(a => a.id === key)?.name ?? key).join(' + ')}`,
-      workspace: ws, appliedAtoms, staticScore: completeShiftScore(ws, inventory) ?? 0, simScore: null,
-      diagnostics: [`已汇总并评估 ${pool.enumeratedCount} 个组合变体；主替再组合验证 ${refined.evaluated} 次`, ...pool.diagnostics,
-        ...refined.diagnostics.filter(d => !d.includes('替班人均较高')), ...ordering],
-      confPolicy: { exhaustRequire: ws.mainPlan.conf.exhaust_require, restInFull: ws.mainPlan.conf.rest_in_full, workaholic: ws.mainPlan.conf.workaholic,
-        restingPriorityHigh: ws.mainPlan.conf.ope_resting_priority, restingPriorityLow: ws.mainPlan.conf.resting_priority } })
+  const families = [...new Set(pool.values.filter(v => v.status === 'evaluated').map(v => v.variant.definitionId))]
+  const seeds: Array<Array<CombinationVariant | undefined>> = [[undefined], ...families.map(id => combinationAllocationAlternatives(base, pool, id))]
+  for (const [branch, alternatives] of seeds.entries()) {
+    if (candidates.length >= count) break
+    for (const preferred of alternatives) {
+      const allocation = allocateCombinationSkeleton(base, pool, branch, allocationOptions, preferred)
+      const fingerprint = JSON.stringify(allocation.workspace.mainPlan)
+      if (skeletons.has(fingerprint)) continue
+      skeletons.add(fingerprint)
+      const completed = finishSkeleton(allocation.workspace, entries, inventory, options)
+      if (!completed) continue
+      const refined = refineCombinationAllocation(completed, inventory, pool, allocationOptions)
+      const ws = finishSkeleton(refined.workspace, entries, inventory, options)
+      if (!ws) continue
+      const ordering = normalizeProductionShifts(ws, inventory, options)
+      if (!configureRunOrder(ws, inventory) || validatePhysicalRoster(ws).length) continue
+      // Group labels alone do not create another physical staffing branch.
+      const fp = JSON.stringify(Object.values(ws.mainPlan.facilities).map(room => [room.roomId,
+        room.slots.map(slot => [slot.occupant.kind === 'operator' ? resolveId(slot.occupant.operatorId) : '', slot.replacements.map(resolveId)])]))
+      if (seen.has(fp)) continue
+      seen.add(fp)
+      const appliedAtoms = appliedMainCombinations(ws, pool)
+      candidates.push({ id: `branch_${branch + 1}`, name: `组合候选 ${branch + 1}: ${appliedAtoms.map(key => ATOMIC_UNITS.find(a => a.id === key)?.name ?? key).join(' + ')}`,
+        workspace: ws, appliedAtoms, staticScore: completeShiftScore(ws, inventory) ?? 0, simScore: null,
+        diagnostics: [`已汇总并评估 ${pool.enumeratedCount} 个组合变体；主替再组合验证 ${refined.evaluated} 次`, ...pool.diagnostics,
+          ...refined.diagnostics.filter(d => !d.includes('替班人均较高')), ...ordering],
+        confPolicy: { exhaustRequire: ws.mainPlan.conf.exhaust_require, restInFull: ws.mainPlan.conf.rest_in_full, workaholic: ws.mainPlan.conf.workaholic,
+          restingPriorityHigh: ws.mainPlan.conf.ope_resting_priority, restingPriorityLow: ws.mainPlan.conf.resting_priority } })
+      break
+    }
   }
   if (!candidates.length) {
     const fallback = buildSingletonFallback(base, inventory, options.lockedPositions ?? new Set())
@@ -168,6 +196,8 @@ export function evaluateMolecularCandidates(candidates: MolecularCandidate[], en
   onProgress?: (index: number, total: number, bestScore: number) => void
 } = {}): MolecularCandidate[] {
   let bestScore = 0
+  const inventory = compileOperatorInventory(entries)
+  let best: MolecularCandidate | undefined
   for (const [idx, candidate] of candidates.entries()) {
     const response = runScheduleSimulationBridge(candidate.workspace, {
       warmupHours: options.warmupHours ?? 24, sampleHours: options.sampleHours ?? 72, maxStepHours: 0.25,
@@ -181,9 +211,12 @@ export function evaluateMolecularCandidates(candidates: MolecularCandidate[], en
       if (response.error) candidate.diagnostics.push(response.error)
       candidate.diagnostics.push(...(report?.diagnostics.map(d => `[${d.code}] ${d.message}`) ?? []))
     }
-    bestScore = Math.max(bestScore, candidate.simScore ?? 0)
+    if (candidate.simScore !== null && (!best || (compareWorkspacePreference(candidate.workspace, best.workspace) ||
+      compareProductionEfficiency(candidate.workspace, best.workspace, inventory) || candidate.simScore - best.simScore!) > 0)) {
+      best = candidate; bestScore = candidate.simScore
+    }
     options.onProgress?.(idx + 1, candidates.length, bestScore)
   }
   return candidates.sort((a, b) => Number(b.simScore !== null) - Number(a.simScore !== null) ||
-    compareWorkspacePreference(b.workspace, a.workspace) || (b.simScore ?? -Infinity) - (a.simScore ?? -Infinity))
+    compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiency(b.workspace, a.workspace, inventory) || (b.simScore ?? -Infinity) - (a.simScore ?? -Infinity))
 }

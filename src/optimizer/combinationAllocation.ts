@@ -5,11 +5,12 @@ import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
 import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
 import { projectRosterConfig } from './rosterProjection'
 import { projectControlOutput } from './controlImpact'
-import { productionTeamTheory } from './productionSingletons'
-import { applyCombinationVariant, physicalBackupOperatorIds, shiftSnapshot, type CombinationPlacement, type CombinationPool, type CombinationVariant, type RosterRole } from './combinationModel'
+import { productionTeamTheory, productionWorkspaceHourlyScore } from './productionSingletons'
+import { applyCombinationVariant, facilityCapacity, physicalBackupOperatorIds, shiftSnapshot, type CombinationPlacement, type CombinationPool, type CombinationVariant, type RosterRole } from './combinationModel'
 import { ATOMIC_UNITS, type AtomicUnitConfPolicy } from './riicAtomicUnits'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
+import { preservesFormedCombinations } from './combinationIntegrity'
 
 export interface AllocationLocks {
   lockedPositions?: ReadonlySet<string>; lockedOperators?: ReadonlySet<string>
@@ -92,13 +93,31 @@ function remapFree(ws: RosterWorkspace, original: CombinationVariant, role: Rost
   return { ...original, id: `${original.id}:${role}`, placements }
 }
 
+/** Suppression teams cannot complete vacant seats with ordinary zero-efficiency fillers.
+ * Partial cores remain in the evaluated pool; allocation uses their fully enumerated
+ * legal crew for the chosen facility capacity.
+ */
+export function hasCompleteRestrictedProduction(base: RosterWorkspace, variant: CombinationVariant): boolean {
+  const atom = ATOMIC_UNITS.find(unit => unit.id === variant.definitionId)
+  if (!atom?.thirdMemberWhitelist) return true
+  const roomIds = new Set(variant.placements.filter(p => base.mainPlan.facilities[p.roomId].type === 'manufacture').map(p => p.roomId))
+  return [...roomIds].every(roomId => {
+    const room = base.mainPlan.facilities[roomId]
+    const crew = new Set([...room.slots.flatMap(s => s.occupant.kind === 'operator' ? [id(s.occupant.operatorId)] : []),
+      ...variant.placements.filter(p => p.roomId === roomId).map(p => p.operatorId)])
+    return crew.size === facilityCapacity(room.type, room.level) && [...crew].every(operator =>
+      variant.coreOperatorIds.includes(operator) || atom.thirdMemberWhitelist!.some(name => id(name) === operator))
+  })
+}
+
 /** First branch follows measured ranking; later branches explore complete alternative cores. */
-export function allocateCombinationSkeleton(base: RosterWorkspace, pool: CombinationPool, branch: number, locks: AllocationLocks = {}): CombinationAllocation {
+export function allocateCombinationSkeleton(base: RosterWorkspace, pool: CombinationPool, branch: number, locks: AllocationLocks = {}, preferredVariant?: CombinationVariant): CombinationAllocation {
   let workspace = structuredClone(base)
   const variants: CombinationVariant[] = []
-  const usable = pool.values.filter(v => v.status === 'evaluated')
+  const usable = pool.values.filter(v => v.status === 'evaluated' && hasCompleteRestrictedProduction(base, v.variant))
   const families = [...new Map(usable.map(v => [v.variant.definitionId, v.variant.definitionId])).keys()]
-  const forced = branch > 0 ? usable.find(v => v.variant.definitionId === families[(branch - 1) % Math.max(1, families.length)]) : undefined
+  const forced = preferredVariant ? usable.find(v => v.variant.id === preferredVariant.id) :
+    branch > 0 ? usable.find(v => v.variant.definitionId === families[(branch - 1) % Math.max(1, families.length)]) : undefined
   const ranked = forced ? [forced, ...usable.filter(v => v !== forced)] : usable
   for (const role of ['main', 'backup'] as const) for (const value of ranked) {
     const variant = remapFree(workspace, value.variant, role, locks)
@@ -188,8 +207,58 @@ export function regroupCombination(ws: RosterWorkspace, inventory: OperatorInven
   return draft
 }
 
+/** Swap the complete physical shift footprint, including linked support and refresh references. */
+function swapProductionShift(ws: RosterWorkspace, inventory: OperatorInventory, roomId: CombinationPlacement['roomId'], locks: AllocationLocks): { workspace?: RosterWorkspace; reason?: string } {
+  const room = ws.mainPlan.facilities[roomId], groups = new Set(room.slots.map(s => s.groupId).filter(Boolean))
+  const positions: CombinationPlacement[] = []
+  for (const other of Object.values(ws.mainPlan.facilities)) if (other.type !== 'dormitory') other.slots.forEach((slot, slotIndex) => {
+    if (other.roomId === room.roomId || slot.groupId && groups.has(slot.groupId)) positions.push({ roomId: other.roomId, slotIndex, role: 'main', operatorId: '' })
+  })
+  if (positions.some(p => locks.lockedPositions?.has(key(p)) || [actor(ws, p), actor(ws, { ...p, role: 'backup' })].some(op => op && locks.lockedOperators?.has(id(op))))) return { reason: '用户锁定阻止整组互换' }
+  const draft = structuredClone(ws), swapped = new Map<string, string>()
+  for (const p of positions) {
+    const a = actor(draft, p), b = actor(draft, { ...p, role: 'backup' })
+    if (a && draft.mainPlan.conf.workaholic.some(ref => id(ref) === id(a))) continue
+    if (!a || !b || !canMove(draft, inventory, a, { ...p, role: 'backup' }, draft.mainPlan.facilities[p.roomId].type)) return { reason: '主替人数或常驻人员约束阻止整组互换' }
+    put(draft, p, b); put(draft, { ...p, role: 'backup' }, a); swapped.set(id(a), id(b))
+  }
+  for (const dorm of Object.values(draft.mainPlan.facilities).filter(r => r.type === 'dormitory')) for (const slot of dorm.slots) {
+    if (slot.occupant.kind === 'operator' && id(slot.occupant.operatorId) === id('菲亚梅塔')) slot.replacements = slot.replacements.map(ref => swapped.get(id(ref)) ?? ref)
+  }
+  if (!preservesLocks(ws, draft, locks)) return { reason: '用户锁定的特殊换班目标阻止互换' }
+  if (!preservesFormedCombinations(ws, draft, inventory)) return { reason: '互换会拆开已成型的核心组合' }
+  return { workspace: draft }
+}
+
+/** A linked trade/manufacture unit is one choice: compare its whole hourly output, not isolated components. */
+function normalizeProductionOutputShifts(ws: RosterWorkspace, inventory: OperatorInventory, locks: AllocationLocks): string[] {
+  const rooms = Object.values(ws.mainPlan.facilities).filter(r => ['manufacture', 'trading'].includes(r.type) && r.level > 0)
+  const reasons = new Map<string, string>()
+  for (let pass = 0; pass < Math.max(1, rooms.length * 2); pass++) {
+    const current = productionWorkspaceHourlyScore(ws, inventory)
+    if (current === undefined) return ['完整联动组的每小时产出未能量化，保留已验证排班']
+    let best: RosterWorkspace | undefined, bestScore = current
+    for (const room of rooms) {
+      const swap = swapProductionShift(ws, inventory, room.roomId, locks)
+      if (!swap.workspace) { reasons.set(room.roomId, swap.reason!); continue }
+      const score = productionWorkspaceHourlyScore(swap.workspace, inventory)
+      if (score !== undefined && score > bestScore + 1e-7) { best = swap.workspace; bestScore = score }
+    }
+    if (!best) break
+    Object.assign(ws, best)
+  }
+  const current = productionWorkspaceHourlyScore(ws, inventory)
+  if (current === undefined) return ['完整联动组的每小时产出未能量化，保留已验证排班']
+  return rooms.flatMap(room => {
+    const alternate = productionWorkspaceHourlyScore(shiftSnapshot(ws, 'backup', room.roomId), inventory)
+    return alternate !== undefined && alternate > current + 1e-7
+      ? [`${room.roomId} 所在完整联动组替班每小时加权产出较高，${reasons.get(room.roomId) ?? '排序搜索达到有限预算，保留已验证排班'}`] : []
+  })
+}
+
 /** Every swap preserves the cross-room group; higher complete production teams enter main. */
-export function normalizeProductionShifts(ws: RosterWorkspace, inventory: OperatorInventory, locks: AllocationLocks = {}): string[] {
+export function normalizeProductionShifts(ws: RosterWorkspace, inventory: OperatorInventory, locks: AllocationLocks = {}, comparison: 'per-capita' | 'hourly-output' = 'per-capita'): string[] {
+  if (comparison === 'hourly-output') return normalizeProductionOutputShifts(ws, inventory, locks)
   const rooms = Object.values(ws.mainPlan.facilities).filter(r => ['manufacture', 'trading'].includes(r.type) && r.level > 0)
   const values = (draft: RosterWorkspace) => rooms.map(room => {
     const mainRoom = draft.mainPlan.facilities[room.roomId], backup = shiftSnapshot(draft, 'backup', room.roomId)

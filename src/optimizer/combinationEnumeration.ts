@@ -16,11 +16,11 @@ function subsets<T>(items: readonly T[], maximum = items.length): T[][] {
 }
 
 interface AssignmentGroup { key: string; members: AtomicMember[]; distinct?: boolean }
-function groupsFor(atom: AtomicUnit, core: AtomicMember[], optional: AtomicMember[]): AssignmentGroup[] {
+export function combinationAssignmentGroups(atom: AtomicUnit, core: AtomicMember[], optional: AtomicMember[]): AssignmentGroup[] {
   const groups = new Map<string, AssignmentGroup>()
   for (const [index, member] of [...core, ...optional].entries()) {
     const hunters = atom.id === 'abyssal_hunters' && member.roomType === 'manufacture' && index < core.length
-    const separate = member.roomType === 'power' || atom.id === 'perception_fireworks' && member.roomType === 'trading'
+    const separate = member.roomType === 'power'
     const key = hunters ? `hunter:${Math.floor(core.filter(m => m.roomType === 'manufacture').findIndex(m => m.name === member.name) / 2)}` :
       separate ? `${member.roomType}:${member.name}` : member.roomType
     const group = groups.get(key) ?? { key, members: [], distinct: hunters || separate }
@@ -80,7 +80,7 @@ export function enumerateCombinationVariants(base: RosterWorkspace, inventory: O
             presenceSets = subsets(pool, Math.max(0, boost.maximumUsefulCount - presentCount))
           }
           for (const presence of presenceSets) {
-            const assignments = groupsFor(atom, core, enhanced)
+            const assignments = combinationAssignmentGroups(atom, core, enhanced)
             const placed: CombinationPlacement[] = []
             const usedRooms = new Map<string, MowerRoomId>()
             const occupiedPositions = new Set<string>()

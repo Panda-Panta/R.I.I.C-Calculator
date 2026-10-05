@@ -1,5 +1,5 @@
 import { mainPlanOnly } from './mainPlanOnly'
-import { runOrderInventoryDiagnostics } from './configureRunOrder'
+import { configureRunOrder, runOrderInventoryDiagnostics } from './configureRunOrder'
 import type { RosterWorkspace } from '../workbench/model'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { compileOperatorInventory, type OwnedOperatorInput } from '../domain/operatorInventory'
@@ -11,6 +11,7 @@ import { rosterIncomeSearchSteps, type IncomeSearchResult } from './rosterIncome
 import { validatePhysicalRoster } from './rosterDraft'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
+import { preservesFormedCombinations } from './combinationIntegrity'
 import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
 export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
@@ -20,6 +21,7 @@ import { simulationReportToCalculationReport } from '../workbench/calculationBri
 import { applyGeneratedRecoveryPolicy } from './generatedRecoveryPolicy'
 import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
+import { compareProductionEfficiency, compareProductionEfficiencyVectors, productionEfficiencyVector } from './productionEfficiencyPriority'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -126,7 +128,7 @@ export function runSmartRoster(
   return step.value
 }
 
-function simulationProgress(workspaces: readonly RosterWorkspace[], onProgress?: (p: SmartRosterProgress) => void) {
+function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies: readonly number[][], onProgress?: (p: SmartRosterProgress) => void) {
   const total = workspaces.length
   let completed = 0, bestScore: number | undefined, bestIndex: number | undefined
   const fractions = new Map<number, number>()
@@ -134,7 +136,8 @@ function simulationProgress(workspaces: readonly RosterWorkspace[], onProgress?:
     completed++
     fractions.set(index, 1)
     if (result.completed) {
-      const preference = bestIndex === undefined ? 1 : compareWorkspacePreference(workspaces[index]!, workspaces[bestIndex]!)
+      const preference = bestIndex === undefined ? 1 : compareWorkspacePreference(workspaces[index]!, workspaces[bestIndex]!) ||
+        compareProductionEfficiencyVectors(efficiencies[index]!, efficiencies[bestIndex]!)
       if (preference > 0 || preference === 0 && result.simScore > bestScore!) { bestScore = result.simScore; bestIndex = index }
     }
     onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
@@ -337,7 +340,9 @@ function* smartRosterSteps(
   // Capture keys before dispatch; later policy/placement changes must not turn
   // a report of the original input into a report of the modified workspace.
   const inputKeys = jobs.map(job => cache.key(job))
-  const simulationResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), onProgress) }
+  const efficiencies = jobs.map(job => productionEfficiencyVector(job.workspace, inventory))
+  const efficiencyById = new Map(simCandidates.map((candidate, index) => [candidate.id, efficiencies[index]!]))
+  const simulationResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, onProgress) }
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!
@@ -350,7 +355,7 @@ function* smartRosterSteps(
 
   const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed ? [uniqueCandidates[index]!.id] : []))
   simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
-    compareWorkspacePreference(b.workspace, a.workspace) || (b.simScore ?? 0) - (a.simScore ?? 0))
+    compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!) || (b.simScore ?? 0) - (a.simScore ?? 0))
   const bestSimCandidate = simCandidates[0]!
   result.phases.static = {
     candidates: simCandidates,
@@ -375,9 +380,22 @@ function* smartRosterSteps(
 
   let finalWorkspace = structuredClone(bestSimCandidate.workspace)
   let finalScore = bestSimCandidate.simScore ?? 0
-  result.diagnostics.push(...bestSimCandidate.diagnostics.filter(message => message.includes('次完整主替评估预算') || message.includes('替班人均较高'))
-    .map(message => ({ code: message.includes('替班人均较高') ? 'PRODUCTION_SHIFT_CONSTRAINT' : 'COMBINATION_SEARCH_LIMIT', message })))
+  result.diagnostics.push(...bestSimCandidate.diagnostics.filter(message => message.includes('次完整主替评估预算'))
+    .map(message => ({ code: 'COMBINATION_SEARCH_LIMIT', message })))
   result.specialOperators = bestSimCandidate.specialOperators ?? []
+
+  // First calculate income, then order complete physical shifts by output/hour.
+  // A changed workspace must receive its own simulation result before export.
+  onProgress?.({ phase: 'searching', phaseProgress: 0.05, label: '阶段 3/3: 首次收益计算后，按每小时产出验证主替排序...' })
+  const ordered = structuredClone(finalWorkspace)
+  const ordering = normalizeProductionShifts(ordered, inventory, { lockedPositions, lockedOperators }, 'hourly-output')
+  result.diagnostics.push(...ordering.map(message => ({ code: 'PRODUCTION_SHIFT_CONSTRAINT', message })))
+  if (JSON.stringify(ordered) !== JSON.stringify(finalWorkspace) && preservesFormedCombinations(finalWorkspace, ordered, inventory) && configureRunOrder(ordered, inventory)) {
+    const job = simulationJob(ordered), cached = cache.get(job), verified = cached ?? simulateCandidate(job)
+    if (!cached) cache.remember(cache.key(job), verified)
+    if (verified.completed) { finalWorkspace = ordered; finalScore = verified.simScore }
+    else result.diagnostics.push({ code: 'SHIFT_ORDERING_UNVERIFIED', message: '主替排序后的完整模拟未完成，保留首次收益已验证的排班。' })
+  }
 
   // ==========================================
   // Phase 3: Global Per-Capita Replacement & Balance (Rule 6)
@@ -402,7 +420,7 @@ function* smartRosterSteps(
     maxEvaluations: replacementBudget,
     configureRunOrderCandidates: true,
     evaluator: (candidateWs) => {
-      if (compareWorkspacePreference(candidateWs, finalWorkspace) < 0) return Number.NaN
+      if (compareWorkspacePreference(candidateWs, finalWorkspace) < 0 || compareProductionEfficiency(candidateWs, finalWorkspace, inventory) < 0 || !preservesFormedCombinations(finalWorkspace, candidateWs, inventory)) return Number.NaN
       try {
         const job = simulationJob(candidateWs)
         const cached = cache.get(job)
@@ -425,7 +443,7 @@ function* smartRosterSteps(
   }
 
   if (repResult.swappedCount > 0 && repResult.score && repResult.score > finalScore &&
-    compareWorkspacePreference(repResult.workspace, finalWorkspace) >= 0) {
+    compareWorkspacePreference(repResult.workspace, finalWorkspace) >= 0 && compareProductionEfficiency(repResult.workspace, finalWorkspace, inventory) >= 0 && preservesFormedCombinations(finalWorkspace, repResult.workspace, inventory)) {
     finalWorkspace = repResult.workspace
     finalScore = repResult.score
   }
@@ -472,7 +490,7 @@ function* smartRosterSteps(
             label: `阶段 3/3: 邻域微调 ${progress.label} (候选 ${progress.completedCandidates}/${progress.totalCandidates}，场景 ${progress.completedScenarios}/${progress.totalScenarios})`,
           })
         },
-        candidate => compareWorkspacePreference(candidate, finalWorkspace) >= 0
+        candidate => compareWorkspacePreference(candidate, finalWorkspace) >= 0 && compareProductionEfficiency(candidate, finalWorkspace, inventory) >= 0 && preservesFormedCombinations(finalWorkspace, candidate, inventory)
       )
 
       if (searchResult.bestCandidateId && searchResult.bestCandidateId !== 'baseline' && searchResult.bestWorkspace) {
@@ -483,12 +501,12 @@ function* smartRosterSteps(
           result: searchResult,
         }
         const candidate = structuredClone(searchResult.bestWorkspace)
-        const ordering = normalizeProductionShifts(candidate, inventory, { lockedPositions, lockedOperators })
+        const ordering = normalizeProductionShifts(candidate, inventory, { lockedPositions, lockedOperators }, 'hourly-output')
         result.diagnostics.push(...ordering.map(message => ({ code: 'PRODUCTION_SHIFT_CONSTRAINT', message })))
         const job = simulationJob(candidate), cached = cache.get(job)
         const verified = cached ?? simulateCandidate(job)
         if (!cached) cache.remember(cache.key(job), verified)
-        if (verified.completed && verified.simScore > finalScore + 1e-6 && compareWorkspacePreference(candidate, finalWorkspace) >= 0) {
+        if (verified.completed && verified.simScore > finalScore + 1e-6 && compareWorkspacePreference(candidate, finalWorkspace) >= 0 && compareProductionEfficiency(candidate, finalWorkspace, inventory) >= 0 && preservesFormedCombinations(finalWorkspace, candidate, inventory)) {
           finalWorkspace = candidate
           finalScore = verified.simScore
         } else {

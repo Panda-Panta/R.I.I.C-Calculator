@@ -6,6 +6,7 @@ import { evaluateOperators } from '../engine/operatorRules'
 import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJson'
 import { MOWER_OUTPUT_ROOM_IDS, type MowerRoomId, type RosterWorkspace } from '../workbench/model'
 import { projectRosterConfig } from './rosterProjection'
+import { projectControlOutput } from './controlImpact'
 
 /** Reference members for the combination catalog, not singleton admission or ranking.
  * User reference: 常用组合.md; 血猎 was explicitly corrected to 雪猎.
@@ -88,6 +89,25 @@ export function productionTeamTheory(workspace: RosterWorkspace, inventory: Oper
   const result = evaluateOperators(room, config)
   if (result.unquantifiedSkills.length || !Number.isFinite(result.efficiencyPercent)) return undefined
   return result.efficiencyPercent - 100 - result.staffBonus
+}
+
+/** Expected output per hour of a complete physical shift, with actual recipes and order rules. */
+export function productionTeamHourlyOutput(workspace: RosterWorkspace, inventory: OperatorInventory, roomId: MowerRoomId): number | undefined {
+  const config = projectRosterConfig(workspace)
+  config.operatorRecords = inventoryOperatorRecords(inventory)
+  const room = projectControlOutput(config).rooms.find(r => r.roomId === productionRoomId(roomId))
+  if (!room || room.diagnostics.length) return undefined
+  const daily = room.type === 'trading' ? (room.daily.orundum ?? room.daily.orderFaceValue) :
+    (room.daily.fragments ?? (workspace.mainPlan.facilities[roomId].product === 'exp' ? room.daily.exp / 1000 : room.daily.goldValue / 500))
+  return Number.isFinite(daily) ? daily / 24 : undefined
+}
+
+/** Compare a linked shift in its full-base context; unlike recipes use the configured output weights. */
+export function productionWorkspaceHourlyScore(workspace: RosterWorkspace, inventory: OperatorInventory): number | undefined {
+  const config = projectRosterConfig(workspace)
+  config.operatorRecords = inventoryOperatorRecords(inventory)
+  const output = projectControlOutput(config)
+  return output.complete && Number.isFinite(output.daily.score) ? output.daily.score / 24 : undefined
 }
 
 /** An ordinary singleton must not inherit another team's shared rest trigger. */

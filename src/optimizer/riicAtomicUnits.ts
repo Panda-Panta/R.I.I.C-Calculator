@@ -317,30 +317,6 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 12. 感知+人间烟火体系：五人核心，黑键有则优先。
-  {
-    id: 'perception_fireworks',
-    name: '感知+人间烟火双核体系',
-    description: '迷迭香制造、絮雨办公室、乌有贸易、夕与令中枢为核心。黑键可选且有则优先，使用时与乌有分驻两个贸易站；爱丽丝与车尔尼为宿舍支持。',
-    preferredFacilityType: 'trading',
-    perCapitaOutput: 36,
-    allocationPriority: 1,
-    preferredNonCoreMembers: ['黑键'],
-    coreMembers: [
-      { name: '迷迭香', roomType: 'manufacture' },
-      { name: '絮雨', roomType: 'office' },
-      { name: '乌有', roomType: 'trading' },
-      { name: '夕', roomType: 'central' },
-      { name: '令', roomType: 'central' },
-    ],
-    nonCoreMembers: [
-      { name: '黑键', roomType: 'trading' },
-      { name: '桑葚', roomType: 'office' },
-      { name: '爱丽丝', roomType: 'dormitory' },
-      { name: '车尔尼', roomType: 'dormitory' },
-    ],
-  },
-
   // 13. 鸿雪4杜林体系 (2贸易核心+4杜林强制)
   {
     id: 'pozemka_durin',

@@ -183,4 +183,20 @@ describe('combination-first main and backup allocation', () => {
     expect(productionTeamTheory(ws, inventory, 'room_1_1')).toBe(110)
     expect(ws.mainPlan.facilities.room_1_1.slots[1]!.replacements).toContain(id('赫默'))
   })
+
+  it('compares the complete linked unit hourly output when its trading and factory preferences disagree', () => {
+    const ws = layout('manufacture', 3), manufacture = ws.mainPlan.facilities.room_1_1
+    manufacture.product = 'exp'
+    ;['酒神', '裂响', '机械师'].forEach((name, i) => {
+      manufacture.slots[i]!.occupant = { kind: 'operator', operatorId: id(name) }
+      manufacture.slots[i]!.replacements = [id(['香草', '杰西卡', '克洛丝'][i]!)]; manufacture.slots[i]!.groupId = 'linked'
+    })
+    ws.mainPlan.facilities.room_1_2 = { roomId: 'room_1_2', type: 'trading', level: 1, product: 'money',
+      slots: [{ occupant: { kind: 'operator', operatorId: id('梓兰') }, replacements: [id('能天使')], groupId: 'linked' }] }
+    const inventory = compileOperatorInventory(entries(['酒神', '裂响', '机械师', '香草', '杰西卡', '克洛丝', '梓兰', '能天使']))
+    expect(productionTeamTheory(shiftSnapshot(ws, 'backup', 'room_1_2'), inventory, 'room_1_2')!).toBeGreaterThan(productionTeamTheory(ws, inventory, 'room_1_2')!)
+    const before = structuredClone(ws)
+    expect(normalizeProductionShifts(ws, inventory, {}, 'hourly-output')).toEqual([])
+    expect(ws).toEqual(before)
+  })
 })

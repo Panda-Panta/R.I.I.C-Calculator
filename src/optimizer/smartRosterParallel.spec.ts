@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDefaultWorkspace } from '../workbench/defaults'
 import { runSmartRoster, runSmartRosterParallel, type SmartRosterProgress } from './smartRoster'
 import { simulateCandidate } from './candidateSimulation'
+import * as simulation from './candidateSimulation'
 import * as synthesis from './molecularSynthesis'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as replacement from './globalPerCapitaReplacement'
@@ -12,8 +13,87 @@ import { getMowerSourceRuntime } from '../scheduler/mowerSourceRuntime'
 import { planMowerMetadata } from '../scheduler/mowerMetadata'
 import { MowerTaskQueue, MOWER_TASK_TYPES as T, toMowerMicros } from '../scheduler/mowerTaskQueue'
 import { resolveOperatorCharId as id } from '../workbench/compat/mowerJson'
+import { productionTeamHourlyOutput } from './productionSingletons'
+import { compileOperatorInventory, fullCatalogIdleInventory } from '../domain/operatorInventory'
 
 afterEach(() => vi.restoreAllMocks())
+
+it('retains higher production per-capita automation when another verified candidate has higher daily income', async () => {
+  const base = createDefaultWorkspace()
+  for (const room of Object.values(base.mainPlan.facilities)) if (!['room_1_1', 'room_1_2', 'room_1_3', 'room_2_3', 'room_3_1', 'central', 'dormitory_1'].includes(room.roomId)) { room.level = 0; room.slots = [] }
+  base.mainPlan.facilities.room_1_2.type = 'trading'; base.mainPlan.facilities.room_1_2.product = 'money'; base.mainPlan.facilities.room_1_2.level = 1; base.mainPlan.facilities.room_1_2.slots.length = 1
+  base.mainPlan.facilities.dormitory_1.level = 1
+  base.mainPlan.facilities.room_3_3.level = 0; base.mainPlan.facilities.room_3_3.slots = []
+  base.mainPlan.facilities.room_1_1.level = 2; base.mainPlan.facilities.room_1_1.slots.length = 2
+  const build = (names: string[]) => {
+    const ws = structuredClone(base)
+    names.forEach((name, i) => { ws.mainPlan.facilities.room_1_1.slots[i]!.occupant = { kind: 'operator', operatorId: id(name) } })
+    ws.mainPlan.facilities.central.slots[0]!.occupant = { kind: 'operator', operatorId: id('森蚺') }
+    ws.mainPlan.facilities.room_1_3.slots[0]!.occupant = { kind: 'operator', operatorId: id('Lancet-2') }
+    ws.mainPlan.facilities.room_2_3.slots[0]!.occupant = { kind: 'operator', operatorId: id('承曦格雷伊') }
+    ws.mainPlan.conf.workaholic = [...names, '森蚺', 'Lancet-2', '承曦格雷伊'].map(id)
+    return ws
+  }
+  const weak = build(['苍苔', '砾']), strong = build(['温蒂', '清流'])
+  const names = ['苍苔', '砾', '温蒂', '清流', '森蚺', 'Lancet-2', '承曦格雷伊']
+  const owned = fullCatalogIdleInventory().filter(o => names.some(n => o.operator === id(n)))
+  vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([weak, strong].map((workspace, i) => ({
+    id: `efficiency-${i}`, name: 'efficiency', workspace, diagnostics: [], appliedAtoms: [], staticScore: 0, simScore: null, confPolicy: {},
+  })))
+  vi.spyOn(replacement, 'runGlobalPerCapitaReplacement').mockImplementation((ws, _inventory, opts) => ({
+    workspace: ws, score: opts!.baselineScore, swappedCount: 0, logs: [],
+  }))
+  const progress: SmartRosterProgress[] = []
+  const result = await runSmartRosterParallel(base, owned, options, async (jobs, done) => jobs.map((_job, i) => {
+    const summary = { completed: true, simScore: i ? 100 : 10000, diagnostics: [] }; done(summary, i); return summary
+  }), p => progress.push(p))
+  expect(result.status, JSON.stringify(result.diagnostics)).toBe('draft')
+  expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('温蒂') })
+  expect(result.score).toBe(100)
+  const simulations = progress.filter(p => p.phase === 'simulating')
+  expect(simulations[simulations.length - 1]!.bestScore).toBe(100)
+})
+
+it('orders complete shifts after their first income run and exports the newly verified score', async () => {
+  const base = createDefaultWorkspace()
+  for (const room of Object.values(base.mainPlan.facilities)) {
+    if (!['room_1_1', 'room_1_3', 'dormitory_1'].includes(room.roomId)) { room.level = 0; room.slots = [] }
+  }
+  base.mainPlan.facilities.room_1_1.level = 1
+  base.mainPlan.facilities.room_1_1.product = 'gold'
+  base.mainPlan.facilities.room_1_1.slots = [{ occupant: { kind: 'empty' }, groupId: null, replacements: [] }]
+  base.mainPlan.facilities.room_1_3.slots = [{ occupant: { kind: 'operator', operatorId: id('Lancet-2') }, groupId: null, replacements: [] }]
+  base.mainPlan.conf.workaholic = [id('Lancet-2')]
+  base.mainPlan.facilities.dormitory_1.slots = Array.from({ length: 5 }, () => ({ occupant: { kind: 'free' }, groupId: null, replacements: [] }))
+  base.mainPlan.facilities.dormitory_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('杜林') }
+  const workspace = structuredClone(base), slot = workspace.mainPlan.facilities.room_1_1.slots[0]!
+  slot.occupant = { kind: 'operator', operatorId: id('芬') }; slot.replacements = [id('砾')]
+  const owned = [{ operator: '芬', elitePhase: 0, level: 1 }, { operator: '砾', elitePhase: 1, level: 60 },
+    { operator: 'Lancet-2', elitePhase: 0, level: 30 }, { operator: '杜林', elitePhase: 0, level: 30 }]
+  const inventory = compileOperatorInventory(owned)
+  vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([{ id: 'ordering', name: 'ordering', workspace,
+    diagnostics: [], appliedAtoms: [], staticScore: 0, simScore: null, confPolicy: {} }])
+  vi.spyOn(replacement, 'runGlobalPerCapitaReplacement').mockImplementation((ws, _inventory, opts) => ({
+    workspace: ws, score: opts!.baselineScore, swappedCount: 0, logs: [],
+  }))
+  const verify = vi.spyOn(simulation, 'simulateCandidate').mockImplementation(job => {
+    expect(job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('砾') })
+    return { completed: true, simScore: 200, diagnostics: [] }
+  })
+  const runOptions = { ...options, branchCount: 1, simulationSampleHours: 4, droneTarget: 'none' as const }
+  const result = await runSmartRosterParallel(base, owned, runOptions, async (jobs, done) => jobs.map((job, i) => {
+    // The initial candidate must run before its lower-output main is exchanged.
+    expect(job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('芬') })
+    const summary = { completed: true, simScore: 100, diagnostics: [] }
+    done(summary, i); return summary
+  }))
+  expect(result.status, JSON.stringify(result.diagnostics)).toBe('draft')
+  expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('砾') })
+  expect(productionTeamHourlyOutput(result.workspace!, inventory, 'room_1_1')!).toBeGreaterThan(productionTeamHourlyOutput(workspace, inventory, 'room_1_1')!)
+  expect(verify).toHaveBeenCalledTimes(1)
+  expect(result.phases.simulation!.bestScore).toBe(100)
+  expect(result.score).toBe(200)
+})
 const entries = [{ operator: '砾', elitePhase: 1, level: 60 }, { operator: '芬', elitePhase: 1, level: 55 }]
 const options = { branchCount: 2, simulationWarmupHours: 0, simulationSampleHours: 1, enableDeepSearch: false, seed: 42 }
 function baseWorkspace() {

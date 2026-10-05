@@ -15,6 +15,8 @@ import { applySingletonWorkPolicy, productionColleagueBonus, productionTeamTheor
 import { getRoomDisplayName } from '../workbench/operatorHelpers'
 import { availableCoreVariants } from './combinationModel'
 import { completeShiftScore, normalizeProductionShifts, regroupCombination } from './combinationAllocation'
+import { formedCombinationCoreIds, preservesFormedCombinations } from './combinationIntegrity'
+import { compareProductionEfficiency } from './productionEfficiencyPriority'
 
 export interface ReplacementResult {
   workspace: RosterWorkspace
@@ -189,6 +191,7 @@ export function runGlobalPerCapitaReplacement(
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let changed = false
+    const protectedCombinationOperators = formedCombinationCoreIds(ws, inventory)
 
     const occupied = new Set<string>()
     for (const fac of Object.values(ws.mainPlan.facilities)) {
@@ -244,12 +247,12 @@ export function runGlobalPerCapitaReplacement(
         const targetOps = currentOps.filter((_, index) => mask & (1 << index))
         const slotIndices = targetOps.map(op => op.slotIdx)
         const targetIds = new Set(targetOps.map(op => op.id))
-        if (targetOps.some(op => lockedPositions.has(`${room.roomId}:${op.slotIdx}`) || lockedOperators.has(op.id))) continue
+        if (targetOps.some(op => lockedPositions.has(`${room.roomId}:${op.slotIdx}`) || lockedOperators.has(op.id) || protectedCombinationOperators.has(op.id))) continue
         if (targetOps.length > 1 && targetOps.some(op => op.groupId && !op.groupId.includes('散件') &&
           Object.values(ws.mainPlan.facilities).some(f => f.slots.some(slot => slot.groupId === op.groupId &&
             slot.occupant.kind === 'operator' && !targetIds.has(resolveId(slot.occupant.operatorId)))))) continue
         const K = targetOps.length
-        const availableOperator = (id: string) => !lockedOperators.has(id) && (!occupied.has(id) || targetIds.has(id))
+        const availableOperator = (id: string) => !lockedOperators.has(id) && !protectedCombinationOperators.has(id) && (!occupied.has(id) || targetIds.has(id))
         const available = (name: string) => ownedNames.has(name) && availableOperator(resolveId(name))
 
         const candidates: { unit: AtomicUnit; independent: boolean }[] = ATOMIC_UNITS.flatMap(unit => availableCoreVariants(unit, inventory, powerCount, product === 'exp' ? 'exp' : 'gold').flatMap(adapted => {
@@ -267,7 +270,7 @@ export function runGlobalPerCapitaReplacement(
 
         // The strongest unused singletons enter before simulation budgets are spent.
         // A small frontier also admits alternative bundles when their best members are scarce backups.
-        const unused = inventory.operators.filter(o => (K === 1 ? !lockedOperators.has(o.charId) : availableOperator(o.charId)) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
+        const unused = inventory.operators.filter(o => !protectedCombinationOperators.has(o.charId) && (K === 1 ? !lockedOperators.has(o.charId) : availableOperator(o.charId)) && !isShiftRunOperator(o.charId) && o.name !== '菲亚梅塔' &&
           (!options.configureRunOrderCandidates || room.type !== 'trading' || o.name !== '佩佩'))
         const singletonPreview = structuredClone(ws)
         for (const index of slotIndices) {
@@ -305,7 +308,7 @@ export function runGlobalPerCapitaReplacement(
           const preview = K === 1 ? regroupCombination(ws, inventory, {
             id: cand.id, definitionId: 'singleton', name: cand.name, coreOperatorIds: cand.coreMembers.map(m => resolveId(m.name)), optionalOperatorIds: [], policy: cand.confPolicy ?? {},
             placements: [{ roomId: room.roomId, slotIndex: slotIndices[0]!, operatorId: resolveId(cand.coreMembers[0]!.name), role: 'main' }],
-          }, 'main', { lockedPositions, lockedOperators }) : structuredClone(ws)
+          }, 'main', { lockedPositions, lockedOperators, protectedCombinationOperators }) : structuredClone(ws)
           if (!preview) continue
           if (K > 1) cand.coreMembers.forEach((m, index) => {
             preview.mainPlan.facilities[room.roomId].slots[slotIndices[index]!]!.occupant = { kind: 'operator', operatorId: resolveId(m.name) }
@@ -379,12 +382,14 @@ export function runGlobalPerCapitaReplacement(
 
       // 5. Ensure valid backups across draftWs
       if (!ensureValidBackups(draftWs)) continue
-      normalizeProductionShifts(draftWs, inventory, { lockedPositions, lockedOperators })
+      normalizeProductionShifts(draftWs, inventory, { lockedPositions, lockedOperators }, 'hourly-output')
+      if (!preservesFormedCombinations(ws, draftWs, inventory)) continue
       const actualTheory = productionTeamTheory(draftWs, inventory, proposal.roomId)
       if (actualTheory === undefined || actualTheory <= proposal.oldPerCapita * targetRoom.slots.filter(s => s.occupant.kind === 'operator').length + 1e-9) continue
       if (maintainRunOrder && !configureRunOrder(draftWs, inventory)) continue
       const before = completeShiftScore(ws, inventory), after = completeShiftScore(draftWs, inventory)
       if (before === undefined || after === undefined || after + 1e-7 < before) { triedSwaps.add(swapKey); continue }
+      if (compareProductionEfficiency(draftWs, ws, inventory) < 0) continue
 
       // 6. Dynamic simulation check (Requirement 1 & Monotonicity)
       if (options.evaluator) {
@@ -458,7 +463,7 @@ export function runGlobalPerCapitaReplacement(
     }
   }
 
-  if (!ensureValidBackups(ws) || (maintainRunOrder && !configureRunOrder(ws, inventory)) || !preservesLocks(ws)) {
+  if (!ensureValidBackups(ws) || (maintainRunOrder && !configureRunOrder(ws, inventory)) || !preservesLocks(ws) || !preservesFormedCombinations(base, ws, inventory)) {
     return { workspace: structuredClone(base), swappedCount: 0, score: baselineScore, logs: [...logs, '最终置换未通过占位、候补或锁定工位检查，保留原排班。'] }
   }
   if (options.evaluator && JSON.stringify(ws) !== JSON.stringify(base)) {
