@@ -142,6 +142,8 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  let backups:ReturnType<typeof createBackupPlanController> | undefined
  try{
   const runtimeConfig=compiledScheduleToRuntimeConfig(schedule)
+  // Supported run orders are ideal production events and reserve no roster time.
+  runtimeConfig.mowerTaskScheduling={...runtimeConfig.mowerTaskScheduling,adjustForRunOrders:false}
   runtimeConfig.mowerAlpha=schedulingModel==='mower-alpha'
   normalizeMowerRecoveryBeds(runtimeConfig)
   // Mower scans unregistered global cards too. The imported library is the idle-card pool;

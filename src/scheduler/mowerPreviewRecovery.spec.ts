@@ -75,7 +75,10 @@ describe('recoverable Mower preview failure',()=>{
  it('passes both the rejected preview and a later unchanged shift without disabling backups',()=>{
   const json=readFileSync(new URL('../../validation/mower-backup-2026-09-22/roster.json',import.meta.url),'utf8')
   const workspace=importMowerJson(json),before=structuredClone(workspace)
-  const result=runScheduleSimulationBridge(workspace,{sampleHours:48,warmupHours:0,maxEvents:3000,warmupModel:'hourly',recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'gold',seed:42}},{fiammettaFool:true,restingThreshold:.65})
+  // Confirmed dorm recovery changes the physical return trajectory: this fixed
+  // fixture completes in 3027 intervals. Keep a tight total budget, and guard
+  // local density and consecutive clock quanta instead of only counting hours.
+  const result=runScheduleSimulationBridge(workspace,{sampleHours:48,warmupHours:0,maxEvents:3200,warmupModel:'hourly',recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'gold',seed:42}},{fiammettaFool:true,restingThreshold:.65})
   expect(result.error).toBeUndefined()
   expect(result.report?.success,JSON.stringify(result.report?.diagnostics)).toBe(true)
   expect(result.report?.production?.success).toBe(true)
@@ -83,10 +86,18 @@ describe('recoverable Mower preview failure',()=>{
   expect(workspace).toEqual(before)
   expect(workspace.compatibility.backupPlans).toHaveLength(9)
   expect(result.report?.diagnostics.some(d=>d.code==='BACKUP_EXECUTION_FAILED')).toBe(false)
+  const intervalsPerHour=Array<number>(48).fill(0)
+  let tinyRun=0,maxTinyRun=0
   for(const segment of result.report!.segments){
+   intervalsPerHour[Math.floor(segment.start)]!++
+   const seconds=(segment.end-segment.start)*3600
+   expect(seconds).toBeGreaterThan(0)
+   tinyRun=seconds<=.000002?tinyRun+1:0;maxTinyRun=Math.max(maxTinyRun,tinyRun)
    const occupants=[...Object.values(segment.occupants),...Object.values(segment.bedOccupants)]
    expect(new Set(occupants).size).toBe(occupants.length)
    expect(Object.values(segment.morale).every(m=>Number.isFinite(m)&&m>=0&&m<=24)).toBe(true)
   }
+  expect(Math.max(...intervalsPerHour)).toBeLessThanOrEqual(200)
+  expect(maxTinyRun).toBeLessThanOrEqual(8)
  },90000)
 })

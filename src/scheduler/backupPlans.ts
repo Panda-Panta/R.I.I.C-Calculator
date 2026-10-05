@@ -122,6 +122,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     const compiled=compileRosterSchedule(workspace,{...base.assumptions,dormOrder:''});compiled.assumptions.defaultsApplied=[...base.assumptions.defaultsApplied]
     if(compiled.diagnostics.some(d=>d.severity==='error'||d.code==='UNKNOWN_OPERATOR'))fail(compiled.diagnostics.map(d=>d.message).join('；'))
     const config=compiledScheduleToRuntimeConfig(compiled);config.mowerAlpha=true;config.mowerDormOrder=roomOrder;config.availableIdleOperators=state.config.availableIdleOperators
+    if(state.config.mowerTaskScheduling?.adjustForRunOrders!==undefined)config.mowerTaskScheduling={...config.mowerTaskScheduling,adjustForRunOrders:state.config.mowerTaskScheduling.adjustForRunOrders}
     if(options.virtualRunners)config.runOrderPolicies=[]
     if(config.fiammetta&&options.canUseFiammetta&&!options.canUseFiammetta(config.fiammetta.operatorId))config.fiammetta=undefined
     const primaries=config.positions.map(p=>p.primary);if(new Set(primaries).size!==primaries.length)fail('副表生效组合重复主班')
@@ -223,6 +224,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     compiled.assumptions.defaultsApplied = [...base.assumptions.defaultsApplied]
     if (compiled.diagnostics.some(d => d.severity === 'error' || d.code === 'UNKNOWN_OPERATOR')) fail(compiled.diagnostics.map(d => d.message).join('；'))
     const config = compiledScheduleToRuntimeConfig(compiled)
+    if(state.config.mowerTaskScheduling?.adjustForRunOrders!==undefined)config.mowerTaskScheduling={...config.mowerTaskScheduling,adjustForRunOrders:state.config.mowerTaskScheduling.adjustForRunOrders}
     config.availableIdleOperators = state.config.availableIdleOperators
     // Default alpha init_and_validate(update=True) keeps the original recovery pool.
     // Newly exposed Free slots remain real idle positions, without a group timer.

@@ -53,22 +53,25 @@ export class MowerTask {
  }
  equals(other:MowerTask):boolean {const keys=Object.keys(this.plan);return this.type===other.type&&Math.abs(this.timeMicros-other.timeMicros)<1_500_000&&keys.length===Object.keys(other.plan).length&&keys.every(k=>other.plan[k]?.length===this.plan[k]!.length&&this.plan[k]!.every((name,i)=>other.plan[k]![i]===name))}
 }
-export interface MowerTaskQuery {time?:number;type?:MowerTaskType;comparison?:'<'|'='|'>';metadata?:string}
+/** Order countdown refreshes share the same ideal scheduling boundary as orders. */
+export function isMowerRunOrderTask(task:MowerTask):boolean {return task.type===MOWER_TASK_TYPES.RUN_ORDER||task.type===MOWER_TASK_TYPES.REFRESH_TIME}
+export interface MowerTaskQuery {time?:number;type?:MowerTaskType;comparison?:'<'|'='|'>';metadata?:string;ignoreRunOrders?:boolean}
 export class MowerTaskQueue {
  tasks:MowerTask[]=[]
  /** The no-run-order default scheduling path uses stable time sorting, not type priority. */
  sort():void {this.tasks.sort((a,b)=>a.timeMicros-b.timeMicros)}
  find(query:MowerTaskQuery={}):MowerTask|undefined {
   const time=query.time===undefined?undefined:toMowerMicros(query.time),comparison=query.comparison??'<'
-  return this.tasks.find(task=>(comparison==='='?time!==undefined&&Math.abs(task.timeMicros-time)<1_500_000:time===undefined||(comparison==='>'?task.timeMicros>time:task.timeMicros<time))&&(!query.type||task.type===query.type)&&(!query.metadata||task.metadata.includes(query.metadata)))
+  return this.tasks.find(task=>(!query.ignoreRunOrders||!isMowerRunOrderTask(task))&&(comparison==='='?time!==undefined&&Math.abs(task.timeMicros-time)<1_500_000:time===undefined||(comparison==='>'?task.timeMicros>time:task.timeMicros<time))&&(!query.type||task.type===query.type)&&(!query.metadata||task.metadata.includes(query.metadata)))
  }
  /** infra_main removes every reference to the completed object, not every equal task. */
  consume(task:MowerTask):void {this.tasks=this.tasks.filter(t=>t!==task)}
  /** plan_metadata rebuilds these types; active arrangements and experimental locks retain identity. */
  removeDerived(experimental=false):void {this.tasks=this.tasks.filter(t=>t.backupShiftActive||![MOWER_TASK_TYPES.SHIFT_ON,MOWER_TASK_TYPES.RELEASE_DORM].includes(t.type)||experimental&&t.productShiftLocked)}
  /** Default handle_error branch: any queued task strictly inside 2.5h suppresses a fallback. */
- ensureFallback(now:number):MowerTask|undefined {
-  if(this.find({time:now+2.5}))return undefined
+ ensureFallback(now:number,options:{adjustForRunOrders?:boolean}={}):MowerTask|undefined {
+  if(this.find({time:now+2.5,ignoreRunOrders:options.adjustForRunOrders===false}))return undefined
+  if(options.adjustForRunOrders===false&&this.tasks.some(task=>!isMowerRunOrderTask(task)&&task.timeMicros===toMowerMicros(now+2.5)))return undefined
   const task=new MowerTask({time:now+2.5});this.tasks.push(task);return task
  }
 }

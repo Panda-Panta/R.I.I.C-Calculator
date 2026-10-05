@@ -1,5 +1,5 @@
 // Mower b2d9ac8 scheduler_task priority protection (MIT).
-import {MOWER_TASK_TYPES as T,toMowerMicros,type MowerTask} from './mowerTaskQueue'
+import {MOWER_TASK_TYPES as T,toMowerMicros,isMowerRunOrderTask,type MowerTask} from './mowerTaskQueue'
 import type {MowerTaskSchedulingOptions} from './mowerTaskScheduling'
 const minutes=(n:number)=>toMowerMicros(n/60)
 export function alphaDormMinutes(room:string,options:MowerTaskSchedulingOptions={},fallback=.75):number {
@@ -7,7 +7,7 @@ export function alphaDormMinutes(room:string,options:MowerTaskSchedulingOptions=
 }
 const ordinaryMinutes=(task:MowerTask,execution=.75)=>task.type===T.FURNITURE?31:(task.type===T.SHIFT_OFF?2:1)*Math.max(1,Object.keys(task.plan).length*execution,[T.FIAMMETTA,T.CLUE_PARTY].includes(task.type)?3:0)
 const dormOnly=(task:MowerTask)=>[T.SHIFT_OFF,T.SHIFT_ON,T.RE_ORDER,T.RELEASE_DORM,T.FILL_DORM,T.NOT_SPECIFIC].includes(task.type)&&Object.keys(task.plan).length>0&&Object.keys(task.plan).every(room=>room.startsWith('dormitory_'))
-const priority=(tasks:MowerTask[],options:MowerTaskSchedulingOptions)=>tasks.filter(t=>t.type===T.RUN_ORDER||options.enableMastery!==false&&t.type===T.SWAP_SUPPORT).sort((a,b)=>a.timeMicros-b.timeMicros)
+const priority=(tasks:MowerTask[],options:MowerTaskSchedulingOptions)=>tasks.filter(t=>options.adjustForRunOrders!==false&&t.type===T.RUN_ORDER||options.enableMastery!==false&&t.type===T.SWAP_SUPPORT).sort((a,b)=>a.timeMicros-b.timeMicros)
 export function simplifyMowerAlphaDormFill(task:MowerTask,tasks:MowerTask[],now:number,options:MowerTaskSchedulingOptions={}):void {
  if(task.type!==T.FILL_DORM||task.simpleDormFill||task.dormRecoveryRestore.length)return
  const end=now+minutes(Math.max(10,(options.configuredDelayMinutes??3)*2))
@@ -37,7 +37,7 @@ export function protectMowerAlphaTasks(tasks:MowerTask[],now:number,options:Mowe
  const swaps=tasks.filter(t=>options.enableMastery!==false&&t.type===T.SWAP_SUPPORT).sort((a,b)=>a.timeMicros-b.timeMicros)
  for(const swap of swaps){
   const duration=minutes(ordinaryMinutes(swap,execution))
-  for(const order of tasks.filter(t=>t.type===T.RUN_ORDER&&t.metadata).sort((a,b)=>b.timeMicros-a.timeMicros)){
+  for(const order of tasks.filter(t=>options.adjustForRunOrders!==false&&t.type===T.RUN_ORDER&&t.metadata).sort((a,b)=>b.timeMicros-a.timeMicros)){
    const start=Math.max(now,order.timeMicros),finish=Math.max(start,order.timeMicros+minutes(configured))+minutes(2*execution)
    if(finish<=swap.timeMicros||start>=Math.max(now,swap.timeMicros)+duration)continue
    if(swap.timeMicros>now)swap.timeMicros=Math.max(now,order.timeMicros-duration-1_000_000)
@@ -45,7 +45,7 @@ export function protectMowerAlphaTasks(tasks:MowerTask[],now:number,options:Mowe
   }
   let cursor=now
   for(const task of [...tasks].sort((a,b)=>a.timeMicros-b.timeMicros)){
-   if([T.SWAP_SUPPORT,T.RUN_ORDER].includes(task.type)||task.strictMoodLimit||task.timeMicros>swap.timeMicros)continue
+   if([T.SWAP_SUPPORT,T.RUN_ORDER].includes(task.type)||options.adjustForRunOrders===false&&isMowerRunOrderTask(task)||task.strictMoodLimit||task.timeMicros>swap.timeMicros)continue
    const start=Math.max(cursor,task.timeMicros)
    if(dormOnly(task)){
     const duration=Object.keys(task.plan).reduce((sum,room)=>sum+alphaDormMinutes(room,options),0)
@@ -60,12 +60,12 @@ export function protectMowerAlphaTasks(tasks:MowerTask[],now:number,options:Mowe
  }
  let cursor=now
  for(const task of [...tasks].sort((a,b)=>a.timeMicros-b.timeMicros)){
-  if([T.RUN_ORDER,T.SWAP_SUPPORT].includes(task.type))continue
+  if([T.RUN_ORDER,T.SWAP_SUPPORT].includes(task.type)||options.adjustForRunOrders===false&&isMowerRunOrderTask(task))continue
   const start=Math.max(cursor,task.timeMicros),duration=dormOnly(task)?Object.keys(task.plan).reduce((sum,room)=>sum+alphaDormMinutes(room,options),0):ordinaryMinutes(task,execution),deadline=dormDeadline(task,tasks,start,duration,now,options)
   if(deadline)task.timeMicros=Math.max(now,deadline.timeMicros)+1_000_000
   else cursor=start+minutes(duration)
  }
- const blockers=tasks.filter(t=>!t.strictMoodLimit&&(t.type!==T.SWAP_SUPPORT||options.enableMastery!==false)).sort((a,b)=>b.timeMicros-a.timeMicros)
+ const blockers=tasks.filter(t=>!t.strictMoodLimit&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t))&&(t.type!==T.SWAP_SUPPORT||options.enableMastery!==false)).sort((a,b)=>b.timeMicros-a.timeMicros)
  const releases=tasks.filter(t=>t.strictMoodLimit&&Object.keys(t.plan).length).sort((a,b)=>(b.moodLimitDeadlineMicros??b.timeMicros)-(a.moodLimitDeadlineMicros??a.timeMicros)||b.metadata.localeCompare(a.metadata)||JSON.stringify(Object.keys(b.plan).sort()).localeCompare(JSON.stringify(Object.keys(a.plan).sort())))
  let next=Infinity
  for(const release of releases){

@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
+import {toMowerMicros} from '../scheduler/mowerTaskQueue'
 import {resolveOperatorCharId as id} from '../workbench/compat/mowerJson'
 import {simulateSchedule,type ScheduleSimulationOptions} from './scheduleSimulation'
 import type {ResourceAmounts} from './resourceLedger'
@@ -123,7 +124,7 @@ describe('production resource contracts on the native Mower event clock',()=>{
   expect(p.ledger.outflows.gold).toBe(collectedSnapshots.reduce((total,order)=>total+order.goldCost,0))
   expect(p.ledger.balances.lmd).toBe(collectedSnapshots.reduce((total,order)=>total+order.lmdReward,0))
  })
- it('preserves ordinary Mower duty decisions while production actions advance the shared clock',()=>{
+ it('preserves ordinary Mower duty decisions within one clock quantum per interval while production actions advance the shared clock',()=>{
   const ws=createDefaultWorkspace()
   ws.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'砾'},groupId:null,replacements:['斑点']}]
   ws.mainPlan.facilities.room_1_1.level=1
@@ -132,10 +133,13 @@ describe('production resource contracts on the native Mower event clock',()=>{
   const a=simulateSchedule(s,o),b=simulateSchedule(s,{...o,production:noDrones})
   conserved(b);expect(a.success).toBe(true)
   expect(b.events.map(e=>[e.type,e.operators])).toEqual(a.events.map(e=>[e.type,e.operators]))
-  // Native notification and collection clicks take real clock time between duty events.
+  // Production clicks advance the clock, while separate planning quantization can accumulate
+  // absolute offsets. Each duty interval may be earlier by at most one Mower quantum (1 µs).
   a.events.forEach((e,i)=>{
-   expect(b.events[i]!.time).toBeGreaterThanOrEqual(e.time)
-   expect(b.events[i]!.time-e.time).toBeLessThan(1/60)
+   const intervalA=toMowerMicros(e.time)-toMowerMicros(a.events[i-1]?.time??0)
+   const intervalB=toMowerMicros(b.events[i]!.time)-toMowerMicros(b.events[i-1]?.time??0)
+   expect(intervalB).toBeGreaterThanOrEqual(intervalA-1)
+   expect(Math.abs(b.events[i]!.time-e.time)).toBeLessThan(1/60)
   })
   for(const op of a.operators){const other=b.operators.find(x=>x.operatorId===op.operatorId)!
    for(const k of ['mainWorkHours','substituteWorkHours','restHours','idleHours','exhaustedHours','finalMorale'] as const)expect(Math.abs(other[k]-op[k])).toBeLessThan(.02)

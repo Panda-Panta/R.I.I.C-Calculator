@@ -33,10 +33,27 @@ export function mowerGetRestingPlan(data:MowerSchedulingData,names:string[],exis
    return !(target.currentRoom&&!target.isResting())&&!data.excludedCandidates.has(candidate)&&!options.isMasteryBusy?.(candidate)&&!existingReplacements.includes(candidate)&&!replacements.includes(candidate)&&!options.isDormReplacement?.(candidate)&&(op.room.startsWith('dorm')||target.currentRoom!==op.room)
   })
   if(candidate===undefined)return false
+  if(data.adjustForRunOrders===false&&plan[op.room]&&![candidate,'Current'].includes(plan[op.room]![op.index]!))return false
   replacements.push(candidate);(next[op.room]??=Array(data.plan[op.room]!.length).fill('Current'))[op.index]=candidate
  }
  const resting=agents.filter(name=>!data.operators[name]!.workaholic&&!data.operators[name]!.room.startsWith('dorm'))
- if(mowerAssignDormGroup(data,resting)===undefined)return false
+ // Selected replacements leave these physical beds in this same arrangement.
+ // Reserve the complete incoming group before committing any changes.
+ let departing:Set<string>|undefined
+ if(data.adjustForRunOrders===false){
+  departing=new Set()
+  const selected=new Set([...existingReplacements,...replacements])
+  for(const [room,row] of Object.entries({...plan,...next})){
+   for(let index=0;index<row.length;index++){
+    // A committed destination wins, exactly as in the merge below.
+    const committed=plan[room]?.[index]
+    const name=committed&&committed!=='Current'?committed:next[room]?.[index]??'Current'
+    const target=data.operators[name]
+    if(selected.has(name)&&target&&(target.currentRoom!==room||target.currentIndex!==index))departing.add(name)
+   }
+  }
+ }
+ if(mowerAssignDormGroup(data,resting,undefined,departing)===undefined)return false
  existingReplacements.push(...replacements)
  for(const [room,names] of Object.entries(next)){
   if(!plan[room]){plan[room]=names;continue}
@@ -98,7 +115,7 @@ function resting(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerRest
   if(op.exhaustRequire||mood>(data.alpha&&op.customMoodLimit?threshold:Math.floor(threshold)))continue
   if(!op.isHigh()){mowerAssignDorm(data,op.name,used);continue}
   if(op.group&&exhaustGroups.has(op.group))continue
-  if(data.alpha&&op.group){if(attempted.has(op.group))continue;attempted.add(op.group)}
+  if((data.alpha||data.adjustForRunOrders===false)&&op.group){if(attempted.has(op.group))continue;attempted.add(op.group)}
   const members=op.group?data.group(op.group):[op.name]
   if(!mowerGetRestingPlan(data,[...members],replacements,plan,{...options,tasks:queue.tasks}))options.onBlocked?.(members)
  }
@@ -159,4 +176,4 @@ export function planMowerOrdinary(data:MowerSchedulingData,queue:MowerTaskQueue,
  }
  return plan
 }
-export function mowerPlanningHasNearTask(data:MowerSchedulingData,queue:MowerTaskQueue):boolean {return !!queue.find({time:fromMowerMicros(data.nowMicros+toMowerMicros(15/3600))})}
+export function mowerPlanningHasNearTask(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerTaskSchedulingOptions={}):boolean {return !!queue.find({time:fromMowerMicros(data.nowMicros+toMowerMicros(15/3600)),ignoreRunOrders:(options.adjustForRunOrders??data.adjustForRunOrders)===false})}

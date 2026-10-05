@@ -8,6 +8,7 @@ export class MowerDormState {
  reset(){this.name='';this.timeMicros=undefined}
 }
 export interface MowerSchedulingDataOptions {
+ adjustForRunOrders?:boolean
  alpha?:boolean;priorityReplacement?:string[];freeRoomExclusions?:string[];dormOrder?:string[];standbyNames?:string[]
  plan:Record<string,string[]>;operators:Record<string,MowerOperatorState>;dorms:MowerDormState[];nowMicros:number;partyTime?:MowerDateTimeValue|boolean|null;runOrderRooms?:Record<string,Record<string,never>>
  policy?:Partial<MowerMoodPolicy>;freeRoom?:boolean;powerPlantCount?:number;planConditions?:boolean[]
@@ -18,6 +19,7 @@ export interface MowerSchedulingDataOptions {
  reservedProductReplacements?:Set<string>;reservedProductBeds?:Map<string,string>;emergencyDormAgents?:Set<string>
 }
 export class MowerSchedulingData {
+ adjustForRunOrders:boolean|undefined
  /** Runtime uses October 3 alpha; frozen September fixtures retain their source contract. */
  alpha:boolean;priorityReplacement:string[];freeRoomExclusions:string[];dormOrder:string[]
  standbyNames:string[]
@@ -30,6 +32,7 @@ export class MowerSchedulingData {
  unregisteredIdleNames:string[];dormMoodEstimates:Map<string,[number,number]>;idleDormSearchExhausted:boolean;idleDormSearchStoppedAtMicros:number|undefined
  reservedProductReplacements:Set<string>;reservedProductBeds:Map<string,string>;emergencyDormAgents:Set<string>
  constructor(o:MowerSchedulingDataOptions){
+  this.adjustForRunOrders=o.adjustForRunOrders
   this.alpha=o.alpha??false;this.priorityReplacement=o.priorityReplacement??[];this.freeRoomExclusions=o.freeRoomExclusions??[];this.dormOrder=o.dormOrder??[]
   this.standbyNames=o.standbyNames??[];Object.values(o.operators).forEach(op=>{op.alpha=this.alpha})
   this.plan=o.plan;this.operators=o.operators;this.dorms=o.dorms;this.nowMicros=o.nowMicros;this.partyTime=o.partyTime;this.runOrderRooms=o.runOrderRooms??{}

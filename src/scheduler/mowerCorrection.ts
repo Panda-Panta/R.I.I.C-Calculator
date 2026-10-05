@@ -2,6 +2,7 @@
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import {mowerReplacementCandidates,type MowerOperatorState} from './mowerOperatorState'
 import type {MowerSchedulingData} from './mowerSchedulingData'
+import type {MowerTaskSchedulingOptions} from './mowerTaskScheduling'
 import {alphaCorrectGroupDorms} from './mowerAlphaDorm'
 import {MowerTask,MOWER_TASK_TYPES as T,fromMowerMicros,toMowerMicros,type MowerTaskPlan,type MowerTaskQueue} from './mowerTaskQueue'
 const placeholders=new Set(['','Current','Free'])
@@ -107,10 +108,10 @@ export function mowerCorrectionPlan(data:MowerSchedulingData,skipDorm=false):Mow
  for(const [room,names] of Object.entries(plan))if(names.every(n=>n==='Current'))delete plan[room]
  return plan
 }
-export function planMowerCorrection(data:MowerSchedulingData,queue:MowerTaskQueue,force=false,currentTask?:MowerTask,skipDorm=false,onSkip?:()=>void):MowerTask|undefined {
+export function planMowerCorrection(data:MowerSchedulingData,queue:MowerTaskQueue,force=false,currentTask?:MowerTask,skipDorm=false,onSkip?:()=>void,options:MowerTaskSchedulingOptions={}):MowerTask|undefined {
  if(queue.tasks.some(task=>task.backupShiftActive))return undefined
  const plan=mowerCorrectionPlan(data,skipDorm);if(!Object.keys(plan).length)return undefined
- const next=queue.find(),off=queue.find({type:T.SHIFT_OFF})
+ const next=queue.find({ignoreRunOrders:(options.adjustForRunOrders??data.adjustForRunOrders)===false}),off=queue.find({type:T.SHIFT_OFF})
  if(!force&&next&&Object.keys(plan).length*toMowerMicros(45/3600)>next.timeMicros-data.nowMicros||off&&!(force&&off===currentTask)){onSkip?.();return undefined}
  const task=new MowerTask({plan,type:T.SELF_CORRECTION,time:fromMowerMicros(data.nowMicros)});queue.tasks.push(task);return task
 }

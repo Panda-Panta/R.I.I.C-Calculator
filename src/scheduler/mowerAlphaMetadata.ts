@@ -59,5 +59,5 @@ export function planMowerAlphaMetadata(actual:MowerSchedulingData,queue:MowerTas
   if([...recalled].some(n=>names.has(n)||data.busyRestingNames.has(n))||[...resources.slots].some(s=>slots.has(s)))continue
   const task=new MowerTask({type:T.SHIFT_ON,plan});task.timeMicros=Math.max(now,mowerAfterPendingArrangements(plan,pending));queue.tasks.push(task);[...members,...recalled].forEach(n=>returning.add(n))
  }
- queue.tasks.push(...limited);mergeMowerAlphaReleases(queue.tasks,data.mergeIntervalMinutes)
+ queue.tasks.push(...limited);mergeMowerAlphaReleases(queue.tasks,data.mergeIntervalMinutes,{adjustForRunOrders:actual.adjustForRunOrders})
 }

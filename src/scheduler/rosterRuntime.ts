@@ -649,7 +649,7 @@ function moraleRateSnapshot(s:RuntimeState,rates:RuntimeRates):{derivatives:Reco
 export function currentMoraleDerivatives(s:RuntimeState,rates:RuntimeRates):Record<string,number>{return moraleRateSnapshot(s,rates).derivatives}
 /** Planning events only. Skill boundaries and a substitute reaching 24 do not run Mower's planner. */
 export function nextRosterActionHours(s: RuntimeState, rates: RuntimeRates): number {
-  if(s.config.mowerSourcePlan)return nextMowerSourceActionHours(s)
+  if(s.config.mowerSourcePlan)return nextMowerSourceActionHours(s,rates)
   if (!s.config.mowerPolicy) return nextRosterEventHours(s,rates)
   updateMowerReturnDeadlines(s,rates)
   const deadlines=[s.nextPlanningTime ?? Infinity,s.nextFiammettaCheckTime ?? Infinity,...Object.values(s.returnDeadlines ?? {})]

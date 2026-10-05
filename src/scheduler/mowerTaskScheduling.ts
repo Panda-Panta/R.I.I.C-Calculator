@@ -1,9 +1,11 @@
 // Port of scheduler_task.scheduling and its queue helpers.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
-import {MOWER_TASK_TYPES as T,toMowerMicros,type MowerTask} from './mowerTaskQueue'
+import {MOWER_TASK_TYPES as T,toMowerMicros,isMowerRunOrderTask,type MowerTask} from './mowerTaskQueue'
 import {mergeMowerAlphaReleases} from './mowerDormTasks'
 import {protectMowerAlphaTasks,sortMowerAlphaDispatch} from './mowerAlphaTaskProtection'
 export interface MowerTaskSchedulingOptions {
+ /** Ideal orders share the production clock without reserving roster execution time. */
+ adjustForRunOrders?:boolean
  runOrderDelayMinutes?:number;executionMinutes?:number;configuredDelayMinutes?:number
  enableMastery?:boolean;experimental?:boolean
  alpha?:boolean;grandet?:boolean;mergeIntervalMinutes?:number
@@ -99,20 +101,20 @@ function scheduleOrders(tasks:MowerTask[],now:number,delay:number,execution:numb
  }
  sort(tasks)
 }
-function protectSwaps(tasks:MowerTask[],now:number,delay:number,execution:number,configuredDelay:number):[MowerTask,MowerTask]|undefined {
+function protectSwaps(tasks:MowerTask[],now:number,delay:number,execution:number,configuredDelay:number,adjustForRunOrders=true):[MowerTask,MowerTask]|undefined {
  const swaps=sort(tasks.filter(task=>task.type===T.SWAP_SUPPORT)),gap=minutes(Math.max(10,delay*2,configuredDelay*2))
  let conflict:[MowerTask,MowerTask]|undefined
  for(const swap of swaps){
   let orderConflict:[MowerTask,MowerTask]|undefined
   for(const task of tasks){
-   if(task.type!==T.RUN_ORDER||!task.metadata||Math.max(now,task.timeMicros)+gap<=swap.timeMicros||task.timeMicros>swap.timeMicros+gap)continue
+   if(!adjustForRunOrders||task.type!==T.RUN_ORDER||!task.metadata||Math.max(now,task.timeMicros)+gap<=swap.timeMicros||task.timeMicros>swap.timeMicros+gap)continue
    if(now+gap<swap.timeMicros)orderConflict??=[task,swap]
    else task.timeMicros=Math.max(now,swap.timeMicros)+gap+1_000_000
   }
   conflict??=orderConflict
   let cursor=now
   for(const task of sort([...tasks])){
-   if([T.SWAP_SUPPORT,T.RUN_ORDER].includes(task.type)||task.strictMoodLimit||task.timeMicros>swap.timeMicros)continue
+   if([T.SWAP_SUPPORT,T.RUN_ORDER].includes(task.type)||!adjustForRunOrders&&isMowerRunOrderTask(task)||task.strictMoodLimit||task.timeMicros>swap.timeMicros)continue
    const finish=Math.max(cursor,task.timeMicros)+minutes(ordinaryMinutes(task,execution))
    if(finish>=swap.timeMicros-minutes(1))task.timeMicros=Math.max(now,swap.timeMicros)+minutes(3)
    else cursor=finish
@@ -123,15 +125,15 @@ function protectSwaps(tasks:MowerTask[],now:number,delay:number,execution:number
 export function protectMowerSupportSwaps(tasks:MowerTask[],nowMicros:number,options:MowerTaskSchedulingOptions={}):[MowerTask,MowerTask]|undefined {
  if(options.alpha)return
  if(options.enableMastery===false)return
- return protectSwaps(tasks,nowMicros,options.runOrderDelayMinutes??5,options.executionMinutes??.75,options.configuredDelayMinutes??3)
+ return protectSwaps(tasks,nowMicros,options.runOrderDelayMinutes??5,options.executionMinutes??.75,options.configuredDelayMinutes??3,options.adjustForRunOrders!==false)
 }
 /** All mutations retain native task identities; I/O timings and maintenance are explicit inputs. */
 export function scheduleMowerTasks(tasks:MowerTask[],nowMicros:number,options:MowerTaskSchedulingOptions={}):[MowerTask,MowerTask]|undefined {
  const delay=options.runOrderDelayMinutes??5,execution=options.executionMinutes??.75,enabled=options.enableMastery??true,configuredDelay=options.configuredDelayMinutes??3
  if(options.alpha){
-  mergeMowerAlphaReleases(tasks,options.mergeIntervalMinutes??10)
+  mergeMowerAlphaReleases(tasks,options.mergeIntervalMinutes??10,options)
   const fixed=new Set(tasks.filter(t=>t.strictMoodLimit||t.type===T.FILL_DORM||enabled&&t.type===T.SWAP_SUPPORT)),ordinary=fixed.size?tasks.filter(t=>!fixed.has(t)):tasks
-  const conflict=scheduleOrders(ordinary,nowMicros,delay,execution,{...options,experimental:true})
+  const conflict=options.adjustForRunOrders===false?undefined:scheduleOrders(ordinary,nowMicros,delay,execution,{...options,experimental:true})
   if(fixed.size){const retained=new Set(ordinary);tasks.splice(0,tasks.length,...tasks.filter(t=>fixed.has(t)||retained.has(t)))}
   protectMowerAlphaTasks(tasks,nowMicros,options)
   if(enabled&&tasks.some(t=>t.type===T.SWAP_SUPPORT&&t.timeMicros<=nowMicros+minutes(ordinaryMinutes(t,execution)+1)))return
@@ -139,10 +141,10 @@ export function scheduleMowerTasks(tasks:MowerTask[],nowMicros:number,options:Mo
  }
  const fixed=new Set(tasks.filter(task=>task.strictMoodLimit||options.experimental&&task.type===T.FILL_DORM||enabled&&task.type===T.SWAP_SUPPORT))
  const ordinary=fixed.size?tasks.filter(task=>!fixed.has(task)):tasks
- const conflict=scheduleOrders(ordinary,nowMicros,delay,execution,options)
+ const conflict=options.adjustForRunOrders===false?undefined:scheduleOrders(ordinary,nowMicros,delay,execution,options)
  if(fixed.size&&options.experimental){const retained=new Set(ordinary);tasks.splice(0,tasks.length,...tasks.filter(task=>fixed.has(task)||retained.has(task)))}
  if(enabled){
-  const swapConflict=protectSwaps(tasks,nowMicros,delay,execution,configuredDelay)
+  const swapConflict=protectSwaps(tasks,nowMicros,delay,execution,configuredDelay,options.adjustForRunOrders!==false)
   if(swapConflict)return swapConflict
   if(tasks.some(task=>task.type===T.SWAP_SUPPORT&&task.timeMicros<=nowMicros+minutes(Math.max(10,delay*2,configuredDelay*2))))return
  }

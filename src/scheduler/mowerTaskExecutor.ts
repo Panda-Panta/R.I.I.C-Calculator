@@ -2,12 +2,13 @@
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import type {BackupTiming} from './backupPlans'
 import {MowerRoomArrangementDeferred} from './mowerNativeErrors'
-import {MOWER_TASK_TYPES as T,MowerTask,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
+import {MOWER_TASK_TYPES as T,MowerTask,isMowerRunOrderTask,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
 export interface MowerBackupResult {changed:boolean;generated:MowerTask[]}
 export interface MowerTaskExecutionHooks {
  /** Enable the alpha complete-arrangement boundary in the application adapter. */
  protectShift?:boolean
  alpha?:boolean
+ adjustForRunOrders?:boolean
  /** changed is the source solver's new_task result, not any plan-condition change. */
  backup:(phase:BackupTiming,task:MowerTask,context:{appendEmptyTask:boolean;restoreOnDeactivate:boolean;customTimeMicros?:number})=>MowerBackupResult
  /** Physical I/O adapter; this core removes the successfully committed room from the task. */
@@ -21,12 +22,13 @@ export interface MowerTaskExecutionHooks {
  skip?:()=>void
 }
 function enqueueGenerated(queue:MowerTaskQueue,generated:MowerTask[]):void {for(const task of generated)if(!queue.tasks.includes(task))queue.tasks.push(task)}
+function rosterHead(queue:MowerTaskQueue,hooks:MowerTaskExecutionHooks):MowerTask|undefined {return queue.find({ignoreRunOrders:hooks.adjustForRunOrders===false})}
 function enterPhase(phase:'BEFORE_WORK'|'BEFORE_DORM',task:MowerTask,queue:MowerTaskQueue,hooks:MowerTaskExecutionHooks):boolean {
  if(task.backupShiftActive)return false
  const result=hooks.backup(phase,task,{appendEmptyTask:false,restoreOnDeactivate:true,customTimeMicros:task.timeMicros-1})
  enqueueGenerated(queue,result.generated)
  if(!result.changed)return false
- const generated=new Set(result.generated),others=queue.tasks.filter(t=>!generated.has(t))
+ const generated=new Set(result.generated),others=queue.tasks.filter(t=>!generated.has(t)&&(hooks.adjustForRunOrders!==false||!isMowerRunOrderTask(t)))
  const anchor=others.length?Math.min(...others.map(t=>t.timeMicros)):task.timeMicros
  // Reverse enumeration gives the first generated task the earliest microsecond.
  for(const [offset,t] of [...result.generated].reverse().entries())t.timeMicros=anchor-offset-1
@@ -48,7 +50,7 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  if(task.type===T.RUN_ORDER)throw new Error('理想跑单任务仅用于唤醒，不支持实体换人')
  // Native infra_main enters the arrangement branch before preview. A preview that
  // removes every physical move must still unlock the shift and rebuild metadata.
- if(!Object.keys(task.plan).length&&!task.backupShiftActive){queue.consume(task);if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
+ if(!Object.keys(task.plan).length&&!task.backupShiftActive){queue.consume(task);if(rosterHead(queue,hooks)?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
  const protectedShift=task.backupShiftActive||!!hooks.protectShift&&Object.keys(task.plan).length>0&&task.type!==T.FIAMMETTA&&task.type!==T.RELEASE_DORM
  if(protectedShift)task.backupShiftActive=true
  let retainedLock=false
@@ -70,7 +72,7 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  }
  const restoreRooms=Object.keys(restoration)
  if(restoreRooms.length>1){
-  queue.tasks.push(new MowerTask({time:queue.tasks[0]?.time??task.time,plan:restoration,type:T.FIAMMETTA}))
+  queue.tasks.push(new MowerTask({time:rosterHead(queue,hooks)?.time??task.time,plan:restoration,type:T.FIAMMETTA}))
   hooks.skip?.()
  }
  task.backupShiftActive=false
@@ -86,8 +88,8 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
   }
  }
  queue.consume(task)
- // infra_main tests the first retained task, without inventing an extra phase.
- if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}
+ // Ideal order wakes do not hide the first retained roster task.
+ if(rosterHead(queue,hooks)?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}
  return true
  }catch(error){if(hooks.alpha&&error instanceof MowerRoomArrangementDeferred)retainedLock=true;throw error}
  finally{if(protectedShift&&!retainedLock)task.backupShiftActive=false}

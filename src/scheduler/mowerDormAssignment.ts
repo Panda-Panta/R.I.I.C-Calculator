@@ -44,7 +44,7 @@ export function mowerSlotTakable(data:MowerSchedulingData,bed:MowerDormState,pro
  if(!op.isHigh())return !(protectResting&&op.isResting())
  return false
 }
-export function mowerFindDormSlot(data:MowerSchedulingData,name:string,used:Set<number>,groupResting=false):number|undefined {
+export function mowerFindDormSlot(data:MowerSchedulingData,name:string,used:Set<number>,groupResting=false,departingNames?:ReadonlySet<string>):number|undefined {
  if(data.alpha)return alphaFindDormSlot(data,name,used,groupResting?new Set([data.operators[name]!.group]):undefined)
  defaultOnly(data)
  if(data.restMoodComplete(name))return undefined
@@ -53,14 +53,21 @@ export function mowerFindDormSlot(data:MowerSchedulingData,name:string,used:Set<
  const vip=Object.keys(data.plan).filter(room=>room.startsWith('dorm')).length
  const indices=data.dorms.map((_,i)=>i)
  const order=high?indices:[...indices.slice(vip),...indices]
- return order.find(i=>!used.has(i)&&mowerSlotTakable(data,data.dorms[i]!,!takeover,name))
+ return order.find(i=>{
+  if(used.has(i))return false
+  const bed=data.dorms[i]!,resident=data.operators[bed.name]
+  // Only low replacements can release an unfinished bed here. Resting primary
+  // operators keep the existing full-rest and group protection rules.
+  const departing=departingNames?.has(bed.name)&&resident&&!resident.isHigh()&&resident.currentRoom===bed.position[0]&&resident.currentIndex===bed.position[1]&&data.effectiveFreeSlot(bed)
+  return departing||mowerSlotTakable(data,bed,!takeover,name)
+ })
 }
 export function mowerStandbyCandidates(data:MowerSchedulingData,names:string[]):Set<string> {
  const anchors=new Set(names.map(n=>data.operators[n]!).filter(op=>op.group&&op.isHigh()&&(data.alpha?!data.canStandby(op):op.restingPriority==='high')&&!op.workaholic&&(data.alpha||data.policy.experimentalDormLogic||!op.workshop)&&!op.room.startsWith('dorm')&&op.mood>=0&&op.mood<op.upperLimit&&op.currentMood(data.nowMicros)<op.upperLimit).map(op=>op.group))
  const hasAnchor=data.dorms.some(b=>{const op=data.operators[b.name];return !!op&&data.effectiveFreeSlot(b)&&op.isHigh()&&(data.alpha?!data.canStandby(op)&&!data.restMoodComplete(op.name):op.restingPriority==='high')})
  return new Set(names.filter(n=>{const op=data.operators[n]!;return data.canStandby(op)&&(anchors.has(op.group)||!op.group&&hasAnchor)}))
 }
-export function mowerAssignDormGroup(data:MowerSchedulingData,names:string[],activeGroups?:Set<string>):MowerDormState[]|undefined {
+export function mowerAssignDormGroup(data:MowerSchedulingData,names:string[],activeGroups?:Set<string>,departingNames?:ReadonlySet<string>):MowerDormState[]|undefined {
  defaultOnly(data)
  const required=names.filter(n=>!data.restMoodComplete(n)),optional=mowerStandbyCandidates(data,required)
  const ordered=[...required].sort((a,b)=>{
@@ -70,7 +77,7 @@ export function mowerAssignDormGroup(data:MowerSchedulingData,names:string[],act
  })
  const used=new Set<number>(),assignments:{name:string;index:number}[]=[]
  for(const name of ordered){
-  const index=data.alpha?alphaFindDormSlot(data,name,used,activeGroups):mowerFindDormSlot(data,name,used,true)
+  const index=data.alpha?alphaFindDormSlot(data,name,used,activeGroups):mowerFindDormSlot(data,name,used,true,departingNames)
   if(index===undefined){if(optional.has(name))continue;return undefined}
   used.add(index);assignments.push({name,index})
  }

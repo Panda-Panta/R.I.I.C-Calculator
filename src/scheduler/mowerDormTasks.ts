@@ -1,7 +1,8 @@
 // Port of generate_plan_by_drom and merge_release_dorm, default Mower alpha.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
-import {MOWER_TASK_TYPES as T,MowerTask,toMowerMicros,type MowerTaskPlan} from './mowerTaskQueue'
+import {MOWER_TASK_TYPES as T,MowerTask,toMowerMicros,isMowerRunOrderTask,type MowerTaskPlan} from './mowerTaskQueue'
 import type {MowerDormState,MowerSchedulingData} from './mowerSchedulingData'
+import type {MowerTaskSchedulingOptions} from './mowerTaskScheduling'
 import {projectMowerArrangements} from './mowerObservations'
 import {alphaPosition,alphaRebalanceClosingDorms} from './mowerAlphaDorm'
 export interface MowerDormBatch {timeMicros:number;dorms:MowerDormState[];restInFull:boolean|null}
@@ -105,11 +106,13 @@ function generateAlphaDormTasks(batches:MowerDormBatch[],data:MowerSchedulingDat
 }
 
 /** Merge only ordinary releases, keeping each resident's original identity and bed. */
-export function mergeMowerAlphaReleases(tasks:MowerTask[],intervalMinutes:number):void {
- tasks.sort((a,b)=>a.timeMicros-b.timeMicros)
+export function mergeMowerAlphaReleases(tasks:MowerTask[],intervalMinutes:number,options:MowerTaskSchedulingOptions={}):void {
+ const orders=options.adjustForRunOrders===false?tasks.filter(isMowerRunOrderTask):[]
+ const mergeable=orders.length?tasks.filter(t=>!isMowerRunOrderTask(t)):tasks
+ mergeable.sort((a,b)=>a.timeMicros-b.timeMicros)
  const chunks:MowerTask[][]=[],rooms=new Map<string,MowerTask>();let latest:number|undefined
  const flush=()=>{if(!rooms.size)return;const chunk=[...rooms].sort(([a],[b])=>a.localeCompare(b)).map(([,task])=>task);for(const task of chunk){task.releaseStartMicros??=task.timeMicros;task.timeMicros=latest!}chunks.push(chunk);rooms.clear()}
- for(const task of [...tasks].reverse()){
+ for(const task of [...mergeable].reverse()){
   const targets=task.releaseDormTargets(),entries=Object.entries(targets),rowEntries=Object.entries(task.plan)
   const ordinary=task.type===T.RELEASE_DORM&&!task.strictMoodLimit&&!task.productShiftLocked&&rowEntries.length===1&&entries.length>0&&Object.values(task.plan).flat().every(n=>['Current','Free'].includes(n))&&entries.length===Object.values(task.plan).flat().filter(n=>n==='Free').length
   if(!ordinary){flush();chunks.push([task]);latest=undefined;continue}
@@ -120,5 +123,6 @@ export function mergeMowerAlphaReleases(tasks:MowerTask[],intervalMinutes:number
   task.plan[room]!.forEach((name,index)=>{if(name==='Free')batch!.plan[room]![index]=name})
   batch.releaseTargets={...targets,...existing};batch.metadata=Object.keys(batch.releaseTargets).join(',');batch.releaseStartMicros=Math.min(start,batch.releaseStartMicros??batch.timeMicros)
  }
- flush();tasks.splice(0,tasks.length,...chunks.reverse().flat())
+ flush();tasks.splice(0,tasks.length,...chunks.reverse().flat(),...orders)
+ if(orders.length)tasks.sort((a,b)=>a.timeMicros-b.timeMicros)
 }

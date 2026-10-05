@@ -119,10 +119,10 @@ describe('bounded ordinary backup income search',()=>{
   const baseline=createDefaultWorkspace()
   for(const f of Object.values(baseline.mainPlan.facilities)){if(f.type==='manufacture')f.product='gold'}
   const room=baseline.mainPlan.facilities.room_1_1
-  room.product='exp';room.slots[0]!.occupant={kind:'operator',operatorId:id('断罪者')};room.slots[0]!.replacements=[id('香草')];room.slots[0]!.groupId='exp-main'
+  room.product='exp';room.slots[0]!.occupant={kind:'operator',operatorId:id('断罪者')};room.slots[0]!.replacements=[id('砾')];room.slots[0]!.groupId='exp-main'
   baseline.mainPlan.facilities.dormitory_1.slots[0]!.occupant={kind:'free'}
   const before=structuredClone(baseline)
-  const r=runRosterIncomeSearch({baseline,inventory:owned(['断罪者','香草','Castle-3']),objective:'exp',maxCandidates:2,
+  const r=runRosterIncomeSearch({baseline,inventory:owned(['断罪者','砾','Castle-3']),objective:'exp',maxCandidates:2,
    options:{sampleHours:168,warmupHours:24,maxStepHours:.25,production:{seed:42,runOrderMode:'ideal',droneTarget:'none'}},
    assumptions:{idleOperators:[],restingThreshold:.65,operationDurationHours:0}})
   expect(r.bestCandidateId).toBe('candidate-1');expect(r.candidates[1]!.comparison!.status).toBe('improved')
