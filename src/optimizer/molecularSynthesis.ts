@@ -18,6 +18,7 @@ import { availableCoreVariants, facilityCapacity } from './combinationModel'
 import { buildCombinationPool } from './combinationEvaluation'
 import { allocateCombinationSkeleton, appliedMainCombinations, completeShiftScore, normalizeProductionShifts, refineCombinationAllocation } from './combinationAllocation'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
+import { compareWorkspacePreference } from './automaticCombinationPreferences'
 
 export interface MolecularCandidate {
   id: string
@@ -135,7 +136,9 @@ export function generateMolecularCandidates(base: RosterWorkspace, entries: read
     if (!ws) continue
     const ordering = normalizeProductionShifts(ws, inventory, options)
     if (!configureRunOrder(ws, inventory) || validatePhysicalRoster(ws).length) continue
-    const fp = JSON.stringify(ws.mainPlan)
+    // Group labels alone do not create another physical staffing branch.
+    const fp = JSON.stringify(Object.values(ws.mainPlan.facilities).map(room => [room.roomId,
+      room.slots.map(slot => [slot.occupant.kind === 'operator' ? resolveId(slot.occupant.operatorId) : '', slot.replacements.map(resolveId)])]))
     if (seen.has(fp)) continue
     seen.add(fp)
     const appliedAtoms = appliedMainCombinations(ws, pool)
@@ -181,5 +184,6 @@ export function evaluateMolecularCandidates(candidates: MolecularCandidate[], en
     bestScore = Math.max(bestScore, candidate.simScore ?? 0)
     options.onProgress?.(idx + 1, candidates.length, bestScore)
   }
-  return candidates.sort((a, b) => (b.simScore ?? -Infinity) - (a.simScore ?? -Infinity))
+  return candidates.sort((a, b) => Number(b.simScore !== null) - Number(a.simScore !== null) ||
+    compareWorkspacePreference(b.workspace, a.workspace) || (b.simScore ?? -Infinity) - (a.simScore ?? -Infinity))
 }

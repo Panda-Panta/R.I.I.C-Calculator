@@ -7,6 +7,7 @@ import { projectControlOutput } from './controlImpact'
 import { productionRoomId } from './productionSingletons'
 import { applyCombinationVariant, shiftSnapshot, type CombinationPool, type CombinationValue, type CombinationVariant } from './combinationModel'
 import { enumerateCombinationVariants } from './combinationEnumeration'
+import { compareVariantPreference } from './automaticCombinationPreferences'
 
 /** Facility base 100% and staffing 1% are excluded from the skill-efficiency comparison. */
 export function evaluateCombinationVariant(base: RosterWorkspace, inventory: OperatorInventory, variant: CombinationVariant, baselineDailyScore?: number): CombinationValue {
@@ -52,6 +53,7 @@ export function buildCombinationPool(base: RosterWorkspace, inventory: OperatorI
   const projection = projectControlOutput(config)
   const values = variants.map(v => evaluateCombinationVariant(base, inventory, v, projection.complete ? projection.daily.score : undefined))
   values.sort((a, b) => (a.status === 'evaluated' ? 0 : 1) - (b.status === 'evaluated' ? 0 : 1) ||
+    compareVariantPreference(b.variant, a.variant) ||
     (b.perCapita ?? -Infinity) - (a.perCapita ?? -Infinity) || (b.totalGain ?? -Infinity) - (a.totalGain ?? -Infinity) ||
     a.supportCount - b.supportCount || a.variant.id.localeCompare(b.variant.id))
   return { values, enumeratedCount: variants.length, diagnostics: [...new Set(values.filter(v => v.status !== 'evaluated').flatMap(v => v.diagnostics))] }

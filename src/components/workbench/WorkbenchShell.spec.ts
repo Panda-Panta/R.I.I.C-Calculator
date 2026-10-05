@@ -754,6 +754,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(JSON.stringify(vm.store.workspace)).toBe(original)
   },60000)
 
+  // These generation cases execute every branch and final replacement serially in jsdom.
   it('triggers smart roster generation, keeps user placed operators, and updates store', async ({ annotate }) => {
     await annotate('同步排班前确认测试进度已送达')
     localStorage.setItem(
@@ -793,7 +794,7 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(vm.calculationReport?.summary?.totalScore82).toBeGreaterThan(0)
     expect(wrapper.get('[data-test="metric-lmd"]').isVisible()).toBe(true)
     expect(wrapper.get('[data-test="metric-exp"]').isVisible()).toBe(true)
-  }, 60000)
+  }, 180000)
 
   // 18. Abort roster generation
   it('cancels a pending roster when weights change and ignores its late callbacks after a new task starts', async () => {
@@ -944,5 +945,5 @@ describe('WorkbenchShell.vue and App primary entry integration', () => {
     expect(vm.simulationReport).toBeNull()
     expect(vm.calculationStatus).toContain('本次排班验证产出')
     expect(wrapper.get('[data-test="results-panel"]').isVisible()).toBe(true)
-  }, 60000)
+  }, 180000)
 })

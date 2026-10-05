@@ -19,6 +19,7 @@ import type { CalculationReport } from '../domain/types'
 import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
 import { applyGeneratedRecoveryPolicy } from './generatedRecoveryPolicy'
 import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
+import { compareWorkspacePreference } from './automaticCombinationPreferences'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -125,13 +126,17 @@ export function runSmartRoster(
   return step.value
 }
 
-function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress) => void) {
-  let completed = 0, bestScore: number | undefined
+function simulationProgress(workspaces: readonly RosterWorkspace[], onProgress?: (p: SmartRosterProgress) => void) {
+  const total = workspaces.length
+  let completed = 0, bestScore: number | undefined, bestIndex: number | undefined
   const fractions = new Map<number, number>()
   return { onComplete: (result: CandidateSimulationResult, index: number) => {
     completed++
     fractions.set(index, 1)
-    if (result.completed) bestScore = Math.max(bestScore ?? -Infinity, result.simScore)
+    if (result.completed) {
+      const preference = bestIndex === undefined ? 1 : compareWorkspacePreference(workspaces[index]!, workspaces[bestIndex]!)
+      if (preference > 0 || preference === 0 && result.simScore > bestScore!) { bestScore = result.simScore; bestIndex = index }
+    }
     onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
       currentTrial: completed, totalTrials: total, bestScore,
       label: `阶段 2/3: 动态拟真进度 ${completed}/${total}（${result.completed ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
@@ -332,7 +337,7 @@ function* smartRosterSteps(
   // Capture keys before dispatch; later policy/placement changes must not turn
   // a report of the original input into a report of the modified workspace.
   const inputKeys = jobs.map(job => cache.key(job))
-  const simulationResults = yield { jobs, ...simulationProgress(jobs.length, onProgress) }
+  const simulationResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), onProgress) }
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!
@@ -344,7 +349,8 @@ function* smartRosterSteps(
   }
 
   const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed ? [uniqueCandidates[index]!.id] : []))
-  simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) || (b.simScore ?? 0) - (a.simScore ?? 0))
+  simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
+    compareWorkspacePreference(b.workspace, a.workspace) || (b.simScore ?? 0) - (a.simScore ?? 0))
   const bestSimCandidate = simCandidates[0]!
   result.phases.static = {
     candidates: simCandidates,
@@ -396,6 +402,7 @@ function* smartRosterSteps(
     maxEvaluations: replacementBudget,
     configureRunOrderCandidates: true,
     evaluator: (candidateWs) => {
+      if (compareWorkspacePreference(candidateWs, finalWorkspace) < 0) return Number.NaN
       try {
         const job = simulationJob(candidateWs)
         const cached = cache.get(job)
@@ -417,7 +424,8 @@ function* smartRosterSteps(
     logs: repResult.logs,
   }
 
-  if (repResult.swappedCount > 0 && repResult.score && repResult.score > finalScore) {
+  if (repResult.swappedCount > 0 && repResult.score && repResult.score > finalScore &&
+    compareWorkspacePreference(repResult.workspace, finalWorkspace) >= 0) {
     finalWorkspace = repResult.workspace
     finalScore = repResult.score
   }
@@ -463,7 +471,8 @@ function* smartRosterSteps(
             phaseProgress: 0.5 + 0.5 * progress.completedScenarios / Math.max(1, progress.totalScenarios),
             label: `阶段 3/3: 邻域微调 ${progress.label} (候选 ${progress.completedCandidates}/${progress.totalCandidates}，场景 ${progress.completedScenarios}/${progress.totalScenarios})`,
           })
-        }
+        },
+        candidate => compareWorkspacePreference(candidate, finalWorkspace) >= 0
       )
 
       if (searchResult.bestCandidateId && searchResult.bestCandidateId !== 'baseline' && searchResult.bestWorkspace) {
@@ -479,7 +488,7 @@ function* smartRosterSteps(
         const job = simulationJob(candidate), cached = cache.get(job)
         const verified = cached ?? simulateCandidate(job)
         if (!cached) cache.remember(cache.key(job), verified)
-        if (verified.completed && verified.simScore > finalScore + 1e-6) {
+        if (verified.completed && verified.simScore > finalScore + 1e-6 && compareWorkspacePreference(candidate, finalWorkspace) >= 0) {
           finalWorkspace = candidate
           finalScore = verified.simScore
         } else {

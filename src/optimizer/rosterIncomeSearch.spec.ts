@@ -5,7 +5,8 @@ import {fullCatalogIdleInventory,type OwnedOperatorInput} from '../domain/operat
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {importMowerJson,resolveOperatorCharId as id} from '../workbench/compat/mowerJson'
 import fixture from '../workbench/compat/fixtures/mower-252-2gold.json'
-import {ordinaryBackupNeighbors,runRosterIncomeSearch,type IncomeSearchProgress} from './rosterIncomeSearch'
+import {ordinaryBackupNeighbors,runRosterIncomeSearch,rosterIncomeSearchSteps,type IncomeSearchProgress} from './rosterIncomeSearch'
+import {simulateCandidate} from './candidateSimulation'
 // The library is the idle-card pool, so controlled Free-bed cases need enough cards.
 const idleNames=['艾丽妮','白铁','百炼嘉维尔','仇白','嵯峨','归溟幽灵鲨']
 const owned=(names:string[]):OwnedOperatorInput[]=>[...new Set([...names,...idleNames])].map(operator=>{const o=OPERATORS.find(o=>o.name===operator)!;return {operator,elitePhase:o.rarity<3?0:o.rarity===3?1:2,level:o.rarity<3?30:o.rarity===3?55:o.rarity===4?70:o.rarity===5?80:90}})
@@ -17,6 +18,17 @@ function simple(){
  return w
 }
 describe('bounded ordinary backup income search',()=>{
+ it('filters automatic tuning candidates before simulation while independent income search stays unrestricted',()=>{
+  const request={baseline:simple(),inventory:owned(['砾','芬','调香师','雪猎']),maxCandidates:2,options:{sampleHours:1,warmupHours:0,maxStepHours:.5,production:{seed:9,droneTarget:'none' as const}}}
+  const run=rosterIncomeSearchSteps(request,undefined,ws=>ws.mainPlan.facilities.room_1_1.slots[0]!.replacements[0]===id('芬'))
+  let step=run.next()
+  while(!step.done){const batch=step.value;step=run.next(batch.jobs.map((job,index)=>{const result=simulateCandidate(job);batch.onComplete(result,index);return result}))}
+  expect(step.value.evaluatedCandidates).toBe(1)
+  expect(step.value.baseline.cases).toHaveLength(4)
+  expect(step.value.budgetExhausted).toBe(false)
+  expect(runRosterIncomeSearch(request).evaluatedCandidates).toBe(2)
+ })
+
  it('changes only one ordinary replacement and preserves main groups and the source',()=>{
   const w=simple(),before=structuredClone(w),result=ordinaryBackupNeighbors(w,owned(['砾','芬','调香师','雪猎']),2)
   expect(result).toHaveLength(2);expect(w).toEqual(before)

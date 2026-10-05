@@ -9,6 +9,7 @@ import { productionTeamTheory } from './productionSingletons'
 import { applyCombinationVariant, physicalBackupOperatorIds, shiftSnapshot, type CombinationPlacement, type CombinationPool, type CombinationVariant, type RosterRole } from './combinationModel'
 import { ATOMIC_UNITS, type AtomicUnitConfPolicy } from './riicAtomicUnits'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
+import { compareWorkspacePreference } from './automaticCombinationPreferences'
 
 export interface AllocationLocks {
   lockedPositions?: ReadonlySet<string>; lockedOperators?: ReadonlySet<string>
@@ -260,14 +261,15 @@ export function refineCombinationAllocation(ws: RosterWorkspace, inventory: Oper
         if (!draft) continue
         evaluated++
         const next = completeShiftScore(draft, inventory)
-        if (next !== undefined && next > score + 1e-7) { workspace = draft; score = next; changed = true; break }
+        const preference = compareWorkspacePreference(draft, workspace)
+        if (next !== undefined && (preference > 0 || preference === 0 && next > score + 1e-7)) { workspace = draft; score = next; changed = true; break }
         if (evaluated >= budget) break
       }
       if (changed || evaluated >= budget) break
     }
   }
   const diagnostics = normalizeProductionShifts(workspace, inventory, locks)
-  if (evaluated >= budget) diagnostics.push(`再组合验证达到 ${budget} 次完整主替评估预算；已验证的改动均提高整体静态效率，尚未穷尽全局分配`)
+  if (evaluated >= budget) diagnostics.push(`再组合验证达到 ${budget} 次完整主替评估预算；改动遵守组合优先级，同优先级时提高整体静态效率，尚未穷尽全局分配`)
   return { workspace, diagnostics, evaluated }
 }
 

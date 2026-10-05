@@ -32,6 +32,36 @@ function candidates() {
 }
 
 describe('parallel smart roster preserves serial semantics', () => {
+  it.each([true, false])('prefers completed perception and optional Blackkey over higher income, Blackkey branch completed %s', async blackkeyCompleted => {
+    const core = candidates()[0]!, supported = structuredClone(core), ordinary = candidates()[1]!
+    core.id = 'perception-core'; supported.id = 'perception-blackkey'
+    for (const candidate of [core, supported]) {
+      candidate.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('迷迭香') }
+      candidate.workspace.mainPlan.facilities.contact.slots[0]!.occupant = { kind: 'operator', operatorId: id('絮雨') }
+      candidate.workspace.mainPlan.conf.workaholic = ['迷迭香', '絮雨', '黑键'].map(id)
+    }
+    supported.workspace.mainPlan.facilities.room_3_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('黑键') }
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([ordinary, core, supported])
+    vi.spyOn(replacement, 'runGlobalPerCapitaReplacement').mockImplementation((workspace, _inventory, opts) => {
+      if (blackkeyCompleted) {
+        const removed = structuredClone(workspace)
+        removed.mainPlan.facilities.room_3_1.slots[0]!.occupant = { kind: 'empty' }
+        expect(opts!.evaluator!(removed)).toBeNaN()
+      }
+      return { workspace, swappedCount: 0, score: opts!.baselineScore, logs: [] }
+    })
+    const progress: SmartRosterProgress[] = []
+    const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => jobs.map((_job, i) => {
+      const result = { completed: i !== 2 || blackkeyCompleted, simScore: [1000, 20, 10][i]!, diagnostics: [] }
+      done(result, i); return result
+    }), p => progress.push(p))
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(blackkeyCompleted ? 10 : 20)
+    const simulations = progress.filter(p => p.phase === 'simulating')
+    expect(simulations[simulations.length - 1]!.bestScore).toBe(result.score)
+    expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('迷迭香') })
+  })
+
   it('shows warmup and sampling progress before candidates finish without regressing', async () => {
     vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)
     const progress: SmartRosterProgress[] = []

@@ -29,6 +29,14 @@ describe('confirmed core and optional membership', () => {
     expect(checkAtomicAvailability(ATOMIC_UNITS.find(a => a.id === 'pure_perception')!, owned(['迷迭香', '絮雨']), 3).available).toBe(true)
   })
 
+  it('admits perception and fireworks without making Ebenholz a required core', () => {
+    const unit = ATOMIC_UNITS.find(a => a.id === 'perception_fireworks')!
+    const value = checkAtomicAvailability(unit, owned(['迷迭香', '絮雨', '乌有', '夕', '令']), 2)
+    expect(value.available).toBe(true)
+    expect(value.coreMembers.map(m => m.name)).not.toContain('黑键')
+    expect(unit.nonCoreMembers?.map(m => m.name)).toContain('黑键')
+  })
+
   it('admits the new Monster Hunter trading pair', () => {
     const unit = ATOMIC_UNITS.find(a => a.name === '怪物猎人')
     expect(unit).toBeDefined()

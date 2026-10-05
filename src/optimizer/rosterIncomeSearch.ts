@@ -120,7 +120,8 @@ export async function runRosterIncomeSearchParallel(request:IncomeSearchRequest,
  return step.value
 }
 
-export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?:(progress:IncomeSearchProgress)=>void):Generator<CandidateSimulationBatch,IncomeSearchResult,CandidateSimulationResult[]> {
+/** Optional automatic-tuning admission is kept outside the serializable search request. */
+export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?:(progress:IncomeSearchProgress)=>void,acceptWorkspace?:(workspace:RosterWorkspace)=>boolean):Generator<CandidateSimulationBatch,IncomeSearchResult,CandidateSimulationResult[]> {
  const settings=normalize(request)
  if(settings.mode==='multi-start')return runMultiStartSearch(request,settings,onProgress)
  const baseline=structuredClone(request.baseline),baseErrors=validatePhysicalRoster(baseline)
@@ -136,6 +137,7 @@ export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?
  const cache=new Map<string,IncomeCase[]>(),comparedEdges=new Set<string>(),frontiers:Frontier[]=[],depthBoundaries:IncomeSearchEvaluation[]=[]
  const accepted=(e:IncomeSearchEvaluation)=>e.comparison?.status==='improved'&&e.parentComparison?.status==='improved'
  const canTry=(parent:IncomeSearchEvaluation,neighbor:SearchNeighbor)=>{
+  if(acceptWorkspace&&!acceptWorkspace(neighbor.workspace))return false
   const key=fingerprint(neighbor.workspace)
   if(comparedEdges.has(parent.id+':'+parent.origin+':'+parent.conditional+':'+key))return false
   let ancestor:IncomeSearchEvaluation|undefined=parent
@@ -229,7 +231,7 @@ export function* rosterIncomeSearchSteps(request:IncomeSearchRequest,onProgress?
   return undefined
  }
  yield* evaluate(initial);addFrontier(initial)
- const draftDifferent=fingerprint(source)!==fingerprint(baseline)
+ const draftDifferent=fingerprint(source)!==fingerprint(baseline)&&(!acceptWorkspace||acceptWorkspace(source))
  if(draftDifferent&&result.evaluatedCandidates<settings.maxCandidates){
   const draft:IncomeSearchEvaluation={id:`candidate-${result.evaluatedCandidates}`,label:'组合草案',workspace:source,cases:[],comparison:null,cached:false,parentId:'baseline',parentComparison:null,depth:0,origin:'draft',conditional:request.conditional??false,move:null}
   yield* evaluate(draft,initial);addFrontier(draft)

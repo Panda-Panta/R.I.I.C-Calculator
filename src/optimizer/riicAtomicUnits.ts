@@ -37,6 +37,10 @@ export interface AtomicUnit {
   allowProductionFillers?: boolean
   thirdMemberWhitelist?: string[]
   perCapitaOutput?: number
+  /** User preference, applied only after actual availability and validation. */
+  allocationPriority?: number
+  /** Optional members to prefer when a legal placement exists, never admission gates. */
+  preferredNonCoreMembers?: string[]
   externalRequirements?: ExternalCountRequirement[]
   /** Optional actual-presence plans, not ownership/admission thresholds. */
   presenceBoosts?: { whenMember?: string; pool: string[]; maximumUsefulCount: number }[]
@@ -299,6 +303,8 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     description: '迷迭香制造站、絮雨办公室为核心。黑键贸易站及宿舍/中枢支持可选。独立于人间烟火。',
     preferredFacilityType: 'manufacture',
     perCapitaOutput: 35,
+    allocationPriority: 1,
+    preferredNonCoreMembers: ['黑键'],
     coreMembers: [
       { name: '迷迭香', roomType: 'manufacture' },
       { name: '絮雨', roomType: 'office' },
@@ -311,22 +317,24 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 12. 感知+人间烟火双核体系 (6人全核心)
+  // 12. 感知+人间烟火体系：五人核心，黑键有则优先。
   {
     id: 'perception_fireworks',
     name: '感知+人间烟火双核体系',
-    description: '迷迭香制造、絮雨办公室、黑键贸易1、乌有贸易2、夕与令中枢。爱丽丝与车尔尼进驻宿舍。双贸易站双核同驻。',
+    description: '迷迭香制造、絮雨办公室、乌有贸易、夕与令中枢为核心。黑键可选且有则优先，使用时与乌有分驻两个贸易站；爱丽丝与车尔尼为宿舍支持。',
     preferredFacilityType: 'trading',
     perCapitaOutput: 36,
+    allocationPriority: 1,
+    preferredNonCoreMembers: ['黑键'],
     coreMembers: [
       { name: '迷迭香', roomType: 'manufacture' },
       { name: '絮雨', roomType: 'office' },
-      { name: '黑键', roomType: 'trading' },
       { name: '乌有', roomType: 'trading' },
       { name: '夕', roomType: 'central' },
       { name: '令', roomType: 'central' },
     ],
     nonCoreMembers: [
+      { name: '黑键', roomType: 'trading' },
       { name: '桑葚', roomType: 'office' },
       { name: '爱丽丝', roomType: 'dormitory' },
       { name: '车尔尼', roomType: 'dormitory' },

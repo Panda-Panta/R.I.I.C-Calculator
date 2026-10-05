@@ -8,6 +8,25 @@ import { buildCombinationPool, evaluateCombinationVariant } from './combinationE
 const inventory = (names: string[]) => compileOperatorInventory(fullCatalogIdleInventory().filter(o => names.some(name => id(name) === o.operator)))
 
 describe('whole combination efficiency', () => {
+  it('ranks available perception before higher-efficiency families, preferring optional Ebenholz', () => {
+    const pool = buildCombinationPool(createDefaultWorkspace(), inventory(['迷迭香', '絮雨', '黑键', '多萝西']))
+    const evaluated = pool.values.filter(v => v.status === 'evaluated')
+    expect(evaluated.some(v => v.variant.definitionId === 'rhine_lab')).toBe(true)
+    expect(evaluated[0]!.variant.definitionId).toBe('pure_perception')
+    expect(evaluated[0]!.variant.optionalOperatorIds).toContain(id('黑键'))
+    const firstOther = evaluated.findIndex(v => v.variant.definitionId !== 'pure_perception')
+    expect(evaluated.slice(firstOther).every(v => v.variant.definitionId !== 'pure_perception')).toBe(true)
+  })
+
+  it('does not require the optional Blackkey maximum skill stage to prefer his available variant', () => {
+    const inputs = fullCatalogIdleInventory().filter(o => ['迷迭香', '絮雨', '黑键'].some(name => id(name) === o.operator))
+    Object.assign(inputs.find(o => o.operator === id('黑键'))!, { elitePhase: 0, level: 1 })
+    const owned = compileOperatorInventory(inputs)
+    const first = buildCombinationPool(createDefaultWorkspace(), owned).values.find(v => v.status === 'evaluated')!
+    expect(first.variant.optionalOperatorIds).toContain(id('黑键'))
+    expect(owned.operators.find(o => o.charId === id('黑键'))!.skills.every(s => s.unlockPhase === 0)).toBe(true)
+  })
+
   it('calculates Cangtai complete teams as 35, 75 and 110 skill percent', () => {
     const base = createDefaultWorkspace()
     const owned = inventory(['苍苔', '砾', '斑点'])
