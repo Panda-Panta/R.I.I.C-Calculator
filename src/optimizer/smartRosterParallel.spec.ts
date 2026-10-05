@@ -32,6 +32,22 @@ function candidates() {
 }
 
 describe('parallel smart roster preserves serial semantics', () => {
+  it('shows warmup and sampling progress before candidates finish without regressing', async () => {
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(candidates)
+    const progress: SmartRosterProgress[] = []
+    await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done, running) => {
+      running?.({ phase: 'warmup', elapsedHours: 12, totalHours: 96, warmupHours: 24 }, 0)
+      running?.({ phase: 'sampling', elapsedHours: 60, totalHours: 96, warmupHours: 24 }, 1)
+      const results = jobs.map(simulateCandidate)
+      done(results[1]!, 1); done(results[0]!, 0)
+      return results
+    }, p => progress.push(p))
+    const stages = progress.filter(p => p.phase === 'simulating')
+    expect(stages[1]!.label).toContain('预热 12.0/24 小时')
+    expect(stages[2]!.label).toContain('采样 36.0/72 小时')
+    expect(stages[1]!.bestScore).toBeUndefined()
+    expect(stages.map(p => p.phaseProgress)).toEqual([0, 0.0625, 0.375, 0.5625, 1])
+  })
   it('lets a mixed-mood group recover before returning instead of immediately repeating its shift', async () => {
     const source = baseWorkspace()
     source.mainPlan.facilities.room_3_1.slots = ['食铁兽', '铅踝'].map(name => ({

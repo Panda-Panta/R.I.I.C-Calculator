@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { runCandidateBatch, candidateConcurrency, CandidateSimulationPool } from './candidateSimulationPool'
-import type { CandidateSimulationJob, CandidateSimulationResult } from './candidateSimulation'
+import type { CandidateSimulationJob, CandidateWorkerMessage } from './candidateSimulation'
 import { simulateCandidate } from './candidateSimulation'
 import { createDefaultWorkspace } from '../workbench/defaults'
 
 class TestWorker {
-  onmessage: ((event: MessageEvent<CandidateSimulationResult>) => void) | null = null
+  onmessage: ((event: MessageEvent<CandidateWorkerMessage>) => void) | null = null
   onerror: ((event: ErrorEvent) => void) | null = null
   onmessageerror: ((event: MessageEvent) => void) | null = null
   jobs: CandidateSimulationJob[] = []
@@ -17,6 +17,22 @@ class TestWorker {
 const jobs = [0, 1, 2, 3, 4].map(i => ({ workspace: { name: String(i) } })) as CandidateSimulationJob[]
 
 describe('bounded candidate CPU workers', () => {
+  it('forwards in-flight simulation progress without completing or redispatching the job', async () => {
+    const workers: TestWorker[] = [], progress: { index: number; elapsed: number }[] = [], completed: number[] = []
+    const pool = new CandidateSimulationPool({ concurrency: 2, createWorker: () => {
+      const worker = new TestWorker(); workers.push(worker); return worker
+    } })
+    try {
+      const result = pool.run(jobs.slice(0, 2), (_result, i) => completed.push(i), (p, i) => progress.push({ index: i, elapsed: p.elapsedHours }))
+      void result.catch(() => {})
+      workers[0]!.onmessage?.(new MessageEvent('message', { data: { type: 'progress', progress: { phase: 'warmup', elapsedHours: 12, totalHours: 96, warmupHours: 24 } } }))
+      expect(completed).toEqual([])
+      expect(progress).toEqual([{ index: 0, elapsed: 12 }])
+      expect(workers.map(w => w.jobs.length)).toEqual([1, 1])
+      workers[1]!.finish(20); workers[0]!.finish(10)
+      expect((await result).map(r => r.simScore)).toEqual([10, 20])
+    } finally { pool.dispose() }
+  })
   it('keeps workers alive across search batches and releases them at the end', async () => {
     const workers: TestWorker[] = []
     const pool = new CandidateSimulationPool({ concurrency: 2, createWorker: () => {

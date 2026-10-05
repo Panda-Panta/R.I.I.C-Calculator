@@ -17,6 +17,7 @@ import { applySingletonWorkPolicy } from './productionSingletons'
 import { availableCoreVariants, facilityCapacity } from './combinationModel'
 import { buildCombinationPool } from './combinationEvaluation'
 import { allocateCombinationSkeleton, appliedMainCombinations, completeShiftScore, normalizeProductionShifts, refineCombinationAllocation } from './combinationAllocation'
+import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 
 export interface MolecularCandidate {
   id: string
@@ -103,7 +104,8 @@ function finishSkeleton(source: RosterWorkspace, entries: readonly OwnedOperator
     const [room, index] = key.split(':')
     return JSON.stringify(ws.mainPlan.facilities[room as MowerRoomId].slots[Number(index)]) !== JSON.stringify(beforeDorms.mainPlan.facilities[room as MowerRoomId].slots[Number(index)])
   })) Object.assign(ws, beforeDorms)
-  if (!ensureBuiltDormKeepers(ws, inventory, locked) || !completeBackups() || !configureRunOrder(ws, inventory) || validatePhysicalRoster(ws).length) return null
+  if (!ensureBuiltDormKeepers(ws, inventory, locked) || !completeBackups() || !configureRunOrder(ws, inventory) ||
+    validatePhysicalRoster(ws).length || recoveryGroupCapacityIssues(ws).length) return null
   return ws
 }
 /** Enumerate first, allocate both shifts, then recombine the completed rosters. */
@@ -116,18 +118,19 @@ export function generateMolecularCandidates(base: RosterWorkspace, entries: read
     room.slots.length = cap
   }
   const pool = buildCombinationPool(base, inventory)
+  const allocationOptions = { ...options, enforceRecoveryCapacity: true }
   const count = Math.max(1, options.branchCount ?? 8)
   const candidates: MolecularCandidate[] = [], seen = new Set<string>(), skeletons = new Set<string>()
   const families = new Set(pool.values.filter(v => v.status === 'evaluated').map(v => v.variant.definitionId))
   const attempts = Math.max(count, families.size + 1)
   for (let branch = 0; branch < attempts && candidates.length < count; branch++) {
-    const allocation = allocateCombinationSkeleton(base, pool, branch, options)
+    const allocation = allocateCombinationSkeleton(base, pool, branch, allocationOptions)
     const fingerprint = JSON.stringify(allocation.workspace.mainPlan)
     if (skeletons.has(fingerprint)) continue
     skeletons.add(fingerprint)
     const completed = finishSkeleton(allocation.workspace, entries, inventory, options)
     if (!completed) continue
-    const refined = refineCombinationAllocation(completed, inventory, pool, options)
+    const refined = refineCombinationAllocation(completed, inventory, pool, allocationOptions)
     const ws = finishSkeleton(refined.workspace, entries, inventory, options)
     if (!ws) continue
     const ordering = normalizeProductionShifts(ws, inventory, options)
@@ -146,7 +149,7 @@ export function generateMolecularCandidates(base: RosterWorkspace, entries: read
   if (!candidates.length) {
     const fallback = buildSingletonFallback(base, inventory, options.lockedPositions ?? new Set())
     if (fallback) {
-      const refined = refineCombinationAllocation(fallback, inventory, pool, options)
+      const refined = refineCombinationAllocation(fallback, inventory, pool, allocationOptions)
       const ws = finishSkeleton(refined.workspace, entries, inventory, options)
       const ordering = ws ? normalizeProductionShifts(ws, inventory, options) : []
       if (ws && configureRunOrder(ws, inventory) && !validatePhysicalRoster(ws).length) candidates.push({ id: 'singleton_fallback', name: '实际技能补位及再组合排班', workspace: ws,

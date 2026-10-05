@@ -5,6 +5,8 @@ import type { SpecialOperatorSimData } from './smartRoster'
 import { summarizeIncome, type IncomeCase } from './incomeComparison'
 import type { CalculationReport } from '../domain/types'
 import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
+import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
+import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 
 export interface CandidateSimulationJob {
   workspace: Parameters<typeof runScheduleSimulationBridge>[0]
@@ -29,16 +31,28 @@ export interface CandidateSimulationResult {
 export interface CandidateSimulationBatch {
   jobs: CandidateSimulationJob[]
   onComplete: (result: CandidateSimulationResult, index: number) => void
+  onProgress?: (progress: ScheduleSimulationProgress, index: number) => void
 }
+
+export type CandidateWorkerMessage = CandidateSimulationResult | { type: 'progress'; progress: ScheduleSimulationProgress }
 
 export type CandidateBatchExecutor = (
   jobs: CandidateSimulationJob[],
   onComplete: CandidateSimulationBatch['onComplete'],
+  onProgress?: CandidateSimulationBatch['onProgress'],
 ) => Promise<CandidateSimulationResult[]>
 
 export function simulateCandidate(job: CandidateSimulationJob): CandidateSimulationResult {
+  return simulateCandidateWithProgress(job)
+}
+
+export function simulateCandidateWithProgress(job: CandidateSimulationJob, onProgress?: (progress: ScheduleSimulationProgress) => void): CandidateSimulationResult {
   if (!job.incomeComparison && job.workspace.compatibility.backupPlans.length) return { completed: false, simScore: 0, diagnostics: ['AUTOMATIC_BACKUP_PLANS_FORBIDDEN'] }
-  const response = runScheduleSimulationBridge(job.workspace, job.options, job.assumptions)
+  if (!job.incomeComparison) {
+    const issues = recoveryGroupCapacityIssues(job.workspace)
+    if (issues.length) return { completed: false, simScore: 0, diagnostics: issues.map(d => `[${d.code}] ${d.message}`) }
+  }
+  const response = runScheduleSimulationBridge(job.workspace, job.options, job.assumptions, onProgress)
   const report = response.report
   if (job.incomeComparison) {
     if (!report) throw new Error(response.error ?? '模拟未返回报告')

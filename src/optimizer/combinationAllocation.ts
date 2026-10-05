@@ -8,8 +8,15 @@ import { projectControlOutput } from './controlImpact'
 import { productionTeamTheory } from './productionSingletons'
 import { applyCombinationVariant, physicalBackupOperatorIds, shiftSnapshot, type CombinationPlacement, type CombinationPool, type CombinationVariant, type RosterRole } from './combinationModel'
 import { ATOMIC_UNITS, type AtomicUnitConfPolicy } from './riicAtomicUnits'
+import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 
-export interface AllocationLocks { lockedPositions?: ReadonlySet<string>; lockedOperators?: ReadonlySet<string> }
+export interface AllocationLocks {
+  lockedPositions?: ReadonlySet<string>; lockedOperators?: ReadonlySet<string>
+  /** Full automatic generation must reject groups that cannot physically recover. */
+  enforceRecoveryCapacity?: boolean
+  /** Existing cores remain in their main/relief seats; only gap fillers can move. */
+  protectedCombinationOperators?: ReadonlySet<string>
+}
 export interface CombinationAllocation { workspace: RosterWorkspace; variants: CombinationVariant[] }
 const key = (p: Pick<CombinationPlacement, 'roomId' | 'slotIndex'>) => `${p.roomId}:${p.slotIndex}`
 const skillTypes: Record<string, string> = { manufacture: 'MANUFACTURE', trading: 'TRADING', power: 'POWER', central: 'CONTROL', contact: 'HIRE', meeting: 'MEETING', factory: 'WORKSHOP', train: 'TRAINING' }
@@ -27,9 +34,8 @@ export function applyCombinationPolicy(ws: RosterWorkspace, policy: AtomicUnitCo
   }
 }
 
-function groupVariant(ws: RosterWorkspace, variant: CombinationVariant, locks: AllocationLocks): void {
-  // A relief combination must shift together too. Merge its existing primary groups
-  // rather than attaching a backup to an unrelated timing trigger.
+function groupVariant(ws: RosterWorkspace, variant: CombinationVariant, locks: AllocationLocks): boolean {
+  // A relief combination may fill gaps in one shift unit, never join existing units.
   const positions = variant.placements.filter(p => ws.mainPlan.facilities[p.roomId].type !== 'dormitory')
   const frozen = (roomId: CombinationPlacement['roomId'], slotIndex: number) => {
     const slot = ws.mainPlan.facilities[roomId].slots[slotIndex]!
@@ -39,12 +45,11 @@ function groupVariant(ws: RosterWorkspace, variant: CombinationVariant, locks: A
   const protectedGroups = new Set(Object.values(ws.mainPlan.facilities).flatMap(room => room.slots
     .flatMap((slot, index) => frozen(room.roomId, index) && slot.groupId ? [slot.groupId] : [])))
   const oldGroups = new Set(positions.map(p => ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId).filter(Boolean))
+  if (oldGroups.size > 1) return false
   const anchor = positions.find(p => frozen(p.roomId, p.slotIndex) && ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId)
-  const group = anchor ? ws.mainPlan.facilities[anchor.roomId].slots[anchor.slotIndex]!.groupId! : `组合_${variant.definitionId}_${positions.map(p => key(p)).join('_')}`
-  for (const room of Object.values(ws.mainPlan.facilities)) for (const [index, slot] of room.slots.entries()) {
-    if (!frozen(room.roomId, index) && slot.groupId && oldGroups.has(slot.groupId) && !protectedGroups.has(slot.groupId)) slot.groupId = group
-  }
-  for (const p of positions) {
+  const group = anchor ? ws.mainPlan.facilities[anchor.roomId].slots[anchor.slotIndex]!.groupId! :
+    [...oldGroups][0] ?? `组合_${variant.definitionId}_${positions.map(p => key(p)).join('_')}`
+  for (const p of variant.definitionId === 'singleton' ? [] : positions) {
     const slot = ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!
     if (!frozen(p.roomId, p.slotIndex) && (!slot.groupId || !protectedGroups.has(slot.groupId))) slot.groupId = group
   }
@@ -54,6 +59,7 @@ function groupVariant(ws: RosterWorkspace, variant: CombinationVariant, locks: A
     if (!frozen(p.roomId, p.slotIndex)) slot.groupId ||= `组合驻留_${variant.definitionId}_${key(p)}`
   }
   applyCombinationPolicy(ws, variant.policy)
+  return !locks.enforceRecoveryCapacity || recoveryGroupCapacityIssues(ws, true).length === 0
 }
 
 /** Reuse each legal room footprint, but reserve currently free seats in both shifts. */
@@ -98,7 +104,7 @@ export function allocateCombinationSkeleton(base: RosterWorkspace, pool: Combina
     if (!variant) continue
     const placed = applyCombinationVariant(workspace, variant)
     if (!placed) continue
-    groupVariant(placed, variant, locks)
+    if (!groupVariant(placed, variant, locks)) continue
     if (!preservesLocks(workspace, placed, locks)) continue
     workspace = placed
     variants.push(variant)
@@ -144,13 +150,14 @@ export function regroupCombination(ws: RosterWorkspace, inventory: OperatorInven
   for (const target of desired) {
     const outgoing = actor(draft, target)
     if (outgoing === target.operatorId) continue
-    if (outgoing && (locks.lockedOperators?.has(id(outgoing)) || permanent.has(id(outgoing)))) return null
+    if (outgoing && (locks.lockedOperators?.has(id(outgoing)) || permanent.has(id(outgoing)) || locks.protectedCombinationOperators?.has(id(outgoing)))) return null
     let source: CombinationPlacement | undefined
     for (const room of Object.values(draft.mainPlan.facilities)) room.slots.forEach((slot, slotIndex) => {
       if (slot.occupant.kind === 'operator' && id(slot.occupant.operatorId) === target.operatorId) source = { roomId: room.roomId, slotIndex, role: 'main', operatorId: target.operatorId }
       if (physicalBackupOperatorIds(room, slot).includes(target.operatorId)) source = { roomId: room.roomId, slotIndex, role: 'backup', operatorId: target.operatorId }
     })
-    if (source && (locks.lockedPositions?.has(key(source)) || permanent.has(target.operatorId) || outgoing && !canMove(draft, inventory, outgoing, source, draft.mainPlan.facilities[target.roomId].type))) return null
+    if (source && (locks.lockedPositions?.has(key(source)) || permanent.has(target.operatorId) ||
+      locks.protectedCombinationOperators?.has(target.operatorId) || outgoing && !canMove(draft, inventory, outgoing, source, draft.mainPlan.facilities[target.roomId].type))) return null
     // A reserved special order operator cannot become an ordinary production member.
     if (target.role === 'backup' && !isOrdinaryReplacementCandidate(target.operatorId, draft.mainPlan.facilities[target.roomId].type)) return null
     if (source) put(draft, source, outgoing)
@@ -175,7 +182,7 @@ export function regroupCombination(ws: RosterWorkspace, inventory: OperatorInven
     const valid = slot.replacements.filter(ref => active.includes(id(ref)))
     slot.replacements = [...valid, ...rankedActive.filter(ref => !valid.some(v => id(v) === ref))].slice(0, size)
   }
-  groupVariant(draft, { ...original, placements: desired }, locks)
+  if (!groupVariant(draft, { ...original, placements: desired }, locks)) return null
   if (!preservesLocks(ws, draft, locks)) return null
   return draft
 }
@@ -242,13 +249,14 @@ export function refineCombinationAllocation(ws: RosterWorkspace, inventory: Oper
   const tried = new Set<string>()
   while (changed && score !== undefined && evaluated < budget) {
     changed = false
+    const protectedCombinationOperators = activeCombinationCoreIds(workspace, pool)
     for (const value of pool.values) {
       if (value.status !== 'evaluated') continue
       for (const role of ['main', 'backup'] as const) {
         const trialKey = `${value.variant.id}:${role}:${score}`
         if (tried.has(trialKey)) continue
         tried.add(trialKey)
-        const draft = regroupCombination(workspace, inventory, value.variant, role, locks)
+        const draft = regroupCombination(workspace, inventory, value.variant, role, { ...locks, protectedCombinationOperators })
         if (!draft) continue
         evaluated++
         const next = completeShiftScore(draft, inventory)
@@ -261,6 +269,23 @@ export function refineCombinationAllocation(ws: RosterWorkspace, inventory: Oper
   const diagnostics = normalizeProductionShifts(workspace, inventory, locks)
   if (evaluated >= budget) diagnostics.push(`再组合验证达到 ${budget} 次完整主替评估预算；已验证的改动均提高整体静态效率，尚未穷尽全局分配`)
   return { workspace, diagnostics, evaluated }
+}
+
+/** Core presence alone protects a formed combination; optional members are gap fillers. */
+export function activeCombinationCoreIds(ws: RosterWorkspace, pool: CombinationPool): Set<string> {
+  const cores = new Set<string>()
+  for (const value of pool.values) {
+    if (value.status !== 'evaluated') continue
+    const core = value.variant.placements.filter(p => value.variant.coreOperatorIds.includes(p.operatorId))
+    if (!core.length) continue
+    for (const role of ['main', 'backup'] as const) {
+      if (core.every(p => ws.mainPlan.facilities[p.roomId].slots.some((_slot, slotIndex) =>
+        actor(ws, { ...p, slotIndex, role: ws.mainPlan.facilities[p.roomId].type === 'dormitory' ? 'main' : role }) === p.operatorId))) {
+        core.forEach(p => cores.add(p.operatorId))
+      }
+    }
+  }
+  return cores
 }
 
 /** Labels are derived from final placements, never retained after the combination is broken. */

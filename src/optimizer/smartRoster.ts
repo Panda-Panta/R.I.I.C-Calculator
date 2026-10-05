@@ -18,6 +18,7 @@ import { normalizeProductionShifts } from './combinationAllocation'
 import type { CalculationReport } from '../domain/types'
 import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
 import { applyGeneratedRecoveryPolicy } from './generatedRecoveryPolicy'
+import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -126,13 +127,23 @@ export function runSmartRoster(
 
 function simulationProgress(total: number, onProgress?: (p: SmartRosterProgress) => void) {
   let completed = 0, bestScore: number | undefined
-  return (result: CandidateSimulationResult, _index: number) => {
+  const fractions = new Map<number, number>()
+  return { onComplete: (result: CandidateSimulationResult, index: number) => {
     completed++
+    fractions.set(index, 1)
     if (result.completed) bestScore = Math.max(bestScore ?? -Infinity, result.simScore)
-    onProgress?.({ phase: 'simulating', phaseProgress: completed / total,
+    onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
       currentTrial: completed, totalTrials: total, bestScore,
       label: `阶段 2/3: 动态拟真进度 ${completed}/${total}（${result.completed ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
-  }
+  }, onProgress: (progress: ScheduleSimulationProgress, index: number) => {
+    fractions.set(index, progress.elapsedHours / progress.totalHours)
+    const warmup = progress.phase === 'warmup'
+    const elapsed = warmup ? progress.elapsedHours : progress.elapsedHours - progress.warmupHours
+    const duration = warmup ? progress.warmupHours : progress.totalHours - progress.warmupHours
+    onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
+      currentTrial: completed, totalTrials: total, bestScore,
+      label: `阶段 2/3: 候选 ${index + 1}/${total} ${warmup ? '预热' : '采样'} ${elapsed.toFixed(1)}/${duration} 小时（已完成 ${completed}/${total}）` })
+  } }
 }
 
 export async function runSmartRosterParallel(
@@ -145,10 +156,10 @@ export async function runSmartRosterParallel(
   const run = smartRosterSteps(base, entries, options, onProgress)
   let step = run.next()
   while (!step.done) {
-    const { jobs, onComplete } = step.value
+    const { jobs, onComplete, onProgress: onSimulationProgress } = step.value
     let results: CandidateSimulationResult[]
     try {
-      results = await execute(jobs, onComplete)
+      results = await execute(jobs, onComplete, onSimulationProgress)
       if (results.length !== jobs.length) throw new Error('候选仿真返回数量不完整')
     } catch (error) { step = run.throw(error); continue }
     step = run.next(results)
@@ -321,7 +332,7 @@ function* smartRosterSteps(
   // Capture keys before dispatch; later policy/placement changes must not turn
   // a report of the original input into a report of the modified workspace.
   const inputKeys = jobs.map(job => cache.key(job))
-  const simulationResults = yield { jobs, onComplete: simulationProgress(jobs.length, onProgress) }
+  const simulationResults = yield { jobs, ...simulationProgress(jobs.length, onProgress) }
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!

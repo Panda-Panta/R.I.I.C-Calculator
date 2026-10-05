@@ -1,7 +1,7 @@
-import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult } from './candidateSimulation'
+import { simulateCandidateWithProgress, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateWorkerMessage, type CandidateSimulationBatch } from './candidateSimulation'
 
 export interface CandidateWorker {
-  onmessage: ((event: MessageEvent<CandidateSimulationResult>) => void) | null
+  onmessage: ((event: MessageEvent<CandidateWorkerMessage>) => void) | null
   onerror: ((event: ErrorEvent) => void) | null
   onmessageerror: ((event: MessageEvent) => void) | null
   postMessage(job: CandidateSimulationJob): void
@@ -17,6 +17,7 @@ export interface CandidateBatchOptions {
   concurrency?: number
   createWorker?: () => CandidateWorker
   onComplete?: (result: CandidateSimulationResult, index: number) => void
+  onProgress?: CandidateSimulationBatch['onProgress']
 }
 
 export async function runCandidateBatch(jobs: CandidateSimulationJob[], options: CandidateBatchOptions = {}): Promise<CandidateSimulationResult[]> {
@@ -50,7 +51,7 @@ export class CandidateSimulationPool {
     this.workers = []
   }
 
-  async run(jobs: CandidateSimulationJob[], onComplete = this.options.onComplete): Promise<CandidateSimulationResult[]> {
+  async run(jobs: CandidateSimulationJob[], onComplete = this.options.onComplete, onProgress = this.options.onProgress): Promise<CandidateSimulationResult[]> {
     if (this.disposed) throw new Error('候选仿真线程池已关闭')
     if (this.active) throw new Error('候选仿真线程池正在执行上一批场景')
     if (!jobs.length) return []
@@ -58,7 +59,7 @@ export class CandidateSimulationPool {
     const requested = options.concurrency ?? candidateConcurrency(globalThis.navigator?.hardwareConcurrency)
     const count = Math.min(jobs.length, Number.isFinite(requested) ? Math.max(1, Math.min(4, Math.floor(requested))) : 1)
     const serial = () => jobs.map((job, index) => {
-      const result = simulateCandidate(job)
+      const result = simulateCandidateWithProgress(job, onProgress ? progress => onProgress(progress, index) : undefined)
       onComplete?.(result, index)
       return result
     })
@@ -90,8 +91,10 @@ export class CandidateSimulationPool {
           worker.onmessage = event => {
             if (stopped) return
             try {
-              results[index] = event.data
-              onComplete?.(event.data, index)
+              const message = event.data
+              if ('type' in message) { onProgress?.(message.progress, index); return }
+              results[index] = message
+              onComplete?.(message, index)
               if (++completed === jobs.length) {
                 stopped = true; this.cancelActive = undefined
                 workers.forEach(w => { w.onmessage = null; w.onerror = null; w.onmessageerror = null })

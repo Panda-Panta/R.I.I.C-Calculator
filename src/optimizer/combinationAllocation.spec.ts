@@ -24,9 +24,14 @@ function layout(type: 'manufacture' | 'trading', level: number) {
   room.slots = Array.from({ length: level }, () => ({ occupant: { kind: 'empty' }, groupId: null, replacements: [] }))
   base.mainPlan.facilities.room_3_3 = { roomId: 'room_3_3', type: 'power', level: 3,
     slots: [{ occupant: { kind: 'operator', operatorId: id('雷蛇') }, groupId: null, replacements: [id('格雷伊')] }] }
+  base.mainPlan.facilities.dormitory_1.level = 1
+  base.mainPlan.facilities.dormitory_1.slots = Array.from({ length: 5 }, (_, i) => ({
+    occupant: i === 0 ? { kind: 'operator', operatorId: id('杜林') } : { kind: 'free' }, groupId: null, replacements: [],
+  }))
+  base.mainPlan.conf.disable_auto_dorm_keeper = true
   return base
 }
-const entries = (names: string[]) => fullCatalogIdleInventory().filter(o => [...names, '雷蛇', '格雷伊'].some(name => id(name) === o.operator))
+const entries = (names: string[]) => fullCatalogIdleInventory().filter(o => [...names, '雷蛇', '格雷伊', '杜林'].some(name => id(name) === o.operator))
 
 describe('combination-first main and backup allocation', () => {
   it('finds the physical source rather than a Fiammetta refresh reference', () => {

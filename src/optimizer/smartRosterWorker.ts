@@ -14,7 +14,7 @@ self.onmessage = async (event: MessageEvent<SmartRosterWorkerMessage>) => {
   try {
     const { base, entries, options } = event.data
     const report = await runSmartRosterParallel(base, entries, options ?? {},
-      (jobs, onComplete) => pool.run(jobs, onComplete), (progress) => {
+      (jobs, onComplete, onProgress) => pool.run(jobs, onComplete, onProgress), (progress) => {
       self.postMessage({ type: 'progress', progress })
     })
     pool.dispose()
