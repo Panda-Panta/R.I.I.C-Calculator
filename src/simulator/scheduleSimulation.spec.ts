@@ -17,6 +17,18 @@ function scenario(primary='砾',candidate?:string){
 }
 
 describe('time-dependent Mower schedule simulation',()=>{
+ it.each(['mower-default','mower-alpha'] as const)('records an explicitly selected %s model without changing caller options',schedulingModel=>{
+  const options={sampleHours:.01,schedulingModel},before={...options}
+  const report=simulateSchedule(scenario(),options)
+  expect(report.success).toBe(true)
+  expect(report.assumptions.schedulingModel).toBe(schedulingModel)
+  expect(report.inputs.options.schedulingModel).toBe(schedulingModel)
+  expect(options).toEqual(before)
+ })
+ it('rejects an unknown scheduling model instead of silently choosing an algorithm',()=>{
+  // @ts-expect-error Imported report options can contain an invalid model.
+  expect(()=>simulateSchedule(scenario(),{schedulingModel:'unknown'})).toThrow('Invalid scheduling model')
+ })
  it('default single recovery selects a recipient who can receive outside healing',()=>{
   const ws=createDefaultWorkspace();ws.mainPlan.facilities.dormitory_1.level=1
   ws.mainPlan.facilities.dormitory_1.slots=['闪灵','菲亚梅塔','芬'].map(name=>({occupant:{kind:'operator' as const,operatorId:name},groupId:null,replacements:[]}))

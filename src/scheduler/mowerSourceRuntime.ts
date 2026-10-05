@@ -37,6 +37,7 @@ import {prepareMowerDormSelection,mowerArrangementReadIndexes,mowerDormReplaceme
 import {prepareMowerShiftCycle,recordMowerDormAdmissions,type MowerShiftModel} from './mowerShiftCycle'
 import {prepareMowerRunEntry,nextMowerRunRecoveryMicros} from './mowerRunLifecycle'
 import {ensureMowerDormRecovery} from './mowerDormRecovery'
+import {normalizeMowerRecoveryBeds} from './mowerRecoveryBeds'
 import {prepareMowerRelease} from './mowerRelease'
 import {mowerProtectedShift,prepareMowerShiftBeds} from './mowerShiftProtection'
 export interface MowerBackupContext {appendEmptyTask:boolean;restoreOnDeactivate:boolean;customTimeMicros?:number}
@@ -45,7 +46,7 @@ export interface MowerSourceRuntime {
  activeTask?:MowerTask;lastTodoMicros?:number|null;lastClueMicros?:number|null;partyTimeMicros?:number|null;droneTimeMicros?:number|null;reloadTimeMicros?:number|null;baseRunAborted?:boolean
  runFlags?:{planned:boolean;todoTask:boolean;collectNotification:boolean}
  execution?:{task:MowerTask;steps:Generator<MowerRoomReturn,boolean,void>;wakeMicros:number;intent:MowerTaskPlan;data:MowerSchedulingData;lastBoundary?:MowerRoomReturn;positions?:Record<string,[string,number]>}
- phaseExecution?:{steps:Generator<MowerRoomReturn,void,void>;wakeMicros:number;skipPlanning:boolean}
+ phaseExecution?:{steps:Generator<MowerRoomReturn,void,void>;wakeMicros:number;skipPlanning:boolean;previewNoop?:boolean}
  runReturn?:{wakeMicros:number;finishFallback:boolean}
  lastTrainMoodReadMicros?:number;lastWakeMicros?:number;lastFiaNoopMicros?:number;trace:{timeMicros:number;type:string;plan:MowerTaskPlan;metadata:string}[]
 }
@@ -78,8 +79,8 @@ export function makeMowerSchedulingData(s:RuntimeState,previous?:{data:MowerSche
  const runOrderRooms=config.mowerRunOrderEnabled===false?{}:previous?.data.runOrderRooms??{}
  if(config.mowerRunOrderEnabled!==false)for(const [room,slots] of Object.entries(source))if(room.startsWith('room')&&slots.some(slot=>slot.replacement.some(id=>isTradeRunOrderOperator(id)&&((OPERATOR_MAP.get(id)?.name??id)!=='U-Official'||isConfiguredTradeRoom(config,room)))))runOrderRooms[room]={}
  const oldBeds=new Map(previous?.data.dorms.map(b=>[b.position[0]+'_'+b.position[1],b]))
+ normalizeMowerRecoveryBeds(config)
  const configuredBeds=[...config.beds]
- if(config.mowerAlpha)for(const [room,slots] of Object.entries(source))if(room.startsWith('dorm'))slots.forEach((slot,index)=>{if(slot.group&&slot.replacement.includes('Free')&&!configuredBeds.some(b=>b.id===room+'_'+index))configuredBeds.push({id:room+'_'+index,roomId:room,vip:false})})
  const dorms=config.mowerAlpha?configuredBeds.filter(b=>b.managedRecovery!==false).sort((a,b)=>(config.mowerDormOrder??['dormitory_1','dormitory_2','dormitory_3','dormitory_4']).indexOf(a.roomId)-(config.mowerDormOrder??['dormitory_1','dormitory_2','dormitory_3','dormitory_4']).indexOf(b.roomId)||slotIndex(a.id)-slotIndex(b.id)).map(b=>{const old=oldBeds.get(b.id);return new MowerDormState([b.roomId,slotIndex(b.id)],old?.name??'',old?.timeMicros,source[b.roomId]?.[slotIndex(b.id)]?.replacement.includes('Free')??false)}):previous?.data.dorms??config.beds.filter(b=>b.managedRecovery!==false).sort((a,b)=>Number(b.vip)-Number(a.vip)).map(b=>new MowerDormState([b.roomId,slotIndex(b.id)]))
  const data=new MowerSchedulingData({alpha:config.mowerAlpha,priorityReplacement:rules.priorityReplacement,freeRoomExclusions:rules.freeRoomExclusions,standbyNames:rules.standby,dormOrder:config.mowerDormOrder,plan:Object.fromEntries(Object.entries(source).map(([room,slots])=>[room,slots.map(p=>p.agent)])),operators,dorms,runOrderRooms,nowMicros:toMowerMicros(s.time),policy:{restingThreshold:config.mowerPolicy!.restingThreshold,rescueThreshold:config.mowerPolicy?.rescueThreshold??.75},freeRoom:config.mowerPolicy?.freeRoom,groupRestInFullOnMoodGap:config.mowerPolicy?.groupRestInFullOnMoodGap,groupMoodGapMaxExtraWaitHours:config.mowerPolicy?.groupMoodGapMaxExtraWaitHours,mergeIntervalMinutes:config.mowerPolicy?.mergeIntervalMinutes,powerPlantCount:config.mowerPolicy?.powerPlantCount,planConditions:previous?.data.planConditions,partyTime:config.mowerServices?.enableParty===false?undefined:previous?.data.partyTime,restingPriorityNames:config.mowerPolicy?.opeRestingPriority,freeBlacklist:config.freeBlacklist,excludedCandidates:new Set(config.excludedCandidates),recentShiftOnByRestUnit:previous?.data.recentShiftOnByRestUnit})
  if(data.alpha)initializeMowerAlphaMoodLimits(data,rules.lingMode,config.mowerMoodLimits,Object.fromEntries(Object.values(previous?.data.operators??{}).map(o=>[o.name,o.upperLimit])))
@@ -107,7 +108,8 @@ export function getMowerSourceRuntime(s:RuntimeState):MowerSourceRuntime {
 function nextMowerDecisionMicros(s:RuntimeState,rates:RuntimeRates):number {
  const {data,queue}=getMowerSourceRuntime(s),queued=nextMowerRunRecoveryMicros(queue,data.nowMicros,data.alpha)
  const moraleHours=nextRosterEventHours(s,rates,false)
- return Number.isFinite(moraleHours)?Math.min(queued,data.nowMicros+Math.max(1,toMowerMicros(moraleHours))):queued
+ const conditionWake=s.mowerShiftModel?.nextConditionWakeMicros?.(data)??Infinity
+ return Math.min(queued,conditionWake,Number.isFinite(moraleHours)?data.nowMicros+Math.max(1,toMowerMicros(moraleHours)):Infinity)
 }
 function physicalRoom(s:RuntimeState,room:string,length:number):string[] {
  const names=Array(length).fill('')
@@ -478,7 +480,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   let data=getMowerSourceRuntime(s).data
   // infra_main must not execute a task removed by entry metadata rebuilding.
   if(task&&!running&&(!queue.tasks.includes(task)||task.timeMicros>data.nowMicros)){skip();break}
-  let skipPlanning=runningPhase?.skipPlanning??false,previewNoop=false
+  let skipPlanning=runningPhase?.skipPlanning??false,previewNoop=runningPhase?.previewNoop??false
   if(task){
    try {
     source.activeTask=task
@@ -728,7 +730,9 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   let phaseNext=phaseSteps.next()
   while(!phaseNext.done&&phaseNext.value.delayMicros===0)phaseNext=phaseSteps.next()
   if(!phaseNext.done){
-   source.phaseExecution={steps:phaseSteps,wakeMicros:toMowerMicros(s.time)+phaseNext.value.delayMicros,skipPlanning}
+   // Planning may yield for native order/notification I/O after an empty preview.
+   // Retain that decision until the whole run finishes, including repeated yields.
+   source.phaseExecution={steps:phaseSteps,wakeMicros:toMowerMicros(s.time)+phaseNext.value.delayMicros,skipPlanning,previewNoop}
    break
   }
   delete source.phaseExecution

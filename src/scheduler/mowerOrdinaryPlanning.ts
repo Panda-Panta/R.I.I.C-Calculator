@@ -69,12 +69,15 @@ function alphaGetRestingPlan(data:MowerSchedulingData,names:string[],existing:st
  return true
 }
 export function mowerResting(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerRestingOptions={}):MowerTaskPlan {
+ return resting(data,queue,options,false)
+}
+function resting(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerRestingOptions,metadataPrepared:boolean):MowerTaskPlan {
  if(data.policy.experimentalDormLogic)throw new Error('Experimental ordinary resting requires its source port')
  if(data.alpha)Object.values(data.operators).forEach(op=>data.updateStandbyLowPriority(op))
  const moods=new Map(Object.values(data.operators).map(op=>[op.name,data.alpha?mowerDormCandidateMood(data,op.name):op.currentMood(data.nowMicros)]))
  const total=Object.values(data.operators).filter(op=>(op.isHigh()||!data.alpha&&!op.currentRoom&&!op.room)&&!op.room.startsWith('dorm')).sort((a,b)=>data.alpha?0:a.currentMood(data.nowMicros)-b.currentMood(data.nowMicros))
  total.sort((a,b)=>Number(moods.get(a.name)===undefined)-Number(moods.get(b.name)===undefined)||((moods.get(a.name)??0)-a.lowerLimit)-((moods.get(b.name)??0)-b.lowerLimit))
- planMowerMetadata(data,queue)
+ if(!metadataPrepared)planMowerMetadata(data,queue)
  const current=mowerActiveHighRestingCount(data),effective=data.dorms.filter(b=>data.effectiveFreeSlot(b)).length
  const ideal=mowerAverageMood(data)>data.policy.restingThreshold*data.policy.rescueThreshold?Math.min(4,effective):effective
  const replacements:string[]=[],plan:MowerTaskPlan={},used=new Set<number>(),attempted=new Set<string>();let highDone=false
@@ -140,7 +143,8 @@ export function planMowerOrdinary(data:MowerSchedulingData,queue:MowerTaskQueue,
  try {
   if(queue.find({type:T.SHIFT_OFF}))return undefined
   planMowerMetadata(data,queue)
-  plan=mowerResting(data,queue,options)
+  // The default resting prelude only reads data; alpha updates standby priority.
+  plan=resting(data,queue,options,!data.alpha)
  }catch(error){
   // Native plan_solver catches every Exception here except MowerExit, then reorders.
   if(error instanceof MowerExitError)throw error

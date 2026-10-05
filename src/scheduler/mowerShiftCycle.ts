@@ -12,6 +12,8 @@ import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T,toMowerMicros,type MowerT
 
 export interface MowerShiftModel {
  count:number
+ /** Recovery retries retain discrete observation for time-dependent conditions. */
+ nextConditionWakeMicros?(data:MowerSchedulingData):number|undefined
  evaluate(data:MowerSchedulingData):boolean[]
  swap(data:MowerSchedulingData,conditions:boolean[]):MowerSchedulingData
  transition(previous:MowerSchedulingData,next:MowerSchedulingData,original:boolean[],conditions:boolean[],previousRecovery?:MowerSchedulingData):MowerTaskPlan
@@ -34,6 +36,23 @@ export function mergeMowerShiftTransition(target:MowerTaskPlan,overlay:MowerTask
 export function stripMowerCurrent(plan:MowerTaskPlan):MowerTaskPlan{return Object.fromEntries(Object.entries(plan).filter(([,names])=>names.some(name=>name!=='Current')))}
 const assigned=(plan:MowerTaskPlan)=>new Set(Object.entries(plan).flatMap(([room,names])=>room.startsWith('dorm')?[]:names.filter(n=>!['Current','Free',''].includes(n))))
 const cloneTask=(task:MowerTask):MowerTask=>Object.assign(new MowerTask({type:task.type}),task,{plan:structuredClone(task.plan),dormFillPlan:structuredClone(task.dormFillPlan),backupShiftIntent:task.backupShiftIntent&&structuredClone(task.backupShiftIntent),backupShiftConditions:task.backupShiftConditions&&[...task.backupShiftConditions]})
+
+/** Application protection beyond pinned alpha: a canceled shift must not complete through incidental bed swaps. */
+function cancelledShiftLeavesOnlyDormFill(data:MowerSchedulingData,simulation:MowerSchedulingData,task:MowerTask,intent:MowerTaskPlan,conditions:boolean[],coalesced:MowerTask[],final:MowerTaskPlan):boolean{
+ if(!data.alpha||![T.SHIFT_OFF,T.EXHAUST_OFF].includes(task.type)||!same(data.planConditions,conditions)||coalesced.some(t=>t.type!==T.FILL_DORM)||Object.values(final).some(row=>row.includes('Free')||row.includes('')))return false
+ const projected=projectMowerArrangements(data,[intent])
+ const targets=Object.values(data.operators).filter(op=>{
+  const next=projected.operators[op.name]
+  return op.isHigh()&&!op.room.startsWith('dorm')&&!!op.currentRoom&&!op.isResting()&&!!next&&(!next.currentRoom||next.isResting())
+ })
+ if(!targets.length||targets.some(op=>{const next=simulation.operators[op.name];return !next||next.currentRoom!==op.currentRoom||next.currentIndex!==op.currentIndex}))return false
+ const names=new Set([...Object.keys(data.operators),...Object.keys(simulation.operators)])
+ const changes=[...names].filter(name=>{const old=data.operators[name],next=simulation.operators[name];return (old?.currentRoom??'')!==(next?.currentRoom??'')||(old?.currentIndex??-1)!==(next?.currentIndex??-1)})
+ return changes.length>0&&changes.every(name=>{
+  const old=data.operators[name],next=simulation.operators[name]
+  return !!old&&!!next&&!old.isHigh()&&!next.isHigh()&&old.isResting()&&next.isResting()&&next.temporaryDormFill
+ })
+}
 
 /** Native backup convergence always reprojects from the original physical state. */
 export function prepareMowerShiftBackup(data:MowerSchedulingData,task:MowerTask,model:MowerShiftModel):void{
@@ -100,6 +119,7 @@ export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,q
   if(Object.keys(next).length){step=new MowerTask({type:T.SHIFT_OFF,plan:next});step.dormFillPlan=fill;continue}
   const final:MowerTaskPlan={}
   for(const [room,names] of Object.entries(simulation.plan))names.forEach((_,index)=>{const old=data.currentOperator(room,index)?.name??'',name=simulation.currentOperator(room,index)?.name??'';if(old!==name||unresolved.has(alphaPosition(room,index)))(final[room]??=Array(names.length).fill('Current'))[index]=name||'Free'})
+  if(cancelledShiftLeavesOnlyDormFill(data,simulation,task,intent,conditions,coalesced,final))throw new MowerShiftPreviewError('原下班意图被完全取消，仅剩普通填床换位，保留原任务，暂不执行换人')
   task.backupShiftIntent=intent;task.backupShiftConditions=[...conditions];task.plan=final
   task.dormFillPlan=Object.fromEntries(Object.entries(final).filter(([room])=>room.startsWith('dorm')).map(([room,names])=>[room,names.map((name,index)=>simulation.operators[name]?.temporaryDormFill||ordinaryUnknown.has(alphaPosition(room,index))?name:'Current')]))
   queue.tasks=queue.tasks.filter(t=>!coalesced.includes(t))

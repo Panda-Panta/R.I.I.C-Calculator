@@ -12,16 +12,19 @@ it('decodes the supplied image byte-for-data without losing any backup settings'
   expect(JSON.parse(data)).toEqual(JSON.parse(readFileSync(new URL('roster.json',directory),'utf8')))
 })
 
-it.each([24,168])('recovers the original alpha roster and completes a %i hour request', async hours => {
+it.each([24,168])('completes the unchanged original roster with the default model for %i hours', async hours => {
   // Flush Vitest's task update before the synchronous multi-day simulation.
   await new Promise(resolve => setTimeout(resolve, 150))
   const workspace=importMowerJson(readFileSync(new URL('roster.json',directory),'utf8'))
+  const backups=JSON.stringify(workspace.compatibility.backupPlans)
   const result=runScheduleSimulationBridge(workspace,{sampleHours:hours,warmupHours:0,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none',seed:42}})
   writeFileSync(new URL(`production-${hours}h.json`,directory),JSON.stringify(result,null,2))
   expect(result.error).toBeUndefined()
   expect(result.report?.success,JSON.stringify(result.report?.diagnostics)).toBe(true)
   expect(result.report?.production?.success).toBe(true)
-  expect(result.report?.diagnostics).toContainEqual(expect.objectContaining({code:'mower-task-exception',message:expect.stringContaining('循环')}))
+  expect(result.report?.assumptions.schedulingModel).toBe('mower-default')
+  expect(workspace.compatibility.backupPlans).toHaveLength(9)
+  expect(JSON.stringify(workspace.compatibility.backupPlans)).toBe(backups)
   expect(result.report?.diagnostics.some(d=>d.code==='BACKUP_EXECUTION_FAILED')).toBe(false)
   expect(result.report!.elapsedHours).toBeCloseTo(hours,7)
 },1200000)
@@ -31,10 +34,12 @@ it.each([24,168])('completes the explicit control with backup 0 disabled for %i 
   const workspace=importMowerJson(readFileSync(new URL('roster.json',directory),'utf8'))
   // Independent control only: the original image and imported roster stay intact.
   Reflect.set(workspace.compatibility.backupPlans[0]!,'trigger','False')
+  const backups=JSON.stringify(workspace.compatibility.backupPlans)
   const result=runScheduleSimulationBridge(workspace,{sampleHours:hours,warmupHours:0,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none',seed:42}})
   expect(result.report?.success,JSON.stringify(result.report?.diagnostics)).toBe(true)
   expect(result.report?.production?.success).toBe(true)
   expect(result.report!.elapsedHours).toBeCloseTo(hours,7)
+  expect(JSON.stringify(workspace.compatibility.backupPlans)).toBe(backups)
   const activated=new Set(result.report!.events.filter(e=>e.type==='backup-plan'&&e.active).map(e=>e.backupIndex))
   expect(activated.has(0)).toBe(false)
   expect(activated.size).toBeGreaterThanOrEqual(5)

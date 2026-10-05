@@ -19,6 +19,29 @@ function previewFixture(){
 }
 
 describe('recoverable Mower preview failure',()=>{
+ it('retains an empty-preview decision after resuming the planning I/O continuation',()=>{
+  const {state,source,task}=previewFixture(),before={...state.occupants}
+  source.runFlags={planned:true,todoTask:true,collectNotification:true}
+  source.phaseExecution=Object.assign({steps:(function*(){})(),wakeMicros:0,skipPlanning:false},{previewNoop:true})
+  const boundaryRates={...rates,thresholds:()=>[23.9]}
+  settleRoster(state,boundaryRates)
+  expect(nextRosterActionHours(state,boundaryRates)).toBeCloseTo(.1,8)
+  expect(source.queue.tasks).toContain(task)
+  expect(task.timeMicros).toBe(0)
+  expect(state.occupants).toEqual(before)
+ })
+
+ it('finishes the original first-day roster with the default compatibility strategy and a bounded event budget',()=>{
+  const workspace=importMowerJson(readFileSync(new URL('../../validation/mower-backup-2026-09-22/roster.json',import.meta.url),'utf8'))
+  const result=runScheduleSimulationBridge(workspace,{sampleHours:24,warmupHours:0,maxEvents:2000,warmupModel:'hourly',recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'exp',seed:42}},{fiammettaFool:false,restingThreshold:.65})
+  expect(result.report?.success,JSON.stringify(result.report?.diagnostics)).toBe(true)
+  expect(result.report?.production?.success).toBe(true)
+  expect(result.report?.elapsedHours).toBe(24)
+  expect(result.report?.assumptions.schedulingModel).toBe('mower-default')
+  expect(result.report?.inputs.options.schedulingModel).toBe('mower-default')
+  expect(workspace.compatibility.backupPlans).toHaveLength(9)
+ },90000)
+
  it('keeps a rejected arrangement and physical occupants until the native stale-task rebuild boundary',()=>{
   const {state,source,task}=previewFixture(),plan=structuredClone(task.plan),occupants={...state.occupants}
   expect(()=>settleRoster(state,rates)).not.toThrow()

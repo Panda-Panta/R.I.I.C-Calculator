@@ -257,10 +257,31 @@ export function buildTimelineData(report: ScheduleSimulationReport): TimelineDat
   if (segments.length > 0) {
     const allOperatorIds = new Set<string>()
     for (const opId of operatorTracksMap.keys()) allOperatorIds.add(opId)
-    for (const seg of segments) {
-      for (const id of Object.values(seg.occupants)) if (id) allOperatorIds.add(id)
-      for (const id of Object.values(seg.bedOccupants)) if (id) allOperatorIds.add(id)
-    }
+    // Index physical locations once per segment instead of rescanning every
+    // occupied slot for every operator. Shared slot details keep this compact.
+    type Location = { slotKey: string; roomId: string; isDorm: boolean; roomType: string; roomName: string }
+    const slotDetails = new Map<string, Location>()
+    const segmentLocations = segments.map(seg => {
+      const locations = new Map<string, Location>()
+      for (const [occupants, isDorm] of [[seg.occupants, false], [seg.bedOccupants, true]] as const) {
+        for (const [key, id] of Object.entries(occupants)) {
+          if (!id) continue
+          allOperatorIds.add(id)
+          // Preserve the original first-match order, including work before beds.
+          if (locations.has(id)) continue
+          const cacheKey = `${isDorm}:${key}`
+          let location = slotDetails.get(cacheKey)
+          if (!location) {
+            const roomId = key.replace(/_\d+$/, '')
+            const roomType = resolveRoomType(roomId)
+            location = { slotKey: key, roomId, isDorm, roomType, roomName: getRoomDisplayName(roomId, roomType) }
+            slotDetails.set(cacheKey, location)
+          }
+          locations.set(id, location)
+        }
+      }
+      return locations
+    })
 
     for (const opId of allOperatorIds) {
       let track = operatorTracksMap.get(opId)
@@ -281,37 +302,20 @@ export function buildTimelineData(report: ScheduleSimulationReport): TimelineDat
 
       let currentInterval: TimelineInterval | null = null
 
-      for (const seg of segments) {
+      for (const [segmentIndex, seg] of segments.entries()) {
         const segStart = Math.max(0, seg.start - warmupHours)
         const segEnd = Math.max(0, seg.end - warmupHours)
         if (segEnd <= segStart) continue
 
         // Determine where op is located in this segment
-        let locatedRoomId = ''
-        let locatedSlotKey = ''
-        let isDorm = false
-
-        for (const [key, id] of Object.entries(seg.occupants)) {
-          if (id === opId) {
-            locatedSlotKey = key
-            locatedRoomId = key.replace(/_\d+$/, '')
-            break
-          }
-        }
-        if (!locatedSlotKey) {
-          for (const [key, id] of Object.entries(seg.bedOccupants)) {
-            if (id === opId) {
-              locatedSlotKey = key
-              locatedRoomId = key.replace(/_\d+$/, '')
-              isDorm = true
-              break
-            }
-          }
-        }
+        const location = segmentLocations[segmentIndex]!.get(opId)
+        const locatedRoomId = location?.roomId ?? ''
+        const locatedSlotKey = location?.slotKey ?? ''
+        const isDorm = location?.isDorm ?? false
 
         const currentMorale = seg.morale?.[opId]
-        const rType = locatedRoomId ? resolveRoomType(locatedRoomId) : ''
-        const rName = locatedRoomId ? getRoomDisplayName(locatedRoomId, rType) : '闲置待机'
+        const rType = location?.roomType ?? ''
+        const rName = location?.roomName ?? '闲置待机'
 
         let status: TimelineInterval['status'] = 'idle'
         if (locatedSlotKey) {

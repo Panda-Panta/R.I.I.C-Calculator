@@ -63,6 +63,17 @@ it('rejects cross-version or changed dorm atmosphere default assumptions',()=>{
  const d=report(),before=summarizeIncome(d);d.inputs.schedule.assumptions.defaultsApplied.push('dormAtmosphere')
  expect(summarizeIncome(d).context).not.toBe(before.context)
 })
+it('records the scheduling model and excludes comparisons across models',()=>{
+ const r=report(),b=summarizeIncome(r)
+ expect(b.eligible).toBe(true)
+ expect(b.assumptions.some(d=>d.code==='MOWER_SCHEDULING_MODEL')).toBe(true)
+ expect(r.inputs.options.schedulingModel).toBe('mower-default')
+ r.inputs.options.schedulingModel='mower-alpha'
+ expect(summarizeIncome(r).context).not.toBe(b.context)
+ const baseline=cases(),candidate=improved()
+ candidate[0]!.context=summarizeIncome(r).context
+ expect(compareIncome(baseline,candidate,'lmd').status).toBe('ineligible')
+})
 it('excludes exhausted staffing and scheduler blockage even if production completes',()=>{
  const r=report();r.operators.push({operatorId:'example',operatorName:'example',mainWorkHours:0,substituteWorkHours:0,workHours:0,exhaustedHours:1,restHours:0,idleHours:0,workFraction:0,workRestRatio:null,initialMorale:0,finalMorale:0})
  expect(summarizeIncome(r).issues).toContain('存在疲劳占岗')

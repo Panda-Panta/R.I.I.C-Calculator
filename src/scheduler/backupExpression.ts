@@ -59,7 +59,7 @@ function tokenize(text: string): Token[] {
   return tokens
 }
 
-export function compileBackupExpression(source: unknown, participants: Set<string>): { evaluate: Expression; skipped?: string } {
+export function compileBackupExpression(source: unknown, participants: Set<string>): { evaluate: Expression; usesCurrentMood: boolean; skipped?: string } {
   const tokens = tokenize(serialize(source))
   let cursor = 0, nesting = 0
   const peek = () => tokens[cursor]?.text
@@ -172,5 +172,5 @@ export function compileBackupExpression(source: unknown, participants: Set<strin
   function logicalOr(): Expression { let expr = logicalAnd(); while (take('or')) expr = binary(expr, logicalAnd(), 'or'); return expr }
   const evaluate = tokens.length ? logicalOr() : () => false
   if (cursor !== tokens.length) return fail(`条件存在未解析内容 ${peek()}`)
-  return { evaluate }
+  return { evaluate, usesCurrentMood: tokens.some(token=>token.kind==='worker'&&token.member==='current_mood()') }
 }

@@ -7,6 +7,7 @@ import { resolveOperatorCharId as resolveId } from '../workbench/compat/mowerJso
 import type { MowerRoomId, RosterWorkspace } from '../workbench/model'
 import { compileRosterSchedule } from './compileRosterSchedule'
 import { compiledScheduleToRuntimeConfig } from './scheduleAdapter'
+import {normalizeMowerRecoveryBeds} from './mowerRecoveryBeds'
 import type { CompiledSchedule } from './types'
 import type { RuntimeState } from './rosterRuntime'
 import { compileBackupExpression } from './backupExpression'
@@ -34,6 +35,7 @@ export function evaluateBackupExpression(source: unknown, state: RuntimeState) {
 export interface BackupDiagnostic { code: string; message: string }
 interface BackupPlan {
   conf:Record<string,unknown>
+  usesCurrentMood:boolean
   name: string; timing: BackupTiming; exitTiming: BackupTiming; condition: Expression
   slots: { room: MowerRoomId; index: number; agent: string; group: string | null; replacements: string[] }[]
   policies: Partial<Record<typeof lists[number], string[]>>
@@ -47,9 +49,10 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
     try {
       const compiledCondition = compileBackupExpression(raw.trigger, participants)
       const condition = compiledCondition.evaluate
+      const usesCurrentMood = compiledCondition.usesCurrentMood
       if (compiledCondition.skipped) {
         diagnostics.push({ code: 'BACKUP_EXTERNAL_CONDITION_SKIPPED', message: `副表 ${name}（#${index + 1}）：跳过依赖 ${compiledCondition.skipped} 的整张副表；未执行其岗位、策略与任务` })
-        return { name, timing: 'AFTER_PLANNING' as const, exitTiming: 'AFTER_PLANNING' as const, condition, slots: [], policies: {}, task: {},conf:{} }
+        return { name, timing: 'AFTER_PLANNING' as const, exitTiming: 'AFTER_PLANNING' as const, condition, usesCurrentMood, slots: [], policies: {}, task: {},conf:{} }
       }
       const timing = typeof raw.trigger_timing === 'string' ? raw.trigger_timing.toUpperCase() : ''
       const slots: BackupPlan['slots'] = [], task: BackupPlan['task'] = {}, policies: BackupPlan['policies'] = {}
@@ -77,7 +80,7 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
       }
       const entry = timing in BACKUP_TIMINGS ? timing as BackupTiming : 'AFTER_PLANNING'
       const exit = typeof raw.exit_trigger_timing === 'string' && raw.exit_trigger_timing ? raw.exit_trigger_timing.toUpperCase() : undefined
-      return { name, timing: entry, exitTiming: exit ? exit in BACKUP_TIMINGS ? exit as BackupTiming : 'AFTER_PLANNING' : entry, condition, slots, policies, task,conf:record(raw.conf)?raw.conf:{} }
+      return { name, timing: entry, exitTiming: exit ? exit in BACKUP_TIMINGS ? exit as BackupTiming : 'AFTER_PLANNING' : entry, condition, usesCurrentMood, slots, policies, task,conf:record(raw.conf)?raw.conf:{} }
     } catch (error) { return fail(`${name}：${error instanceof Error ? error.message : String(error)}`) }
   })
 }
@@ -122,12 +125,15 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     if(options.virtualRunners)config.runOrderPolicies=[]
     if(config.fiammetta&&options.canUseFiammetta&&!options.canUseFiammetta(config.fiammetta.operatorId))config.fiammetta=undefined
     const primaries=config.positions.map(p=>p.primary);if(new Set(primaries).size!==primaries.length)fail('副表生效组合重复主班')
-    for(const [room,slots] of Object.entries(config.mowerSourcePlan??{}))if(room.startsWith('dorm'))slots.forEach((slot,index)=>{if(slot.group&&slot.replacement.includes('Free')&&!config.beds.some(b=>b.id===room+'_'+index))config.beds.push({id:room+'_'+index,roomId:room,vip:false})})
+    normalizeMowerRecoveryBeds(config)
     for(const bed of config.beds)bed.managedRecovery=true
     const snapshot={compiled,config};alphaConfigs.set(key,snapshot);return snapshot
   }
   const alphaModel:MowerShiftModel={
     count:plans.length,
+    // This preserves the source's one-second observation capability; it does
+    // not claim exact roots for arbitrary imported comparison expressions.
+    nextConditionWakeMicros:data=>plans.some(plan=>plan.usesCurrentMood)?data.nowMicros+1_000_000:undefined,
     evaluate(data){return plans.map(p=>Boolean(p.condition({...state,time:data.nowMicros/3_600_000_000,mowerSource:{...getMowerSourceRuntime(state),data}})))},
     swap(data,conditions){const {config}=alphaConfiguration(conditions);const next=makeMowerSchedulingData({...state,config,morale:{...state.morale}},{data});next.planConditions=[...conditions];return next},
     transition(previous,next,original,conditions,recovery=previous){
@@ -217,6 +223,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     compiled.assumptions.defaultsApplied = [...base.assumptions.defaultsApplied]
     if (compiled.diagnostics.some(d => d.severity === 'error' || d.code === 'UNKNOWN_OPERATOR')) fail(compiled.diagnostics.map(d => d.message).join('；'))
     const config = compiledScheduleToRuntimeConfig(compiled)
+    config.availableIdleOperators = state.config.availableIdleOperators
     // Default alpha init_and_validate(update=True) keeps the original recovery pool.
     // Newly exposed Free slots remain real idle positions, without a group timer.
     for (const bed of config.beds) {
