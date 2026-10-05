@@ -95,3 +95,5 @@ alpha average_mood 是非宿舍高效主班的平均值，排除工作狂/显式
 当前证据在 validation/mower-output-2026-09-27。schedulerScopeFinal9-source-snapshot/manifest.json 记录冻结源文件；schedulerScopeFinal9.json记录最终7天预热、9天采样。综合口径为82=经验+0.8*(赤金价值+龙舌兰额外)+0.2*订单龙门币，仅该综合误差<=0.5%是用户数值门槛，普通生产干员异常0心情进驻和停留仍应为0。native-current-acceptance.json必须分别记录数值/红脸验收与fullNativeLogicParity，禁止用数字接近或测试通过代替完整原生循环证明。
 
 选人重试的缺闲人测试与原表重复Current目标应分开统计。selection-retry-cause-2026-09-28.md记录已确认入口及其生成链尚未证明的边界；scheduling-external-conditions-2026-09-28.md列出会影响结果的固定/可配置条件。
+
+2026-10-05 原表预演恢复：应用捕获可恢复的副表预演异常，保留原任务并按原生过期规则恢复；预演空安排仍完成换班收尾。全部九副表在两类配置完成72h暖机+168h采样，打包计算入口240h及安装后两类48h验收通过。最终回归2278通过、1跳过；类型检查和隔离构建通过。证据见 validation/mower-calculation-failure-2026-10-05/README.md 与 acceptance-summary.json。源码/Worker执行不证明桌面点击、真实设备、完整游戏循环或数值收益精度。

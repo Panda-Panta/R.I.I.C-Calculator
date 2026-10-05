@@ -42,6 +42,15 @@ it('anchors only newly created SELF_CORRECTION tasks after BEFORE_PLANNING',()=>
 
 it('consumes an initially empty SHIFT_OFF without downshift planning phases',()=>{const q=new MowerTaskQueue(),t=new MowerTask({type:T.SHIFT_OFF});q.tasks.push(t);expect(executeMowerTaskArrangement(t,q,{backup:()=>{throw Error('no arrangement phases')},arrangeRoom:()=>{throw Error('empty')},metadata:()=>{throw Error('no get_time')} })).toBe(true);expect(q.tasks).toEqual([])})
 
+it.each([T.SHIFT_OFF,T.SHIFT_ON])('finishes an activated shift when full preview removes every physical move: %s',type=>{
+ const q=new MowerTaskQueue(),t=new MowerTask({type}),returnTask=new MowerTask({time:1,type:T.SHIFT_ON,plan:{room_1_1:['A']}});q.tasks=[t,returnTask]
+ t.backupShiftIntent={room_1_1:['R']};t.backupShiftConditions=[true];t.backupShiftActive=true
+ const trace:string[]=[]
+ expect(executeMowerTaskArrangement(t,q,{alpha:true,backup:phase=>{expect(t.backupShiftActive).toBe(false);trace.push(phase);return {changed:false,generated:[]}},arrangeRoom:()=>{throw Error('preview requires no physical move')},metadata:()=>{trace.push('metadata')}})).toBe(true)
+ expect(trace).toEqual(['BEFORE_PLANNING','metadata','AFTER_PLANNING'])
+ expect(t.backupShiftActive).toBe(false);expect(q.tasks).toEqual([returnTask])
+})
+
 it('keeps one arrangement and its phase flags alive across the source room-return clock boundaries',()=>{
  const q=new MowerTaskQueue(),t=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['R'],dormitory_1:['A']}});q.tasks.push(t)
  let now=0;const trace:{what:string;at:number}[]=[]

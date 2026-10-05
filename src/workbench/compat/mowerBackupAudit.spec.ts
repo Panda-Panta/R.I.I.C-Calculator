@@ -28,16 +28,18 @@ describe('supplied nine-backup Mower roster', () => {
     workspace.compatibility.backupPlans = []
     expect(compiledScheduleToRuntimeConfig(compileRosterSchedule(workspace))).toEqual(runtime)
   })
-  it('executes backup decisions before rejecting the original alpha cycle', async () => {
+  it('executes backup decisions and recovers the original alpha preview cycle', async () => {
     await new Promise(resolve=>setTimeout(resolve,150))
     const workspace = importMowerJson(decoded)
     const options = { sampleHours: 24, warmupHours: 0, maxEvents: 10000, recordSegments: true,production:{runOrderMode:'ideal' as const,outputMode:'potential' as const,droneTarget:'gold' as const,seed:42} }
     const result = runScheduleSimulationBridge(workspace, options)
     writeFileSync('validation/mower-backup-2026-09-22/implementation-evidence.json',JSON.stringify(result,null,2))
     expect(result.error).toBeUndefined()
-    expect(result.report?.success).toBe(false)
-    expect(result.report?.diagnostics).toContainEqual(expect.objectContaining({code:'BACKUP_EXECUTION_FAILED',message:expect.stringContaining('循环')}))
-    expect(result.report?.elapsedHours).toBeLessThan(24)
+    expect(result.report?.success).toBe(true)
+    expect(result.report?.production?.success).toBe(true)
+    expect(result.report?.diagnostics).toContainEqual(expect.objectContaining({code:'mower-task-exception',message:expect.stringContaining('循环')}))
+    expect(result.report?.diagnostics.some(d=>d.code==='BACKUP_EXECUTION_FAILED')).toBe(false)
+    expect(result.report?.elapsedHours).toBeCloseTo(24,7)
     expect(result.report?.events.some(e=>e.type==='backup-plan'&&e.active)).toBe(true)
     for(const segment of result.report!.segments){
       const ids=[...Object.values(segment.occupants),...Object.values(segment.bedOccupants)]

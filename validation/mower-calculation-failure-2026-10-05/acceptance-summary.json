@@ -1,0 +1,205 @@
+{
+  "verifiedAtUtc": "2026-10-05T09:35:07.652Z",
+  "originalFixture": "validation/mower-backup-2026-09-22/roster.json",
+  "backupCount": 9,
+  "noBackupDisabled": true,
+  "sourceRuns": [
+    {
+      "file": "recovery-verify-72-168-200000-true.json",
+      "evidenceType": "source simulation, not desktop UI or Mower device",
+      "options": {
+        "sampleHours": 168,
+        "warmupHours": 72,
+        "maxEvents": 200000,
+        "warmupModel": "hourly",
+        "recordSegments": true,
+        "production": {
+          "outputMode": "potential",
+          "runOrderMode": "ideal",
+          "droneTarget": "gold",
+          "seed": 42
+        }
+      },
+      "fiammettaFool": true,
+      "success": true,
+      "productionSuccess": true,
+      "elapsedHours": 240,
+      "observedHours": 167.99999998410104,
+      "activatedBackups": [
+        2,
+        6,
+        4,
+        8,
+        1,
+        0,
+        3,
+        5,
+        7
+      ],
+      "duplicateOccupancySegments": 0,
+      "ordinaryProducerZeroMoraleHours": 0,
+      "recoverablePreviewRejections": 66
+    },
+    {
+      "file": "recovery-verify-72-168-200000-false.json",
+      "evidenceType": "source simulation, not desktop UI or Mower device",
+      "options": {
+        "sampleHours": 168,
+        "warmupHours": 72,
+        "maxEvents": 200000,
+        "warmupModel": "hourly",
+        "recordSegments": true,
+        "production": {
+          "outputMode": "potential",
+          "runOrderMode": "ideal",
+          "droneTarget": "exp",
+          "seed": 42
+        }
+      },
+      "fiammettaFool": false,
+      "success": true,
+      "productionSuccess": true,
+      "elapsedHours": 240,
+      "observedHours": 167.99999998457525,
+      "activatedBackups": [
+        0,
+        3,
+        2,
+        6,
+        8,
+        7,
+        4,
+        5,
+        1
+      ],
+      "duplicateOccupancySegments": 0,
+      "ordinaryProducerZeroMoraleHours": 0,
+      "recoverablePreviewRejections": 33
+    }
+  ],
+  "workerRuns": [
+    {
+      "file": "built-worker-240h.json",
+      "evidenceType": "built calculation worker executed through its actual message entry point; not desktop UI or Mower device",
+      "options": {
+        "engine": "simulation",
+        "simulationOptions": {
+          "sampleHours": 168,
+          "warmupHours": 72,
+          "warmupModel": "hourly",
+          "production": {
+            "outputMode": "potential",
+            "runOrderMode": "ideal",
+            "droneTarget": "gold",
+            "seed": 42
+          }
+        },
+        "simulationAssumptions": {
+          "restingThreshold": 0.65,
+          "fiammettaFool": true
+        }
+      },
+      "success": true,
+      "productionSuccess": true,
+      "elapsedHours": 240,
+      "observedHours": 167.99999998410104,
+      "inputUnchanged": true,
+      "backupCount": 9
+    },
+    {
+      "file": "installed-worker-48h.json",
+      "evidenceType": "built calculation worker executed through its actual message entry point; not desktop UI or Mower device",
+      "options": {
+        "engine": "simulation",
+        "simulationOptions": {
+          "sampleHours": 48,
+          "warmupHours": 0,
+          "warmupModel": "hourly",
+          "production": {
+            "outputMode": "potential",
+            "runOrderMode": "ideal",
+            "droneTarget": "gold",
+            "seed": 42
+          }
+        },
+        "simulationAssumptions": {
+          "restingThreshold": 0.65,
+          "fiammettaFool": true
+        }
+      },
+      "success": true,
+      "productionSuccess": true,
+      "elapsedHours": 48,
+      "observedHours": 47.99999999592825,
+      "inputUnchanged": true,
+      "backupCount": 9
+    },
+    {
+      "file": "installed-worker-author-48h.json",
+      "evidenceType": "built calculation worker executed through its actual message entry point; not desktop UI or Mower device",
+      "options": {
+        "engine": "simulation",
+        "simulationOptions": {
+          "sampleHours": 48,
+          "warmupHours": 0,
+          "warmupModel": "hourly",
+          "production": {
+            "outputMode": "potential",
+            "runOrderMode": "ideal",
+            "droneTarget": "exp",
+            "seed": 42
+          }
+        },
+        "simulationAssumptions": {
+          "restingThreshold": 0.65,
+          "fiammettaFool": false
+        }
+      },
+      "success": true,
+      "productionSuccess": true,
+      "elapsedHours": 48,
+      "observedHours": 47.99999999616724,
+      "inputUnchanged": true,
+      "backupCount": 9
+    }
+  ],
+  "regression": {
+    "initial": {
+      "total": 2279,
+      "passed": 2273,
+      "failed": 5,
+      "skipped": 1
+    },
+    "recheck": {
+      "files": 5,
+      "passed": 35,
+      "failed": 0
+    },
+    "finalCombined": {
+      "files": 221,
+      "total": 2279,
+      "passed": 2278,
+      "failed": 0,
+      "skipped": 1
+    },
+    "method": "Replace the five complete initial test-file results with their complete final recheck results; no failed initial result is silently omitted."
+  },
+  "checks": {
+    "workspaceTypecheck": true,
+    "isolatedTypecheck": true,
+    "isolatedBuild": true,
+    "targetedRecoveryTests": 64,
+    "nativeLatePreviewMatches": 3
+  },
+  "calculationWorkerSha256": "3976d15d72066e2910c13beabcca1eccb4316c934116616d9e2f3272b95dec23",
+  "longValidatedAndInstalledWorkerHashesEqual": true,
+  "boundaries": {
+    "desktopClickVerified": false,
+    "liveMowerDeviceVerified": false,
+    "fullNativeLogicParity": false,
+    "fullGameLoopParity": false,
+    "numericalIncomeAccuracyRevalidated": false,
+    "performanceBenchmark": false,
+    "note": "Source and actual built-worker message-entry validation. Event wake is a numerical clock adaptation; all queued task identities/deadlines and native preview rejection behavior are retained."
+  }
+}

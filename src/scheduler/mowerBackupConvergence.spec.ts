@@ -59,13 +59,14 @@ describe('alpha final backup and shift convergence',()=>{
   expect(state.events.filter(e=>e.type==='backup-plan'&&e.active)).toHaveLength(1)
   expect({locked:source.queue.tasks.filter(t=>t.backupShiftActive).length,diagnostics:state.diagnostics,queue:source.queue.tasks.map(t=>({type:t.type.key,plan:t.plan,time:t.time})),trace:source.trace}).toMatchObject({locked:1})
  })
- it('reports a rejected headless preview immediately and retains its unexecuted task',()=>{
+ it('records a rejected preview and retains its unexecuted task for native run recovery',()=>{
   const {state,source}=setup('True'),task=new MowerTask({type:T.SHIFT_ON,plan:{room_1_1:['char_123_fang']}})
   source.queue.tasks=[task];source.initial=false
   let calls=0
   state.mowerShiftModel={count:1,evaluate:()=>[Boolean(++calls%2)],swap:d=>d,transition:()=>({}),activate:()=>{throw new Error('must not commit')}}
   const original=structuredClone(task.plan),occupants={...state.occupants}
-  expect(()=>settleRoster(state,{workRate:()=>1,recoveryRate:()=>4},0)).toThrow(/循环/)
+  expect(()=>settleRoster(state,{workRate:()=>1,recoveryRate:()=>4},0)).not.toThrow()
+  expect(state.diagnostics).toContainEqual(expect.objectContaining({code:'mower-task-exception',message:expect.stringContaining('循环')}))
   expect(task.plan).toEqual(original);expect(source.queue.tasks).toContain(task)
   expect(state.occupants).toEqual(occupants);expect(task.backupShiftActive).toBe(false)
  })

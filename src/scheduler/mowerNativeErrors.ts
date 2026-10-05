@@ -4,8 +4,7 @@ export class MowerRecognizeError extends Error {override name='RecognizeError'}
 export class MowerConnectionError extends Error {}
 export class MowerConnectionAbortedError extends Error {}
 export class MowerAttributeError extends Error {}
-/** The native preview rejects this task without changing physical positions.
- * A headless run reports it instead of retrying the same state every microsecond. */
+/** Native infra_main catches this recoverable preview failure and retains the task. */
 export class MowerShiftPreviewError extends Error {override name='MowerShiftPreviewError'}
 /** Native alpha keeps the current task and retries its remaining rooms later. */
 export class MowerRoomArrangementDeferred extends Error {

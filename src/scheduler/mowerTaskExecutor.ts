@@ -46,8 +46,10 @@ export interface MowerRoomReturn {room:string;delayMicros:number;nativeRunOrderI
 /** Device back(0.5) is a source I/O boundary, including an exact Current no-op. */
 export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTaskQueue,hooks:MowerTaskExecutionHooks):Generator<MowerRoomReturn,boolean,void> {
  if(task.type===T.RUN_ORDER)throw new Error('理想跑单任务仅用于唤醒，不支持实体换人')
- if(!Object.keys(task.plan).length){queue.consume(task);if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
- const protectedShift=!!hooks.protectShift&&Object.keys(task.plan).length>0&&task.type!==T.FIAMMETTA&&task.type!==T.RELEASE_DORM
+ // Native infra_main enters the arrangement branch before preview. A preview that
+ // removes every physical move must still unlock the shift and rebuild metadata.
+ if(!Object.keys(task.plan).length&&!task.backupShiftActive){queue.consume(task);if(queue.tasks[0]?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
+ const protectedShift=task.backupShiftActive||!!hooks.protectShift&&Object.keys(task.plan).length>0&&task.type!==T.FIAMMETTA&&task.type!==T.RELEASE_DORM
  if(protectedShift)task.backupShiftActive=true
  let retainedLock=false
  try {

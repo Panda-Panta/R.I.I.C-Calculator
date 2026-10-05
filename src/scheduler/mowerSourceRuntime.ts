@@ -22,6 +22,7 @@ import {OPERATOR_MAP} from '../domain/operators'
 import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import type {BackupTiming} from './backupPlans'
 import type {RuntimeState,RuntimeRates,RuntimeConfig} from './rosterRuntime'
+import {nextRosterEventHours} from './rosterRuntime'
 import {MowerOperatorState} from './mowerOperatorState'
 import {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T,toMowerMicros,type MowerTaskPlan} from './mowerTaskQueue'
@@ -34,7 +35,7 @@ import {planMowerExhaustSupport} from './mowerExhaustPlanning'
 import {selectMowerFiaTarget,mowerFiaReadyMicros} from './mowerFiammetta'
 import {prepareMowerDormSelection,mowerArrangementReadIndexes,mowerDormReplacementForSlot} from './mowerSelection'
 import {prepareMowerShiftCycle,recordMowerDormAdmissions,type MowerShiftModel} from './mowerShiftCycle'
-import {prepareMowerRunEntry} from './mowerRunLifecycle'
+import {prepareMowerRunEntry,nextMowerRunRecoveryMicros} from './mowerRunLifecycle'
 import {ensureMowerDormRecovery} from './mowerDormRecovery'
 import {prepareMowerRelease} from './mowerRelease'
 import {mowerProtectedShift,prepareMowerShiftBeds} from './mowerShiftProtection'
@@ -98,6 +99,15 @@ export function getMowerSourceRuntime(s:RuntimeState):MowerSourceRuntime {
   }
  }
  source.data.nowMicros=toMowerMicros(s.time);return source
+}
+/** Numerical event wake for a run whose preview cannot commit a physical move.
+ * Retain task identities/deadlines, and stop at morale boundaries as well as the
+ * next explicit task or native stale-task rebuild instead of polling at 1 us.
+ */
+function nextMowerDecisionMicros(s:RuntimeState,rates:RuntimeRates):number {
+ const {data,queue}=getMowerSourceRuntime(s),queued=nextMowerRunRecoveryMicros(queue,data.nowMicros,data.alpha)
+ const moraleHours=nextRosterEventHours(s,rates,false)
+ return Number.isFinite(moraleHours)?Math.min(queued,data.nowMicros+Math.max(1,toMowerMicros(moraleHours))):queued
 }
 function physicalRoom(s:RuntimeState,room:string,length:number):string[] {
  const names=Array(length).fill('')
@@ -468,13 +478,14 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   let data=getMowerSourceRuntime(s).data
   // infra_main must not execute a task removed by entry metadata rebuilding.
   if(task&&!running&&(!queue.tasks.includes(task)||task.timeMicros>data.nowMicros)){skip();break}
-  let skipPlanning=runningPhase?.skipPlanning??false
+  let skipPlanning=runningPhase?.skipPlanning??false,previewNoop=false
   if(task){
    try {
     source.activeTask=task
     if(!running&&data.alpha&&[T.SHIFT_ON,T.SHIFT_OFF,T.EXHAUST_OFF,T.SELF_CORRECTION,T.RE_ORDER].includes(task.type)&&Object.keys(task.plan).length){
      const model:MowerShiftModel=s.mowerShiftModel??{count:0,evaluate:d=>d.planConditions,swap:d=>d,transition:()=>({}),activate:()=>{}}
      prepareMowerShiftCycle(data,task,queue,model,{...options(),priorityScheduling:s.config.mowerTaskScheduling})
+     previewNoop=!Object.keys(task.plan).length
      if(task.backupShiftConditions){model.activate(task.backupShiftConditions);data=getMowerSourceRuntime(s).data;task.backupShiftActive=true}
     }
     if(!running&&mowerProtectedShift(task)){
@@ -595,7 +606,13 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
      if(s.mowerUI){s.mowerUI.scene='INFRA_MAIN';s.mowerUI.lastRoom=''}
     }else{
     source.error=true;skip();skipPlanning=true
-    if(error instanceof MowerShiftPreviewError){delete source.activeTask;throw error}
+    if(error instanceof MowerShiftPreviewError){
+     // Native infra_main catches ValueError, keeps the task, and lets handle_error
+     // rebuild stale work later. Recognition is zero-time here: retrying at every
+     // microsecond cannot reach that boundary within the simulation event budget.
+     source.runReturn={wakeMicros:nextMowerDecisionMicros(s,rates),finishFallback:false}
+     delete source.activeTask;break
+    }
     }
    }
   }
@@ -725,7 +742,10 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
    // Recognition/transport are separate zero-time seams; near tasks skip this branch.
    if(source.error)prepareMowerRunEntry(queue,data.nowMicros,data.alpha)
    const notification=!source.runFlags?.collectNotification&&!skipPlanning&&!queue.find({time:s.time+1/60})?clock.notificationSleepMicros:0
-   if(notification>0)source.runReturn={wakeMicros:data.nowMicros+notification,finishFallback:true}
+   const due=queue.tasks.filter(t=>t.timeMicros<=data.nowMicros)
+   if(previewNoop&&due.length&&due.every(t=>[T.SHIFT_ON,T.SHIFT_OFF,T.EXHAUST_OFF,T.SELF_CORRECTION,T.RE_ORDER,T.FILL_DORM,T.NOT_SPECIFIC].includes(t.type))){
+    source.runReturn={wakeMicros:nextMowerDecisionMicros(s,rates),finishFallback:false}
+   }else if(notification>0)source.runReturn={wakeMicros:data.nowMicros+notification,finishFallback:true}
    else {
     source.runFlags!.collectNotification=true
     queue.ensureFallback(s.time)
