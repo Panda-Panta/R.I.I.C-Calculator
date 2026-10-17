@@ -43,7 +43,7 @@ const fields: Field[] = [
   { key: 'merge_interval', label: '任务合并间隔', initial: 10, unit: '分钟', when: () => settings.value.free_room === true },
   { key: 'group_rest_in_full_on_mood_gap', label: '同组心情差过大时整组回满', initial: true },
   { key: 'group_mood_gap_threshold_minutes', label: '同组回满时间差阈值', initial: 60, min: 1, max: 1440, integer: true, step: 5, unit: '分钟', when: () => settings.value.group_rest_in_full_on_mood_gap !== false },
-  { key: 'group_mood_gap_max_extra_wait_hours', label: '整组回满最多额外等待', initial: 0, min: 0, max: 24, step: .5, unit: '小时', help: '0 表示不限额外等待时间。', when: () => settings.value.group_rest_in_full_on_mood_gap !== false },
+  { key: 'group_mood_gap_max_extra_wait_hours', label: '整组回满最多额外等待', initial: 0, min: 0, max: 24, step: .5, unit: '小时', help: '仅限制恢复时间差触发的额外等待，0 表示不限时；明确设置的需要回满仍须满足，包括多绑组干员。', when: () => settings.value.group_rest_in_full_on_mood_gap !== false },
   { key: 'fia_fool', label: '菲亚防呆', initial: true, help: '当菲亚替换干员心情均超过 90% 时，菲亚等待半小时；不确定替换干员心情消耗时启用。' },
   { key: 'assistant_follows_schedule', label: '训练室协助位总是跟随排班', initial: false, exportOnly: true, help: '专精时协助位不使用单独设置的专精工具人，基建排班按排班表替换训练室协助位。' },
   { key: 'fia_threshold', label: '菲亚阈值', initial: .9, percent: true, min: 50, max: 90, step: 5, unit: '%' },
@@ -67,6 +67,24 @@ function update(field: Field, next: number | boolean | null): void {
   if (field.nested) patch({ product_switching: { ...product.value, [field.key]: next } })
   else patch({ [field.key]: next })
 }
+const gapExclusions = computed<string[]>(() => Array.isArray(settings.value.group_mood_gap_exclusions) ? settings.value.group_mood_gap_exclusions.filter((group): group is string => typeof group === 'string' && !!group.trim()) : [])
+const gapGroupOptions = computed(() => {
+  const names = new Set(gapExclusions.value)
+  const add = (name: unknown) => { if (typeof name === 'string' && name.trim()) names.add(name) }
+  for (const facility of Object.values(store.workspace.mainPlan.facilities)) for (const slot of facility.slots) {
+    add(slot.groupId)
+    slot.groupBindings?.forEach(binding => add(binding.groupId))
+  }
+  for (const backup of store.workspace.compatibility.backupPlans) for (const facility of Object.values(record(record(backup).plan))) {
+    const slots = record(facility).plans
+    if (Array.isArray(slots)) for (const slot of slots) {
+      const value = record(slot); add(value.group)
+      if (Array.isArray(value.group_bindings)) value.group_bindings.forEach(binding => add(record(binding).group))
+    }
+  }
+  return [...names].map(name => ({ label: name, value: name }))
+})
+function updateGapExclusions(names: string[]): void { patch({ group_mood_gap_exclusions: [...new Set(names.filter(name => typeof name === 'string' && name.trim()))] }) }
 const isolation = computed<string[][]>(() => Array.isArray(settings.value.dorm_isolation) ? settings.value.dorm_isolation as string[][] : [])
 const favorite = computed(() => typeof settings.value.favorite === 'string' ? settings.value.favorite.split(',').map(name => name.trim()).filter(Boolean) : [])
 const operatorOptions = OPERATORS.map(operator => ({ label: operator.name, value: operator.name }))
@@ -94,6 +112,12 @@ function updateIsolation(index: number, names: string[]): void {
               <span class="help-text">{{ field.help }}</span>
             </n-tooltip>
             <small v-if="field.exportOnly" class="export-only">仅保存并导出至 Mower，本地模拟暂未使用。</small>
+          </div>
+        </n-form-item>
+        <n-form-item v-if="field.key === 'group_mood_gap_max_extra_wait_hours'" label="延后回班排除组" data-field="group_mood_gap_exclusions">
+          <div class="isolation-groups">
+            <n-select :value="gapExclusions" :options="gapGroupOptions" multiple filterable tag aria-label="延后回班排除组" placeholder="选择或输入组名" @update:value="updateGapExclusions" />
+            <small>所选组不因恢复时间差延后回班，明确设置的需要回满仍生效。</small>
           </div>
         </n-form-item>
         <n-form-item v-if="field.key === 'free_room'" label="宿舍隔离" data-field="dorm_isolation">

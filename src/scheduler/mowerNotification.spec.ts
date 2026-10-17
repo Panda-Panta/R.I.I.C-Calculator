@@ -67,6 +67,19 @@ describe('actual pinned notification branch, todo_list and run flag reset',()=>{
    taskRetained:true,queueRetained:queue.tasks.length===originalTasks.length&&queue.tasks.every((t,i)=>t===originalTasks[i]),
   }).toEqual(test.output)
  })
+ it('retains failed work without allowing it to block collection',()=>{
+  const queue=new MowerTaskQueue(),blocked=new MowerTask({time:-10,type:T.SHIFT_OFF,plan:{room_1_1:['A']}})
+  blocked.executionFailure={reason:'waiting for replacement',rooms:['room_1_1'],snapshot:{intent:'unchanged',observations:{}}}
+  queue.tasks=[blocked]
+  const state:MowerNotificationState={queue,flags:{todoTask:true,collectNotification:false,planned:true},lastTodoMicros:null}
+  const generator=collectMowerInfraNotification(state,{nowMicros:()=>0})
+  expect(generator.next().value).toEqual({kind:'detect-notification'})
+  expect(generator.next({kind:'detect-notification',observedAtMicros:0,value:{ready:true}}).value).toEqual({kind:'tap-notification',target:{ready:true}})
+  expect(generator.next({kind:'tap-notification',observedAtMicros:0,value:null}).done).toBe(true)
+  expect(queue.tasks).toEqual([blocked])
+  expect(blocked.time).toBe(-10)
+  expect(blocked.executionFailure).toBeDefined()
+ })
  it('requires explicit notification observations at the host clock',()=>{
   const state:MowerNotificationState={queue:new MowerTaskQueue(),flags:{todoTask:true,collectNotification:false,planned:true},lastTodoMicros:null}
   const generator=collectMowerInfraNotification(state,{nowMicros:()=>100})

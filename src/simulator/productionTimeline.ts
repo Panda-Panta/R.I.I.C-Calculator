@@ -321,7 +321,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
     }
     return false
    }
-   if(crosses(dt)){let lo=0,hi=dt;for(let n=0;n<35;n++){const mid=(lo+hi)/2;if(crosses(mid))hi=mid;else lo=mid}dt=hi}
+   if(crosses(dt)){let lo=0,hi=dt;for(let n=0;n<48;n++){const mid=(lo+hi)/2;if(crosses(mid))hi=mid;else lo=mid}dt=hi}
    return dt
   }
   const advance=(hours:number,frame:ProductionFrame)=>{

@@ -82,7 +82,7 @@ it('retains both groups through the real ordinary planning round', () => {
   expect(final.currentOperator('room_1_2', 0)?.name).toBe('Y')
 })
 
-it('does not recall unfinished group when a completed member gives up its bed', () => {
+it('protects a completed primary bed while its group is still recovering', () => {
   const make = (
     name:string,
     room:string,
@@ -128,10 +128,10 @@ it('does not recall unfinished group when a completed member gives up its bed', 
   })
   const queue = new MowerTaskQueue(),
     task = planMowerAlphaDormFill(data, queue)
-  expect(task).toBeDefined()
-  const projected = projectMowerArrangements(data, [task!.plan])
-  expect(projected.operators.B!.currentRoom).toBe('dormitory_1')
-  expect(projected.currentOperator('room_1_1', 1)?.name).toBe('Y')
+  expect(task).toBeUndefined()
+  expect(data.operators.A!.currentRoom).toBe('dormitory_1')
+  expect(data.operators.B!.currentRoom).toBe('dormitory_1')
+  expect(data.currentOperator('room_1_1', 1)?.name).toBe('Y')
 })
 
 function releaseObservationFixture({ merged = false, future = false, strict = false } = {}) {
@@ -254,4 +254,40 @@ it('observes a strict personal limit departure without requiring full morale', (
   expect(data.operators.A!.depletionRate).toBe(0)
   expect(data.operators.A!.restMoodReleaseLimit).toBe(12)
   expect(data.operators.B!.currentRoom).toBe('dormitory_1')
+})
+
+it('admits an idle priority replacement through the real runtime with free room disabled', () => {
+  const state = createRosterRuntime({
+    mowerAlpha: true,
+    mowerRunOrderEnabled: false,
+    positions: [{ id: 'room_1_1_0', roomId: 'room_1_1', primary: 'A', candidates: ['R'] }],
+    beds: [{ id: 'dormitory_1_0', roomId: 'dormitory_1', vip: true }],
+    initialMorale: { A: 24, R: 0, I: 24 },
+    idleOperators: ['I'],
+    mowerPolicy: { restingThreshold: 0.65, freeRoom: false, opeRestingPriority: [], powerPlantCount: 2 },
+    mowerSourceRules: { workaholic: [], exhaustRequire: [], restInFull: [], lowPriority: [],
+      refreshDrained: [], lingMode: 0, priorityReplacement: ['R'] },
+    mowerSourcePlan: {
+      room_1_1: [{ agent: 'A', group: '', replacement: ['R'] }],
+      dormitory_1: [{ agent: 'Free', group: '', replacement: [] }]
+    }
+  })
+  const source = getMowerSourceRuntime(state), data = source.data
+  source.initial = false
+  source.firstInit = false
+  state.occupants = { room_1_1_0: 'A' }
+  state.bedOccupants = { dormitory_1_0: 'I' }
+  data.operators.A!.currentRoom = 'room_1_1'
+  data.operators.A!.currentIndex = 0
+  data.operators.I!.currentRoom = 'dormitory_1'
+  data.operators.I!.currentIndex = 0
+  for (const op of Object.values(data.operators)) op.timeStampMicros = 0
+  data.operators.R!.mood = 0
+  data.dorms[0]!.name = 'I'
+  data.dorms[0]!.timeMicros = 0
+  settleRoster(state, { workRate: () => 1, recoveryRate: () => 4 })
+  expect(state.bedOccupants.dormitory_1_0).toBe('R')
+  expect(data.operators.R!.currentRoom).toBe('dormitory_1')
+  expect(state.occupants.room_1_1_0).toBe('A')
+  expect(data.freeRoom).toBe(false)
 })

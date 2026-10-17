@@ -38,16 +38,20 @@ describe('October 3 alpha native metadata decisions',()=>{
 })
 
 
-describe('October 13 alpha group recovery gap',()=>{
+describe('alpha group recovery gap with strict full completion',()=>{
  function returnTime(times:number[],enabled=true,threshold=60,maxWait=0){
   const operators=Object.fromEntries(times.map((_,index)=>{const name='N'+index;return [name,new MowerOperatorState({name,room:'central',index,group:'G',operatorType:'high',restingPriority:'high',currentRoom:'dormitory_1',currentIndex:index,mood:12,timeStampMicros:0})]}))
   const data=new MowerSchedulingData({alpha:true,operators,plan:{central:Object.keys(operators),dormitory_1:times.map(()=>'Free')},dorms:times.map((time,index)=>new MowerDormState(['dormitory_1',index],'N'+index,toMowerMicros(time))),nowMicros:0,groupRestInFullOnMoodGap:enabled,groupMoodGapThresholdMinutes:threshold,groupMoodGapMaxExtraWaitHours:maxWait})
   const queue=new MowerTaskQueue();planMowerMetadata(data,queue)
   return queue.tasks.find(task=>task.type===T.SHIFT_ON)!.time
  }
- // The independent native oracle returns the batch time before the ordinary 8-minute lead.
+ // Keep the pinned native inputs, but strict full recovery intentionally has no native lead or wait cap.
+ const expected:Record<string,number>={
+  'earliest bed first':5,'latest bed first':5,'gap option disabled':1-8/60,
+  'gap equals threshold':1-8/60,'positive extra wait limit':5,
+ }
  for(const fixture of currentOracle.groupRecoveryGaps)it(fixture.name,()=>{
   const {times,enabled,thresholdMinutes,maxWaitHours}=fixture.input
-  expect(returnTime(times,enabled,thresholdMinutes,maxWaitHours)).toBeCloseTo(fixture.batchTimeHours-8/60,8)
+  expect(returnTime(times,enabled,thresholdMinutes,maxWaitHours)).toBeCloseTo(expected[fixture.name]!,8)
  })
 })

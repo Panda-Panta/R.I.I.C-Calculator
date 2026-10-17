@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { NInputNumber, NCheckbox, NSelect } from 'naive-ui'
 import PlanAdvancedSettings from './PlanAdvancedSettings.vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
-import { exportMowerJson } from '../../workbench/compat/mowerJson'
+import { exportMowerJson, importMowerJson } from '../../workbench/compat/mowerJson'
 
 beforeEach(() => setActivePinia(createPinia()))
 describe('Mower alpha advanced settings', () => {
@@ -38,6 +38,20 @@ describe('Mower alpha advanced settings', () => {
     expect(store.workspace.compatibility.unrecognizedFields.advanced_settings).toMatchObject({ favorite: '阿米娅,能天使', group_rest_in_full_on_mood_gap: false })
     expect(wrapper.find('[data-field="group_mood_gap_threshold_minutes"]').exists()).toBe(false)
     expect(wrapper.find('[data-field="version_update_resting_threshold"]').text()).toContain('本地模拟暂未使用')
+  })
+  it('edits the wait cap and exact group exclusions from main, backup, shared and saved groups', async () => {
+    const store = useRosterWorkbenchStore()
+    store.workspace.mainPlan.facilities.room_1_1.slots = [{ occupant: { kind: 'operator', operatorId: 'char_123_fang' }, groupId: 'main', replacements: [], groupBindings: [{ groupId: 'shared', replacements: [] }] }]
+    store.workspace.compatibility.backupPlans = [{ plan: { room_1_1: { plans: [{ agent: '芬', group: 'backup', group_bindings: [{ group: 'backup-shared', replacement: [] }] }] } } }]
+    store.workspace.compatibility.unrecognizedFields.advanced_settings = { group_mood_gap_exclusions: ['saved'], future: 9 }
+    const wrapper = mount(PlanAdvancedSettings)
+    const selector = wrapper.find('[data-field="group_mood_gap_exclusions"]').findComponent(NSelect)
+    expect(selector.props('options')?.map(option => option.value)).toEqual(['saved', 'main', 'shared', 'backup', 'backup-shared'])
+    selector.vm.$emit('update:value', ['main', 'typed group', 'main'])
+    wrapper.find('[data-field="group_mood_gap_max_extra_wait_hours"]').findComponent(NInputNumber).vm.$emit('update:value', 1.5)
+    await wrapper.vm.$nextTick()
+    const imported = importMowerJson(exportMowerJson(store.workspace))
+    expect(imported.compatibility.unrecognizedFields.advanced_settings).toMatchObject({ group_mood_gap_exclusions: ['main', 'typed group'], group_mood_gap_max_extra_wait_hours: 1.5, future: 9 })
   })
   it('rejects invalid numeric writes and supports isolation groups without altering unrelated settings', async () => {
     const store = useRosterWorkbenchStore()

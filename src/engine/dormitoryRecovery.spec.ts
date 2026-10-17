@@ -9,7 +9,7 @@ function dorm(names:string[]){const config=createDefaultConfig();config.controlO
 describe('dormitory recovery source contract',()=>{
  it('takes the highest all-room recovery and retains a separate self penalty',()=>{const c=dorm(['杜林','安比尔','芬']);const r=evaluateDormitoryRecovery(c,0,new Map(c.facilityOperatorIds.dormitories[0]!.map(i=>[i,10])),5000);expect(r.rates.get(id('芬'))).toBeCloseTo(4.25);expect(r.rates.get(id('杜林'))).toBeCloseTo(4.15)})
 })
- it('single recovery takes highest for the explicit same target, and reports unspecified ambiguity',()=>{const c=dorm(['闪灵','Lancet-2','芬']);const moods=new Map(c.facilityOperatorIds.dormitories[0]!.map(i=>[i,10]));const targets=new Map([[id('闪灵'),id('芬')],[id('Lancet-2'),id('芬')]]);expect(evaluateDormitoryRecovery(c,0,moods,5000,targets).rates.get(id('芬'))).toBeCloseTo(4.75);expect(evaluateDormitoryRecovery(c,0,moods,5000).unquantified.length).toBe(2)})
+ it('single recovery takes highest for the explicit same target, and reports unspecified ambiguity',()=>{const c=dorm(['闪灵','Lancet-2','芬','香草']);const moods=new Map(c.facilityOperatorIds.dormitories[0]!.map(i=>[i,10]));const targets=new Map([[id('闪灵'),id('芬')],[id('Lancet-2'),id('芬')]]);expect(evaluateDormitoryRecovery(c,0,moods,5000,targets).rates.get(id('芬'))).toBeCloseTo(4.75);expect(evaluateDormitoryRecovery(c,0,moods,5000).unquantified.length).toBe(2)})
  it('Fiammetta excludes every recovery source including level and atmosphere',()=>{const c=dorm(['菲亚梅塔','杜林','闪灵']);const r=evaluateDormitoryRecovery(c,0,new Map([[id('菲亚梅塔'),8]]),5000,new Map([[id('闪灵'),id('菲亚梅塔')]]));expect(r.rates.get(id('菲亚梅塔'))).toBe(2)})
  it('redistributes Coldshots shared pool and changes max category at one unfinished occupant',()=>{const c=dorm(['冰酿','芬','杜林']);const r=evaluateDormitoryRecovery(c,0,new Map([[id('冰酿'),24],[id('芬'),10],[id('杜林'),10]]),5000);expect(r.rates.get(id('芬'))).toBeCloseTo(4.4);const alone=evaluateDormitoryRecovery(c,0,new Map([[id('冰酿'),24],[id('芬'),10],[id('杜林'),24]]),5000);expect(alone.rates.get(id('芬'))).toBeCloseTo(5.05)})
  it('applies room-level and unfinished-person recovery before the same-category maximum',()=>{const c=dorm(['响石','波卜','芬']);const r=evaluateDormitoryRecovery(c,0,new Map([[id('响石'),24],[id('波卜'),24],[id('芬'),12]]),5000);expect(r.rates.get(id('芬'))).toBeCloseTo(4.25);expect(r.unquantified).toEqual([])})
@@ -18,7 +18,7 @@ it('zero-morale dormitory residents retain dream and bar perception while exhaus
 it.each([['斥罪',1,4.15],['斥罪',3,4.25],['隐德来希',1,4.1],['隐德来希',3,4.3]] as const)('uses actual extra recruitment slots for %s at office %s',(name,l,expected)=>{const c=dorm([name,'芬']);c.facilities.office=l;expect(evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000).rates.get(id('芬'))).toBeCloseTo(expected)})
 it('Lumen scales with the number of physical stations when there are no virtual providers',()=>{const c=dorm(['流明','芬']);const power=c.rooms.find(r=>r.type==='power')!;c.rooms=c.rooms.filter(r=>r.type!=='power');expect(evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000).rates.get(id('芬'))).toBeCloseTo(4.15);c.rooms.push(power);expect(evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000).rates.get(id('芬'))).toBeCloseTo(4.2)})
 it.each([['黑','锡兰',5],['黑','芬',4.55],['深靛','蓝毒',5],['特米米','嘉维尔',5],['新约能天使','送葬人',5],['新约能天使','能天使',4.55],['寒檀','远山',5],['寒檀','芬',4.55],['新约能天使','芬',4.55]] as const)('applies conditional single recovery %s to %s',(provider,target,expected)=>{const c=dorm([provider,target]);const r=evaluateDormitoryRecovery(c,0,new Map([[id(target),10]]),5000,new Map([[id(provider),id(target)]]));expect(r.rates.get(id(target))).toBeCloseTo(expected)})
-it('Indigo can target herself because her raw skill does not exclude herself',()=>{const c=dorm(['深靛','芬']);expect(evaluateDormitoryRecovery(c,0,new Map([[id('深靛'),10]]),5000,new Map([[id('深靛'),id('深靛')]])).rates.get(id('深靛'))).toBeCloseTo(4.55)})
+it('Indigo cannot target herself even when her raw skill omits self exclusion',()=>{const c=dorm(['深靛','芬']);expect(evaluateDormitoryRecovery(c,0,new Map([[id('深靛'),10]]),5000,new Map([[id('深靛'),id('深靛')]])).rates.get(id('深靛'))).toBeCloseTo(4)})
 it('does not misclassify Gladiia self recovery as a control-to-dorm buff',()=>{const c=dorm(['芬']);c.controlOperatorIds=[id('歌蕾蒂娅')];expect(evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000).unquantified).toEqual([])})
 it('Lumen includes Eunectes virtual stations confirmed by the user',()=>{const c=dorm(['流明','芬']);c.rooms=c.rooms.filter(r=>r.type!=='power');const power=createDefaultConfig().rooms.find(r=>r.type==='power')!;power.operatorIds=[id('Lancet-2')];c.rooms.push(power);c.controlOperatorIds=[id('森蚺')];const r=evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000);expect(r.rates.get(id('芬'))).toBeCloseTo(4.3);expect(r.unquantified).toEqual([]);c.zeroMoraleOperatorIds=[id('森蚺')];expect(evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000).rates.get(id('芬'))).toBeCloseTo(4.2)})
 
@@ -65,4 +65,34 @@ it('Coldshot with only one unfinished Free recipient uses the single maximum',()
  const c=dorm(['冰酿','杜林','闪灵','芬'])
  const result=evaluateDormitoryRecovery(c,0,new Map([[id('芬'),10]]),5000,new Map([[id('闪灵'),id('芬')]]))
  expect(result.rates.get(id('芬'))).toBeCloseTo(5.05,8)
+})
+
+
+it('reassigns a locked single-provider recipient when another unfinished resident arrives',()=>{
+ const c=dorm(['闪灵','深靛','芬'])
+ const targets=new Map([[id('闪灵'),id('深靛')]])
+ const moods=new Map([[id('深靛'),1],[id('芬'),24]])
+ expect(evaluateDormitoryRecovery(c,0,moods,5000,targets).rates.get(id('深靛'))).toBeCloseTo(4.75)
+ moods.set(id('芬'),15)
+ const result=evaluateDormitoryRecovery(c,0,moods,5000,targets)
+ expect(result.rates.get(id('深靛'))).toBe(4)
+ expect(result.rates.get(id('芬'))).toBeCloseTo(4.75)
+ expect(result.unquantified).toEqual([])
+})
+it('sole unfinished providers receive each other’s single recovery but never their own',()=>{
+ const c=dorm(['闪灵','深靛'])
+ const result=evaluateDormitoryRecovery(c,0,new Map([[id('闪灵'),1],[id('深靛'),2]]),5000)
+ expect(result.rates.get(id('闪灵'))).toBeCloseTo(4.55)
+ expect(result.rates.get(id('深靛'))).toBeCloseTo(4.75)
+})
+it('Coldshot never applies her sole-recipient single bonus to herself',()=>{
+ const c=dorm(['冰酿','芬'])
+ const result=evaluateDormitoryRecovery(c,0,new Map([[id('冰酿'),1]]),5000)
+ expect(result.rates.get(id('冰酿'))).toBe(4)
+})
+it('uses only unlocked single skills when deciding recipient eligibility',()=>{
+ const c=dorm(['闪灵','蜜莓','芬'])
+ c.operatorRecords=inventoryOperatorRecords(compileOperatorInventory([{operator:'蜜莓',elitePhase:0,level:1}]))
+ const result=evaluateDormitoryRecovery(c,0,new Map([[id('蜜莓'),1],[id('芬'),10]]),5000,new Map([[id('闪灵'),id('蜜莓')]]))
+ expect(result.rates.get(id('蜜莓'))).toBeCloseTo(4.75)
 })

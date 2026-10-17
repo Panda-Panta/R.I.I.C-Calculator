@@ -26,6 +26,22 @@ describe('ideal order planning',()=>{
   expect(state.queue.tasks.map(task=>task.plan)).toEqual([{},{}])
   expect(state.queue.tasks.map(task=>task.observedOrderDueMicros)).toEqual([900_000_000,960_000_000])
  })
+ it.each([0, 200_000])('does not create another wake when observed completion %s has already arrived',due=>{
+  const state:RunOrderPlanningState={plan:{room_1_1:[{replacement:['但书']}]},runOrderRooms:['room_1_1'],queue:new MowerTaskQueue(),configuredDelayMinutes:3,droneRoom:null,flags:{planned:false,todoTask:false,collectNotification:false}}
+  let clock=0,reads=0
+  for(let pass=0;pass<2;pass++){
+   const generator=runDefaultTradeSegment(state,{nowMicros:()=>clock,currentDormOccupants:()=>undefined,scheduling:{}})
+   let next=generator.next()
+   while(!next.done){
+    const request=next.value
+    if(request.kind==='read-order')reads++
+    if(request.kind==='return-main')clock+=500_000
+    next=generator.next({observedAtMicros:clock,...(request.kind==='read-order'?{absoluteDueMicros:due}:{})})
+   }
+   expect(state.queue.tasks).toEqual([])
+  }
+  expect(reads).toBe(2)
+ })
  it('keeps the native dorm observation gate before reading order deadlines',()=>{
   const state:RunOrderPlanningState={
    plan:{room_1_1:[{replacement:['但书']}],dormitory_1:[]},

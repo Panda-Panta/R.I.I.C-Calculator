@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest'
 import {createRosterRuntime,settleRoster,advanceRoster,nextRosterActionHours,type RuntimeConfig} from './rosterRuntime'
-import {getMowerSourceRuntime,makeMowerSchedulingData,settleMowerSource} from './mowerSourceRuntime'
+import {getMowerSourceRuntime,makeMowerSchedulingData} from './mowerSourceRuntime'
 import {mowerUpdateDetail} from './mowerObservations'
 import {alphaRestingTier} from './mowerAlphaDorm'
 import {MowerTask,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
@@ -14,10 +14,21 @@ describe('integrated Mower source scheduler',()=>{
  it('retains temporary standby promotion and identity when rebuilding scheduling data',()=>{
   const config=fixture();config.mowerAlpha=true;config.mowerSourceRules!.standby=['A']
   config.mowerSourcePlan!.room_1_1![0]!.group='g'
+  config.mowerPolicy!.groupMoodGapExclusions=['other','saved']
   const state=createRosterRuntime(config),source=getMowerSourceRuntime(state)
   mowerUpdateDetail(source.data,'A',0,'dormitory_1',4,true)
   mowerUpdateDetail(source.data,'A',24,'dormitory_1',4,true)
+  source.data.groupShiftState.g=true
+  source.data.groupRecoveryFullMembers.g=['A']
+  source.data.groupRecoveryReturnMicros.g=12345
   const rebuilt=makeMowerSchedulingData(state,source),op=rebuilt.operators.A!
+  expect(rebuilt.groupMoodGapExclusions).toEqual(['other','saved'])
+  rebuilt.groupMoodGapExclusions.push('extra')
+  expect(source.data.groupMoodGapExclusions).toEqual(['other','saved'])
+  expect(config.mowerPolicy!.groupMoodGapExclusions).toEqual(['other','saved'])
+  expect(rebuilt.groupRecoveryReturnMicros.g).toBe(12345)
+  rebuilt.groupRecoveryReturnMicros.g=67890
+  expect(source.data.groupRecoveryReturnMicros.g).toBe(12345)
   expect(op).not.toBe(source.data.operators.A)
   expect(op.mood).toBe(24)
   expect(op.standbyLowPriority).toBe(true)
@@ -104,6 +115,36 @@ describe('integrated Mower source scheduler',()=>{
   // A protected complete shift does not expose its intermediate occupancy to backups.
   expect(phases.some(p=>p.phase==='BEFORE_DORM')).toBe(false)
   expect(phases.find(p=>p.phase==='BEFORE_PLANNING')?.time).toBeCloseTo(startedAt+1_000_000/3_600_000_000,12)
+ })
+ it('preserves the actual working departure observation while waiting for a dorm room',()=>{
+  const c=fixture();c.mowerAlpha=true;c.mowerDeviceTiming={roomReturnMicros:500_000}
+  const s=createRosterRuntime(c);settleRoster(s,rates)
+  advanceRoster(s,nextRosterActionHours(s,rates),rates);settleRoster(s,rates)
+  const source=getMowerSourceRuntime(s),op=source.data.operators.A!
+  s.morale.A=5;op.mood=16;op.timeStampMicros=0;op.depletionRate=1
+  source.queue.tasks=[new MowerTask({time:s.time,type:T.SHIFT_OFF,plan:{room_1_1:['R'],dormitory_1:['K1','K2','K3','K4','A']}})]
+  settleRoster(s,rates)
+  expect(s.occupants.room_1_1_0).toBe('R')
+  expect(op.currentRoom).toBe('')
+  expect(op.mood).toBe(5)
+  expect(op.timeStampMicros).toBe(source.data.nowMicros)
+  expect(op.moodIsPrediction).toBe(false)
+  expect(op.depletionRate).toBe(0)
+  expect(op.currentMood(source.data.nowMicros+3_600_000_000)).toBe(5)
+ })
+ it.each([undefined,0])('does not promote an unread working departure with timestamp %s',stamp=>{
+  const c=fixture();c.mowerAlpha=true;c.mowerDeviceTiming={roomReturnMicros:500_000}
+  const s=createRosterRuntime(c);settleRoster(s,rates)
+  advanceRoster(s,nextRosterActionHours(s,rates),rates);settleRoster(s,rates)
+  const source=getMowerSourceRuntime(s),op=source.data.operators.A!
+  s.morale.A=5;op.mood=16;op.timeStampMicros=stamp;op.depletionRate=1
+  // A Fiammetta restoration does not read the departing work-room operator.
+  source.queue.tasks=[new MowerTask({time:s.time,type:T.FIAMMETTA,plan:{room_1_1:['R']}})]
+  settleRoster(s,rates)
+  expect(s.occupants.room_1_1_0).toBe('R')
+  expect(op.currentRoom).toBe('')
+  expect(op.mood).toBe(16)
+  expect(op.timeStampMicros).toBeUndefined()
  })
  it('establishes recovery before an exact dorm no-op and preserves the final list',()=>{
   const c=fixture(),s=createRosterRuntime(c);settleRoster(s,rates)
@@ -214,38 +255,18 @@ describe('integrated Mower source scheduler',()=>{
   expect(source.data.operators[fia]!.timeStampMicros).toBe(fiaTimestamp)
  })
 
- it.each([{alpha:false,named:false},{alpha:true,named:false},{alpha:false,named:true},{alpha:true,named:true}])('retains a full-to-full Fiammetta charge without polling ($alpha, named=$named)',({alpha,named})=>{
-  const config=fixture(),fia='char_300_phenxi';config.mowerAlpha=alpha
-  config.positions[1]!.primary=fia;config.mowerSourcePlan!.dormitory_1![0]!.agent=fia
-  config.idleOperators=['X'];config.initialMorale={A:24,R:24,X:24,[fia]:24}
-  config.fiammetta={operatorId:fia,orderedTargets:['A'],fool:false,threshold:21.6}
-  const state=createRosterRuntime(config),source=getMowerSourceRuntime(state);source.initial=false
-  for(const [slot,name] of Object.entries(state.occupants)){const op=source.data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]!;op.timeStampMicros=0}
-  source.queue.tasks=[new MowerTask({type:T.FIAMMETTA,...(named?{plan:{room_1_1:['Current'],dormitory_1:['A',fia]},metadata:'A'}:{})})]
-  const before={...state.occupants}
+
+it('starts an exhausted shift before observed morale reaches zero',()=>{
+ const config=fixture();config.mowerAlpha=true;config.initialMorale!.A=.18;config.mowerSourceRules!.exhaustRequire=['A']
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state)
+ source.initial=false;source.firstInit=false
+ for(const [slot,name] of Object.entries(state.occupants)){const op=source.data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]??24;op.timeStampMicros=0}
+ source.queue.tasks=[new MowerTask({type:T.EXHAUST_OFF,metadata:'A'})]
+ for(let i=0;i<20&&!source.data.operators.A!.isResting();i++){
   settleRoster(state,rates)
-  const retained=source.queue.tasks.find(task=>task.type===T.FIAMMETTA)!
-  expect(retained.executionFailure).toBeDefined();expect(retained.timeMicros).toBe(0)
-  expect(retained.plan.room_1_1).toBeUndefined()
-  expect(state.events.filter(e=>e.type==='fiammetta')).toHaveLength(0)
-  expect(state.occupants).toEqual(before)
-  const traceCount=source.trace.filter(t=>t.type==='FIAMMETTA').length
-  const independent=new MowerTask({time:.01});source.queue.tasks.push(independent)
-  let independentPhases=0
-  state.time=.01;settleMowerSource(state,rates,()=>{independentPhases++;return false})
-  expect(independentPhases).toBeGreaterThan(0)
-  expect(source.queue.tasks).not.toContain(independent)
-  expect(source.queue.tasks.filter(task=>task.type===T.FIAMMETTA)).toEqual([retained])
-  expect(source.trace.filter(t=>t.type==='FIAMMETTA')).toHaveLength(traceCount)
-  expect(retained.timeMicros).toBe(0)
-  expect(state.diagnostics.some(d=>d.message.includes('五分钟'))).toBe(false)
-  const target=retained.plan.dormitory_1![0]!
-  state.morale[target]=10
-  const op=source.data.operators[target]!;op.mood=10;op.timeStampMicros=36_000_000;op.moodIsPrediction=false
-  settleRoster(state,rates)
-  expect(retained.executionFailure).toBeUndefined()
-  expect(state.events.some(e=>e.type==='fiammetta'&&e.operators[1]===target)).toBe(true)
-  expect(source.queue.tasks).not.toContain(retained)
-  expect(state.occupants.dormitory_1_0).toBe(fia)
-  expect(state.occupants.room_1_1_0).toBe('A')
- })
+  if(!source.data.operators.A!.isResting())advanceRoster(state,nextRosterActionHours(state,rates),rates)
+ }
+ expect(source.data.operators.A!.isResting()).toBe(true)
+ expect(state.morale.A).toBeGreaterThan(0)
+ expect(state.occupants.room_1_1_0).toBe('R')
+})

@@ -111,3 +111,85 @@ describe('observed full morale across alpha metadata and physical release prepar
     expect(deferred[0]!.releaseDormTargets()).toEqual({ B: ['dormitory_1', 3] })
   })
 })
+
+
+describe('mandatory full recovery before ordinary dorm release', () => {
+  it.each(['explicit', 'delayed'] as const)('retains an overdue %s full-rest release until valid recovery evidence arrives', mode => {
+    const { data, queue, task, operators } = fixture([{ mood: 23.8 }])
+    if (mode === 'explicit') operators.A!.restInFull = true
+    else { data.groupRecoveryFullMembers.g = ['A']; Object.assign(operators.A!, { group: 'g', operatorType: 'high', room: 'room_1_1' }) }
+    data.dorms[0]!.timeMicros = now
+    const plan = structuredClone(task.plan), timestamp = task.timeMicros
+    expect(() => prepareMowerRelease(data, queue, task)).toThrow('尚未确认回满心情')
+    expect(task.plan).toEqual(plan)
+    expect(task.timeMicros).toBe(timestamp)
+    expect(operators.A!.mood).toBe(23.8)
+    expect(queue.tasks).toEqual([task])
+  })
+
+  it('does not accept a predicted full mood for mandatory recovery', () => {
+    const { data, queue, task } = fixture([{ mood: 24, moodIsPrediction: true, restInFull: true }])
+    data.dorms[0]!.timeMicros = now
+    expect(() => prepareMowerRelease(data, queue, task)).toThrow('尚未确认回满心情')
+  })
+
+  it('defers a mandatory release to its refreshed recovery deadline and releases after measurement', () => {
+    const { data, queue, task, operators } = fixture([{ mood: 23.8, restInFull: true }])
+    expect(prepareMowerRelease(data, queue, task)).toBe(false)
+    const pending = queue.tasks.find(entry => entry !== task)!
+    expect(pending.timeMicros).toBe(deadline)
+    data.nowMicros = deadline; operators.A!.mood = 24; operators.A!.timeStampMicros = deadline
+    expect(prepareMowerRelease(data, queue, pending)).toBe(true)
+  })
+
+  it('preserves timer-based release for an ordinary resident', () => {
+    const { data, queue, task } = fixture([{ mood: 23.8 }])
+    data.dorms[0]!.timeMicros = now
+    expect(prepareMowerRelease(data, queue, task)).toBe(true)
+  })
+})
+
+
+describe('mandatory release policy boundaries', () => {
+  it('preserves advanced personal-limit release even with an explicit full-rest requirement', () => {
+    const { data, queue, task, operators } = fixture([{ mood: 11.8, upperLimit: 12, restMoodLimit: true, restInFull: true }])
+    data.dorms[0]!.timeMicros = now
+    expect(prepareMowerRelease(data, queue, task)).toBe(true)
+    expect(operators.A!.mood).toBe(11.8)
+    expect(queue.tasks).toEqual([task])
+  })
+
+  it.each(['removed', 'independent', 'workaholic', 'standby', 'shared'] as const)('ignores stale delayed-return membership after becoming %s', change => {
+    const { data, queue, task, operators } = fixture([{ mood: 23.8 }])
+    Object.assign(operators.A!, { group: 'g', operatorType: 'high', room: 'room_1_1' })
+    data.groupRecoveryFullMembers.g = ['A']
+    data.dorms[0]!.timeMicros = now
+    if (change === 'removed') operators.A!.group = 'other'
+    if (change === 'independent') operators.A!.groupBindings = [{ group: 'g', replacement: [] }, { group: '', replacement: [] }]
+    if (change === 'workaholic') operators.A!.workaholic = true
+    if (change === 'standby') operators.A!.restingPriority = 'standby'
+    if (change === 'shared') operators.A!.groupBindings = [{ group: 'g', replacement: [] }, { group: 'h', replacement: [] }]
+    expect(prepareMowerRelease(data, queue, task)).toBe(true)
+  })
+})
+
+
+it.each(['excluded', 'removed-limit', 'changed-limit'] as const)('discards an invalid mandatory release after configuration becomes %s', change => {
+  const { data, queue, task, operators } = fixture([{ mood: 11.8, upperLimit: 12, restMoodLimit: change !== 'excluded', restInFull: true }])
+  data.dorms[0]!.timeMicros = now
+  if (change === 'excluded') data.freeRoomExclusions = ['A']
+  if (change === 'removed-limit') operators.A!.restMoodLimit = false
+  if (change === 'changed-limit') operators.A!.upperLimit = 20
+  expect(prepareMowerRelease(data, queue, task)).toBe(false)
+  expect(task.plan).toEqual({})
+})
+
+
+it('still requires measured full recovery for an explicitly configured shared resident release', () => {
+  const { data, queue, task, operators } = fixture([{ mood: 23.8, restInFull: true }])
+  Object.assign(operators.A!, { group: 'g', operatorType: 'high', room: 'room_1_1', groupBindings: [{ group: 'g', replacement: [] }, { group: 'h', replacement: [] }] })
+  data.dorms[0]!.timeMicros = now
+  expect(() => prepareMowerRelease(data, queue, task)).toThrow('尚未确认回满心情')
+  operators.A!.mood = 24; operators.A!.timeStampMicros = now
+  expect(prepareMowerRelease(data, queue, task)).toBe(true)
+})

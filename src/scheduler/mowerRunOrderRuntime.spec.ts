@@ -5,8 +5,9 @@ import {compiledScheduleToRuntimeConfig} from './scheduleAdapter'
 import {createRosterRuntime,advanceRoster,type RuntimeRates} from './rosterRuntime'
 import {getMowerSourceRuntime,settleMowerSource,nextMowerSourceActionHours} from './mowerSourceRuntime'
 import {MowerTask,MOWER_TASK_TYPES as T,toMowerMicros} from './mowerTaskQueue'
+import {retainMowerFailedTask} from './mowerTaskFailure'
 
-function scenario(){
+function scenario(orderDue:(state:ReturnType<typeof createRosterRuntime>)=>number=()=>900_123_456){
  const ws=createDefaultWorkspace()
  for(const room of Object.values(ws.mainPlan.facilities))room.slots=[]
  ws.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'芬'},groupId:null,replacements:['但书']}]
@@ -16,7 +17,7 @@ function scenario(){
  const observations:{kind:string;timeMicros:number}[]=[],phases:string[]=[]
  const rates:RuntimeRates={workRate:()=>1,recoveryRate:()=>2,mowerRunOrderIO:(request,s)=>({
   delayMicros:request.kind==='enter-room'?200_000:request.kind==='read-order'?300_000:request.kind==='return-main'?500_000:0,
-  observe:()=>{observations.push({kind:request.kind,timeMicros:toMowerMicros(s.time)});return {observedAtMicros:toMowerMicros(s.time),...(request.kind==='read-order'?{absoluteDueMicros:900_123_456}:{})}}
+  observe:()=>{observations.push({kind:request.kind,timeMicros:toMowerMicros(s.time)});return {observedAtMicros:toMowerMicros(s.time),...(request.kind==='read-order'?{absoluteDueMicros:orderDue(s)}:{})}}
  })}
  const settle=()=>settleMowerSource(state,rates,phase=>{phases.push(phase);return false})
  function finishIO(){
@@ -25,7 +26,7 @@ function scenario(){
    advanceRoster(state,nextMowerSourceActionHours(state),rates);settle()
   }
  }
- return {state,source,observations,phases,settle,finishIO}
+ return {state,source,rates,observations,phases,settle,finishIO}
 }
 describe('ideal order wakes in source runtime',()=>{
  it('keeps observed deadlines and the shared morale clock across I/O wakes',()=>{
@@ -45,6 +46,26 @@ describe('ideal order wakes in source runtime',()=>{
   source.queue.tasks=[selected];settle();finishIO()
   expect(source.queue.tasks).not.toContain(selected)
   expect(source.queue.tasks.filter(t=>t.type===T.RUN_ORDER)).toHaveLength(1)
+ })
+ it('releases ready-order collection while retaining unrelated failed shift work',()=>{
+  let ready=false,notifications=0
+  const {state,source,rates,settle,finishIO}=scenario(s=>ready?toMowerMicros(s.time):900_123_456)
+  settle();finishIO();ready=true
+  const blocked=new MowerTask({time:-10,type:T.SHIFT_OFF,plan:{room_1_1:['char_123_fang']}})
+  retainMowerFailedTask(state,source.data,blocked,'waiting for a changed replacement observation')
+  source.queue.tasks=[blocked,new MowerTask({time:state.time-1/3600})]
+  delete source.runReturn
+  rates.mowerNotificationIO=request=>({delayMicros:0,observe:()=>{
+   if(request.kind==='tap-notification')notifications++
+   return {kind:request.kind,observedAtMicros:toMowerMicros(state.time),value:request.kind==='detect-notification'?{ready:true}:null}
+  }})
+  settle();finishIO()
+  expect(notifications).toBe(1)
+  expect(source.queue.tasks).toContain(blocked)
+  expect(blocked.time).toBe(-10)
+  expect(blocked.executionFailure).toBeDefined()
+  expect(source.queue.tasks.some(task=>task.type===T.RUN_ORDER)).toBe(false)
+  expect(source.error).toBeFalsy()
  })
  it('reports missing order observations for decision-only replay',()=>{
   const {state,source}=scenario()
