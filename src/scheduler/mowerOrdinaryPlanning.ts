@@ -1,3 +1,4 @@
+import {projectMowerArrangements} from './mowerObservations'
 import type {MowerDependencyReturnAdmission} from './mowerTaskDerivation'
 import {mowerExhaustGroups} from './mowerExhaustPolicy'
 import {mowerWorkingReplacementBlocked,mowerSameGroupPrimaryReplacement,mowerRestingBindingGroups,mowerSharedReplacements,normalizeMowerSharedArrangement,mowerArrangementGroupTransitions,commitMowerGroupShifts} from './mowerSharedGroups'
@@ -10,7 +11,7 @@ import {MowerDormState,type MowerSchedulingData} from './mowerSchedulingData'
 import {mowerActiveHighRestingCount,mowerAvailableFree,mowerAssignDorm,mowerAssignDormGroup,mowerAverageMood,mowerStandbyCandidates} from './mowerDormAssignment'
 import {planMowerMetadata} from './mowerMetadata'
 import {mowerDormCandidateMood} from './mowerAlphaCandidates'
-import {alphaPosition,alphaDormResidents,alphaRestoreDisplaced,alphaRestingTier,alphaSlotTakable,mowerMatchReplacements,alphaPrioritizeRecovery} from './mowerAlphaDorm'
+import {alphaPosition,alphaRestingTier,alphaSlotTakable,mowerMatchReplacements,alphaPrioritizeRecovery} from './mowerAlphaDorm'
 import {MowerTask,MOWER_TASK_TYPES as T,type MowerTaskPlan,type MowerTaskQueue,fromMowerMicros,toMowerMicros} from './mowerTaskQueue'
 export interface MowerRestingOptions {
  urgentExhaust?:boolean
@@ -106,12 +107,23 @@ function alphaGetRestingPlan(data:MowerSchedulingData,names:string[],existing:st
   if(Object.values(data.operators).some(op=>op.multiGroup))Object.assign(next,combined)
   const assignedCovers=new Set(Object.values(next).flat())
   const reservedResting=new Set(options.dormAdmissions?.values())
-  const previous=alphaDormResidents(data),resting=agents.filter(name=>!data.operators[name]!.workaholic&&!data.operators[name]!.room.startsWith('dorm')&&!assignedCovers.has(name)&&!data.getDormByName(name)&&!reservedResting.has(name))
-  const admissions=mowerAssignDormGroup(data,resting,new Set(Object.keys(transitions).filter(group=>transitions[group])),undefined,combined,options.reservedSlots)
-  if(admissions===undefined)return false
+  const resting=agents.filter(name=>!data.operators[name]!.workaholic&&!data.operators[name]!.room.startsWith('dorm')&&!assignedCovers.has(name)&&!data.getDormByName(name)&&!reservedResting.has(name))
+  // Apply selected covers in isolation so their departing beds are available in this shift.
+  const allocation=structuredClone(combined)
+  for(const [position,name] of options.dormAdmissions??[]){
+   const [room,index]=position.split('\0'),row=allocation[room!]??=Array(data.plan[room!]!.length).fill('Current')
+   if(['Current','Free'].includes(row[Number(index)]!))row[Number(index)]=name
+  }
+  const projected=projectMowerArrangements(data,[allocation])
+  const projectedAdmissions=mowerAssignDormGroup(projected,resting,new Set(Object.keys(transitions).filter(group=>transitions[group])),undefined,allocation,options.reservedSlots)
+  if(projectedAdmissions===undefined)return false
+  const admissions=projectedAdmissions.map(bed=>{
+   const actual=data.dorms.find(value=>alphaPosition(...value.position)===alphaPosition(...bed.position))!
+   actual.name=bed.name;actual.timeMicros=bed.timeMicros
+   return actual
+  })
   const confirmed=new Map(options.dormAdmissions)
   for(const bed of admissions)confirmed.set(alphaPosition(...bed.position),bed.name)
-  alphaRestoreDisplaced(data,previous,next,options.tasks??[],confirmed)
   if(options.dormAdmissions)for(const [position,name] of confirmed)options.dormAdmissions.set(position,name)
   existing.splice(0,existing.length,...new Set([...existing.filter(name=>!supersededCovers.has(name)),...Object.values(match)]))
   for(const [room,names] of Object.entries(next)){if(!plan[room])plan[room]=names;else names.forEach((name,index)=>{if(name!=='Current'&&(plan[room]![index]==='Current'||data.operators[data.plan[room]?.[index]??'']?.multiGroup))plan[room]![index]=name})}
@@ -127,7 +139,6 @@ export function mowerResting(data:MowerSchedulingData,queue:MowerTaskQueue,optio
 function resting(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerRestingOptions,metadataPrepared:boolean):MowerTaskPlan {
  options={...options,dormAdmissions:new Map()}
  if(data.policy.experimentalDormLogic)throw new Error('Experimental ordinary resting requires its source port')
- if(data.alpha)Object.values(data.operators).forEach(op=>data.updateStandbyLowPriority(op))
  const moods=new Map(Object.values(data.operators).map(op=>[op.name,data.alpha?mowerDormCandidateMood(data,op.name):op.currentMood(data.nowMicros)]))
  const total=Object.values(data.operators).filter(op=>(op.isHigh()||!data.alpha&&!op.currentRoom&&!op.room)&&!op.room.startsWith('dorm')&&!(op.group&&data.canStandby(op))).sort((a,b)=>data.alpha?0:a.currentMood(data.nowMicros)-b.currentMood(data.nowMicros))
  total.sort((a,b)=>Number(moods.get(a.name)===undefined)-Number(moods.get(b.name)===undefined)||((moods.get(a.name)??0)-a.lowerLimit)-((moods.get(b.name)??0)-b.lowerLimit))

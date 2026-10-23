@@ -19,6 +19,7 @@ function scenario(primary='砾',candidate?:string){
 function expectRetainedFullCharge(report:ScheduleSimulationReport,hours:number){
  expect(report.success,JSON.stringify(report.diagnostics.slice(-5))).toBe(false)
  expect(report.production?.success).toBe(false)
+ expect(report.operators.find(operator=>operator.operatorId===id('菲亚梅塔'))?.initialMorale).toBe(16)
  expect(report.elapsedHours).toBeCloseTo(hours,8)
  expect(report.observedHours).toBeCloseTo(hours,8)
  expect(report.diagnostics).toContainEqual(expect.objectContaining({code:'MOWER_PENDING_TASK_FAILURE',message:expect.stringContaining('菲亚梅塔与实际充能目标均已满心情')}))
@@ -47,11 +48,13 @@ describe('time-dependent Mower schedule simulation',()=>{
   const s=compileRosterSchedule(ws,{operatorMorale:{[id('菲亚梅塔')]:0,[id('芬')]:10}})
   const r=simulateSchedule(s,{sampleHours:1})
   expect(r.success).toBe(true)
-  expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))!.finalMorale).toBeCloseTo(2)
+  expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))!.initialMorale).toBe(16)
+  expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))!.finalMorale).toBeCloseTo(18)
   expect(r.operators.find(o=>o.operatorId===id('芬'))!.finalMorale).toBeCloseTo(12.75)
-  // A caller's explicit target remains an explicit modelling assumption.
+  // Fiammetta cannot receive outside healing, including an explicitly requested single target.
   const explicit=simulateSchedule(s,{sampleHours:1,recoveryTargetByProvider:{[id('闪灵')]:id('菲亚梅塔')}})
-  expect(explicit.operators.find(o=>o.operatorId===id('芬'))!.finalMorale).toBeCloseTo(12)
+  expect(explicit.operators.find(o=>o.operatorId===id('菲亚梅塔'))!.finalMorale).toBeCloseTo(18)
+  expect(explicit.operators.find(o=>o.operatorId===id('芬'))!.finalMorale).toBeCloseTo(12.75)
  })
  it('integrates actual warmup instead of the stationary peak',()=>{
   const s=scenario('阿罗玛')
@@ -130,21 +133,27 @@ describe('time-dependent Mower schedule simulation',()=>{
   expect(a.segments.every(x=>x.end>x.start)).toBe(true)
  })
 
- it('resets imported warmup when Fiammetta exchanges at time zero',()=>{
+ it('preserves imported warmup until Fiammetta recovers, then resets it on exchange',()=>{
   const ws=createDefaultWorkspace();ws.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'阿罗玛'},groupId:null,replacements:[]}];ws.mainPlan.conf.workaholic=['阿罗玛']
   ws.mainPlan.facilities.dormitory_1.slots=[{occupant:{kind:'operator',operatorId:'菲亚梅塔'},groupId:null,replacements:['阿罗玛']}]
   const s=compileRosterSchedule(ws,{operatorMorale:{[id('阿罗玛')]:20}})
-  const r=simulateSchedule(s,{sampleHours:1,initialWorkHours:{[id('阿罗玛')]:10}})
-  expect(r.events[0]?.type).toBe('fiammetta');expect(r.rooms.find(x=>x.roomId==='room_1_1')!.averageEfficiencyPercent).toBeCloseTo(127,2)
+  const r=simulateSchedule(s,{sampleHours:5,initialWorkHours:{[id('阿罗玛')]:10}})
+  const exchange=r.events.find(event=>event.type==='fiammetta')
+  expect(r.success).toBe(true)
+  expect(exchange?.time).toBeCloseTo(4,8)
+  expect(exchange?.moraleBefore?.[0]).toBe(24)
+  expect(r.events.some(event=>event.type==='fiammetta'&&event.time<4)).toBe(false)
+  // Four hours at the imported maximum (146%), then one hour of new warmup (127%).
+  expect(r.rooms.find(x=>x.roomId==='room_1_1')!.averageEfficiencyPercent).toBeCloseTo((4*146+127)/5,2)
  })
 
- it('retains a full-to-full Fiammetta charge through the complete window without exhausting the event budget',()=>{
+ it('retains a full-to-full Fiammetta charge after initial recovery without exhausting the event budget',()=>{
   const ws=createDefaultWorkspace()
   ws.mainPlan.facilities.dormitory_1.slots=[{occupant:{kind:'operator',operatorId:'菲亚梅塔'},groupId:null,replacements:['重岳']}]
   ws.mainPlan.facilities.dormitory_2.slots=[{occupant:{kind:'operator',operatorId:'重岳'},groupId:null,replacements:[]}]
   const s=compileRosterSchedule(ws,{fiammettaFool:false})
-  const r=simulateSchedule(s,{sampleHours:.05,maxEvents:1000,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none'}})
-  expectRetainedFullCharge(r,.05)
+  const r=simulateSchedule(s,{sampleHours:4.05,maxEvents:1000,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none'}})
+  expectRetainedFullCharge(r,4.05)
   expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))?.finalMorale).toBe(24)
   expect(r.operators.find(o=>o.operatorId===id('重岳'))?.finalMorale).toBe(24)
  })
@@ -154,19 +163,21 @@ describe('time-dependent Mower schedule simulation',()=>{
   ws.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'阿罗玛'},groupId:null,replacements:[]}]
   ws.mainPlan.facilities.dormitory_1.slots=[{occupant:{kind:'operator',operatorId:'菲亚梅塔'},groupId:null,replacements:['阿罗玛']}]
   const s=compileRosterSchedule(ws,{fiammettaFool:false,idleOperators:[id('重岳')]})
-  const r=simulateSchedule(s,{sampleHours:.1,maxEvents:1000,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none'}})
-  expectRetainedFullCharge(r,.1)
+  const r=simulateSchedule(s,{sampleHours:4.1,maxEvents:1000,consumptionOverrides:{[id('阿罗玛')]:0},recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none'}})
+  expectRetainedFullCharge(r,4.1)
   expect(r.operators.find(o=>o.operatorId===id('重岳'))?.finalMorale).toBe(24)
-  expect(r.operators.find(o=>o.operatorId===id('阿罗玛'))!.finalMorale).toBeLessThan(24)
+  expect(r.operators.find(o=>o.operatorId===id('阿罗玛'))!.finalMorale).toBe(24)
+  expect(r.operators.find(o=>o.operatorId===id('阿罗玛'))!.workHours).toBeCloseTo(4.1,8)
  })
 
- it('retains a full-to-full charge after Fiammetta recovers and reports the unresolved window',()=>{
+ it('starts Fiammetta at sixteen despite saved twenty-three, then reports the retained full charge',()=>{
   const ws=createDefaultWorkspace()
   ws.mainPlan.facilities.dormitory_1.slots=[{occupant:{kind:'operator',operatorId:'菲亚梅塔'},groupId:null,replacements:['重岳']}]
   ws.mainPlan.facilities.dormitory_2.slots=[{occupant:{kind:'operator',operatorId:'重岳'},groupId:null,replacements:[]}]
   const s=compileRosterSchedule(ws,{fiammettaFool:false,operatorMorale:{[id('菲亚梅塔')]:23}})
-  const r=simulateSchedule(s,{sampleHours:.6,maxEvents:1000,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none'}})
-  expectRetainedFullCharge(r,.6)
+  const r=simulateSchedule(s,{sampleHours:4.6,maxEvents:1000,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'none'}})
+  expectRetainedFullCharge(r,4.6)
+  expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))?.initialMorale).toBe(16)
   expect(r.events.filter(e=>e.type==='fiammetta')).toHaveLength(0)
   expect(r.operators.find(o=>o.operatorId===id('菲亚梅塔'))?.finalMorale).toBe(24)
  })

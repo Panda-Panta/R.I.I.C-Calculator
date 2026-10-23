@@ -3,7 +3,7 @@ import type {MowerTaskPlan} from './mowerTaskQueue'
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import {hasRestingMood,rescueMoodThreshold,restingMood,type MowerOperatorState} from './mowerOperatorState'
 import type {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
-import {alphaRestingTier,alphaRestingKey,compareAlphaKeys,alphaSlotTakable,alphaFindDormSlot} from './mowerAlphaDorm'
+import {alphaRestingTier,alphaFullDynamicCandidate,alphaRestingKey,compareAlphaKeys,alphaSlotTakable,alphaFindDormSlot} from './mowerAlphaDorm'
 function defaultOnly(data:MowerSchedulingData){if(data.policy.experimentalDormLogic)throw new Error('Experimental resting tiers require their source port')}
 export function mowerStandbyCanYield(data:MowerSchedulingData,op:MowerOperatorState):boolean {
  return data.canStandby(op)&&hasRestingMood(op,data.nowMicros)&&restingMood(op,data.nowMicros)>=rescueMoodThreshold(op,data.policy)
@@ -75,7 +75,7 @@ export function mowerAssignDormGroup(data:MowerSchedulingData,names:string[],act
  defaultOnly(data)
  const required=names.filter(n=>!data.restMoodComplete(n)),optional=mowerStandbyCandidates(data,required)
  const ordered=[...required].sort((a,b)=>{
-  if(data.alpha)return Number(optional.has(a))-Number(optional.has(b))||compareAlphaKeys(alphaRestingKey(data,a),alphaRestingKey(data,b))
+  if(data.alpha)return Number(optional.has(a))-Number(optional.has(b))||Number(alphaFullDynamicCandidate(data,a))-Number(alphaFullDynamicCandidate(data,b))||compareAlphaKeys(alphaRestingKey(data,a),alphaRestingKey(data,b))
   const x=data.operators[a]!,y=data.operators[b]!
   return Number(x.restingPriority==='standby')-Number(y.restingPriority==='standby')||Number(x.restingPriority==='high')-Number(y.restingPriority==='high')
  })

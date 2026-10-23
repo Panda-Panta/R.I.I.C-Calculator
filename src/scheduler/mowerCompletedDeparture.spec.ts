@@ -71,6 +71,7 @@ describe('confirmed ordinary dorm departure keeps measured morale', () => {
   it('replaces a predicted full mood with the departure observation', () => {
     const f = fixture(), op = f.source.data.operators.A!
     op.moodIsPrediction = true
+    f.source.data.dorms[0]!.timeMicros = f.source.data.nowMicros
     finish(f)
     expect(op.currentRoom).toBe('')
     expect(op.timeStampMicros).toBe(toMowerMicros(1))
@@ -119,8 +120,38 @@ describe('confirmed ordinary dorm departure keeps measured morale', () => {
     expect(f.state.bedOccupants[room + '_4']).toBe('B')
   })
 
+  it.each([
+    { evidence: 'prediction', freeRoom: true },
+    { evidence: 'below-limit', freeRoom: true },
+    { evidence: 'prediction', freeRoom: false },
+    { evidence: 'below-limit', freeRoom: false },
+  ])('keeps unfinished residents and rebuilds recovery tasks: %j', ({ evidence, freeRoom }) => {
+    const f = fixture(11), op = f.source.data.operators.A!
+    f.source.data.freeRoom = freeRoom
+    if (evidence === 'prediction') { op.mood = 12; op.moodIsPrediction = true }
+    finish(f)
+    expect(op.isResting()).toBe(true)
+    expect(f.state.bedOccupants[room + '_3']).toBe('A')
+    expect(f.source.data.operators.B!.isResting()).toBe(true)
+    expect(f.source.data.groupShiftState.g).toBe(true)
+    const releases = f.source.queue.tasks.filter(task => task.type === T.RELEASE_DORM && task.metadata === 'A')
+    if (freeRoom) {
+      // An unknown prediction triggers a real room read: 11 mood needs 0.25 hours.
+      const deadline = toMowerMicros(evidence === 'prediction' ? 1.25 : 2)
+      expect(f.source.data.dorms[0]!.timeMicros).toBe(deadline)
+      expect(releases.map(task => task.timeMicros)).toEqual([deadline])
+      expect(op.moodIsPrediction).toBe(false)
+    } else {
+      expect(releases).toEqual([])
+      expect(f.source.queue.tasks.some(task => task.type === T.SHIFT_ON
+        && task.plan.room_1_1?.[0] === 'A' && task.plan.room_1_2?.[0] === 'B'
+        && task.timeMicros === toMowerMicros(5))).toBe(true)
+    }
+  })
+
   it('invalidates below-limit morale after the physical departure', () => {
     const f = fixture(11), op = f.source.data.operators.A!
+    f.task.type = T.SELF_CORRECTION
     finish(f)
     expect(op.currentRoom).toBe('')
     expect(op.timeStampMicros).toBeUndefined()
@@ -472,4 +503,39 @@ it.each([{ mood: 23.95, history: false, ready: true }, { mood: 23, history: fals
     expect(f.source.data.operators.B!.isResting()).toBe(true)
     expect(f.source.queue.tasks).toContain(task)
   }
+})
+
+
+describe('ordinary correction preserves an unfinished recall beneficiary', () => {
+  it('keeps independent shared recovery without holding another group member', () => {
+    const { source } = fixture(4, 24), data = source.data
+    Object.assign(data.operators.A!, { groupBindings: [{ group: '', replacement: ['R'] }, { group: 'g', replacement: ['R'] }, { group: 'other', replacement: ['R'] }] })
+    Object.assign(data.operators.B!, { currentRoom: '', currentIndex: -1, timeStampMicros: undefined })
+    data.dorms[1]!.reset()
+    data.urgentRecoverySupporters = { A: ['Incoming'] }
+    const plan = mowerCorrectionPlan(data, true)
+    expect(plan.room_1_1 ?? []).not.toContain('A')
+    expect(plan.room_1_2).toEqual(['B'])
+  })
+  it.each([false, true])('keeps its group during unknown idle recovery, cover available=%s', available => {
+    const { source } = fixture(4, 24), data = source.data
+    Object.assign(data.operators.A!, { currentRoom: '', currentIndex: -1, timeStampMicros: undefined })
+    data.dorms[0]!.reset()
+    data.urgentRecoverySupporters = { B: ['Incoming'] }
+    if (!available) Object.assign(data.operators.R!, { currentRoom: 'meeting', currentIndex: 0 })
+    for (const due of [toMowerMicros(5), 0]) {
+      data.dorms[1]!.timeMicros = due
+      for (let n = 0; n < 3; n++) {
+        const plan = mowerCorrectionPlan(data, true)
+        expect(plan.room_1_1 ?? []).not.toContain('A')
+        expect(plan.room_1_2 ?? []).not.toContain('B')
+        expect(data.urgentRecoverySupporters).toEqual({ B: ['Incoming'] })
+        expect(data.operators.B!.isResting()).toBe(true)
+      }
+    }
+    Object.assign(data.operators.B!, { mood: 24, timeStampMicros: data.nowMicros, moodIsPrediction: false })
+    const released = mowerCorrectionPlan(data, true)
+    expect(released.room_1_1).toEqual(['A'])
+    expect(released.room_1_2).toEqual(['B'])
+  })
 })

@@ -41,10 +41,12 @@ describe('production efficiency caches follow actual mood skill boundaries',()=>
  it('Fiammetta resets hourly warmup at a fractional session start',()=>{
   const ws=createDefaultWorkspace();ws.mainPlan.facilities.room_2_1.slots=[{occupant:{kind:'operator',operatorId:'阿罗玛'},groupId:null,replacements:[]}];ws.mainPlan.facilities.room_2_1.product='gold';ws.mainPlan.conf.workaholic=['阿罗玛']
   ws.mainPlan.facilities.dormitory_1.slots=[{occupant:{kind:'operator',operatorId:'菲亚梅塔'},groupId:null,replacements:['阿罗玛']}]
-  const r=simulateSchedule(compileRosterSchedule(ws,{operatorMorale:{[id('菲亚梅塔')]:23,[id('阿罗玛')]:20}}),{sampleHours:2.5,maxStepHours:.25,warmupModel:'hourly',recordSegments:true,consumptionOverrides:{[id('阿罗玛')]:1}})
+  const r=simulateSchedule(compileRosterSchedule(ws,{operatorMorale:{[id('菲亚梅塔')]:23,[id('阿罗玛')]:20}}),{sampleHours:6.5,maxStepHours:.25,warmupModel:'hourly',recordSegments:true,consumptionOverrides:{[id('阿罗玛')]:1}})
   expect(r.success).toBe(true)
   const exchange=r.events.find(e=>e.type==='fiammetta')!.time
-  expect(exchange).toBeCloseTo(.5,8)
+  expect(exchange).toBeCloseTo(4,8)
+  expect(r.operators.find(operator=>operator.operatorId===id('菲亚梅塔'))!.initialMorale).toBe(16)
+  expect(r.events.some(event=>event.type==='fiammetta'&&event.time<4)).toBe(false)
   const absence=r.segments.filter(x=>x.occupants.room_2_1_0!==id('阿罗玛'))
   expect(absence).not.toHaveLength(0)
   const returned=absence[absence.length-1]!.end
@@ -52,7 +54,8 @@ describe('production efficiency caches follow actual mood skill boundaries',()=>
   const warmed=r.segments.find(x=>Math.abs(x.start-returned-1)<1e-8)
   expect(warmed?.efficiencyPercent.room_2_1).toBe(128)
   expect(r.segments.filter(x=>x.start>=returned&&x.start<returned+1-1e-8).every(x=>x.efficiencyPercent.room_2_1===126)).toBe(true)
-  const expected=(126*exchange+100*(returned-exchange)+126+128*(2.5-returned-1))/2.5
+  // The first four session hours average 129%; the post-charge session restarts at 126%.
+  const expected=(129*exchange+100*(returned-exchange)+126+128+130*(6.5-returned-2))/6.5
   expect(r.rooms.find(x=>x.roomId==='room_2_1')!.averageEfficiencyPercent).toBeCloseTo(expected,8)
  })
 

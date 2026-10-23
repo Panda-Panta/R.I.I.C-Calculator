@@ -7,7 +7,7 @@ import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T,toMowerMicros} from './mo
 import {planMowerMetadata} from './mowerMetadata'
 import {alphaRebalanceClosingDorms} from './mowerAlphaDorm'
 
-describe('October 3 alpha native metadata decisions',()=>{
+describe('current alpha metadata with preserved October 3 inputs',()=>{
  for(const fixture of oracle.metadata)it(fixture.name,()=>{
   const input=fixture.input,operators=Object.fromEntries(input.rows.map(row=>[row.name,new MowerOperatorState({
    name:row.name,room:row.room,index:'index' in row?row.index:undefined,
@@ -23,7 +23,12 @@ describe('October 3 alpha native metadata decisions',()=>{
   if(input.pending)queue.tasks.push(new MowerTask({type:T[input.pending.type as keyof typeof T],time:input.pending.time,plan:structuredClone(input.pending.plan)}))
   const original=structuredClone(data.dorms),positions=Object.values(operators).map(o=>[o.name,o.currentRoom,o.currentIndex])
   planMowerMetadata(data,queue)
-  expect(queue.tasks.map(t=>({type:t.type.key,timeMicros:t.timeMicros,plan:t.plan,metadata:t.metadata,strict:t.strictMoodLimit}))).toEqual(fixture.output.map(t=>({type:t.type,timeMicros:toMowerMicros(t.time),plan:t.plan,metadata:t.metadata,strict:t.strict})))
+  const expected=fixture.output.map(t=>({type:t.type,timeMicros:toMowerMicros(t.time),plan:t.plan,metadata:t.metadata,strict:t.strict}))
+  if(fixture.name==='individual-release'){
+   // ae9fc322 keeps the actual bed's release after a projected return; the old oracle stays unchanged.
+   expected.push({type:'RELEASE_DORM',timeMicros:toMowerMicros(3),plan:{dormitory_1:['Current','Current','Free','Current','Current']},metadata:'A',strict:false})
+  }
+  expect(queue.tasks.map(t=>({type:t.type.key,timeMicros:t.timeMicros,plan:t.plan,metadata:t.metadata,strict:t.strictMoodLimit}))).toEqual(expected)
   expect(data.dorms).toEqual(original);expect(Object.values(operators).map(o=>[o.name,o.currentRoom,o.currentIndex])).toEqual(positions)
  })
  it('recalls the whole main group when a temporary bed closes',()=>{
@@ -38,17 +43,17 @@ describe('October 3 alpha native metadata decisions',()=>{
 })
 
 
-describe('alpha group recovery gap with strict full completion',()=>{
+describe('current alpha group recovery gap and configured wait cap',()=>{
  function returnTime(times:number[],enabled=true,threshold=60,maxWait=0){
   const operators=Object.fromEntries(times.map((_,index)=>{const name='N'+index;return [name,new MowerOperatorState({name,room:'central',index,group:'G',operatorType:'high',restingPriority:'high',currentRoom:'dormitory_1',currentIndex:index,mood:12,timeStampMicros:0})]}))
   const data=new MowerSchedulingData({alpha:true,operators,plan:{central:Object.keys(operators),dormitory_1:times.map(()=>'Free')},dorms:times.map((time,index)=>new MowerDormState(['dormitory_1',index],'N'+index,toMowerMicros(time))),nowMicros:0,groupRestInFullOnMoodGap:enabled,groupMoodGapThresholdMinutes:threshold,groupMoodGapMaxExtraWaitHours:maxWait})
   const queue=new MowerTaskQueue();planMowerMetadata(data,queue)
   return queue.tasks.find(task=>task.type===T.SHIFT_ON)!.time
  }
- // Keep the pinned native inputs, but strict full recovery intentionally has no native lead or wait cap.
+ // Reuse the historical inputs. ae9fc322 anchors the gap cap at the normal return, eight minutes early.
  const expected:Record<string,number>={
   'earliest bed first':5,'latest bed first':5,'gap option disabled':1-8/60,
-  'gap equals threshold':1-8/60,'positive extra wait limit':5,
+  'gap equals threshold':1-8/60,'positive extra wait limit':1-8/60+1,
  }
  for(const fixture of currentOracle.groupRecoveryGaps)it(fixture.name,()=>{
   const {times,enabled,thresholdMinutes,maxWaitHours}=fixture.input
