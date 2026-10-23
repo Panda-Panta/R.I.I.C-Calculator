@@ -7,6 +7,7 @@ import {MowerTask,MOWER_TASK_TYPES as T,toMowerMicros} from './mowerTaskQueue'
 import {planMowerMetadata} from './mowerMetadata'
 import {retainMowerFailedTask,resumeMowerFailedTasks} from './mowerTaskFailure'
 import {mowerUpdateDetail} from './mowerObservations'
+import {mowerRetainedRecoveryMayReturn,mowerRetainedTaskReservations,suppressMowerRetainedArrangements} from './mowerRetainedRecovery'
 function fixture(){
  const rows:NonNullable<RuntimeConfig['mowerSourcePlan']>={room_1_1:[{agent:'A',group:'a',replacement:['X']}],room_1_2:[{agent:'B',group:'b',replacement:['Y']},{agent:'S',group:'b',replacement:['Z']}],dormitory_1:['K0','K1','Free','Free','Free'].map(agent=>({agent,group:'',replacement:[]}))}
  const config:RuntimeConfig={mowerAlpha:true,positions:Object.entries(rows).flatMap(([room,row])=>row.flatMap((p,index)=>p.agent==='Free'?[]:[{id:room+'_'+index,roomId:room,primary:p.agent,candidates:p.replacement,group:p.group,dormitory:room.startsWith('dorm'),permanent:room.startsWith('dorm')}])),beds:[2,3,4].map(index=>({id:'dormitory_1_'+index,roomId:'dormitory_1',vip:index===2})),mowerSourcePlan:rows,mowerSourceRules:{workaholic:[],exhaustRequire:[],restInFull:[],lowPriority:[],refreshDrained:[],standby:['S'],lingMode:0},mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[]},initialMorale:{A:0,B:24,S:24},idleOperators:['I0','I1','I2'],mowerRunLoopClock:{minimumClockStepMicros:1,notificationSleepMicros:1_000_000}}
@@ -27,6 +28,32 @@ function fixture(){
 }
 const returned=(tasks:MowerTask[])=>tasks.find(t=>t.type===T.SHIFT_ON&&t.plan.room_1_2?.includes('B'))
 describe('failed incidental dorm moves release normal recovered-group returns',()=>{
+ it('expands retained reservations to actual occupants, whole groups and their real positions',()=>{
+  const {data,task}=fixture(),reserved=mowerRetainedTaskReservations(data,[task])
+  expect([...reserved.names].sort()).toEqual(['A','B','S','X'])
+  expect(reserved.slots.has('room_1_1\0'+'0')).toBe(true)
+  expect(reserved.slots.has('dormitory_1\0'+'3')).toBe(true)
+  const returning=mowerRetainedTaskReservations(data,[task],undefined,['b'])
+  expect(returning.names.has('B')).toBe(false);expect(returning.names.has('S')).toBe(false)
+  expect(returning.names.has('A')).toBe(true);expect(returning.names.has('X')).toBe(true)
+  expect(returning.slots.has('dormitory_1\0'+'3')).toBe(false)
+ })
+ it('suppresses duplicate derived execution while allowing the incidental recovered group to return',()=>{
+  const {data,task}=fixture(),duplicate={room_1_1:['X']},normal={room_1_2:['B','S']}
+  suppressMowerRetainedArrangements(data,duplicate,[task]);expect(duplicate).toEqual({})
+  suppressMowerRetainedArrangements(data,normal,[task]);expect(normal).toEqual({room_1_2:['B','S']})
+ })
+ it('keeps a release target owned even when the rest of its intent would be incidental',()=>{
+  const {data,task}=fixture();task.type=T.RELEASE_DORM;task.metadata='S';task.plan.dormitory_1![4]='Free';task.releaseTargets={S:['dormitory_1',4]}
+  expect(mowerRetainedRecoveryMayReturn(data,task,'b')).toBe(false)
+ })
+ it('removes observed returned members from incidental expected beds and their pending transition',()=>{
+  const {data,state,task,queue}=fixture();task.groupShiftExpected={['dormitory_1\0'+'2']:'A',['dormitory_1\0'+'4']:'S'};task.groupShiftTransitions={a:true,b:true}
+  retainMowerFailedTask(state,data,task,'blocked incidental bed reordering')
+  mowerUpdateDetail(data,'B',24,'room_1_2',0,true);mowerUpdateDetail(data,'S',24,'room_1_2',1,true)
+  expect(resumeMowerFailedTasks(state,data,queue)).toBe(true)
+  expect(task.groupShiftExpected).toEqual({['dormitory_1\0'+'2']:'A'});expect(task.groupShiftTransitions).toEqual({a:true})
+ })
  it('admits the complete normal return without replaying or changing the retained main request',()=>{
   const {data,queue,task,state}=fixture(),before=structuredClone(task.plan)
   planMowerMetadata(data,queue)
@@ -78,11 +105,11 @@ describe('failed incidental dorm moves release normal recovered-group returns',(
   expect(task.plan).toEqual({room_1_1:['X'],dormitory_1:['Current','Current','A','Current','Current']})
   expect(task.executionFailure).toBeUndefined()
  })
- it('keeps a started arrangement protected after its process lock is released',()=>{
+ it('allows a normal recovered return after an inactive historical start marker',()=>{
   const {data,queue,task}=fixture()
   task.arrangementStarted=true
   planMowerMetadata(data,queue)
-  expect(returned(queue.tasks)).toBeUndefined()
+  expect(returned(queue.tasks)).toBeDefined()
  })
  it('removes a blocked group’s Free clear step for a shared follower whose current group differs',()=>{
   const {state,data,task}=fixture(),follower=data.operators.S!
@@ -104,12 +131,16 @@ describe('failed incidental dorm moves release normal recovered-group returns',(
   expect(task.plan.room_1_1).toEqual(['X']);expect(task.timeMicros).toBe(toMowerMicros(-1))
  })
  it('executes the full return, releases its cover and completes the original rest without sending the standby back',()=>{
-  const {state,data,queue,task}=fixture(),rates={workRate:()=>1,recoveryRate:()=>4}
+  const {state,source,data,queue,task}=fixture(),rates={workRate:()=>1,recoveryRate:()=>4}
   planMowerMetadata(data,queue)
   const finished=()=>state.occupants.room_1_2_0==='B'&&state.occupants.room_1_2_1==='S'&&Object.values(state.bedOccupants).includes('A')
   for(let i=0;i<35&&!finished();i++){
    settleRoster(state,rates)
-   if(!finished())advanceRoster(state,Math.max(nextRosterActionHours(state,rates),1/3_600_000_000),rates)
+   if(!finished()){
+    const hours=Math.max(nextRosterActionHours(state,rates),1/3_600_000_000)
+    expect(Number.isFinite(hours),JSON.stringify({time:state.time,occupants:state.occupants,beds:state.bedOccupants,queue:queue.tasks,waiting:source.waitingGroupShifts,diagnostics:state.diagnostics})).toBe(true)
+    advanceRoster(state,hours,rates)
+   }
   }
   expect(state.time).toBeLessThan(1/60)
   expect(state.occupants.room_1_2_0).toBe('B');expect(state.occupants.room_1_2_1).toBe('S')

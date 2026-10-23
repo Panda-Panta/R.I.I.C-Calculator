@@ -1,4 +1,4 @@
-import {describe,it,expect,vi} from 'vitest'
+import {describe,it,expect} from 'vitest'
 import {readFileSync} from 'node:fs'
 import {importMowerJson} from '../workbench/compat/mowerJson'
 import {compileRosterSchedule} from './compileRosterSchedule'
@@ -10,21 +10,9 @@ import {MowerOperatorState,type MowerOperatorOptions} from './mowerOperatorState
 import {MowerSchedulingData,MowerDormState,type MowerSchedulingDataOptions} from './mowerSchedulingData'
 import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T,type MowerTaskPlan} from './mowerTaskQueue'
 
-// These October 3 Python fixtures retain their original source contract. Only the
-// two decisions changed by October 13 are pinned here; current decisions have
-// separate unmodified-Python oracle coverage in mowerAlphaDecisions.spec.ts.
-// This suite is historical regression evidence, not current full-preview parity.
-vi.mock('./mowerDormOrder', () => ({
- orderMowerAlphaDormIndices: (data:MowerSchedulingData) => data.dorms.map((_, index) => index),
-}))
-vi.mock('./mowerOperatorState', async importOriginal => {
- const actual = await importOriginal<typeof import('./mowerOperatorState')>()
- return {...actual, mowerReplacementCandidates: (...args:Parameters<typeof actual.mowerReplacementCandidates>) =>
-  actual.mowerReplacementCandidates(...args).filter(name => {
-   const target = args[1][name]
-   return !target?.currentRoom || target.isResting()
-  })}
-})
+// Real 84e3926 Python _prepare_shift_cycle over the preserved historical inputs.
+// No local bed-order/candidate overrides: the complete current preview is tested.
+// The three original fixtures remain immutable historical source evidence.
 
 type SavedTask=Omit<Partial<MowerTask>,'type'|'productLockNames'|'productLockSlots'>&{type:{key:keyof typeof T};productLockNames:string[];productLockSlots:string[]}
 type SavedData=Omit<MowerSchedulingDataOptions,'operators'|'dorms'|'busyRestingNames'|'excludedCandidates'|'dormMoodEstimates'|'reservedProductReplacements'|'reservedProductBeds'|'emergencyDormAgents'|'recentShiftOnByRestUnit'>&{
@@ -33,7 +21,7 @@ type SavedData=Omit<MowerSchedulingDataOptions,'operators'|'dorms'|'busyRestingN
 }
 type PreviewCase={data:SavedData;task:SavedTask;pending:SavedTask[];native:{error:string|null;preserved?:boolean;plan:MowerTaskPlan;fill:MowerTaskPlan;conditions:boolean[];remaining:number[]}}
 type PreviewOracle={roster:unknown;names:Record<string,string>;cases:PreviewCase[]}
-const oracles:PreviewOracle[]=['mower-alpha-full-preview.json','mower-alpha-late-cycle.json','mower-alpha-control-fill-order.json'].map(file=>JSON.parse(readFileSync(new URL('./fixtures/'+file,import.meta.url),'utf8')))
+const oracles:PreviewOracle[]=['mower-alpha-full-preview-20261024.json','mower-alpha-late-cycle-20261024.json','mower-alpha-control-fill-order-20261024.json'].map(file=>JSON.parse(readFileSync(new URL('./fixtures/'+file,import.meta.url),'utf8')))
 function restoreTask(raw:SavedTask):MowerTask {
  const task=new MowerTask({type:T[raw.type.key]})
  return Object.assign(task,structuredClone(raw),{type:T[raw.type.key],productLockNames:new Set(raw.productLockNames),productLockSlots:new Set(raw.productLockSlots)})
@@ -47,7 +35,7 @@ function restoreData(raw:SavedData):MowerSchedulingData {
  return new MowerSchedulingData({...structuredClone(raw),operators,dorms:raw.dorms.map(b=>new MowerDormState([...b.position],b.name,b.timeMicros,b.autoFree)),busyRestingNames:new Set(raw.busyRestingNames),excludedCandidates:new Set(raw.excludedCandidates),dormMoodEstimates:new Map(raw.dormMoodEstimates),reservedProductReplacements:new Set(raw.reservedProductReplacements),reservedProductBeds:new Map(raw.reservedProductBeds),emergencyDormAgents:new Set(raw.emergencyDormAgents),recentShiftOnByRestUnit:new Map(raw.recentShiftOnByRestUnit)})
 }
 
-for(const oracle of oracles)describe('historical October 3 preview with pinned bed-order and working-cover decisions',()=>{
+for(const oracle of oracles)describe('84e3926 full preview on preserved cached observations',()=>{
  const names=(plan:MowerTaskPlan)=>Object.fromEntries(Object.entries(plan).map(([room,row])=>[room,row.map(n=>oracle.names[n]??n)]))
  for(const [index,c] of oracle.cases.entries())it(`${index}: ${c.task.type.key} at ${c.data.nowMicros/3_600_000_000}h`,()=>{
   const workspace=importMowerJson(JSON.stringify(oracle.roster)),schedule=compileRosterSchedule(workspace,{restingThreshold:.65,rescueThreshold:.75,freeRoom:false,fiammettaFool:true,fiammettaThreshold:.9}),config=compiledScheduleToRuntimeConfig(schedule);config.mowerAlpha=true;config.availableIdleOperators=c.data.unregisteredIdleNames
@@ -55,7 +43,7 @@ for(const oracle of oracles)describe('historical October 3 preview with pinned b
   const data=restoreData(c.data),task=restoreTask(c.task),queue=new MowerTaskQueue();queue.tasks=[task,...c.pending.map(restoreTask)]
   const before=JSON.stringify(data),original=[...queue.tasks],intent=structuredClone(task.plan)
   const execute=()=>prepareMowerShiftCycle(data,task,queue,state.mowerShiftModel!,{fiaTargets:config.fiammetta?.orderedTargets})
-  if(c.native.error){expect(execute).toThrow(c.native.error.replace(/^ValueError: /,''));expect(task.plan).toEqual(intent);expect(queue.tasks).toEqual(original);expect(c.native.preserved).toBe(true)}
+  if(c.native.error){expect(execute).toThrow(c.native.error.replace(/^(?:ValueError|GroupShiftBlocked): /,''));expect(task.plan).toEqual(intent);expect(queue.tasks).toEqual(original);expect(c.native.preserved).toBe(true)}
   else {execute();expect(names(task.plan)).toEqual(c.native.plan);expect(names(task.dormFillPlan)).toEqual(c.native.fill);expect(task.backupShiftConditions).toEqual(c.native.conditions);expect(queue.tasks.map(t=>original.indexOf(t))).toEqual(c.native.remaining)}
   expect(JSON.stringify(data)).toBe(before)
  })

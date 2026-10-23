@@ -33,6 +33,29 @@ it('integrates Ines ramp across its cap and resets after leaving or exhaustion',
   expect(timeline.report().completed + timeline.report().progress).toBeCloseTo((17.95 + 1.73 + 1.47 + 1.73) / 20)
 })
 
+it('restarts Ines warmup after a confirmed same-room slot move', () => {
+  const timeline = createReceptionClueTimeline(0)
+  const config = reception('char_4087_ines', 'char_202_demkni')
+  timeline.observe(config, 0, 5)
+  const before = timeline.report()
+  config.facilityOperatorIds.reception.reverse()
+  timeline.observe(config, 5, 6)
+  const after = timeline.report()
+  expect(after.completed + after.progress - before.completed - before.progress).toBeCloseTo(2.09 / 20, 8)
+})
+
+it('uses the shared work session when a worker leaves and returns between observations', () => {
+  const ines = 'char_4087_ines'
+  const timeline = createReceptionClueTimeline(0, undefined, { [ines]: 10 })
+  const config = reception(ines)
+  timeline.observe(config, 0, 5, new Map([[ines, 0]]))
+  const before = timeline.report()
+  timeline.observe(config, 5, 6, new Map([[ines, 0]]))
+  const after = timeline.report()
+  expect(before.completed + before.progress).toBeCloseTo((1.72 * 5 + .25) / 20, 8)
+  expect(after.completed + after.progress - before.completed - before.progress).toBeCloseTo(1.73 / 20, 8)
+})
+
 it('uses the supplied inventory for both skills and promotion', () => {
   const inventory = compileOperatorInventory([{ operator: '跃跃', elitePhase: 0, level: 1 }])
   const timeline = createReceptionClueTimeline(0, inventory)

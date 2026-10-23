@@ -34,7 +34,8 @@ export function deferMowerAlphaDorm(task:MowerTask,tasks:MowerTask[],room:string
 export function sortMowerAlphaDispatch(tasks:MowerTask[],now:number,options:MowerTaskSchedulingOptions={}):void {
  const due=new Set(priority(tasks,options).filter(t=>t.timeMicros<=now))
  const advance=(t:MowerTask)=>options.enableMastery!==false&&t.type===T.SWAP_SUPPORT&&t.advanceSupportSwap&&t.timeMicros<=now
- tasks.sort((a,b)=>Number(!due.has(a))-Number(!due.has(b))||Number(!advance(a))-Number(!advance(b))||a.timeMicros-b.timeMicros)
+ const strict=(t:MowerTask)=>t.strictMoodLimit&&t.timeMicros<=now
+ tasks.sort((a,b)=>Number(!!a.executionFailure)-Number(!!b.executionFailure)||Number(!due.has(a))-Number(!due.has(b))||Number(!advance(a))-Number(!advance(b))||Number(!strict(a))-Number(!strict(b))||a.timeMicros-b.timeMicros)
 }
 export function protectMowerAlphaTasks(tasks:MowerTask[],now:number,options:MowerTaskSchedulingOptions={}):void {
  const execution=options.executionMinutes??.75,configured=options.configuredDelayMinutes??3
@@ -71,7 +72,7 @@ export function protectMowerAlphaTasks(tasks:MowerTask[],now:number,options:Mowe
   if(deadline)task.timeMicros=Math.max(now,deadline.timeMicros)+1_000_000
   else cursor=start+minutes(duration)
  }
- const blockers=tasks.filter(t=>!t.strictMoodLimit&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t))&&(t.type!==T.SWAP_SUPPORT||options.enableMastery!==false)).sort((a,b)=>b.timeMicros-a.timeMicros)
+ const blockers=tasks.filter(t=>!t.strictMoodLimit&&(Object.keys(t.plan).length>0||t.type!==T.NOT_SPECIFIC)&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t))&&(t.type!==T.SWAP_SUPPORT||options.enableMastery!==false)).sort((a,b)=>b.timeMicros-a.timeMicros)
  const releases=tasks.filter(t=>t.strictMoodLimit&&Object.keys(t.plan).length).sort((a,b)=>(b.moodLimitDeadlineMicros??b.timeMicros)-(a.moodLimitDeadlineMicros??a.timeMicros)||b.metadata.localeCompare(a.metadata)||JSON.stringify(Object.keys(b.plan).sort()).localeCompare(JSON.stringify(Object.keys(a.plan).sort())))
  let next=Infinity
  for(const release of releases){
@@ -81,8 +82,8 @@ export function protectMowerAlphaTasks(tasks:MowerTask[],now:number,options:Mowe
   for(const task of blockers){
    if([T.RUN_ORDER,T.SWAP_SUPPORT].includes(task.type)&&task.timeMicros<=now)continue
    const durationMinutes=task.type===T.RUN_ORDER?Math.max(options.runOrderDelayMinutes??5,configured)+2*execution:task.type===T.SWAP_SUPPORT?ordinaryMinutes(task,execution):dormOnly(task)?Object.keys(task.plan).reduce((sum,room)=>sum+alphaDormMinutes(room,options),0):ordinaryMinutes(task,execution)
-   const end=Math.max(now,task.timeMicros)+minutes(durationMinutes)
-   if(start<=end&&Math.max(now,start)+duration>=task.timeMicros)start=Math.min(start,task.timeMicros-duration-1_000_000)
+   const blockerStart=Math.max(now,task.timeMicros),end=blockerStart+minutes(durationMinutes)
+   if(start<=end&&Math.max(now,start)+duration>=blockerStart)start=Math.min(start,blockerStart-duration-1_000_000)
   }
   if(start<release.timeMicros)release.timeMicros=start
   next=start

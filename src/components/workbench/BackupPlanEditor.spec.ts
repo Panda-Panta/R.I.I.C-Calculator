@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { NSelect } from 'naive-ui'
 import BackupPlanEditor from './BackupPlanEditor.vue'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 
@@ -215,5 +216,27 @@ describe('BackupPlanEditor.vue', () => {
 
     exposed.removeConfOperator('exhaust_require', 0)
     expect(exposed.getConfOperatorList('exhaust_require')).not.toContain('令')
+  })
+
+  it('edits multiple group memberships and exclusive type without rewriting AST or extensions', async () => {
+    const store = useRosterWorkbenchStore()
+    const ast = { left: 'True', operator: 'and', right: 'False' }
+    store.workspace.compatibility.unrecognizedFields.backup_groups = [{ id: 'rest', name: '恢复组', trigger: ast, extra: 3 }]
+    store.workspace.compatibility.backupPlans = [{ name: '旧副表', trigger: ast, extension: { keep: [1] } }]
+    const before = JSON.stringify(store.workspace)
+    const wrapper = mount(BackupPlanEditor)
+    expect(JSON.stringify(store.workspace)).toBe(before)
+    const groupSelect = wrapper.findAllComponents(NSelect).find(select => select.attributes('data-test') === 'plan-group-select')!
+    const typeSelect = wrapper.findAllComponents(NSelect).find(select => select.attributes('data-test') === 'plan-type-select')!
+    groupSelect.vm.$emit('update:value', ['default', 'rest'])
+    await wrapper.vm.$nextTick()
+    typeSelect.vm.$emit('update:value', 'exclusive')
+    await wrapper.vm.$nextTick()
+    expect(store.workspace.compatibility.backupPlans[0]).toEqual({ name: '旧副表', trigger: ast, extension: { keep: [1] }, group_ids: ['default', 'rest'], type: 'exclusive' })
+    expect(store.workspace.compatibility.unrecognizedFields.backup_groups).toEqual([{ id: 'rest', name: '恢复组', trigger: ast, extra: 3 }])
+    groupSelect.vm.$emit('update:value', [])
+    await wrapper.vm.$nextTick()
+    expect((store.workspace.compatibility.backupPlans[0] as { group_ids: string[] }).group_ids).toEqual(['default'])
+    wrapper.unmount()
   })
 })

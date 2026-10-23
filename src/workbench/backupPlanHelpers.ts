@@ -1,4 +1,4 @@
-import { compileBackupExpression } from '../scheduler/backupExpression'
+import { compileBackupExpression, serializeBackupExpression } from '../scheduler/backupExpression'
 import { getOperatorName } from './operatorHelpers'
 
 export type BackupTiming = 'BEGINNING' | 'BEFORE_PLANNING' | 'AFTER_PLANNING' | 'END'
@@ -7,9 +7,16 @@ export interface MowerBackupPlanAstNode {
   left: unknown
   operator: string
   right: unknown
+  [key: string]: unknown
 }
 
-export type MowerBackupCondition = string | MowerBackupPlanAstNode
+export interface MowerBackupFunctionAstNode {
+  function: 'max' | 'min' | 'sum' | 'any' | 'all' | 'abs'
+  args: unknown[]
+  [key: string]: unknown
+}
+
+export type MowerBackupCondition = string | MowerBackupPlanAstNode | MowerBackupFunctionAstNode
 
 export interface MowerBackupPlanSlot {
   agent: string
@@ -82,22 +89,12 @@ export const BACKUP_CONF_FIELDS = [
 /**
  * Serialize trigger AST or primitive into python expression string.
  */
-export function serializeBackupTrigger(source: unknown, depth = 0): string {
-  if (depth > 32) return 'False'
+export function serializeBackupTrigger(source: unknown): string {
   if (source === null || source === undefined) return ''
-  if (typeof source === 'string') return source.trim()
-  if (typeof source === 'boolean') return source ? 'True' : 'False'
-  if (typeof source === 'number' && Number.isFinite(source)) return String(source)
-  if (typeof source === 'object' && !Array.isArray(source)) {
-    const node = source as Record<string, unknown>
-    const left = serializeBackupTrigger(node.left, depth + 1)
-    const op = typeof node.operator === 'string' ? node.operator.trim() : ''
-    const right = serializeBackupTrigger(node.right, depth + 1)
-    if (!op && !right) return left
-    if (!left && !op) return right
-    return `(${left} ${op} ${right})`.trim()
-  }
-  return ''
+  // Rendering remains tolerant of invalid imports; validation below compiles the
+  // original tree so malformed or oversized conditions cannot become valid text.
+  try { return serializeBackupExpression(source).trim() }
+  catch { return '' }
 }
 
 /**
@@ -111,11 +108,10 @@ export function validateBackupTrigger(source: unknown): {
 } {
   const participants = new Set<string>()
   try {
-    const serialized = serializeBackupTrigger(source)
-    if (!serialized) {
+    if (source === null || source === undefined || typeof source === 'string' && !source.trim()) {
       return { valid: false, error: '条件表达式不能为空', participants: [] }
     }
-    const result = compileBackupExpression(serialized, participants)
+    const result = compileBackupExpression(source, participants)
     return {
       valid: true,
       skipped: result.skipped,

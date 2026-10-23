@@ -66,6 +66,8 @@ export interface RuntimeEvent {
   beds?: string[]; moraleBefore?: number[]; moraleAfter?: number[]; reason?: 'position-correction'
 }
 export interface RuntimeState {
+  /** Confirmed changes of working position reset position-session skill warmup. */
+  workPositionChanges?: Record<string, number>
   /** Current simulation inventory, keyed by the six native Chinese item names. */
   mowerInventoryCounts?: Readonly<Record<string, number>>
   /** Observed products with the base-plan fallback already applied by the host. */

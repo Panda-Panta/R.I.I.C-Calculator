@@ -1,3 +1,23 @@
+# 2026-10-24 最新 Mower 机制导入（集成验证中）
+
+- 目标：以本轮联网固定的 ArkMowers/arknights-mower alpha `84e3926c0f36045d7baeb1ac050f815b40952d6d` 为目标，从初始 `ae9fc322` 核对并导入影响独立计算器的计划兼容、条件表达式、换班/恢复/候补机制。保留本程序技能数值、维护跑单适配、固定无训练计划语义及现有用户数据；设备操作仅在影响理论调度时建模，不将静态或模拟验证称作游戏实测。
+- 基线与备份：开始时 test/main 为 `8787c11b8687c35d23777eccadc123f8e995d122`，无 tracked 修改；1830 个受控文件已 ZIP 备份并逐项回解 SHA-256 验证，`artifacts/mower-latest-20261024/source-before.zip` SHA-256=`abe1315a8b4309f324c5fa1e6d3174dc69d2768482b72a665f8755443787de11`。远端 main 已前进 28 提交，已安全快进 test 至 `1092f3f2f8c4c1385e7f5faa9c9fe3c02cab5ae3`，已有本地未跟踪资料保持。
+- 模式/资源：沿用共同开发边界，主 agent 独占计划、共享类型/接线协调、Git、来源清单、结构索引、构建及安装；复用领域 skill、原生 Python 对照夹具、Vitest、vue-tsc、结构生成器、skill 校验和 `scripts/sync-tools.ps1`。已有清单为分范围多来源 pin，不能用顶层旧 SHA 判定所有机制都未更新。上游内置演算与本地差异须逐项审核，禁止整目录覆盖。
+- 第一批并行调查：mower_upstream_audit 固定上游原文件/版本并核对 Python 行为；mower_local_audit 定位当前本地接口与兼容回归；mower_vendor_diff 比较最新内置演算及独立计算器，识别已同步与剩余差异。调查完成后在本段追加明确独占路径，再开展模块并行实施；子任务不操作 Git 或安装。
+- 第二批实施 UI：mower_local_audit 独占 `BackupPlanEditor.vue`、新分组编辑组件及其测试、必要的 `workbench/backupGroupHelpers.ts`/测试，补上已存在的副表分组/多归属/互斥数据与执行能力的编辑入口；保持未知字段及未修改条件树。该工作与调度语义独立，先行实施，其他源码归属待差异核对后追加。
+- 第二批实施表达式：mower_expressions 独占 `scheduler/backupExpression.ts`、嵌套函数测试、`workbench/backupPlanHelpers.ts`/测试及必要校验入口，导入 max/min/sum/any/all/abs 函数树和文本，保留无 eval 解释器、依赖跟踪及固定无训练计划；与 UI 同批并行。当前主线 1867 文件另备份到 `baseline/source-before.zip`，SHA-256=`5bb578609e9f9f81d7f610b32fb1598475d66135b5f786f9627435acc40a25c1`。
+- 来源观察：本轮完整 freshness 输出 `artifacts/mower-latest-20261024/freshness-before.json` 为 stale，GameData/工具箱及较旧 Mower 范围已推进。本任务更新 Mower 机制来源，保留已有游戏数据版本，不能把整包标为全部最新游戏数据。
+- 第二批调度 A：mower_recovery 独占 OperatorState/SchedulingData/Observations、AlphaCandidates/AlphaDorm/GroupRecovery、BackupDepartureRecovery/DormAssignment/DormTasks/Release/OrdinaryPlanning/ShiftProtection 及相应测试，导入真实恢复观测、缺期限处理、床位准入和离宿规则；新增接口由 A 先告知 B。上游已改变的准入条件按新版本导入，保留旧 oracle 来源而不冒充新版本。
+- 第二批调度 B：mower_vendor_diff 独占 Correction/ShiftCycle/SourceRuntime/TaskFailure/ReplacementCoordination/UrgentRecovery/AlphaExhaustSupport、backupPlans/backupGroups、必要 TaskQueue/rosterRuntime/AlphaTaskProtection/RunLifecycle 及对应测试，负责单一 runtime 接线，保留本地维护暂停及失败任务过滤。mower_replacement_check 独占新普通替班检查模块和测试，与 B 协商微秒 deadline、观测指纹、任务保留/恢复接口；无倒计时不添加轮询或任意冷却。
+- 第二批生产：mower_production 独占 simulator/scheduleSimulation、productionTimeline、mowerNativeProductionIO、receptionClueTimeline、相关暖机模块及测试，导入实际换槽/离返的技能暖机重置和确证无人机预留变化。保持用户指定低级裁缝固定三级峰值分布、不随内置演算的线性近似改变。生产和 runtime 通过 workPositionChanges 接口衔接。主 agent 负责未派出的共享文档、独立审查和最终集成。
+- 中断接续：原并行任务因账户模型限额中止，已保留落盘内容和原始测试失败；用户要求继续后，由 finish_recovery 接 A 与其类型/新版边界、finish_runtime 接运行时/普通替班/任务执行、finish_group_confirmation 实现独立确认 helper 与原生方法对照，review_expression_ui_production 独立审查表达式/UI/生产。后者三组重叠回归分别 151/151、85/85、63/63，通过手算修正新暖机测试和旧无人机断言，不累加数量。
+- 原生核对：内置演算曾省略的层级保护已按 ae9fc322 Python 恢复，旧床位矩阵通过；不可将 vendor 差异直接当成原生机制。普通替班与确认接线首批 119 项通过，完整集成结果另记。native_preview_oracle 已通过真实最新版 Python 类、evalidate 和完整辅助依赖执行旧的 15 个快照，正在生成版本化新 oracle；保留原三份旧 fixture。
+- 交付前时效追加：重新查询发现 alpha 又前进两提交至 `84e3926c0f36045d7baeb1ac050f815b40952d6d`。已比较实际差异，将 #1600 的回满动态住客、任意干员候补优先级与必需成员先分床交 finish_recovery，更新目标至该版本；ae9 与新原文并排保留，不覆盖正在使用的来源。回收报表差异由主 agent 另核是否影响本程序的材料时间线。
+- 影响与验收：覆盖主副表及分组、嵌套条件、共享成员和候补交集、宿舍床位/恢复观察、组原子性、用尽/回满/0 心情占岗、技能阶段及同站/全局联动、生产时间线/资源账本。保持未涉及新条件的输入行为；旧冻结 oracle 已知不一致需按来源解释，不篡改为绿灯。必要时使用新来源生成独立 oracle。
+- 实现/审查：表达式、分组编辑、恢复/候补、绑组执行确认、预约和前序任务准入、技能暖机与无人机预留已集成。恢复专项 23 文件 336 项、运行时专项 15 文件 263 项通过；最终独立调度审查 15 文件 226 项及 4 个独立复现通过，无未关闭问题。上述检查有重叠，不累加。最终 15 个真实原生完整预演快照全部匹配（含 1 个原生拒绝），旧 fixture 保留。三个 unused import 清理后类型检查通过，独立生产构建通过。
+- 浏览器运行：先因内置页签故障使用 Edge，后切回内置浏览器；最终构建成功导入公开 `mower-252-2gold.json`，真实 Worker 完成 72 小时预热及 168 小时采样，用时 70.66 秒，显示加权总分 106,414.3 分/日。诊断区保留 4 项含恢复记录的历史事件，不将其称为当前死锁。分组编辑及嵌套条件语法已有页面验证，截图/AX 保存在本次 browser 证据目录；未改真实安装配置。
+- 验证/交付：全量回归正在执行；安全同步脚本的 15 项回归已在允许 Junction 的权限环境通过，首次受限失败日志保留。后勤包 22 项文件和 56 条相对引用通过离线校验，独立仓库的 23 个实物文件已从验证后的源码包准备并逐字节核对，尚未发布。最终候选仅推送自有仓库 codex/ 专项分支，经普通 PR 合入 main，核对实际主线后预览/备份/安全同步 `D:\Tools\R.I.I.C-Calculator` 并核哈希。真实用户配置、干员库、排班与 WebView2 数据不得覆盖。当前尚未合并或安装；依次记实，不继承旧任务的完成结论。
+
 # 2026-10-18 副表分组与多组归属同步（实现与验证完成）
 
 - 来源：Mower 副表分组提交 `203f75329d7b07093889fe1630254fd648fde583`。每张副表可属于多个分组，只在当前生效组内参与选择；默认组兜底，无跨组全局例外；保留有效当前组和互斥项，失效后按顺序选择。

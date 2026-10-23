@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { createDefaultWorkspace } from './defaults'
+import { importMowerJson, exportMowerJson } from './compat/mowerJson'
 import {
   serializeBackupTrigger,
   validateBackupTrigger,
@@ -45,6 +47,21 @@ describe('backupPlanHelpers', () => {
       expect(serializeBackupTrigger(42)).toBe('42')
       expect(serializeBackupTrigger(null)).toBe('')
     })
+
+    it.each([
+      ['max', ['1', '9', '3'], 'max(1, 9, 3)'], ['min', ['1', '9', '3'], 'min(1, 9, 3)'],
+      ['sum', ['1', '9', '3'], 'sum([1, 9, 3])'], ['any', ['True', 'False'], 'any([True, False])'],
+      ['all', ['True', 'False'], 'all([True, False])'], ['abs', ['-8'], 'abs(-8)'],
+      ['max', ['7'], 'max([7])'], ['min', ['7'], 'min([7])'],
+    ])('uses upstream FunctionExpression serialization for %s %j', (name, args, text) => {
+      expect(serializeBackupTrigger({ function: name, args })).toBe(text)
+    })
+
+    it('serializes nested functions and empty logic trees consistently with runtime', () => {
+      expect(serializeBackupTrigger({ function: 'sum', args: ['1', { function: 'abs', args: ['-2'] }] })).toBe('sum([1, abs(-2)])')
+      expect(serializeBackupTrigger({})).toBe('False')
+      expect(serializeBackupTrigger({ left: ' ', right: '\t' })).toBe('False')
+    })
   })
 
   describe('validateBackupTrigger', () => {
@@ -74,6 +91,37 @@ describe('backupPlanHelpers', () => {
       const result = validateBackupTrigger("op_data.operators['未知神秘人'].is_resting()")
       expect(result.valid).toBe(false)
       expect(result.error).toContain('未知干员')
+    })
+
+    it('validates nested functions and observes their participants without altering unknown fields', () => {
+      const source = { function: 'all', args: [{ function: 'any', args: ["op_data.operators['令'].is_resting()"], future: { value: 1 } }], future: 'keep' }
+      const before = structuredClone(source), result = validateBackupTrigger(source)
+      expect(result.valid).toBe(true)
+      expect(result.participants).toEqual(['char_2023_ling'])
+      expect(source).toEqual(before)
+      expect(humanizeBackupTrigger(source)).toContain('令休息中')
+    })
+
+    it('preserves function trees and unknown fields through the actual JSON import/export path', () => {
+      const source = JSON.parse(exportMowerJson(createDefaultWorkspace()))
+      const trigger = { function: 'all', args: [{ function: 'max', args: ['1', '2'], future: 'nested' }, 'True'], future: { mode: 1 } }
+      source.backup_plans = [{ name: '函数条件', trigger, plan: {}, conf: {}, future: ['keep'] }]
+      const imported = importMowerJson(JSON.stringify(source))
+      const exported = JSON.parse(exportMowerJson(imported))
+      expect(exported.backup_plans[0].trigger).toEqual(trigger)
+      expect(exported.backup_plans[0].future).toEqual(['keep'])
+      expect(validateBackupTrigger(exported.backup_plans[0].trigger).valid).toBe(true)
+    })
+
+    it('distinguishes an empty source from a valid empty logic tree and rejects invalid function AST', () => {
+      expect(validateBackupTrigger('').valid).toBe(false)
+      expect(validateBackupTrigger(null).valid).toBe(false)
+      expect(validateBackupTrigger({}).valid).toBe(true)
+      expect(validateBackupTrigger({ function: 'eval', args: ['1'] }).valid).toBe(false)
+      expect(validateBackupTrigger({ function: 'abs', args: ['1', '2'] }).error).toContain('只接受一项参数')
+      let source: unknown = 'True'
+      for (let i = 0; i < 34; i++) source = { function: 'any', args: [source] }
+      expect(validateBackupTrigger(source).error).toContain('条件树超过限制')
     })
   })
 

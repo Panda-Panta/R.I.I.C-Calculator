@@ -52,6 +52,19 @@ describe('native task failures retain work and release dispatch',()=>{
   expect(resumeMowerFailedTasks(state,data,queue)).toBe(false)
   expect(task.executionFailure).toBeDefined()
  })
+ it('keeps completed group targets in the failure observation scope and clones their retained state independently',()=>{
+  const {state,data,task,queue}=fixture()
+  data.plan.room_2_1=['S'];data.operators.S=new MowerOperatorState({name:'S',currentRoom:'room_2_1',currentIndex:0,mood:24,timeStampMicros:0})
+  task.groupShiftExpected={['room_2_1\0'+'0']:'S'}
+  retainMowerFailedTask(state,data,task,'换班实测驻员与目标不一致')
+  const copied=cloneMowerShiftTask(task)
+  copied.groupShiftExpected['room_2_1\0'+'0']='other';copied.executionFailure!.snapshot.observations.S![1]=3
+  expect(task.groupShiftExpected['room_2_1\0'+'0']).toBe('S');expect(task.executionFailure!.snapshot.observations.S![1]).toBe(0)
+  expect(resumeMowerFailedTasks(state,data,queue)).toBe(false)
+  data.operators.S.currentRoom='';data.operators.S.currentIndex=-1
+  expect(resumeMowerFailedTasks(state,data,queue)).toBe(true)
+  expect(queue.tasks).toContain(task);expect(task.timeMicros).toBe(0)
+ })
  it('excludes suspended failures from dispatch and scheduling without rewriting remaining work',()=>{
   const {task,queue}=fixture(),other=new MowerTask({time:1,type:T.FIAMMETTA}),plan=structuredClone(task.plan)
   queue.tasks.push(other);queue.sort()

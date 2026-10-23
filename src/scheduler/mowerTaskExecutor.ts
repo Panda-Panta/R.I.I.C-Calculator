@@ -17,6 +17,8 @@ export interface MowerTaskExecutionHooks {
  prepareRelease?:(task:MowerTask)=>boolean
  /** A critical task may postpone the remaining dorm rooms without ending this shift. */
  deferRoom?:(room:string,task:MowerTask)=>boolean
+ /** Final physical confirmation runs before metadata, backup activation, or task consumption. */
+ completeArrangement?:(task:MowerTask)=>boolean
  metadata:()=>void
  corrections?:()=>MowerTask[]
  skip?:()=>void
@@ -50,7 +52,7 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  if(task.type===T.RUN_ORDER)throw new Error('理想跑单任务仅用于唤醒，不支持实体换人')
  // Native infra_main enters the arrangement branch before preview. A preview that
  // removes every physical move must still unlock the shift and rebuild metadata.
- if(!Object.keys(task.plan).length&&!task.backupShiftActive){queue.consume(task);if(rosterHead(queue,hooks)?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
+ if(!Object.keys(task.plan).length&&!task.backupShiftActive){if(hooks.completeArrangement&&!hooks.completeArrangement(task))return false;queue.consume(task);if(rosterHead(queue,hooks)?.type===T.SHIFT_ON){const result=hooks.backup('AFTER_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)}return true}
  const protectedShift=task.backupShiftActive||!!hooks.protectShift&&Object.keys(task.plan).length>0&&task.type!==T.FIAMMETTA&&task.type!==T.RELEASE_DORM
  if(protectedShift)task.backupShiftActive=true
  let retainedLock=false
@@ -77,6 +79,7 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
   hooks.skip?.()
  }
  task.backupShiftActive=false
+ if(hooks.completeArrangement&&!hooks.completeArrangement(task))return false
  if(getTime){
   const result=hooks.backup('BEFORE_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)
   if(!result.changed)hooks.metadata()

@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 729 个索引文件，其中应用 TypeScript/Vue/CSS 文件 257 个，业务测试文件 325 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 753 个索引文件，其中应用 TypeScript/Vue/CSS 文件 262 个，业务测试文件 338 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -126,6 +126,7 @@ docs/
 ├── UPDATE_2026-10-14_MOWER_DRONE_ABYSSAL.md
 ├── UPDATE_2026-10-14_TRAINING_PLAN.md
 ├── UPDATE_2026-10-16_MOWER_REPORT.md
+├── UPDATE_2026-10-24_MOWER_LATEST.md
 ├── UPDATE_v1.1.0.md
 ├── UPDATE_v1.1.1.md
 ├── UPDATE_v1.1.2.md
@@ -168,6 +169,8 @@ scripts/
 src/
 ├── components/
 │   └── workbench/
+│       ├── BackupGroupEditor.spec.ts
+│       ├── BackupGroupEditor.vue
 │       ├── BackupPlanEditor.spec.ts
 │       ├── BackupPlanEditor.vue
 │       ├── BaseMap.spec.ts
@@ -418,13 +421,16 @@ src/
 ├── scheduler/
 │   ├── fixtures/
 │   │   ├── mower-accept-order-alpha.json
+│   │   ├── mower-alpha-control-fill-order-20261024.json
 │   │   ├── mower-alpha-control-fill-order.json
 │   │   ├── mower-alpha-correct-dorm.json
 │   │   ├── mower-alpha-decisions-20261013.json
 │   │   ├── mower-alpha-exhaust-support.json
+│   │   ├── mower-alpha-full-preview-20261024.json
 │   │   ├── mower-alpha-full-preview.json
 │   │   ├── mower-alpha-idle-search.json
 │   │   ├── mower-alpha-isolation-20261014.json
+│   │   ├── mower-alpha-late-cycle-20261024.json
 │   │   ├── mower-alpha-late-cycle.json
 │   │   ├── mower-alpha-metadata.json
 │   │   ├── mower-alpha-mood-limits.json
@@ -446,6 +452,7 @@ src/
 │   │   ├── mower-drone-interface-alpha.json
 │   │   ├── mower-drone-operations-alpha.json
 │   │   ├── mower-duplicate-recovery-retry-alpha.json
+│   │   ├── mower-dynamic-priority-84e3926.json
 │   │   ├── mower-fia-observation-alpha.json
 │   │   ├── mower-fia-ready-cache-alpha.json
 │   │   ├── mower-global-dorm-order-alpha.json
@@ -454,6 +461,7 @@ src/
 │   │   ├── mower-notification-alpha.json
 │   │   ├── mower-ordinary-planning-alpha-cases.json
 │   │   ├── mower-plan-field-order-alpha.json
+│   │   ├── mower-recovery-ae9fc322.json
 │   │   ├── mower-return-two-groups-alpha.json
 │   │   ├── mower-run-entry-alpha.json
 │   │   ├── mower-run-order-refresh-alpha.json
@@ -461,6 +469,7 @@ src/
 │   │   ├── mower-task-scheduling-alpha.json
 │   │   └── mower-todo-task-alpha.json
 │   ├── backupExpression.ts
+│   ├── backupFunctionExpression.spec.ts
 │   ├── backupGroups.spec.ts
 │   ├── backupGroups.ts
 │   ├── backupInventory.spec.ts
@@ -515,6 +524,7 @@ src/
 │   ├── mowerBackupDepartureRecovery.spec.ts
 │   ├── mowerBackupDepartureRecovery.ts
 │   ├── mowerBackupFacilities.spec.ts
+│   ├── mowerBackupGroupReturn.spec.ts
 │   ├── mowerBackupRefresh.spec.ts
 │   ├── mowerBackupRefresh.ts
 │   ├── mowerBackupReplacements.ts
@@ -548,6 +558,7 @@ src/
 │   ├── mowerDroneInterface.ts
 │   ├── mowerDroneOperations.spec.ts
 │   ├── mowerDroneOperations.ts
+│   ├── mowerDynamicRecoveryPriority.spec.ts
 │   ├── mowerExhaustInterlock.spec.ts
 │   ├── mowerExhaustPlanning.ts
 │   ├── mowerExhaustPolicy.ts
@@ -563,7 +574,11 @@ src/
 │   ├── mowerGlobalDormOrder.ts
 │   ├── mowerGlobalRestPolicy.spec.ts
 │   ├── mowerGroupBedMatching.spec.ts
+│   ├── mowerGroupConfirmation.spec.ts
+│   ├── mowerGroupConfirmation.ts
 │   ├── mowerGroupFullRecovery.spec.ts
+│   ├── mowerGroupPredecessors.spec.ts
+│   ├── mowerGroupPredecessors.ts
 │   ├── mowerGroupRecovery.ts
 │   ├── mowerGroupReturnStability.spec.ts
 │   ├── mowerGroupTransitionLifecycle.spec.ts
@@ -574,6 +589,9 @@ src/
 │   ├── mowerIdealTaskScheduling.spec.ts
 │   ├── mowerIndependentRest.spec.ts
 │   ├── mowerIsolationReservations.spec.ts
+│   ├── mowerLatestRecovery.spec.ts
+│   ├── mowerLatestRecoveryOracle.spec.ts
+│   ├── mowerLatestRestingMatching.spec.ts
 │   ├── mowerLatestSchedulingWiring.spec.ts
 │   ├── mowerLimitedRest.spec.ts
 │   ├── mowerMaintenanceRunOrders.spec.ts
@@ -590,6 +608,7 @@ src/
 │   ├── mowerObservations.spec.ts
 │   ├── mowerObservations.ts
 │   ├── mowerObservedFullRelease.spec.ts
+│   ├── mowerOffDutyRecovery.spec.ts
 │   ├── mowerOperatorState.spec.ts
 │   ├── mowerOperatorState.ts
 │   ├── mowerOrdinaryMetadata.spec.ts
@@ -613,6 +632,8 @@ src/
 │   ├── mowerRelease.ts
 │   ├── mowerReload.spec.ts
 │   ├── mowerReload.ts
+│   ├── mowerReplacementCheck.spec.ts
+│   ├── mowerReplacementCheck.ts
 │   ├── mowerReplacementCoordination.ts
 │   ├── mowerReplacementCoordinationForecast.spec.ts
 │   ├── mowerReplacementCoordinationRuntime.spec.ts
@@ -698,6 +719,7 @@ src/
 │   ├── mowerProductSwitching.spec.ts
 │   ├── mowerProductSwitching.ts
 │   ├── mowerTaskFailureReport.spec.ts
+│   ├── mowerWorkSession.spec.ts
 │   ├── orderTimeline.spec.ts
 │   ├── orderTimeline.ts
 │   ├── potentialProduction.spec.ts
@@ -781,6 +803,8 @@ src/
 │   │   └── timelineModel.ts
 │   ├── adapter.spec.ts
 │   ├── adapter.ts
+│   ├── backupGroupHelpers.spec.ts
+│   ├── backupGroupHelpers.ts
 │   ├── backupPlanHelpers.spec.ts
 │   ├── backupPlanHelpers.ts
 │   ├── calculationBottlenecks.spec.ts

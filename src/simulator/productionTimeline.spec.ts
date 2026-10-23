@@ -6,6 +6,24 @@ import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import {simulateSchedule} from './scheduleSimulation'
 
 function emptyBase(){const w=createDefaultWorkspace();for(const r of Object.values(w.mainPlan.facilities))if(r.type==='manufacture')r.product='gold';return compileRosterSchedule(w)}
+function assertNativeManufactureReserve(report:NonNullable<ReturnType<typeof simulateSchedule>['production']>,reserve:number){
+ let stock=report.ledger.initial.drone??0,debits=0
+ for(const entry of report.ledger.entries){
+  const delta=entry.delta.drone??0
+  if(entry.reason.endsWith(':native-manufacture-drone')){
+   // Native entry uses the observed whole stock, then reserves the configured
+   // quantity even when there are no run-order rooms. The debit can be <100.
+   const observed=Math.floor(stock+1e-7)
+   expect(observed).toBeGreaterThan(reserve)
+   expect(-delta).toBe(observed-reserve)
+   expect(stock+delta).toBeGreaterThanOrEqual(reserve-1e-7)
+   debits++
+  }
+  stock+=delta
+ }
+ expect(debits).toBeGreaterThan(0)
+ expect(stock).toBeCloseTo(report.drones.stock,7)
+}
 describe('joint production event clock',()=>{
  it('collects waiting trades through a later native notification action',()=>{
   const s=emptyBase();s.rooms=s.rooms.filter(r=>['room_1_1','room_3_1','room_3_2'].includes(r.roomId))
@@ -21,12 +39,14 @@ describe('joint production event clock',()=>{
   const s=emptyBase();s.rooms=s.rooms.filter(r=>r.roomId==='room_1_1')
   const r=simulateSchedule(s,{sampleHours:.03,production:{droneTarget:'gold',initialResources:{drone:250}}})
   expect(r.success).toBe(true)
-  expect(r.production!.manufacturing[0]!.completedItems).toBe(10)
-  // 250 drones supply 750 base minutes; 1.8 elapsed minutes leave 40.2 in the eleventh 72-minute batch.
-  expect(r.production!.manufacturing[0]!.remainingBaseMinutes).toBeCloseTo(40.2,7)
-  expect(r.production!.drones.consumed).toBe(250)
-  expect(r.production!.ledger.outflows.drone).toBe(250)
+  expect(r.production!.manufacturing[0]!.completedItems).toBe(6)
+  // The native default reserves 100: 150 drones supply 450 base minutes;
+  // 1.8 elapsed minutes leave 52.2 in the seventh 72-minute batch.
+  expect(r.production!.manufacturing[0]!.remainingBaseMinutes).toBeCloseTo(52.2,7)
+  expect(r.production!.drones.consumed).toBe(150)
+  expect(r.production!.ledger.outflows.drone).toBe(150)
   expect(r.production!.events.filter(e=>e.type==='native-manufacture-drone'&&e.amount!==undefined)).toHaveLength(1)
+  assertNativeManufactureReserve(r.production!,100)
  })
  it('accepts a reserve below 250 but rejects a full-capacity reserve or an over-capacity initial stock',()=>{
   const s=emptyBase();s.rooms=s.rooms.filter(r=>r.roomId==='room_1_1')
@@ -86,7 +106,7 @@ describe('joint production event clock',()=>{
   expect(r.success).toBe(true)
   const p=r.production!,events=p.events.filter(e=>e.type==='native-manufacture-drone'&&e.amount!==undefined)
   expect(events.length).toBeGreaterThan(0)
-  expect(events.every(e=>(e.amount??0)>=100)).toBe(true)
+  assertNativeManufactureReserve(p,100)
   expect(events.slice(1).every((e,i)=>e.time-events[i]!.time>3)).toBe(true)
   expect(p.events.some(e=>e.type==='manufacture-drone')).toBe(false)
   expect(p.drones.generated).toBeCloseTo(240,5)
@@ -103,7 +123,7 @@ describe('joint production event clock',()=>{
   expect(r.production!.drones.generated).toBeCloseTo(300,5)
   expect(r.production!.drones.stock).toBeGreaterThan(0)
   expect(r.production!.drones.consumed+r.production!.drones.stock+r.production!.drones.overflow).toBeCloseTo(300,5)
-  expect(r.production!.events.filter(e=>e.type==='native-manufacture-drone'&&e.amount!==undefined).every(e=>(e.amount??0)>=100)).toBe(true)
+  assertNativeManufactureReserve(r.production!,100)
  })
  it('accelerates the selected normal trade station once per native todo invocation',()=>{
   const s=emptyBase();s.rooms=s.rooms.filter(r=>r.roomId==='room_3_1')

@@ -47,6 +47,8 @@
       </div>
     </div>
 
+    <BackupGroupEditor />
+
     <!-- Main Two-Pane Layout -->
     <div class="editor-body">
       <!-- Left Pane: Plan List -->
@@ -87,6 +89,8 @@
 
             <!-- Metadata Pills -->
             <div class="card-meta">
+              <span class="meta-tag meta-group">{{ membershipLabel(item.plan) }}</span>
+              <span class="meta-tag meta-group">{{ item.plan.type === 'exclusive' ? '组内互斥' : '组内叠加' }}</span>
               <span v-if="hasTasks(item.plan)" class="meta-tag meta-task">
                 任务: {{ Object.keys(item.plan.task || {}).length }} 个设施
               </span>
@@ -171,6 +175,19 @@
 
 
             </div>
+            <div class="field-row membership-fields">
+              <div class="field-col flex-2">
+                <label class="form-label">所属分组（可多选）</label>
+                <n-select :value="backupPlanMembership(activePlan.group_ids)" :options="backupGroupOptions" multiple
+                  aria-label="副表所属分组" data-test="plan-group-select" @update:value="setPlanGroups" />
+              </div>
+              <div class="field-col">
+                <label class="form-label">当前组内的生效方式</label>
+                <n-select :value="activePlan.type ?? 'global'" :options="backupTypeOptions"
+                  aria-label="副表组内生效方式" data-test="plan-type-select" @update:value="setPlanType" />
+              </div>
+            </div>
+            <p class="membership-help">只在选中的当前组内生效。组内叠加允许多张同时生效；组内互斥仅保留一张。取消全部归属时回到默认组。</p>
           </div>
 
           <!-- Detail Tabs -->
@@ -521,7 +538,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref, watch, type VNode } from 'vue'
+import { computed, h, ref, toRaw, watch, type VNode } from 'vue'
 import {
   NAvatar,
   NButton,
@@ -537,6 +554,8 @@ import {
 import { match } from 'pinyin-pro'
 import { OPERATORS } from '../../domain/operators'
 import { useRosterWorkbenchStore } from '../../workbench/store'
+import BackupGroupEditor from './BackupGroupEditor.vue'
+import { backupGroupsForEditor, backupPlanMembership, normalizeBackupMembership } from '../../workbench/backupGroupHelpers'
 import {
   BACKUP_CONF_FIELDS,
   createDefaultBackupPlan,
@@ -553,6 +572,23 @@ import { getOperatorAvatarUrl, getOperatorName } from '../../workbench/operatorH
 import { MOWER_ROOM_IDS } from '../../domain/roster'
 
 const store = useRosterWorkbenchStore()
+const backupGroupOptions = computed<SelectOption[]>(() => {
+  try { return backupGroupsForEditor(store.workspace).map(group => ({ label: group.name, value: group.id })) }
+  catch { return [{ label: '默认分组', value: 'default' }] }
+})
+const backupTypeOptions = [
+  { label: '组内叠加 (global)', value: 'global' },
+  { label: '组内互斥 (exclusive)', value: 'exclusive' },
+]
+function membershipLabel(plan: MowerBackupPlan): string {
+  return backupPlanMembership(plan.group_ids).map(id => backupGroupOptions.value.find(option => option.value === id)?.label ?? id).join('、')
+}
+function setPlanGroups(groupIds: string[]): void {
+  if (activePlan.value) store.updateBackupPlan(selectedIndex.value, { ...toRaw(activePlan.value), group_ids: normalizeBackupMembership(groupIds) })
+}
+function setPlanType(type: 'global' | 'exclusive'): void {
+  if (activePlan.value) store.updateBackupPlan(selectedIndex.value, { ...toRaw(activePlan.value), type })
+}
 
 // State
 const selectedIndex = ref<number>(0)
@@ -646,11 +682,7 @@ const activePlan = computed<MowerBackupPlan | null>(() => {
 
 // Active plan conf
 const activePlanConf = computed<Record<string, unknown>>(() => {
-  if (!activePlan.value) return {}
-  if (!activePlan.value.conf) {
-    activePlan.value.conf = {}
-  }
-  return activePlan.value.conf
+  return activePlan.value?.conf ?? {}
 })
 
 // Synchronize current expression text when active plan changes
@@ -1155,6 +1187,11 @@ defineExpose({
   padding: 1px 5px;
   border-radius: 3px;
 }
+
+.meta-group { background: rgba(44, 181, 160, .1); color: #7dd3c5; }
+.membership-fields { margin-top: 12px; flex-wrap: wrap; }
+.membership-fields .field-col { min-width: 180px; }
+.membership-help { margin: 10px 0 0; color: #94a3b8; font-size: .78rem; line-height: 1.6; }
 
 .meta-task {
   background: rgba(245, 158, 11, 0.12);

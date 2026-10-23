@@ -25,24 +25,32 @@ function fixture(requesterTier:number,residentTier:number,mood=10,upperLimit=24,
   plan:{work:['requester'],owners:['resident'],references:['owner'],dormitory_1:['Free']},
   dorms:[new MowerDormState(['dormitory_1',0],'resident',toMowerMicros(4))],restingPriorityNames:priorities,
   priorityReplacement:priorityReplacements,freeBlacklist:blacklist})
- expect(alphaRestingTier(data,'requester')).toBe(requesterTier)
- expect(alphaRestingTier(data,'resident')).toBe(residentTier)
  return data
 }
 
-describe('Mower 617aef native bed takeover',()=>{
+describe('Mower bed takeover: retained tier matrix and 84e3926 personal-cap changes',()=>{
  for(const sample of oracle.takeoverMatrix)it(`requester tier ${sample.requesterTier} / resident tier ${sample.residentTier}`,()=>{
   const data=fixture(sample.requesterTier,sample.residentTier)
+  expect(alphaRestingTier(data,'requester')).toBe(sample.requesterTier)
+  expect(alphaRestingTier(data,'resident')).toBe(sample.residentTier)
   expect(alphaSlotTakable(data,data.dorms[0]!,'requester')).toBe(sample.expected)
  })
- for(const sample of oracle.takeoverBoundaries)it(sample.name,()=>{
+ // The immutable 617aef fixture includes a full requester that was exempt at
+ // priority tier 0. Native 84e3926 now classifies that dynamic candidate as idle.
+ for(const sample of oracle.takeoverBoundaries.filter(sample=>sample.name!=='priority-near-full'))it(sample.name,()=>{
   const data=fixture(sample.requesterTier,6,sample.mood,sample.upperLimit,sample.observed,sample.prediction)
   expect(alphaSlotTakable(data,data.dorms[0]!,'requester')).toBe(sample.expected)
  })
- it.each([0,1,2,3])('keeps a completed emergency resident at protected tier %s',tier=>{
+ it('does not displace an unfinished resident for a requester already at its personal cap',()=>{
+  const data=fixture(0,6,24)
+  expect(alphaRestingTier(data,'requester')).toBe(6)
+  expect(alphaSlotTakable(data,data.dorms[0]!,'requester')).toBe(false)
+ })
+ it.each([0,1,2,3])('releases a measured-full dynamic resident with configured priority %s',tier=>{
   const data=fixture(0,tier),resident=data.operators.resident!
   resident.mood=resident.upperLimit;data.emergencyDormAgents.add('resident')
-  expect(alphaSlotTakable(data,data.dorms[0]!,'requester')).toBe(false)
+  expect(alphaRestingTier(data,'resident')).toBe(6)
+  expect(alphaSlotTakable(data,data.dorms[0]!,'requester')).toBe(true)
  })
  it('keeps the observed 252 recovery group in bed instead of allowing the inverse group to evict a hunter',()=>{
   const data=fixture(1,2),a=data.operators.resident!,c=data.operators.requester!
