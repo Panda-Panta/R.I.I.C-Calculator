@@ -26,10 +26,11 @@ describe('saved Mower facility levels', () => {
     expect(JSON.parse(exportMowerJson(workspace)).facility_levels).toEqual(raw.facility_levels)
   })
 
-  it('defaults omitted support buildings to level three while retaining the native room key set', () => {
+  it('defaults omitted legacy support buildings to level three while keeping optional recycle unbuilt', () => {
     const raw = fixture(); delete raw.plan1.dormitory_1
     const workspace = read(raw)
-    for (const room of ['meeting', 'factory', 'contact', 'train', 'recycle'] as const) expect(workspace.mainPlan.facilities[room]).toMatchObject({ level: 3, slots: [] })
+    for (const room of ['meeting', 'factory', 'contact', 'train'] as const) expect(workspace.mainPlan.facilities[room]).toMatchObject({ level: 3, slots: [] })
+    expect(workspace.mainPlan.facilities.recycle).toMatchObject({ level: 0, slots: [] })
     expect(calculateFacilityPower(workspace.mainPlan.facilities)).toEqual({ generation: 270, consumption: 250, margin: 20, sufficient: true })
     expect(JSON.parse(exportMowerJson(workspace)).plan1).toMatchObject(raw.plan1)
     expect(Object.keys(JSON.parse(exportMowerJson(workspace)).plan1)).toEqual(Object.keys(raw.plan1))
