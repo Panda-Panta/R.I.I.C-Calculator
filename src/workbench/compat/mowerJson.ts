@@ -193,7 +193,8 @@ export function importMowerJson(text: string): RosterWorkspace {
     if (!importedPresentRooms.includes(roomId) ||
       (!Object.prototype.hasOwnProperty.call(parsed.facility_levels ?? {}, roomId) && facility.type === 'dormitory' && !hasDormKeeper(facility) &&
         !facility.slots.some(slot => slot.occupant.kind === 'free'))) {
-      facility.level = ['meeting', 'factory', 'contact', 'train', 'recycle'].includes(roomId) ? 3 : 0
+      // Optional recycle is built only by an explicit room or saved level.
+      facility.level = ['meeting', 'factory', 'contact', 'train'].includes(roomId) ? 3 : 0
       facility.slots = []
     }
   }

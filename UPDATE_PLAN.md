@@ -1,3 +1,12 @@
+# 2026-10-24 OneDrive 最新排班兼容与运行核验（进行中）
+
+- 目标：检查 `E:\OneDrive\Mower` 当前 10 份 JSON 和 10 张配套图片；以文件修改时间最新的 252四赤金及同批更新表为重点，验证导入、主副表/高级设置保留、编译、实际安装前端 Worker 完整演算及报告健康。保持原表、候补、策略、用户练度和安装配置不变；无已证实问题不改业务代码。
+- 基线与保护：源码 `10b5c989f4175bd13edc12cc8be90dcf25207dff`，main 无 tracked 修改，既有未跟踪资料原样保留。源码归档 `artifacts/mower-onedrive-check-20261024/backup/source-before.zip` SHA-256 `57fbe95d78f8597320545a457cbffe7ff2e454a05fd496f6f8601d88d23d5743`；20 份输入已只读复制并逐项核对 SHA-256，清单见本任务 `input-manifest.json`。
+- 模式、边界与归属：个人模式；主 agent 负责计划、真实浏览器/Worker 演算、报告核验及必要集成；输入兼容 agent 独占本任务 `import/`，检查 10 份 JSON/QR 往返、编译和警告；安装审计 agent 独占 `installation/`，检查安装清单、源码/制品对应及相关运行约束。两项独立检查并行，不操作 Git、原始 OneDrive、安装配置或递归派工。
+- 复用与验证：复用 `mowerJson.ts`、`mowerQrCodec.ts`、`scheduleSimulationBridge.ts`、正式 calculation Worker 和现有安装清单。每次真实模拟生成新的随机种子，不回放历史请求；先做 72h 预热+168h 采样，再按结果对最新表扩大窗口，记录窗口、参数、警告、失败任务、等待及报告守恒。全员最高练度作为隔离验收假设，不覆盖用户干员库。测试只证明当前输入和观察窗口，不能保证任意排班或真实游戏无错误。
+- 交付：先完成检查并留存本地报告；如确认业务缺陷，另在本段登记复现、独占修复路径及必要回归，再遵循项目修复 PR/主线/安装流程。当前不因只读检查重新构建或同步安装；结构未变时仅校验现有索引。
+- 已复现缺陷：4 份原文无 `recycle` 的旧表被缺失房间分支自动补成3级，造成设施等级总数多3、虚构120%回收效率；`import/absent-recycle-reproduction.json` 与4/4失败红测固定证据。已转现有 test（与 main 同基线）修复；输入兼容 agent 独占 `src/workbench/compat/mowerJson.ts` 和 `mowerRecycle.spec.ts`，只修缺省回收站并补下游回归。主 agent 负责构建、真实演算与交付，安装审计 agent 负责独立审查。修复提交按项目要求使用自有 `codex/mower-absent-recycle-20261024` 分支、普通 PR 合并后安全同步 Tools。
+
 # 2026-10-24 最新 Mower 机制导入（源码与安装已交付）
 
 - 来源：固定 alpha `84e3926c0f36045d7baeb1ac050f815b40952d6d`；从初始 `ae9fc322` 核对后纳入后续两项机制。2026-10-24 00:07 UTC 再查该机制范围为 current，GameData/工具箱/PRTS及历史回收范围仍有 stale；本轮保留 GameData v078，不宣称全包游戏数据最新。来源原文、提交、SHA-256 和本地约定保存在领域 skill 的 `latestMechanicsImport`。
