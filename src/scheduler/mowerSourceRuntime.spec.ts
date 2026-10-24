@@ -80,6 +80,19 @@ describe('integrated Mower source scheduler',()=>{
   settleRoster(s,rates,0,phase=>{if(phase==='BEGINNING'&&source.queue.tasks.includes(old))source.queue.consume(old);return false})
   expect(s.occupants.room_1_1_0).toBe('A');expect(source.trace.some(t=>t.type==='SHIFT_ON'&&t.plan.room_1_1?.includes('R'))).toBe(false)
  })
+ it.each([false,true])('ends a removed entry task on the existing clock even with a future queue head (unsorted=%s)',unsorted=>{
+  const config=fixture();config.mowerRunLoopClock={minimumClockStepMicros:1,notificationSleepMicros:1_000_000}
+  const s=createRosterRuntime(config);settleRoster(s,rates)
+  const source=getMowerSourceRuntime(s),removed=new MowerTask({type:T.SHIFT_ON,plan:{room_1_1:['R']}}),next=new MowerTask({plan:{room_1_1:['Current']}})
+  source.queue.tasks=[removed,next];delete source.runReturn
+  settleRoster(s,rates,0,phase=>{if(phase==='BEGINNING'){source.queue.consume(removed);if(unsorted)source.queue.tasks=[new MowerTask({time:1}),next]}return false})
+  expect(source.queue.tasks).not.toContain(removed);expect(source.queue.tasks).toContain(next)
+  expect(next.timeMicros).toBe(0)
+  expect(nextRosterActionHours(s,rates)).toBe(1/3_600_000_000)
+  advanceRoster(s,1/3_600_000_000,rates);settleRoster(s,rates)
+  expect(source.queue.tasks).not.toContain(next)
+  expect(s.occupants.room_1_1_0).toBe('A')
+ })
  it('preserves an old observation when a Current-only room task is an exact no-op',()=>{
   const s=createRosterRuntime(fixture());settleRoster(s,rates);const source=getMowerSourceRuntime(s),task=new MowerTask({time:1,plan:{room_1_1:['Current']}});source.queue.tasks.push(task)
   advanceRoster(s,1,rates);settleRoster(s,rates)

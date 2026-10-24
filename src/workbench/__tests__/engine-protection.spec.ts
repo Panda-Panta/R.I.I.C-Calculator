@@ -17,10 +17,11 @@ function fileSha256(relativePath: string): string {
 describe('Engine Protection & Calculation Equivalence', () => {
   it('protects engine source files against unauthorized modifications', () => {
     // Authorized 2026-10-14 changes reuse PR10 exhausted Abyssal grants and add
-    // the 45/90% Gladiia stage cap. Dedicated static and dynamic tests validate
-    // the behavior; calculate/morale remain unchanged. Hashes are normalized to LF.
+    // the 45/90% Gladiia stage cap. Mainline 1092f3f also incorporates PR20's
+    // Ling/Sui consumption reset. The current Mower import preserves all three
+    // engine files from that accepted baseline. Hashes are normalized to LF.
     expect(fileSha256('engine/calculate.ts')).toBe('34739fc18ac6f96af10dda40d03e3b0fe92a698b8556dd4dfd905998ce345c4a')
-    expect(fileSha256('engine/morale.ts')).toBe('d0e4915c4919626e4f0a0eec47141107a314613f6a95eb4174690f21ce720ec3')
+    expect(fileSha256('engine/morale.ts')).toBe('26e1e6f229430619eed7ef31cfaf1fa334380bce5270d2ffe5692099bfcf338f')
     expect(fileSha256('engine/operatorRules.ts')).toBe('c07812ea02bed35cf503e2acbcba399cf1915b0413e7c72d59befb9e70fa26a0')
   })
 

@@ -111,7 +111,9 @@ it.each(['automatic', 'confirmed', 'explicit'] as const)(
       recoveryTargetByProvider:mode==='explicit'?{[id('闪灵')]:id('深靛')}:undefined,
     })
     expect(result.深靛).toBeCloseTo(1.4,7)
-    expect(result.芬).toBeCloseTo(15.475,7)
+    // Indigo's separate 0.55/h single bonus remains; only Shining's 0.75/h
+    // explicit invalid assignment is withheld rather than redirected.
+    expect(result.芬).toBeCloseTo(mode==='explicit'?15.455:15.475,7)
   },
 )
 it('allows another single provider as the sole unfinished recipient, ignoring full residents and Fiammetta',()=>{
@@ -119,10 +121,16 @@ it('allows another single provider as the sole unfinished recipient, ignoring fu
   expect(result.深靛).toBeCloseTo(1.475,7)
   expect(result.菲亚梅塔).toBeCloseTo(.2,7)
 })
-it('rejects an explicit self target even when raw text does not exclude self',()=>{
+it('does not redirect an explicit self-target assumption to another recipient',()=>{
   const result=run({深靛:1,芬:15},{names:['深靛','芬'],recoveryTargetByProvider:{[id('深靛')]:id('深靛')}})
   expect(result.深靛).toBeCloseTo(1.4,7)
-  expect(result.芬).toBeCloseTo(15.455,7)
+  expect(result.芬).toBeCloseTo(15.4,7)
+})
+it('does not redirect an explicit absent target while automatic selection remains available without it',()=>{
+  const moods={芬:15,香草:5}
+  const explicit=run(moods,{recoveryTargetByProvider:{[id('闪灵')]:id('黑键')}})
+  expect(explicit.香草).toBeCloseTo(5.4,7)
+  expect(run(moods).香草).toBeCloseTo(5.475,7)
 })
 
 it.each(['automatic','confirmed'] as const)('transfers %s single recovery after an ordinary resident actually enters the dorm',mode=>{

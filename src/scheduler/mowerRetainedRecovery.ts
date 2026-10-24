@@ -34,12 +34,16 @@ export function mowerRetainedTaskReservations(data:MowerSchedulingData,tasks:rea
 }
 
 /** Derived preview moves cannot replay unfinished execution or borrow its occupants. */
-export function suppressMowerRetainedArrangements(data:MowerSchedulingData,plan:MowerTaskPlan,pending:readonly MowerTask[]):void {
+export function suppressMowerRetainedArrangements(data:MowerSchedulingData,plan:MowerTaskPlan,pending:readonly MowerTask[],dependencyProofs:ReadonlyMap<MowerTask,MowerTaskPlan>=new Map()):void {
  const returning=new Set<string>()
  for(const [room,row] of Object.entries(plan))row.forEach((name,index)=>{const op=data.operators[data.plan[room]?.[index]??''];if(op?.group&&data.isGroupShiftAnchor(op)&&name===op.name)returning.add(op.group)})
- const reserved=mowerRetainedTaskReservations(data,pending,undefined,returning)
+ const reserved=mowerRetainedTaskReservations(data,pending.filter(task=>!dependencyProofs.has(task)),undefined,returning)
+ const proved=pending.flatMap(task=>{
+  const proof=dependencyProofs.get(task)
+  return proof?[{proof,...mowerRetainedTaskReservations(data,[task],undefined,returning)}]:[]
+ })
  for(const [room,row] of Object.entries(plan)){
-  row.forEach((name,index)=>{if(reserved.slots.has(alphaPosition(room,index))||reserved.names.has(name))row[index]='Current'})
+  row.forEach((name,index)=>{if(reserved.slots.has(alphaPosition(room,index))||reserved.names.has(name)||proved.some(claim=>(claim.slots.has(alphaPosition(room,index))||claim.names.has(name))&&claim.proof[room]?.[index]!==name))row[index]='Current'})
   if(row.every(name=>name==='Current'))delete plan[room]
  }
 }

@@ -44,7 +44,9 @@ export interface ScheduleSimulationOptions {
  sampleHours?:number; warmupHours?:number; maxStepHours?:number; maxEvents?:number
  warmupModel?:'continuous'|'hourly'; recordSegments?:boolean
  consumptionOverrides?:Record<string,number>; recoveryOverrides?:Record<string,number>
- atmosphereByRoom?:Record<string,number>; recoveryTargetByProvider?:Record<string,string>
+ atmosphereByRoom?:Record<string,number>
+ /** Explicit local target assumptions take precedence; ineligible targets waste the single bonus. */
+ recoveryTargetByProvider?:Record<string,string>
  initialWorkHours?:Record<string,number>; efficiencyResources?:Partial<EfficiencyResources>
 }
 export interface SimulatedOperator {
@@ -139,7 +141,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
  const warmupModel=options.warmupModel??'continuous'
  if(!['continuous','hourly'].includes(warmupModel))throw new Error('Invalid warmup model')
  const report:ScheduleSimulationReport={schemaVersion:1,engine:'mower-morale-v1',success:false,elapsedHours:0,observedHours:0,
-  assumptions:{schedulingModel,sampleHours,warmupHours,maxStepHours,warmupModel,restingThreshold:schedule.assumptions.restingThreshold??.65,operationDurationHours:0,dormAtmosphere:'各宿舍默认等级上限；可逐室覆盖',singleRecoveryTarget:'先检查单回资格；禁止自身和菲亚梅塔，单回技能持有者仅在唯一待恢复候选时合格；有效普通目标保持至失效，重选按最低心情和槽位顺序'},
+  assumptions:{schedulingModel,sampleHours,warmupHours,maxStepHours,warmupModel,restingThreshold:schedule.assumptions.restingThreshold??.65,operationDurationHours:0,dormAtmosphere:'各宿舍默认等级上限；可逐室覆盖',singleRecoveryTarget:'显式目标映射优先，资格不符时不转投他人；自动与已确认目标先检查单回资格，禁止自身和菲亚梅塔，单回技能持有者仅在唯一待恢复候选时合格；有效普通目标保持至失效，重选按最低心情和槽位顺序'},
   inputs:{schedule:structuredClone(schedule),options:structuredClone(options)},operators:[],rooms:[],events:[],segments:[],diagnostics:[]}
  const diagnostic=(code:string,message:string)=>{if(!report.diagnostics.some(d=>d.code===code&&d.message===message))report.diagnostics.push({code,message})}
  if(options.production?.inventoryMode==='finite')diagnostic('FINITE_INVENTORY_MODEL','使用预设初始库存；从预热开始连续扣料、收取和交付，采样时不重置。无外源收入或自动补货；缺料停止相应生产或交付。回收站随机材料未计入物品库存。')
@@ -259,7 +261,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
    const confirmedTargets=state.mowerSource?mowerConfirmedRecoveryTargets(state.mowerSource.data):undefined
    const presentProviders=new Set<string>()
    for(const [index,room] of dorms.entries()){
-   const ids=c.facilityOperatorIds.dormitories[index]??[],targets=new Map<string,string>()
+   const ids=c.facilityOperatorIds.dormitories[index]??[],targets=new Map<string,string>(),suppressedSingleProviders=new Set<string>()
    const position=(id:string)=>{
     const op=state.mowerSource?.data.operators[id]
     return op?`${op.currentRoom}:${op.currentIndex}:${op.dormPositionVersion}`:`${room.roomId}:${ids.indexOf(id)}`
@@ -270,7 +272,13 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
     const candidates=eligibleSingleRecoveryTargets(ids.flatMap(other=>{const op=operatorFor(c,other);return op?[op]:[]}),id,other=>morale.get(other)??24).map(op=>op.charId)
     const confirmed=confirmedTargets?.get(room.roomId)?.get(id)
     const requested=options.recoveryTargetByProvider?.[id]
-    let target=requested&&candidates.includes(requested)?requested:confirmed&&candidates.includes(confirmed)?confirmed:undefined
+    if(requested!==undefined){
+     automaticRecoveryTargets.delete(id)
+     if(candidates.includes(requested))targets.set(id,requested)
+     else suppressedSingleProviders.add(id)
+     continue
+    }
+    let target=confirmed&&candidates.includes(confirmed)?confirmed:undefined
     if(target)automaticRecoveryTargets.delete(id)
     else{
      const previous=automaticRecoveryTargets.get(id)
@@ -285,7 +293,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
     }
     if(target)targets.set(id,target)
    }
-   const recovery=evaluateDormitoryRecovery(c,index,morale,options.atmosphereByRoom?.[room.roomId]??(!schedule.assumptions.defaultsApplied.includes('dormAtmosphere')?schedule.assumptions.dormAtmosphere:room.level*1000),targets)
+   const recovery=evaluateDormitoryRecovery(c,index,morale,options.atmosphereByRoom?.[room.roomId]??(!schedule.assumptions.defaultsApplied.includes('dormAtmosphere')?schedule.assumptions.dormAtmosphere:room.level*1000),targets,false,suppressedSingleProviders)
    Object.assign(cachedRecovery,Object.fromEntries(recovery.rates))
    for(const message of recovery.unquantified)diagnostic('UNQUANTIFIED_RECOVERY',`${room.roomId}: ${message}`)
   }

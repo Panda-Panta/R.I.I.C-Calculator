@@ -65,6 +65,21 @@ describe('native task failures retain work and release dispatch',()=>{
   expect(resumeMowerFailedTasks(state,data,queue)).toBe(true)
   expect(queue.tasks).toContain(task);expect(task.timeMicros).toBe(0)
  })
+ it('clones request membership, locks and recovery continuations without sharing mutable state',()=>{
+  const task=new MowerTask({type:T.SHIFT_OFF})
+  task.coordinationRequestNames=['A'];task.productLockNames.add('A');task.productLockSlots.add('room_1_1\0'+'0')
+  task.dormRecoveryRestore=['dormitory_1'];task.idleDormSearchNames={dormitory_1:['I']}
+  task.releaseTargets={A:['dormitory_1',2]};task.backupRefreshRules={A:{drained:true,trading:[true,['X']]}}
+  const copy=cloneMowerShiftTask(task)
+  expect(copy.type).toBe(task.type);expect(copy).toBeInstanceOf(MowerTask)
+  copy.coordinationRequestNames.push('B');copy.productLockNames.add('B');copy.productLockSlots.clear()
+  copy.dormRecoveryRestore.push('dormitory_2');copy.idleDormSearchNames.dormitory_1!.push('Other')
+  copy.releaseTargets!.A![1]=4;copy.backupRefreshRules!.A!.trading[1].push('Y')
+  expect(task.coordinationRequestNames).toEqual(['A']);expect([...task.productLockNames]).toEqual(['A'])
+  expect(task.productLockSlots.size).toBe(1);expect(task.dormRecoveryRestore).toEqual(['dormitory_1'])
+  expect(task.idleDormSearchNames).toEqual({dormitory_1:['I']});expect(task.releaseTargets).toEqual({A:['dormitory_1',2]})
+  expect(task.backupRefreshRules!.A!.trading[1]).toEqual(['X'])
+ })
  it('excludes suspended failures from dispatch and scheduling without rewriting remaining work',()=>{
   const {task,queue}=fixture(),other=new MowerTask({time:1,type:T.FIAMMETTA}),plan=structuredClone(task.plan)
   queue.tasks.push(other);queue.sort()

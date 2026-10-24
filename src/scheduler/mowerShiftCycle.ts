@@ -1,5 +1,4 @@
 import type {BackupSelection} from './backupGroups'
-import {cloneMowerReplacementCheck} from './mowerReplacementCheck'
 import {suppressMowerRetainedArrangements} from './mowerRetainedRecovery'
 import {completeMowerBackupDepartureRecovery} from './mowerBackupDepartureRecovery'
 import {mowerExhaustGroups} from './mowerExhaustPolicy'
@@ -58,7 +57,8 @@ export function mergeMowerShiftTransition(target:MowerTaskPlan,overlay:MowerTask
 }
 export function stripMowerCurrent(plan:MowerTaskPlan):MowerTaskPlan{return Object.fromEntries(Object.entries(plan).filter(([,names])=>names.some(name=>name!=='Current')))}
 const assigned=(plan:MowerTaskPlan)=>new Set(Object.entries(plan).flatMap(([room,names])=>room.startsWith('dorm')?[]:names.filter(n=>!['Current','Free',''].includes(n))))
-export const cloneMowerShiftTask=(task:MowerTask):MowerTask=>Object.assign(new MowerTask({type:task.type}),task,{plan:structuredClone(task.plan),replacementCheck:cloneMowerReplacementCheck(task),executionFailure:task.executionFailure&&structuredClone(task.executionFailure),urgentRecoveryRequestNames:[...task.urgentRecoveryRequestNames],urgentRecoverySupportNames:[...task.urgentRecoverySupportNames],urgentRecoveryReservedNames:[...task.urgentRecoveryReservedNames],urgentRecoveryReservedSlots:[...task.urgentRecoveryReservedSlots],groupShiftTransitions:{...task.groupShiftTransitions},groupShiftExpected:{...task.groupShiftExpected},recoveryPositionVersions:{...task.recoveryPositionVersions},backupExplicitSlots:new Set(task.backupExplicitSlots),dormFillPlan:structuredClone(task.dormFillPlan),backupShiftIntent:task.backupShiftIntent&&structuredClone(task.backupShiftIntent),backupShiftConditions:task.backupShiftConditions&&[...task.backupShiftConditions]})
+/** Native deepcopy isolates every task field while preserving the shared type identity. */
+export const cloneMowerShiftTask=(task:MowerTask):MowerTask=>Object.assign(new MowerTask({type:task.type}),structuredClone(task),{type:task.type})
 
 /** Application protection beyond pinned alpha: a canceled shift must not complete through incidental bed swaps. */
 function cancelledShiftLeavesOnlyDormFill(data:MowerSchedulingData,simulation:MowerSchedulingData,task:MowerTask,intent:MowerTaskPlan,conditions:boolean[],coalesced:MowerTask[],final:MowerTaskPlan):boolean{
@@ -197,7 +197,7 @@ export function recordMowerDormAdmissions(data:MowerSchedulingData,step:MowerTas
   }else if([T.SHIFT_OFF,T.EXHAUST_OFF].includes(step.type))op.temporaryDormFill=false
  })
 }
-export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,queue:MowerTaskQueue,model:MowerShiftModel,options:MowerRestingOptions={}):void{
+export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,queue:MowerTaskQueue,model:MowerShiftModel,options:MowerRestingOptions={},dependencyProofs:ReadonlyMap<MowerTask,MowerTaskPlan>=new Map()):void{
  delete task.previewReturnVeto
  if(task.backupShiftActive||task.arrangementStarted)return
  if(task.exhaustSupport){prepareMowerShiftBackup(data,task,model,queue.tasks.filter(t=>t!==task));return}
@@ -251,7 +251,7 @@ export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,q
   step.plan=alphaPrioritizeRecovery(simulation,completed,{},reservedBeds,reserved.names,previousDormLayout!==dormRebalanceSignature(simulation))
   step.plan=planMowerDormIsolation(simulation,step.plan,reservedBeds,reserved.names)
   if(!normalizeMowerSharedArrangement(simulation,step.plan,undefined,explicitSlots))throw new MowerShiftPreviewError('绑组共享替班冲突，保留原任务并等待岗位释放')
-  suppressMowerRetainedArrangements(simulation,step.plan,pending)
+  suppressMowerRetainedArrangements(simulation,step.plan,pending,dependencyProofs)
   for(const name of assigned(step.plan)){const op=simulation.operators[name];if(op&&(!op.currentRoom||op.isResting()))returning.add(name)}
   const positions=new Map(Object.values(simulation.operators).map(op=>[op.name,[op.currentRoom,op.currentIndex] as [string,number]]))
   for(const [group,resting] of Object.entries(mowerArrangementGroupTransitions(simulation,step.plan)))if(!resting&&simulation.groupIsResting(group))returningGroups.add(group)
@@ -276,7 +276,7 @@ export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,q
   if(!Object.keys(next).length){fill=mowerAlphaFillPlan(simulation,pending.map(cloneMowerShiftTask));next=structuredClone(fill)}
   for(const [room,names] of Object.entries(next))names.forEach((name,index)=>{if(name==='Free'&&unresolved.has(alphaPosition(room,index)))names[index]='Current'})
   next=stripMowerCurrent(next)
-  suppressMowerRetainedArrangements(simulation,next,pending)
+  suppressMowerRetainedArrangements(simulation,next,pending,dependencyProofs)
   if(Object.keys(next).length){
    step=new MowerTask({type:T.SHIFT_OFF,plan:next})
    step.ordinaryCoordination=restRequests.length>0;step.coordinationRequestNames=[...new Set(restRequests)]

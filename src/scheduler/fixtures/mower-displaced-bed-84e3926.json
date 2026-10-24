@@ -1,0 +1,774 @@
+{
+  "revision": "84e3926c0f36045d7baeb1ac050f815b40952d6d",
+  "hostGeneratorSha256": "3f4cdb61da48816e57064d8fd02566b1dae6ef1b47d7b3d74c9aac2e4cb7f766",
+  "microGeneratorSha256": "f8746ad88643c4ede165df74579133b7ffe9ce374731a4aaffbd791ba3598a5b",
+  "scope": "Real fixed-source 84e3926 _prepare_shift_cycle over explicit occupied-bed replacement inputs; no device execution.",
+  "cases": [
+    {
+      "name": "explicit-bed-replacement-preview-standby-False",
+      "input": {
+        "roster": {
+          "default": "plan1",
+          "plan1": {
+            "room_1_1": {
+              "name": "",
+              "plans": [
+                {
+                  "agent": "A",
+                  "group": "g",
+                  "replacement": [
+                    "R"
+                  ]
+                }
+              ]
+            },
+            "room_1_2": {
+              "name": "",
+              "plans": [
+                {
+                  "agent": "B",
+                  "group": "g",
+                  "replacement": [
+                    "S"
+                  ]
+                }
+              ]
+            },
+            "dormitory_1": {
+              "name": "",
+              "plans": [
+                {
+                  "agent": "K1",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "K2",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "Free",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "Free",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "Free",
+                  "group": "",
+                  "replacement": []
+                }
+              ]
+            }
+          },
+          "conf": {
+            "rest_in_full": "",
+            "exhaust_require": "",
+            "resting_priority": "",
+            "operator_mood_limits": {
+              "A": {
+                "upper": 12,
+                "lower": 0
+              }
+            },
+            "resting_standby": ""
+          },
+          "backup_plans": []
+        },
+        "data": {
+          "nowMicros": 3600000000,
+          "planConditions": [],
+          "plan": {
+            "room_1_1": [
+              "A"
+            ],
+            "room_1_2": [
+              "B"
+            ],
+            "dormitory_1": [
+              "K1",
+              "K2",
+              "Free",
+              "Free",
+              "Free"
+            ]
+          },
+          "operators": {
+            "A": {
+              "nativeName": "A",
+              "name": "A",
+              "room": "room_1_1",
+              "index": 0,
+              "group": "g",
+              "replacement": [
+                "R"
+              ],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 2,
+              "mood": 10,
+              "timeStampMicros": 0,
+              "depletionRate": -2,
+              "upperLimit": 12,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "B": {
+              "nativeName": "B",
+              "name": "B",
+              "room": "room_1_2",
+              "index": 0,
+              "group": "g",
+              "replacement": [
+                "S"
+              ],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 3,
+              "mood": 10,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "R": {
+              "nativeName": "R",
+              "name": "R",
+              "room": "",
+              "index": -1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "low",
+              "restingPriority": "low",
+              "currentRoom": "room_1_1",
+              "currentIndex": 0,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "S": {
+              "nativeName": "S",
+              "name": "S",
+              "room": "",
+              "index": -1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "low",
+              "restingPriority": "low",
+              "currentRoom": "room_1_2",
+              "currentIndex": 0,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "N": {
+              "nativeName": "N",
+              "name": "N",
+              "room": "",
+              "index": -1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "low",
+              "restingPriority": "low",
+              "currentRoom": "",
+              "currentIndex": -1,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "K1": {
+              "nativeName": "K1",
+              "name": "K1",
+              "room": "dormitory_1",
+              "index": 0,
+              "group": "",
+              "replacement": [],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 0,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "K2": {
+              "nativeName": "K2",
+              "name": "K2",
+              "room": "dormitory_1",
+              "index": 1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 1,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            }
+          },
+          "dorms": [
+            {
+              "position": [
+                "dormitory_1",
+                2
+              ],
+              "name": "A",
+              "timeMicros": 7200000000
+            },
+            {
+              "position": [
+                "dormitory_1",
+                3
+              ],
+              "name": "B",
+              "timeMicros": 18000000000
+            },
+            {
+              "position": [
+                "dormitory_1",
+                4
+              ],
+              "name": ""
+            }
+          ],
+          "unregisteredIdleNames": [
+            "A",
+            "B",
+            "R",
+            "S",
+            "N",
+            "K1",
+            "K2"
+          ]
+        },
+        "task": {
+          "timeMicros": 3600000000,
+          "type": {
+            "key": "SHIFT_OFF"
+          },
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "Current",
+              "N",
+              "Current"
+            ]
+          },
+          "metadata": "",
+          "productLockNames": [],
+          "productLockSlots": []
+        },
+        "pending": [],
+        "names": {
+          "A": "A",
+          "B": "B",
+          "R": "R",
+          "S": "S",
+          "N": "N",
+          "K1": "K1",
+          "K2": "K2"
+        },
+        "action": "preview"
+      },
+      "result": {
+        "action": "native _prepare_shift_cycle",
+        "error": null,
+        "plan": {
+          "dormitory_1": [
+            "Current",
+            "Current",
+            "Current",
+            "N",
+            "Current"
+          ]
+        },
+        "fill": {
+          "dormitory_1": [
+            "Current",
+            "Current",
+            "Current",
+            "Current",
+            "Current"
+          ]
+        },
+        "conditions": [],
+        "queue": [
+          {
+            "timeHours": 1,
+            "type": "SHIFT_OFF",
+            "plan": {
+              "dormitory_1": [
+                "Current",
+                "Current",
+                "Current",
+                "N",
+                "Current"
+              ]
+            },
+            "metadata": "",
+            "strict": false,
+            "moodLimit": null
+          }
+        ],
+        "beforePositions": {
+          "A": [
+            "dormitory_1",
+            2
+          ],
+          "B": [
+            "dormitory_1",
+            3
+          ],
+          "K1": [
+            "dormitory_1",
+            0
+          ],
+          "K2": [
+            "dormitory_1",
+            1
+          ],
+          "R": [
+            "room_1_1",
+            0
+          ],
+          "S": [
+            "room_1_2",
+            0
+          ],
+          "N": [
+            "",
+            -1
+          ]
+        }
+      }
+    },
+    {
+      "name": "explicit-bed-replacement-preview-standby-True",
+      "input": {
+        "roster": {
+          "default": "plan1",
+          "plan1": {
+            "room_1_1": {
+              "name": "",
+              "plans": [
+                {
+                  "agent": "A",
+                  "group": "g",
+                  "replacement": [
+                    "R"
+                  ]
+                }
+              ]
+            },
+            "room_1_2": {
+              "name": "",
+              "plans": [
+                {
+                  "agent": "B",
+                  "group": "g",
+                  "replacement": [
+                    "S"
+                  ]
+                }
+              ]
+            },
+            "dormitory_1": {
+              "name": "",
+              "plans": [
+                {
+                  "agent": "K1",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "K2",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "Free",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "Free",
+                  "group": "",
+                  "replacement": []
+                },
+                {
+                  "agent": "Free",
+                  "group": "",
+                  "replacement": []
+                }
+              ]
+            }
+          },
+          "conf": {
+            "rest_in_full": "",
+            "exhaust_require": "",
+            "resting_priority": "",
+            "operator_mood_limits": {
+              "A": {
+                "upper": 12,
+                "lower": 0
+              }
+            },
+            "resting_standby": "B"
+          },
+          "backup_plans": []
+        },
+        "data": {
+          "nowMicros": 3600000000,
+          "planConditions": [],
+          "plan": {
+            "room_1_1": [
+              "A"
+            ],
+            "room_1_2": [
+              "B"
+            ],
+            "dormitory_1": [
+              "K1",
+              "K2",
+              "Free",
+              "Free",
+              "Free"
+            ]
+          },
+          "operators": {
+            "A": {
+              "nativeName": "A",
+              "name": "A",
+              "room": "room_1_1",
+              "index": 0,
+              "group": "g",
+              "replacement": [
+                "R"
+              ],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 2,
+              "mood": 10,
+              "timeStampMicros": 0,
+              "depletionRate": -2,
+              "upperLimit": 12,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "B": {
+              "nativeName": "B",
+              "name": "B",
+              "room": "room_1_2",
+              "index": 0,
+              "group": "g",
+              "replacement": [
+                "S"
+              ],
+              "operatorType": "high",
+              "restingPriority": "standby",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 3,
+              "mood": 10,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "R": {
+              "nativeName": "R",
+              "name": "R",
+              "room": "",
+              "index": -1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "low",
+              "restingPriority": "low",
+              "currentRoom": "room_1_1",
+              "currentIndex": 0,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "S": {
+              "nativeName": "S",
+              "name": "S",
+              "room": "",
+              "index": -1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "low",
+              "restingPriority": "low",
+              "currentRoom": "room_1_2",
+              "currentIndex": 0,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "N": {
+              "nativeName": "N",
+              "name": "N",
+              "room": "",
+              "index": -1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "low",
+              "restingPriority": "low",
+              "currentRoom": "",
+              "currentIndex": -1,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "K1": {
+              "nativeName": "K1",
+              "name": "K1",
+              "room": "dormitory_1",
+              "index": 0,
+              "group": "",
+              "replacement": [],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 0,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            },
+            "K2": {
+              "nativeName": "K2",
+              "name": "K2",
+              "room": "dormitory_1",
+              "index": 1,
+              "group": "",
+              "replacement": [],
+              "operatorType": "high",
+              "restingPriority": "high",
+              "currentRoom": "dormitory_1",
+              "currentIndex": 1,
+              "mood": 24,
+              "timeStampMicros": 0,
+              "depletionRate": 0,
+              "upperLimit": 24,
+              "lowerLimit": 0,
+              "exhaustRequire": false,
+              "restInFull": false,
+              "workaholic": false,
+              "moodIsPrediction": false
+            }
+          },
+          "dorms": [
+            {
+              "position": [
+                "dormitory_1",
+                2
+              ],
+              "name": "A",
+              "timeMicros": 7200000000
+            },
+            {
+              "position": [
+                "dormitory_1",
+                3
+              ],
+              "name": "B",
+              "timeMicros": 18000000000
+            },
+            {
+              "position": [
+                "dormitory_1",
+                4
+              ],
+              "name": ""
+            }
+          ],
+          "unregisteredIdleNames": [
+            "A",
+            "B",
+            "R",
+            "S",
+            "N",
+            "K1",
+            "K2"
+          ]
+        },
+        "task": {
+          "timeMicros": 3600000000,
+          "type": {
+            "key": "SHIFT_OFF"
+          },
+          "plan": {
+            "dormitory_1": [
+              "Current",
+              "Current",
+              "Current",
+              "N",
+              "Current"
+            ]
+          },
+          "metadata": "",
+          "productLockNames": [],
+          "productLockSlots": []
+        },
+        "pending": [],
+        "names": {
+          "A": "A",
+          "B": "B",
+          "R": "R",
+          "S": "S",
+          "N": "N",
+          "K1": "K1",
+          "K2": "K2"
+        },
+        "action": "preview"
+      },
+      "result": {
+        "action": "native _prepare_shift_cycle",
+        "error": null,
+        "plan": {
+          "dormitory_1": [
+            "Current",
+            "Current",
+            "B",
+            "N",
+            "A"
+          ]
+        },
+        "fill": {
+          "dormitory_1": [
+            "Current",
+            "Current",
+            "Current",
+            "Current",
+            "Current"
+          ]
+        },
+        "conditions": [],
+        "queue": [
+          {
+            "timeHours": 1,
+            "type": "SHIFT_OFF",
+            "plan": {
+              "dormitory_1": [
+                "Current",
+                "Current",
+                "B",
+                "N",
+                "A"
+              ]
+            },
+            "metadata": "",
+            "strict": false,
+            "moodLimit": null
+          }
+        ],
+        "beforePositions": {
+          "A": [
+            "dormitory_1",
+            2
+          ],
+          "B": [
+            "dormitory_1",
+            3
+          ],
+          "K1": [
+            "dormitory_1",
+            0
+          ],
+          "K2": [
+            "dormitory_1",
+            1
+          ],
+          "R": [
+            "room_1_1",
+            0
+          ],
+          "S": [
+            "room_1_2",
+            0
+          ],
+          "N": [
+            "",
+            -1
+          ]
+        }
+      }
+    }
+  ]
+}

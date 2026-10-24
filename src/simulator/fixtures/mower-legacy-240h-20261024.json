@@ -1,0 +1,39 @@
+{
+  "kind": "calculator-runtime-regression",
+  "sourceMechanismCommit": "84e3926c0f36045d7baeb1ac050f815b40952d6d",
+  "capturedOn": "2026-10-24",
+  "input": "validation/mower-backup-2026-09-22/roster.json",
+  "inputSha256": "620e6e62bc7d6f752416e8cd9837dc572a65c29f8b179d67b03495a68b8771b2",
+  "profile": {
+    "schedulingModel": "mower-default",
+    "warmupHours": 72,
+    "sampleHours": 168,
+    "warmupModel": "hourly",
+    "recordSegments": true,
+    "maxEvents": 50000,
+    "production": {
+      "outputMode": "potential",
+      "runOrderMode": "ideal",
+      "droneTarget": "exp",
+      "seed": 42
+    },
+    "assumptions": {
+      "restingThreshold": 0.65,
+      "rescueThreshold": 0.75,
+      "fiammettaThreshold": 0.9,
+      "fiammettaFool": false,
+      "freeRoom": false
+    }
+  },
+  "result": {
+    "success": true,
+    "elapsedHours": 240,
+    "gladiiaExhaustedHours": 0.9007887832394303,
+    "fiammettaCharges": 38,
+    "score82": 109185.71429595468
+  },
+  "evidence": "artifacts/mower-latest-20261024/runtime-final/gladiia-long-result.json",
+  "boundary": "Local public calculation-bridge simulation; not a native Python oracle or game/device validation. The old 1.4115031240458271h/39-charge golden was already stale at integration baseline 1092f3f; unchanged historical test is retained in runtime-final/regression-before.",
+  "windowsInputSha256": "9fbf30bdc32927318f74e8661f4a4883f3bbd41c0f5ca2fd373133025692b377",
+  "inputHashNormalization": "UTF-8 text with CRLF normalized to LF; original input is imported unchanged"
+}

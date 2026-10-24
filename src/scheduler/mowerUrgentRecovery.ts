@@ -25,7 +25,8 @@ export function recordMowerUrgentSupport(data:MowerSchedulingData,task:MowerTask
  if(!task.exhaustSupport||!task.coordinationRequestNames.length)return
  const supporters=Object.values(data.operators).filter(op=>(data.isGroupShiftAnchor(op)||op.independentRest&&!data.canStandby(op))&&!op.room.startsWith('dorm')&&positions[op.name]?.[0].startsWith('dorm')&&op.currentRoom===op.room&&op.currentIndex===op.index).map(op=>op.name)
  if(!supporters.length)return
- const owner=pending.find(request=>request.type===T.EXHAUST_OFF&&request.ordinaryCoordination===task.ordinaryCoordination&&request.metadata.split(',').some(name=>task.coordinationRequestNames.includes(name)))
+ const requested=new Set(task.coordinationRequestNames)
+ const owner=pending.find(request=>request!==task&&[T.EXHAUST_OFF,T.SHIFT_OFF].includes(request.type)&&request.ordinaryCoordination===task.ordinaryCoordination&&request.coordinationRequestNames.length===requested.size&&request.coordinationRequestNames.every(name=>requested.has(name)))
  if(!owner)return
  const explicit=new Set(owner.metadata.split(','))
  owner.urgentRecoveryRequestNames=task.coordinationRequestNames.filter(name=>{const op=data.operators[name];return !!op&&(data.isGroupShiftAnchor(op)||op.independentRest&&explicit.has(name))})

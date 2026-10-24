@@ -1,6 +1,6 @@
 import {MowerBackupRecoveryBlocked} from './mowerBackupDepartureRecovery'
 import {parkMowerBackupDepartureRecovery,parkMowerPreviewRecovery,resumeMowerPreviewRecovery,nextMowerPreviewRecoveryObservation,type MowerPreviewRecoveryWait} from './mowerPreviewRecoveryWait'
-import {mowerVerifiedRecoveryDependencyReturn} from './mowerRecoveryDependency'
+import {mowerVerifiedRecoveryDependencyReturn,mowerRecoveryDependencyProofs} from './mowerRecoveryDependency'
 import {mowerOrdinaryCoordinationNeeded,mowerPendingExhaust} from './mowerExhaustPolicy'
 import {hasSingleRecoverySkill} from '../engine/singleRecoveryEligibility'
 import {retainMowerFailedTask,resumeMowerFailedTasks} from './mowerTaskFailure'
@@ -716,7 +716,15 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   if(!running&&!runningPhase){mowerCorrectDorm(getMowerSourceRuntime(s).data);backup('BEGINNING',task)}
   let data=getMowerSourceRuntime(s).data
   // infra_main must not execute a task removed by entry metadata rebuilding.
-  if(task&&!running&&(!queue.tasks.includes(task)||task.timeMicros>data.nowMicros)){skip();break}
+  if(task&&!running&&(!queue.tasks.includes(task)||task.timeMicros>data.nowMicros)){
+   skip()
+   // Native returns from infra_main here. Complete the same outer-run clock
+   // boundary as every other finished run; the replacement task keeps its time.
+   queue.sort()
+   const pending=queue.find({ignoreRunOrders:s.config.mowerTaskScheduling?.adjustForRunOrders===false})
+   if(clock&&pending&&pending.timeMicros<=data.nowMicros)source.runReturn={wakeMicros:data.nowMicros+clock.minimumClockStepMicros,finishFallback:false}
+   break
+  }
   let skipPlanning=runningPhase?.skipPlanning??false,previewNoop=runningPhase?.previewNoop??false
   if(task){
    try {
@@ -752,7 +760,8 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
      const transitions=mowerArrangementGroupTransitions(data,task.plan)
      task.groupShiftTransitions=task.arrangementStarted||task.backupShiftActive||task.productShiftLocked?{...task.groupShiftTransitions,...transitions}:transitions
      if((task.arrangementStarted||task.backupShiftActive||task.productShiftLocked)&&!normalizeMowerSharedArrangement(data,task.plan,task.groupShiftTransitions,task.backupExplicitSlots))throw new MowerShiftPreviewError('绑组共享替班冲突，保留原任务并等待岗位释放')
-     prepareMowerShiftCycle(data,task,queue,model,{...options(),priorityScheduling:s.config.mowerTaskScheduling})
+     const dependencyProofs=mowerRecoveryDependencyProofs(data,task,queue.tasks,model)
+     prepareMowerShiftCycle(data,task,queue,model,{...options(),priorityScheduling:s.config.mowerTaskScheduling},dependencyProofs)
      const previewRules=task.backupShiftConditions?model.swap(projectMowerArrangements(data,[]),task.backupShiftConditions,task.backupGroup):data
      if(!normalizeMowerSharedArrangement(previewRules,task.plan,task.groupShiftTransitions,task.backupExplicitSlots))throw new MowerShiftPreviewError('绑组共享替班冲突，保留原任务并等待岗位释放')
      assertMowerGroupPredecessors(source,task,previewRules)
@@ -791,7 +800,12 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
       task.timeMicros=prepared.retryAtMicros;queue.sort()
       const message=prepared.names.map(name=>data.operators[name]!.nativeName).join('、')+': forced dorm task waits for valid recovery beds'
       if(!s.diagnostics.some(d=>d.code==='mower-shift-bed-conflict'&&d.message===message))s.diagnostics.push({code:'mower-shift-bed-conflict',message})
-      delete source.activeTask;skip();break
+      delete source.activeTask;skip()
+      // The blocked task now owns a future bed deadline. Finish already due
+      // independent work in this run instead of exposing a zero-time wake.
+      const next=queue.find({ignoreRunOrders:s.config.mowerTaskScheduling?.adjustForRunOrders===false})
+      if(next&&next.timeMicros<=data.nowMicros)continue
+      break
      }
      task.plan=prepared.plan
     }
@@ -835,6 +849,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
     const pendingSupport=queue.tasks.find(other=>other!==task&&other.exhaustSupport&&other.coordinationRequestNames.some(name=>members.includes(name)))
     if(pendingSupport){
      const dependencies=mowerReplacementDependencyNames(data,members),rooms=[...new Set([...dependencies].flatMap(name=>{const op=data.operators[name];return op?[op.room,op.currentRoom].filter(Boolean):[]}).concat(data.allDorms().map(bed=>bed.position[0])))]
+     task.coordinationRequestNames=[...members]
      retainMowerFailedTask(s,data,task,'等待已排定的替班交接',rooms);task.coordinationDependencyWait=true;delete source.activeTask;continue
     }
     mowerGetRestingPlan(data,[...members],[],plan,options())
@@ -847,6 +862,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
       const supportTask=new MowerTask({time:s.time,type:T.SELF_CORRECTION,plan:support});supportTask.exhaustSupport=true;supportTask.ordinaryCoordination=task.ordinaryCoordination;supportTask.coordinationRequestNames=[...members]
       queue.tasks.push(supportTask);skipPlanning=true
       const dependencies=mowerReplacementDependencyNames(data,members),rooms=[...new Set([...dependencies].flatMap(name=>{const op=data.operators[name];return op?[op.room,op.currentRoom].filter(Boolean):[]}).concat(data.allDorms().map(bed=>bed.position[0])))]
+      task.coordinationRequestNames=[...members]
       retainMowerFailedTask(s,data,task,'等待替班交接完成',rooms);task.coordinationDependencyWait=true
      }
      else {

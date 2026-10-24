@@ -9,7 +9,7 @@ import {mowerReplacementReservations} from './mowerReplacementCoordination'
 import {mowerDormTaskReservations} from './mowerAlphaCandidates'
 import {projectMowerArrangements} from './mowerObservations'
 import {cloneMowerShiftTask,coalesceMowerBackupTransition} from './mowerShiftCycle'
-import {reconcileMowerUrgentRecovery,mowerUrgentRecallBlocked,recordMowerUrgentRecovery} from './mowerUrgentRecovery'
+import {reconcileMowerUrgentRecovery,mowerUrgentRecallBlocked,recordMowerUrgentRecovery,recordMowerUrgentSupport} from './mowerUrgentRecovery'
 
 const rates={workRate:()=>1,recoveryRate:()=>4,forecastRates:(state:RuntimeState)=>({work:Object.fromEntries(Object.keys(state.morale).map(name=>[name,1])),recovery:Object.fromEntries(Object.keys(state.morale).map(name=>[name,4]))})}
 function fixture(two=false,fixed=false){
@@ -88,6 +88,23 @@ describe('urgent dependency recall and observed recovery ownership',()=>{
   drive(state,()=>Object.values(state.bedOccupants).includes('A'))
   expect(source.data.urgentRecoverySupporters.A).toContain('B')
  })
+ it('transfers support only to the original complete request, not a future same-name task or partial group',()=>{
+  const {source,request}=fixture(),data=source.data,time=request.timeMicros
+  request.coordinationRequestNames=['A']
+  const future=new MowerTask({time:2,type:T.EXHAUST_OFF,metadata:'A'})
+  const otherGroup=new MowerTask({type:T.EXHAUST_OFF,metadata:'A'});otherGroup.coordinationRequestNames=['A','B']
+  const support=new MowerTask({type:T.SELF_CORRECTION,plan:{room_1_2:['B']}})
+  support.exhaustSupport=true;support.coordinationRequestNames=['A']
+  const positions=Object.fromEntries(Object.values(data.operators).map(op=>[op.name,[op.currentRoom,op.currentIndex] as [string,number]]))
+  data.operators.B!.setProjectedPosition('room_1_2',0);data.operators.Y!.setProjectedPosition('',-1)
+  recordMowerUrgentSupport(data,support,[future,otherGroup,request],positions)
+  expect(request.urgentRecoverySupportNames).toEqual(['B'])
+  expect(request.urgentRecoveryReservedNames).toEqual(['Y'])
+  expect(request.urgentRecoveryReservedSlots).toEqual(['dormitory_1\0'+'2'])
+  expect(request.timeMicros).toBe(time);expect(source.queue.tasks).toContain(request)
+  expect(future.urgentRecoverySupportNames).toEqual([]);expect(future.time).toBe(2)
+  expect(otherGroup.urgentRecoverySupportNames).toEqual([])
+ })
  it('allows low recalled workers to wait without reversing the completed rescue',()=>{
   const {state,source}=fixture()
   drive(state,()=>Object.values(state.bedOccupants).includes('A'))
@@ -105,6 +122,13 @@ describe('urgent dependency recall and observed recovery ownership',()=>{
   state.morale.A=24;Object.assign(source.data.operators.A!,{mood:24,timeStampMicros:source.data.nowMicros,moodIsPrediction:false})
   reconcileMowerUrgentRecovery(source.data)
   expect(source.data.urgentRecoverySupporters).toEqual({})
+  const future=source.queue.tasks.find(task=>task!==reverse&&task.type===T.EXHAUST_OFF&&task.metadata==='B'&&task.timeMicros>source.data.nowMicros)
+  expect(future).toBeDefined()
+  drive(state,()=>reverse.urgentRecoverySupportNames.length>0)
+  expect(source.queue.tasks).toContain(reverse);expect(reverse.timeMicros).toBe(time)
+  expect(reverse.urgentRecoveryReservedNames).toContain('X')
+  expect(reverse.urgentRecoveryReservedSlots).toContain('dormitory_1\0'+'2')
+  expect(future!.urgentRecoverySupportNames).toEqual([])
   drive(state,()=>Object.values(state.bedOccupants).includes('B'))
  })
  it('isolates projections and preserves supporters until the last beneficiary returns',()=>{

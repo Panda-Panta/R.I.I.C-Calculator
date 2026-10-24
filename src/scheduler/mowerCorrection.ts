@@ -45,7 +45,10 @@ export function preferMowerRestingReplacements(data:MowerSchedulingData,plan:Mow
  }
  for(const group of groups){
   const members=(data.alpha?data.shiftGroupMembers(group):data.group(group)).map(n=>data.operators[n]!).filter(op=>!op.room.startsWith('dorm')&&!op.workaholic)
-  if(members.some(op=>(!data.alpha||data.isGroupShiftAnchor(op))&&!op.isResting()&&!(!op.currentRoom&&(data.canStandby(op)||data.alpha&&data.restMoodComplete(op.name)||op.timeStampMicros!==undefined&&op.mood>=op.upperLimit))))data.group(group).forEach(n=>{if(!mowerCoveredRecoveryPending(data,data.operators[n]!))resting.delete(n)})
+  const hasWorkingMember=members.some(op=>data.alpha
+   ?data.isGroupShiftAnchor(op)&&!!op.currentRoom&&!op.isResting()
+   :!op.isResting()&&!(!op.currentRoom&&(data.canStandby(op)||op.timeStampMicros!==undefined&&op.mood>=op.upperLimit)))
+  if(hasWorkingMember)data.group(group).forEach(n=>{if(!mowerCoveredRecoveryPending(data,data.operators[n]!))resting.delete(n)})
   else members.forEach(op=>resting.add(op.name))
  }
  const protectedRecovery=data.alpha?mowerActiveUrgentRecoveryNames(data):new Set<string>()

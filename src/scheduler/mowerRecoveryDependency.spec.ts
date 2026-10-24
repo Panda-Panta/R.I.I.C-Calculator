@@ -7,15 +7,16 @@ import {createBackupPlanController} from './backupPlans'
 import {createRosterRuntime,settleRoster,advanceRoster,nextRosterActionHours} from './rosterRuntime'
 import {getMowerSourceRuntime} from './mowerSourceRuntime'
 import {MowerDormState} from './mowerSchedulingData'
-import {MowerTask,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
+import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
 import {retainMowerFailedTask} from './mowerTaskFailure'
-import {mowerVerifiedRecoveryDependencyReturn} from './mowerRecoveryDependency'
+import {mowerVerifiedRecoveryDependencyReturn,mowerRecoveryDependencyProofs} from './mowerRecoveryDependency'
 import {admitMowerDerivedTasks} from './mowerTaskDerivation'
 import {planMowerMetadata} from './mowerMetadata'
 import {cloneMowerShiftTask,prepareMowerShiftCycle} from './mowerShiftCycle'
 import {projectMowerArrangements} from './mowerObservations'
 import {commitMowerGroupShifts,normalizeMowerSharedArrangement} from './mowerSharedGroups'
 import * as sharedGroups from './mowerSharedGroups'
+import {suppressMowerRetainedArrangements} from './mowerRetainedRecovery'
 
 function fixture(explicitShared=false,stableBinding=false,departureBackup=false){
  const workspace=createDefaultWorkspace()
@@ -64,15 +65,35 @@ describe('verified normal return releases a failed backup arrangement',()=>{
   expect(mowerVerifiedRecoveryDependencyReturn(data,retained,candidate,queue.tasks,model)).toBe(true)
   expect(JSON.stringify([data,retained,candidate])).toBe(before)
   const returning=cloneMowerShiftTask(candidate)
-  prepareMowerShiftCycle(data,returning,queue,model)
+  const proofs=mowerRecoveryDependencyProofs(data,returning,queue.tasks,model)
+  expect(proofs.has(retained)).toBe(true)
+  prepareMowerShiftCycle(data,returning,queue,model,{},proofs)
   expect(returning.backupShiftConditions).toEqual([false])
   let returned=model.swap(projectMowerArrangements(data,[]),returning.backupShiftConditions!)
   returned=projectMowerArrangements(returned,[returning.plan]);commitMowerGroupShifts(returned,returning.groupShiftTransitions)
   const remaining=cloneMowerShiftTask(retained)
   expect(normalizeMowerSharedArrangement(returned,remaining.plan)).toBe(true)
-  prepareMowerShiftCycle(returned,remaining,queue,model)
+  const remainingQueue=new MowerTaskQueue();remainingQueue.tasks=queue.tasks.filter(task=>task!==retained);remainingQueue.tasks.push(remaining)
+  prepareMowerShiftCycle(returned,remaining,remainingQueue,model)
   expect(remaining.plan.room_1_1).toEqual([id('香草')])
   expect(retained.timeMicros).toBe(time);expect(queue.tasks).toContain(retained)
+ })
+ it('keeps one-preview proofs read-only and scoped to the retained identity and exact assignments',()=>{
+  const {data,state,model,queue,retained,candidate}=fixture()
+  const before=JSON.stringify([data,queue,candidate]),proofs=mowerRecoveryDependencyProofs(data,candidate,queue.tasks,model)
+  expect(JSON.stringify([data,queue,candidate])).toBe(before)
+  const allowed=structuredClone(proofs.get(retained)!),outside={room_1_1:[id('香草')]}
+  expect(allowed.room_1_2).toEqual([id('克洛丝')])
+  suppressMowerRetainedArrangements(data,allowed,queue.tasks,proofs)
+  expect(allowed).toEqual(proofs.get(retained))
+  suppressMowerRetainedArrangements(data,outside,queue.tasks,proofs)
+  expect(outside).toEqual({})
+  const other=new MowerTask({type:T.RE_ORDER,plan:{room_1_2:[id('克洛丝')]}})
+  retainMowerFailedTask(state,data,other,'separate retained owner')
+  const overlap={room_1_2:[id('克洛丝')]}
+  suppressMowerRetainedArrangements(data,overlap,[retained,other],proofs)
+  expect(overlap).toEqual({})
+  expect(JSON.stringify([data,queue,candidate])).toBe(before)
  })
  it('preserves an explicit shared-slot override while proving the remaining conflict is released',()=>{
   const {data,model,queue,retained,candidate}=fixture(true)
