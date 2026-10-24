@@ -4,27 +4,55 @@ import {getMowerSourceRuntime,nextMowerSourceActionHours,settleMowerSource} from
 import {MowerTask,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
 import {retainMowerFailedTask,resumeMowerFailedTasks} from './mowerTaskFailure'
 
+function fixture(){
+ const state=createRosterRuntime({mowerAlpha:true,positions:[{id:'room_1_1_0',roomId:'room_1_1',primary:'A',candidates:['X']}],beds:[],mowerSourcePlan:{room_1_1:[{agent:'A',group:'',replacement:['X']}]},mowerSourceRules:{workaholic:[],exhaustRequire:[],restInFull:[],lowPriority:[],refreshDrained:[],lingMode:0},mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[]}})
+ const source=getMowerSourceRuntime(state),first=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['X']}}),second=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['X']}})
+ first.backupExplicitSlots.add('room_1_1\0'+0);second.backupExplicitSlots.add('room_1_1\0'+0)
+ source.queue.tasks=[first,second]
+ return {state,source,first,second}
+}
+
 describe('coordination dependency release at native run completion',()=>{
  it('does not treat alternating failed previews as newly released physical reservations',()=>{
-  const state=createRosterRuntime({mowerAlpha:true,positions:[{id:'room_1_1_0',roomId:'room_1_1',primary:'A',candidates:['X']}],beds:[],mowerSourcePlan:{room_1_1:[{agent:'A',group:'',replacement:['X']}]},mowerSourceRules:{workaholic:[],exhaustRequire:[],restInFull:[],lowPriority:[],refreshDrained:[],lingMode:0},mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[]}})
-  const source=getMowerSourceRuntime(state),first=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['X']}}),second=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['X']}})
-  first.backupExplicitSlots.add('room_1_1\0'+0);second.backupExplicitSlots.add('room_1_1\0'+0)
-  source.queue.tasks=[first,second]
+  const {state,source,first,second}=fixture()
   retainMowerFailedTask(state,source.data,first,'shared cover blocked')
   retainMowerFailedTask(state,source.data,second,'shared cover blocked')
+  // Fixed 84e snapshots include targets of every retained task. Observing the
+  // second owner once is an arrangement change, even though no one moved.
+  expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(true)
+  expect(first.executionRetained).toBe(true);expect(first.executionFailure).toBeUndefined()
+  expect(second.executionFailure).toBeDefined()
+  retainMowerFailedTask(state,source.data,first,'shared cover blocked')
   expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(false)
-  delete second.executionFailure;second.executionRetained=true
-  expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(false)
-  retainMowerFailedTask(state,source.data,second,'shared cover blocked')
-  expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(false)
+  for(let pass=0;pass<6;pass++){
+   delete second.executionFailure;second.executionRetained=true
+   expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(false)
+   retainMowerFailedTask(state,source.data,second,'shared cover blocked')
+   expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(false)
+  }
   expect(first.executionFailure).toBeDefined();expect(second.executionFailure).toBeDefined()
   expect(source.queue.tasks).toEqual([first,second]);expect(first.timeMicros).toBe(0);expect(second.timeMicros).toBe(0)
-  // An actually active arrangement owns a reservation; completing it is new evidence.
+  // A failed/retained owner keeps its target even after its active flag clears.
   second.backupShiftActive=true
   retainMowerFailedTask(state,source.data,first,'active backup owns cover')
   second.backupShiftActive=false
+  expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(false)
+  expect(first.executionFailure).toBeDefined()
+  source.queue.consume(second)
   expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(true)
   expect(first.executionFailure).toBeUndefined()
+  expect(source.queue.tasks).toEqual([first]);expect(first.timeMicros).toBe(0)
+  expect(first.plan).toEqual({room_1_1:['X']})
+ })
+ it('releases an active non-retained arrangement reservation when that arrangement completes',()=>{
+  const {state,source,first,second}=fixture()
+  second.backupShiftActive=true
+  retainMowerFailedTask(state,source.data,first,'active backup owns cover')
+  expect(second.retainsExecution).toBe(false)
+  second.backupShiftActive=false
+  expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(true)
+  expect(first.executionFailure).toBeUndefined()
+  expect(source.queue.tasks).toEqual([first,second]);expect(first.timeMicros).toBe(0)
  })
  it('readmits the original request before choosing the completed run clock',()=>{
   const state=createRosterRuntime({mowerAlpha:true,positions:[{id:'room_1_1_0',roomId:'room_1_1',primary:'A',candidates:['X']}],beds:[],mowerSourcePlan:{room_1_1:[{agent:'A',group:'',replacement:['X']}]},mowerSourceRules:{workaholic:[],exhaustRequire:['A'],restInFull:[],lowPriority:[],refreshDrained:[],lingMode:0},mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[]},mowerRunLoopClock:{minimumClockStepMicros:1,notificationSleepMicros:1_000_000}})
