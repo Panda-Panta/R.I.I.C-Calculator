@@ -86,10 +86,10 @@ describe('Mower simulation event boundaries',()=>{
   // evidence even after the original cause is removed and the clock advances.
   const originalModel=state.mowerShiftModel!
   let rejectPreview=true,previewCalls=0
-  state.mowerShiftModel={...originalModel,evaluate:data=>{
+  state.mowerShiftModel={...originalModel,select:data=>{
    previewCalls++
    if(rejectPreview)throw new MowerShiftPreviewError('Controlled rejection to test measured-only recovery')
-   return originalModel.evaluate(data)
+   return originalModel.select!(data)
   }}
   const task=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:[gravel],dormitory_1:['Current','Current','Current','Current',aroma]}})
   source.queue.tasks=[task]
@@ -112,7 +112,9 @@ describe('Mower simulation event boundaries',()=>{
   expect(evaluateBackupExpression(windowCondition,state)).toBe(true)
   expect(source.data.operators[aroma]!.timeStampMicros).toBe(0)
   expect(source.data.operators[aroma]!.mood).toBe(24)
-  settleRoster(state,rates,0,controller.evaluate)
+  // Isolate a prediction-only retry. A real END backup activation changes the
+  // configuration and is a separate valid recovery edge, covered below.
+  settleRoster(state,rates)
   expect(previewCalls).toBe(failedCalls)
   expect(task.executionFailure).toBeDefined()
   expect(source.queue.tasks).toContain(task)
@@ -144,4 +146,29 @@ describe('Mower simulation event boundaries',()=>{
   expect(activation!.time).toBeGreaterThan(.1)
   expect(activation!.time).toBeLessThan(.15)
  })
+ it('treats a real END backup activation as a relevant configuration recovery edge',()=>{
+  const workspace=emptyWorkspace()
+  workspace.mainPlan.facilities.dormitory_1.slots=[...residents.slice(0,4).map(operatorId=>({occupant:{kind:'operator' as const,operatorId},groupId:null,replacements:[]})),{occupant:{kind:'free'},groupId:null,replacements:[]}]
+  workspace.compatibility.backupPlans=[{name:'Measured phase configuration',trigger:windowCondition,trigger_timing:'END',plan:{},task:{},conf:{}}]
+  const schedule=compileRosterSchedule(workspace),config=compiledScheduleToRuntimeConfig(schedule);config.mowerAlpha=true
+  const state=createRosterRuntime(config),controller=createBackupPlanController(schedule,state),source=getMowerSourceRuntime(state)
+  source.initial=false
+  for(const op of Object.values(source.data.operators))if(op.room)Object.assign(op,{currentRoom:op.room,currentIndex:op.index,mood:24,timeStampMicros:0,depletionRate:op.room.startsWith('dorm')?0:1})
+  const model=state.mowerShiftModel!;let rejecting=true
+  state.mowerShiftModel={...model,select:data=>{if(rejecting)throw new MowerShiftPreviewError('Controlled rejection');return model.select!(data)}}
+  const task=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:[gravel],dormitory_1:['Current','Current','Current','Current',aroma]}})
+  source.queue.tasks=[task]
+  const rates={workRate:()=>1,recoveryRate:()=>4}
+  settleRoster(state,rates,0,controller.evaluate)
+  expect(task.executionFailure).toBeDefined()
+  rejecting=false;advanceRoster(state,.12,rates)
+  expect(source.data.operators[aroma]!.timeStampMicros).toBe(0)
+  controller.evaluate('END')
+  expect(source.data.planConditions).toEqual([true])
+  expect(nextRosterActionHours(state,rates)).toBe(0)
+  expect(task.executionFailure).toBeUndefined()
+  expect(source.queue.tasks).toContain(task);expect(task.timeMicros).toBe(0)
+  expect(state.events.some(event=>event.type==='backup-plan'&&event.active&&event.timing==='END')).toBe(true)
+ })
+
 })

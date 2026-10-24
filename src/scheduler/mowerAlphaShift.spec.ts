@@ -1,12 +1,15 @@
 import {describe,it,expect} from 'vitest'
 import oracle from './fixtures/mower-alpha-shift-primitives.json'
-import {MowerOperatorState} from './mowerOperatorState'
+import currentOracle from './fixtures/mower-displaced-bed-84e3926.json'
+import {MowerOperatorState,type MowerOperatorOptions} from './mowerOperatorState'
 import {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {projectMowerArrangements} from './mowerObservations'
 import {mowerGetRestingPlan} from './mowerOrdinaryPlanning'
 import {mowerCorrectionPlan} from './mowerCorrection'
 import {prepareMowerShiftBeds} from './mowerShiftProtection'
-import {MowerTask,toMowerMicros,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
+import {initializeMowerAlphaMoodLimits,readMowerMoodLimits} from './mowerMoodLimits'
+import {prepareMowerShiftCycle,type MowerShiftModel} from './mowerShiftCycle'
+import {MowerTask,MowerTaskQueue,toMowerMicros,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
 
 function fixture(standby=false){
  const plan={room_1_1:['A'],room_1_2:['B'],dormitory_1:['K1','K2','Free','Free','Free']}
@@ -20,7 +23,7 @@ function fixture(standby=false){
  return data
 }
 
-describe('October 3 Mower alpha source decisions',()=>{
+describe('alpha primitives over frozen October 3 input cases',()=>{
  it('leaves an empty dynamic bed for candidate driven filling during cached correction',()=>{
   const data=new MowerSchedulingData({alpha:true,plan:{dormitory_1:['Free']},operators:{},dorms:[new MowerDormState(['dormitory_1',0])],nowMicros:0})
   expect(mowerCorrectionPlan(data)).toEqual({})
@@ -43,12 +46,35 @@ describe('October 3 Mower alpha source decisions',()=>{
   expect(plan).toEqual({room_1_1:['S'],room_1_2:['R']})
   expect(new Set(reserved).size).toBe(2)
  })
- for(const test of oracle.restore)it('uses native displaced-bed handling, standby='+test.standby,()=>{
+ for(const test of oracle.restore)it('leaves an explicit occupied-bed replacement for the complete alpha cycle, standby='+test.standby,()=>{
   const data=fixture(test.standby),task=new MowerTask({type:T.SHIFT_OFF,plan:{dormitory_1:['Current','Current','Current','N','Current']}})
   const before=data.currentRoom('room_1_1',true)
+  const intent=structuredClone(task.plan)
   const result=prepareMowerShiftBeds(data,task,[])
   expect(result.ready).toBe(true)
-  if(result.ready)expect(result.plan).toEqual(test.output)
+  // Current alpha validates the whole arrangement; the retired local preflight
+  // must not force a group recall from the historical October 3 output.
+  if(result.ready)expect(result.plan).toEqual(intent)
   expect(data.currentRoom('room_1_1',true)).toEqual(before)
+ })
+})
+
+describe('84e3926 native complete-preview displaced-bed decisions',()=>{
+ for(const sample of currentOracle.cases)it(sample.name,()=>{
+  const raw=sample.input.data
+  const operators=Object.fromEntries(Object.entries(raw.operators).map(([name,options])=>[name,new MowerOperatorState(options as MowerOperatorOptions)]))
+  const data=new MowerSchedulingData({...raw,alpha:true,operators,plan:structuredClone(raw.plan),dorms:raw.dorms.map(bed=>new MowerDormState([String(bed.position[0]),Number(bed.position[1])],bed.name,'timeMicros' in bed?bed.timeMicros:undefined))})
+  // The native host refreshes the captured plan before preview, so config-derived
+  // strict personal caps must accompany the saved operator observations here.
+  initializeMowerAlphaMoodLimits(data,0,readMowerMoodLimits(sample.input.roster.conf,name=>name))
+  const task=new MowerTask({type:T.SHIFT_OFF,plan:structuredClone(sample.input.task.plan),metadata:sample.input.task.metadata})
+  task.timeMicros=sample.input.task.timeMicros
+  const queue=new MowerTaskQueue();queue.tasks=[task]
+  const model:MowerShiftModel={count:0,evaluate:()=>[],swap:state=>projectMowerArrangements(state,[]),transition:()=>({}),activate:()=>{}}
+  const before=JSON.stringify(data)
+  expect(()=>prepareMowerShiftCycle(data,task,queue,model)).not.toThrow()
+  expect(task.plan).toEqual(sample.result.plan)
+  expect(task.dormFillPlan).toEqual(sample.result.fill)
+  expect(JSON.stringify(data)).toBe(before)
  })
 })

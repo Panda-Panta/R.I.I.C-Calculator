@@ -22,19 +22,11 @@ it.each([24,168])('advances the unchanged original roster with the default alpha
   writeFileSync(testEvidenceFile(`production-${hours}h.json`),JSON.stringify(result,null,2))
   expect(result.error).toBeUndefined()
   const report=result.report!,pending=report.diagnostics.filter(d=>d.code==='MOWER_PENDING_TASK_FAILURE')
-  if(hours===24){
-    // The original table has a retained preview cycle at this exact endpoint;
-    // the same unchanged input recovers after 24h and finishes the 168h window.
-    expect(report.success).toBe(false)
-    expect(report.production?.success).toBe(false)
-    expect(pending).toHaveLength(1)
-    expect(pending[0]!.message).toContain('上班任务（central、room_2_2、room_3_2）')
-    expect(pending[0]!.message).toContain('上下班副表推演出现循环')
-  }else{
-    expect(report.success,JSON.stringify(report.diagnostics)).toBe(true)
-    expect(report.production?.success).toBe(true)
-    expect(pending).toEqual([])
-  }
+  // Latest Mower recovery and retained-task scheduling resolve the historical
+  // 24h preview cycle for this unchanged image; both windows must finish.
+  expect(report.success,JSON.stringify(report.diagnostics)).toBe(true)
+  expect(report.production?.success).toBe(true)
+  expect(pending).toEqual([])
   expect(JSON.stringify(workspace)).toBe(original)
   expect(report.diagnostics.some(d=>d.code==='SIMULATION_EVENT_LIMIT')).toBe(false)
   expect(result.report?.assumptions.schedulingModel).toBe('mower-alpha')

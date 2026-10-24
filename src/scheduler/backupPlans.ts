@@ -5,6 +5,9 @@ import {validateMowerRosterRules} from '../domain/mowerRosterRules'
 import {assertMowerBackupRoomOwners, assertMowerBackupTaskRooms, mowerBackupRoomCapacity, prepareMowerBackupRoom} from '../domain/mowerBackupFacilities'
 import {MowerShiftPreviewError} from './mowerNativeErrors'
 import {preserveMowerBackupReplacements} from './mowerBackupReplacements'
+import {completeMowerDepartedRecovery,MowerBackupRecoveryBlocked} from './mowerBackupDepartureRecovery'
+import {mowerDormTaskReservations} from './mowerAlphaCandidates'
+import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import {captureMowerBackupRefreshRules,inheritMowerBackupRefreshRules} from './mowerBackupRefresh'
 import { effectiveMowerDormOrder } from '../domain/mowerDormOrder'
 import {mowerPlanEntries} from './mowerPlanOrder'
@@ -149,7 +152,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
   const diagnostics: BackupDiagnostic[] = []
   const participants = new Set<string>(), plans = parsePlans(base.sourceWorkspace, participants, diagnostics)
   if(plans.some(plan=>plan.usesMajorMaintenance)&&base.assumptions.majorMaintenanceStartHours===undefined)diagnostics.push({code:'MOWER_MAINTENANCE_ASSUMPTION',message:'未提供维护时间，本次模拟没有停服窗口'})
-  if(plans.some(plan=>plan.usesMasteryPlan))diagnostics.push({code:'MOWER_MASTERY_PLAN_ASSUMPTION',message:'本次模拟固定为无未完成的训练计划，不模拟训练进度或计划完成时刻'})
+  if(plans.some(plan=>plan.usesMasteryPlan))diagnostics.push({code:'MOWER_MASTERY_PLAN_ASSUMPTION',message:'本次模拟固定为无未完成的训练计划且未在训练，不模拟训练进度或计划完成时刻'})
   const groups = readBackupGroups(base.sourceWorkspace).filter(group=>group.id!=='default').map(group=>{const names=new Set<string>(),compiled=compileBackupExpression(group.trigger,names);names.forEach(name=>participants.add(name));return {...group,...compiled,conditionNames:[...names]}})
   let activeGroup = 'default'
   const maintenancePlans = (groupId:string) => plans.map(plan=>({...plan,usesMajorMaintenance:plan.ownMajorMaintenance || plan.maintenanceGroups.includes(groupId)}))
@@ -253,6 +256,17 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
         mergeMowerPlanOverlay(transition,p.task,next)
         for(const [room,names] of Object.entries(p.task))names.forEach((name,index)=>{if(name!=='Current')groupPositions.delete(alphaPosition(room,index))})
       })
+      const pending=pendingTasks??getMowerSourceRuntime(state).queue.tasks.filter(task=>task!==getMowerSourceRuntime(state).activeTask)
+      const departing=new Set(plans.flatMap((p,i)=>original[i]||!conditions[i]?[]:Object.entries(p.task).flatMap(([room,row])=>room.startsWith('dorm')?[]:row.flatMap((name,index)=>{
+        const owner=next.operators[next.plan[room]?.[index]??'']
+        return owner&&!protectedTraining.has(owner.name)&&!isTradeRunOrderOperator(name)&&next.replacementCandidates(owner).includes(name)&&transition[room]?.[index]===name?[owner.name]:[]
+      }))))
+      // Native admission checks the transition alone, before the caller's intent
+      // can appear to free a future bed and before replacement preservation.
+      if(!completeMowerDepartedRecovery(next,transition,departing,pending)){
+        const reserved=mowerDormTaskReservations(next,pending)
+        throw new MowerBackupRecoveryBlocked([...departing],projectMowerArrangements(next,[transition]),alphaModel.explicitSlots!(original,conditions),reserved.slots,'绑组依赖未解除，挂起换班，等待离岗成员的恢复床位')
+      }
       if(groupPositions.size)alphaCorrectGroupDorms(next,transition,groupPositions)
       if(joiningResting.size?!preserveMowerBackupRestingJoins(next,transition,replacementPositions,recovery.dorms,joiningResting,pendingTasks??getMowerSourceRuntime(state).queue.tasks.filter(task=>task!==getMowerSourceRuntime(state).activeTask),protectedTraining):!preserveMowerBackupReplacements(next,transition,replacementPositions,recovery.dorms))throw new MowerShiftPreviewError('副表替班或恢复床位不可用，暂缓切表')
       const signature=(data:MowerSchedulingData)=>JSON.stringify([data.dormOrder,data.dorms.map(b=>[b.position,data.plan[b.position[0]]?.[b.position[1]],data.operators[data.plan[b.position[0]]?.[b.position[1]]??'']?.group,data.effectiveFreeSlot(b),b.name])])

@@ -5,7 +5,7 @@ import {planMowerAlphaMetadata} from './mowerAlphaMetadata'
 import {MowerTaskQueue,MOWER_TASK_TYPES as T,toMowerMicros} from './mowerTaskQueue'
 import {projectMowerArrangements} from './mowerObservations'
 import {commitMowerGroupShifts} from './mowerSharedGroups'
-import {mowerGroupRecoveryDeadline,mowerGroupRecoveryWorkers} from './mowerGroupRecovery'
+import {mowerGroupRecoveryDeadline,mowerGroupRecoveryWorkers,mowerUnfinishedReturnMembers} from './mowerGroupRecovery'
 
 type Resident={name:string;hours?:number;options?:Partial<MowerOperatorOptions>}
 function fixture(rows:Resident[],gap=false,maxWait=0){
@@ -79,22 +79,26 @@ describe('strict grouped recovery in the alpha simulator',()=>{
   data.dorms.find(b=>b.name==='B')!.timeMicros=toMowerMicros(9)
   expect(returnTask(data)!.timeMicros).toBe(expected)
  })
- it('uses the known cap with an unknown gap deadline but still blocks unknown explicit recovery',()=>{
+ it('uses the known cap with an unknown deadline while retaining explicit execution requirements',()=>{
   const data=fixture([{name:'A',hours:1},{name:'B',hours:6}],true,1)
   returnTask(data)
   data.dorms.find(b=>b.name==='B')!.timeMicros=undefined
   expect(returnTask(data)!.timeMicros).toBe(toMowerMicros(2-8/60))
   data.operators.B!.restInFull=true
-  expect(returnTask(data)).toBeUndefined()
+  expect(returnTask(data)!.timeMicros).toBe(toMowerMicros(2-8/60))
+  expect(mowerGroupRecoveryDeadline(data,'G').requiredNames).toContain('B')
  })
  it('keeps waiting when one required member has already recovered and left its bed',()=>{
   const data=fixture([{name:'A',hours:1,options:{restInFull:true}},{name:'B',hours:4,options:{restInFull:true}},{name:'C',hours:2}])
   data.nowMicros=toMowerMicros(1);releaseFull(data,'A')
   expect(returnTask(data)!.timeMicros).toBe(toMowerMicros(4))
  })
- it('does not silently omit a required resident whose completion time is unknown',()=>{
+ it('keeps a known ordinary return while requiring the unknown full-rest resident at execution',()=>{
   const data=fixture([{name:'A',hours:1},{name:'B',options:{restInFull:true}}])
-  expect(returnTask(data)).toBeUndefined()
+  const task=returnTask(data)!
+  expect(task.timeMicros).toBe(toMowerMicros(1-8/60))
+  expect(task.plan.room_1_1).toEqual(['A','B'])
+  expect(mowerUnfinishedReturnMembers(data,task)).toEqual(new Set(['B']))
  })
  it('preserves ordinary earliest return and its existing lead when no full rule applies',()=>{
   const data=fixture([{name:'A',hours:3},{name:'B',hours:3.5}],true)
@@ -119,10 +123,12 @@ describe('strict grouped recovery in the alpha simulator',()=>{
   data.dorms.find(b=>b.name==='B')!.timeMicros=toMowerMicros(7)
   expect(returnTask(data)!.timeMicros).toBe(toMowerMicros(7))
  })
- it('waits for an unknown released full-rest member instead of recalling the group',()=>{
+ it('retains an unknown released full-rest member as a return execution requirement',()=>{
   const data=fixture([{name:'A',hours:1},{name:'B',hours:4,options:{restInFull:true}}])
   data.dorms.find(b=>b.name==='B')!.reset();data.operators.B!.currentRoom='';data.operators.B!.currentIndex=-1
-  expect(returnTask(data)).toBeUndefined()
+  const task=returnTask(data)!
+  expect(task.timeMicros).toBe(toMowerMicros(1-8/60))
+  expect(mowerUnfinishedReturnMembers(data,task)).toEqual(new Set(['B']))
  })
  it('applies an already triggered group wait to newly joined primary members',()=>{
   const data=fixture([{name:'A',hours:1},{name:'B',hours:4},{name:'C',hours:7,options:{group:'other'}}],true)
@@ -236,7 +242,9 @@ describe('group recovery spread exclusions',()=>{
   data.groupMoodGapExclusions=['G']
   expect(returnTask(data)!.timeMicros).toBe(toMowerMicros(6))
   data.dorms[1]!.timeMicros=undefined
-  expect(returnTask(data)).toBeUndefined()
+  const task=returnTask(data)!
+  expect(task.timeMicros).toBe(toMowerMicros(1-8/60))
+  expect(mowerUnfinishedReturnMembers(data,task)).toEqual(new Set(['B']))
  })
  it('isolates selected groups in projections',()=>{
   const data=fixture([{name:'A',hours:1},{name:'B',hours:6}],true)

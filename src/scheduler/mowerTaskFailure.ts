@@ -1,4 +1,4 @@
-import {refreshMowerDerivedCorrection} from './mowerCorrection'
+import {prepareMowerCorrectionRecovery,refreshMowerDerivedCorrection} from './mowerCorrection'
 import {reconcileMowerRetainedRecovery} from './mowerRetainedRecovery'
 // Port of base_schedule task failure snapshots, Mower alpha 3ad69f15 (MIT).
 import {mowerReplacementDependencyNames,mowerReplacementReservations} from './mowerReplacementCoordination'
@@ -14,7 +14,8 @@ export interface MowerTaskFailureSnapshot {
 }
 
 function snapshot(state:RuntimeState,data:MowerSchedulingData,task:MowerTask,rooms:readonly string[]):MowerTaskFailureSnapshot {
- const names=new Set(Object.values(task.plan).flat())
+ rooms=[...new Set([...rooms,...Object.keys(task.groupShiftExpected??{}).map(key=>key.slice(0,key.lastIndexOf('\0')))])]
+ const names=new Set([...Object.values(task.plan).flat(),...Object.values(task.groupShiftExpected??{})])
  if(task.type===T.EXHAUST_OFF)mowerReplacementDependencyNames(data,task.metadata.split(',')).forEach(name=>names.add(name))
  const reservations=mowerReplacementReservations(data,state.mowerSource?.queue.tasks.filter(other=>other!==task)??[])
  const transitions={...mowerArrangementGroupTransitions(data,task.plan),...task.groupShiftTransitions}
@@ -27,7 +28,7 @@ function snapshot(state:RuntimeState,data:MowerSchedulingData,task:MowerTask,roo
  })
  const correctionGroups=task.derivedCorrection&&task.type===T.SELF_CORRECTION?new Set(Object.entries(task.plan).flatMap(([room,row])=>row.flatMap((name,index)=>name==='Current'?[]:[name,data.plan[room]?.[index]]).flatMap(name=>{const op=name?data.operators[name]:undefined;return op?[op.group,...op.groupBindings.map(binding=>binding.group)]:[]})).filter(Boolean)):new Set<string>()
  return {
-  intent:JSON.stringify({plan:task.plan,metadata:task.metadata,
+  intent:JSON.stringify({plan:task.plan,metadata:task.metadata,expected:task.groupShiftExpected??{},
    correctionGroups:[...correctionGroups].sort().map(group=>[group,data.groupIsResting(group)]),
    effectivePlan:Object.fromEntries(rooms.map(room=>[room,state.config.mowerSourcePlan?.[room]])),
    products:Object.fromEntries(rooms.map(room=>[room,state.mowerFacilityProducts?.[room]??null])),
@@ -49,8 +50,14 @@ export function retainMowerFailedTask(state:RuntimeState,data:MowerSchedulingDat
 export function resumeMowerFailedTasks(state:RuntimeState,data:MowerSchedulingData,queue:MowerTaskQueue):boolean {
  let changed=false
  for(const task of queue.tasks){
+  // Replacement checks use their own scoped observation and reservation snapshots.
+  if(task.replacementCheck)continue
   const failure=task.executionFailure
   if(!failure)continue
+  if((failure.reason.startsWith('组员尚未确认回满心情')||failure.reason.startsWith('需要回满的主班心情尚未满足要求'))&&prepareMowerCorrectionRecovery(data,task,queue.tasks)){
+   delete task.executionFailure;task.coordinationDependencyWait=false;task.executionRetained=false;changed=true
+   continue
+  }
   reconcileMowerRetainedRecovery(data,task)
   // A prediction replacing a measurement does not constitute new evidence.
   for(const [name,observation] of Object.entries(failure.snapshot.observations))if(data.operators[name]?.moodIsPrediction)observation[2]=null

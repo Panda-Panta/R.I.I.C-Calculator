@@ -75,3 +75,27 @@ it('retains the alpha process lock and only uncommitted rooms when a priority de
  deferred=false;expect(executeMowerTaskArrangement(t,q,hooks)).toBe(true)
  expect(committed).toEqual(['room_1_1','dormitory_1','dormitory_2']);expect(t.backupShiftActive).toBe(false);expect(q.tasks).not.toContain(t)
 })
+
+it('confirms the whole physical arrangement before metadata or consumption and retains missing work at its original deadline',()=>{
+ const queue=new MowerTaskQueue(),task=new MowerTask({time:2,type:T.SHIFT_OFF,plan:{room_1_1:['R'],dormitory_1:['A']}})
+ task.groupShiftExpected={['room_1_1\0'+'0']:'R',['dormitory_1\0'+'0']:'A'};queue.tasks=[task]
+ const stages:string[]=[];let confirmed=false
+ const hooks:MowerTaskExecutionHooks={alpha:true,protectShift:true,backup:()=>({changed:false,generated:[]}),
+  arrangeRoom:room=>{stages.push(room)},metadata:()=>{stages.push('metadata')},
+  completeArrangement:current=>{stages.push('confirm');if(!confirmed){current.plan={room_1_1:['R']};return false}return true},
+ }
+ expect(executeMowerTaskArrangement(task,queue,hooks)).toBe(false)
+ expect(queue.tasks).toEqual([task]);expect(task.time).toBe(2);expect(task.plan).toEqual({room_1_1:['R']})
+ expect(stages).toEqual(['room_1_1','dormitory_1','confirm'])
+ confirmed=true;expect(executeMowerTaskArrangement(task,queue,hooks)).toBe(true)
+ expect(stages.slice(-3)).toEqual(['room_1_1','confirm','metadata']);expect(queue.tasks).not.toContain(task)
+})
+
+it('checks pending physical targets before consuming a task whose remaining plan is empty',()=>{
+ const queue=new MowerTaskQueue(),task=new MowerTask({time:3,type:T.SHIFT_ON});queue.tasks=[task]
+ task.groupShiftExpected={['room_1_1\0'+'0']:'A'}
+ expect(executeMowerTaskArrangement(task,queue,{backup:()=>({changed:false,generated:[]}),arrangeRoom:()=>{},metadata:()=>{},
+  completeArrangement:current=>{expect(current).toBe(task);return false},
+ })).toBe(false)
+ expect(queue.tasks).toEqual([task]);expect(task.time).toBe(3)
+})

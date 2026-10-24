@@ -15,6 +15,7 @@ import {parkMowerPreviewRecovery,resumeMowerPreviewRecovery} from './mowerPrevie
 import {planMowerMetadata} from './mowerMetadata'
 import {mowerCorrectionPlan} from './mowerCorrection'
 import {retainMowerFailedTask} from './mowerTaskFailure'
+import {MowerBackupRecoveryBlocked} from './mowerBackupDepartureRecovery'
 const fang='char_123_fang',vanilla='char_240_wyvern',melantha='char_208_melan',nightingale='char_179_cgbird'
 const rates={workRate:()=>1,recoveryRate:()=>4}
 function fixture(explicitReturn=false,trigger?:string,precedingReturn=false){
@@ -205,10 +206,31 @@ describe('observed recovery behind an empty return preview',()=>{
   data.operators.char_122_beagle!.setProjectedPosition('',-1)
   data.dorms.find(b=>b.position[1]===1)!.name=melantha
   task.plan={room_1_1:[fang],recycle:[melantha]}
-  prepareMowerShiftBackup(data,task,state.mowerShiftModel!,source.queue.tasks)
+  // Native _complete_departed_recovery excludes self.task; this argument contains
+  // other pending arrangements, just as the complete-cycle caller supplies it.
+  prepareMowerShiftBackup(data,task,state.mowerShiftModel!,source.queue.tasks.filter(pending=>pending!==task))
   expect(task.plan.room_1_1).toEqual([vanilla])
   expect(task.plan.recycle?.includes(melantha)).toBe(explicit)
   expect(task.groupShiftTransitions.a).toBe(!explicit)
+ })
+ it.each([false,true])('keeps the original group return when another pending task reserves the departing member, explicit return=%s',explicit=>{
+  const {state,data,task,source}=fixture(explicit)
+  data.operators[melantha]!.setProjectedPosition('dormitory_1',1)
+  data.operators.char_122_beagle!.setProjectedPosition('',-1)
+  data.dorms.find(b=>b.position[1]===1)!.name=melantha
+  task.plan={room_1_1:[fang],recycle:[melantha]}
+  const original=structuredClone(task.plan)
+  const pending=new MowerTask({time:1,type:T.SELF_CORRECTION,plan:{room_1_1:[fang]}})
+  source.queue.tasks.push(pending)
+  const beforeData=JSON.stringify(data),beforeQueue=JSON.stringify(source.queue.tasks)
+  expect(()=>prepareMowerShiftBackup(data,task,state.mowerShiftModel!,source.queue.tasks.filter(other=>other!==task))).toThrow(MowerBackupRecoveryBlocked)
+  expect(task.plan).toEqual(original)
+  expect(source.queue.tasks).toEqual([task,pending])
+  expect(JSON.stringify(data)).toBe(beforeData)
+  expect(JSON.stringify(source.queue.tasks)).toBe(beforeQueue)
+  expect(data.operators[fang]!.isResting()).toBe(true)
+  expect(data.operators[melantha]!.isResting()).toBe(true)
+  expect(data.groupShiftState.a).toBe(true)
  })
  it.each(['backup','cycle'])('uses the new primary slots when checking explicit relocation during %s preview',mode=>{
   const workspace=createDefaultWorkspace(),plume=id('翎羽')

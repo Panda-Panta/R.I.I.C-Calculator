@@ -7,7 +7,7 @@ import { matchesRiicFaction, matchesRiicIdentity } from '../domain/riicIdentity'
 import type { AppConfig } from '../domain/types'
 export interface DormitoryRecoveryResult { rates:Map<string,number>; details:Map<string,string[]>; unquantified:string[] }
 /** Actual-room rates; unspecified atmosphere is diagnosed. Valid policy targets are retained; invalid targets fall back to eligible residents. */
-export function evaluateDormitoryRecovery(config:AppConfig,roomIndex:number,moraleValues:ReadonlyMap<string,number>,atmosphere?:number,targetByProvider?:ReadonlyMap<string,string>,conservative=false):DormitoryRecoveryResult {
+export function evaluateDormitoryRecovery(config:AppConfig,roomIndex:number,moraleValues:ReadonlyMap<string,number>,atmosphere?:number,targetByProvider?:ReadonlyMap<string,string>,conservative=false,suppressedSingleProviders?:ReadonlySet<string>):DormitoryRecoveryResult {
  const rates=new Map<string,number>(),details=new Map<string,string[]>(),unquantified:string[]=[]
  const level=config.facilities.dormitories[roomIndex]
  if(!level)return {rates,details,unquantified:['宿舍等级缺失']}
@@ -62,6 +62,9 @@ export function evaluateDormitoryRecovery(config:AppConfig,roomIndex:number,mora
   const allMatch=d.match(/(?:该宿舍内|宿舍内)(?:所有|除自身以外所有)干员的心情每小时恢复\+([\d.]+)/)
   if(allMatch)for(const t of operators){if(d.includes('除自身以外所有')&&t.charId===provider.charId)continue;const morganExtra=provider.name==='推进之王'&&operators.some(o=>o.skills.some(s=>s.buffId==='dorm_rec_toone[000]'))&&matchesRiicIdentity(t,'groupId','glasgow')?.3:0;record(t.charId,Number(allMatch[1])+morganExtra,'all',label)}
   const singleMatch=d.match(/某个干员(?:的心情)?每小时恢复\+([\d.]+)/)
+  // The simulator may explicitly model an ineligible/absent target. That local
+  // assumption wastes this bonus rather than assigning it to another resident.
+  if(singleMatch&&suppressedSingleProviders?.has(provider.charId))continue
   if(singleMatch){const candidates=eligibleSingleRecoveryTargets(operators,provider.charId,mood);const requested=targetByProvider?.get(provider.charId);const requestedTarget=candidates.find(o=>o.charId===requested);const target=requestedTarget??(requested?[...candidates].sort((a,b)=>mood(a.charId)-mood(b.charId))[0]:candidates.length===1?candidates[0]:undefined);if(target){
    const named:Record<string,string>={'dorm_rec_single_P[000]':'锡兰','dorm_rec_single_P[001]':'嘉维尔','dorm_rec_single_P[002]':'蓝毒'}
    const extra=(b==='dorm_rec_single&tag[000]'&&(hasRiicTag(target,'monsterHunter')||hasRiicTag(target,'bubbleHunter')))||(named[b]===target.name)||(b==='dorm_rec_single_power[000]'&&matchesRiicIdentity(target,'nationId','sami'))||(b==='dorm_rec_single_power[001]'&&matchesRiicIdentity(target,'nationId','laterano'))

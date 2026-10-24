@@ -1,0 +1,498 @@
+{
+  "repository": "ArkMowers/arknights-mower",
+  "commit": "84e3926c0f36045d7baeb1ac050f815b40952d6d",
+  "scope": "Unmodified resting-priority and scheduling-mood AST functions with frozen time and plain in-memory observations; no capacity, device I/O or full scheduler parity claim.",
+  "sources": [
+    {
+      "path": "arknights_mower/utils/resting_priority.py",
+      "sha256": "25c33e1ee47f7c9a52e3a9765ce611650db02efb686912063dcbb95b3f2d763c"
+    },
+    {
+      "path": "arknights_mower/utils/dorm_candidates.py",
+      "sha256": "26a833125a563326f2a6f83c4610ae8dddb061e04af18f614c2ce3ff2cfe775a"
+    },
+    {
+      "path": "arknights_mower/utils/operators.py",
+      "sha256": "e4b045d9743ffbc33e3cbc7b03157aff590fd70f9aa92264dfd81482c5402a34"
+    }
+  ],
+  "astSha256": "5b288464ca4ed0f3e0ebf06de967a8bb425dedd1aaca390fea527eea7f04abc4",
+  "cases": [
+    {
+      "name": "unfinished-primary-keeps-protected-tier",
+      "requester": {
+        "mood": 2
+      },
+      "resident": {
+        "operator_type": "high",
+        "room": "work",
+        "resting_priority": "low",
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 0,
+          "resident": 2
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "full-dynamic-primary-releases-priority",
+      "requester": {
+        "mood": 23
+      },
+      "resident": {
+        "mood": 24,
+        "operator_type": "high",
+        "room": "work",
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "resident"
+      ],
+      "referenced": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 5,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": true
+        },
+        "takeover": true
+      }
+    },
+    {
+      "name": "fixed-full-keeper-keeps-priority",
+      "requester": {
+        "mood": 2
+      },
+      "resident": {
+        "mood": 24,
+        "operator_type": "high",
+        "room": "dormitory_1",
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "resident"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 6,
+          "resident": 0
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "listed-full-resident-keeps-priority",
+      "requester": {
+        "mood": 2
+      },
+      "resident": {
+        "mood": 24,
+        "operator_type": "high",
+        "room": "work",
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "resident"
+      ],
+      "excluded": [
+        "resident"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 6,
+          "resident": 0
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "card-full-is-not-a-measured-full-filler",
+      "requester": {
+        "mood": 23
+      },
+      "resident": {
+        "mood": 10,
+        "mood_is_prediction": true,
+        "current_room": "dormitory_1"
+      },
+      "referenced": [
+        "requester"
+      ],
+      "estimates": {
+        "resident": [
+          24,
+          -0.25
+        ]
+      },
+      "expected": {
+        "tier": {
+          "requester": 5,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "newer-partial-card-cancels-full-classification",
+      "requester": {
+        "mood": 2
+      },
+      "resident": {
+        "mood": 24,
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "resident"
+      ],
+      "estimates": {
+        "resident": [
+          10,
+          -0.25
+        ]
+      },
+      "expected": {
+        "tier": {
+          "requester": 6,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": true
+        },
+        "takeover": true
+      }
+    },
+    {
+      "name": "partial-card-requester-meets-ordinary-gate",
+      "requester": {
+        "mood": 24
+      },
+      "resident": {
+        "mood": 10,
+        "current_room": "dormitory_1"
+      },
+      "referenced": [
+        "requester"
+      ],
+      "estimates": {
+        "requester": [
+          2,
+          -0.25
+        ]
+      },
+      "expected": {
+        "tier": {
+          "requester": 6,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": true,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "future-card-is-ignored",
+      "requester": {
+        "mood": 23
+      },
+      "resident": {
+        "mood": 10,
+        "current_room": "dormitory_1"
+      },
+      "referenced": [
+        "requester"
+      ],
+      "estimates": {
+        "requester": [
+          2,
+          0.25
+        ]
+      },
+      "expected": {
+        "tier": {
+          "requester": 5,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "one-hour-old-card-is-expired",
+      "requester": {
+        "mood": 23
+      },
+      "resident": {
+        "mood": 10,
+        "current_room": "dormitory_1"
+      },
+      "referenced": [
+        "requester"
+      ],
+      "estimates": {
+        "requester": [
+          2,
+          -1
+        ]
+      },
+      "expected": {
+        "tier": {
+          "requester": 5,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "ordinary-low-worker-uses-configured-standby-tier",
+      "requester": {
+        "mood": 1
+      },
+      "resident": {
+        "mood": 10,
+        "current_room": "dormitory_1"
+      },
+      "standby": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 4,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": true
+      }
+    },
+    {
+      "name": "retired-standby-promotion-does-not-change-tier",
+      "requester": {
+        "mood": 1,
+        "operator_type": "high",
+        "room": "work",
+        "resting_priority": "standby",
+        "standby_low_priority": true
+      },
+      "resident": {
+        "mood": 10,
+        "current_room": "dormitory_1"
+      },
+      "standby": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 4,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": false
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": true
+      }
+    },
+    {
+      "name": "full-requester-cannot-displace",
+      "requester": {
+        "mood": 24
+      },
+      "resident": {
+        "mood": 24,
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 6,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": true,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": true
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "workaholic-resident-stays-excluded",
+      "requester": {
+        "mood": 2
+      },
+      "resident": {
+        "mood": 24,
+        "current_room": "dormitory_1",
+        "workaholic": true
+      },
+      "priority": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 0,
+          "resident": 7
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": false
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "blacklisted-requester-stays-excluded",
+      "requester": {
+        "mood": 2
+      },
+      "resident": {
+        "mood": 24,
+        "current_room": "dormitory_1"
+      },
+      "blacklist": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 7,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": true
+        },
+        "takeover": false
+      }
+    },
+    {
+      "name": "personal-cap-releases-dynamic-priority",
+      "requester": {
+        "mood": 23
+      },
+      "resident": {
+        "mood": 20,
+        "upper_limit": 20,
+        "operator_type": "high",
+        "room": "work",
+        "current_room": "dormitory_1"
+      },
+      "priority": [
+        "resident"
+      ],
+      "referenced": [
+        "requester"
+      ],
+      "expected": {
+        "tier": {
+          "requester": 5,
+          "resident": 6
+        },
+        "fullDynamic": {
+          "requester": false,
+          "resident": true
+        },
+        "fullFiller": {
+          "requester": false,
+          "resident": true
+        },
+        "takeover": true
+      }
+    }
+  ]
+}

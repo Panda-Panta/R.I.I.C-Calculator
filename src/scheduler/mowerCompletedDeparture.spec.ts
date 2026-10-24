@@ -5,6 +5,7 @@ import { mowerCorrectionPlan } from './mowerCorrection'
 import { mowerGroupRecoveryDeadline } from './mowerGroupRecovery'
 import { mowerHasMeasuredDormDeparture, projectMowerArrangements } from './mowerObservations'
 import { MowerTask, MOWER_TASK_TYPES as T, toMowerMicros } from './mowerTaskQueue'
+import { prepareMowerRelease } from './mowerRelease'
 
 const room = 'dormitory_1'
 const rates = { workRate: () => 1, recoveryRate: () => 4 }
@@ -68,11 +69,27 @@ describe('confirmed ordinary dorm departure keeps measured morale', () => {
     expect(f.source.data.groupShiftState.g).toBe(true)
   })
 
-  it('replaces a predicted full mood with the departure observation', () => {
+  it('defers a predicted-full ordinary release to the observed recovery deadline', () => {
     const f = fixture(), op = f.source.data.operators.A!
     op.moodIsPrediction = true
+    expect(prepareMowerRelease(f.source.data,f.source.queue,f.task)).toBe(false)
+    // 84e3926 _prepare_release_dorm_member rejects prediction as evidence and
+    // preserves the actual resident until the existing observed recovery due time.
+    expect(op.currentRoom).toBe(room)
+    expect(f.task.plan).toEqual({})
+    expect(f.source.queue.tasks).toContainEqual(expect.objectContaining({type:T.RELEASE_DORM,metadata:'A',timeMicros:toMowerMicros(2)}))
+    expect(op.moodIsPrediction).toBe(true)
+    const integrated=fixture();integrated.source.data.operators.A!.moodIsPrediction=true
+    finish(integrated)
+    expect(integrated.source.data.operators.A!.currentRoom).toBe(room)
+  })
+
+  it('replaces predicted full mood with the actual observation after an explicit non-release departure',()=>{
+    const f=fixture(),op=f.source.data.operators.A!
+    f.task.type=T.SELF_CORRECTION;op.moodIsPrediction=true
     finish(f)
     expect(op.currentRoom).toBe('')
+    expect(op.mood).toBe(12)
     expect(op.timeStampMicros).toBe(toMowerMicros(1))
     expect(op.moodIsPrediction).toBe(false)
     expect(op.depletionRate).toBe(0)
@@ -119,11 +136,25 @@ describe('confirmed ordinary dorm departure keeps measured morale', () => {
     expect(f.state.bedOccupants[room + '_4']).toBe('B')
   })
 
-  it('invalidates below-limit morale after the physical departure', () => {
+  it('retains below-limit morale while the ordinary release waits for the saved deadline', () => {
     const f = fixture(11), op = f.source.data.operators.A!
+    expect(prepareMowerRelease(f.source.data,f.source.queue,f.task)).toBe(false)
+    expect(op.currentRoom).toBe(room)
+    expect(op.mood).toBe(11)
+    expect(op.timeStampMicros).toBe(0)
+    expect(f.source.queue.tasks).toContainEqual(expect.objectContaining({type:T.RELEASE_DORM,metadata:'A',timeMicros:toMowerMicros(2)}))
+    const integrated=fixture(11)
+    finish(integrated)
+    expect(integrated.source.data.operators.A!.currentRoom).toBe(room)
+  })
+  it('invalidates an underfull cache only after an explicit non-release departure physically completes',()=>{
+    const f=fixture(11),op=f.source.data.operators.A!
+    f.task.type=T.SELF_CORRECTION
     finish(f)
     expect(op.currentRoom).toBe('')
+    expect(op.mood).toBe(11)
     expect(op.timeStampMicros).toBeUndefined()
+    expect(f.state.completedRest).not.toContain('A')
   })
 })
 

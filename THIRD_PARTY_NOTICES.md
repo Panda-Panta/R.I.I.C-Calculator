@@ -86,6 +86,7 @@ Mower plan files do not store facility levels directly; levels are deduced based
   - Gracefully handles placeholder occupants (`Free`, `Current`, `Empty`) by filtering them out of active yield simulation.
 
 ### 5. Alpha Scheduling and Settings Adaptation
+- The 2026-10-24 mechanism update is pinned to Mower alpha `84e3926c0f36045d7baeb1ac050f815b40952d6d`: backup functions, recovery observations/deadlines, ordinary replacement checks, group execution confirmation, dynamic full-mood beds and confirmed-position warmup. Scope, native/local differences and source hashes are recorded in [the update note](docs/UPDATE_2026-10-24_MOWER_LATEST.md) and the skill source manifest. The MIT attribution above applies to the adapted code.
 - Current compatibility source: Mower alpha `ab0a4e5bec23f6f8d7c37b0648f05dda28f31866` (MIT). Adapted decisions include backup configuration layering, group bindings, shared replacements, dorm ordering/isolation, morale limits, product switching and plan validation. Settings labels and form organization follow the source Vue components.
 - The local simulator supports a documented subset of the scheduling lifecycle and ideal trade-order model. It does not execute ADB, device recognition, training tasks or the complete native product-switch staffing/locking sequence. Historical fixtures retain their original source revisions.
 - Unknown JSON fields are preserved structurally. Retired fields are migrated explicitly; preserved unsupported backup expressions produce diagnostics. Re-serialized JSON is not claimed to be byte-identical.

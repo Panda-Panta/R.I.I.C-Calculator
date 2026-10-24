@@ -73,13 +73,12 @@ describe('observed full morale across alpha metadata and physical release prepar
     expect(operators.A!.upperLimit).toBe(12)
   })
 
-  it('preserves strict personal-limit release timing and its individual limit', () => {
+  it('releases a measured personal limit immediately while preserving its individual limit', () => {
     const { data, queue, task, operators } = fixture([{ mood: 12, upperLimit: 12, restMoodLimit: true }])
     expect(operators.A!.currentMood(now)).toBeLessThan(12)
     expect(task.strictMoodLimit).toBe(true)
     expect(task.moodLimit).toBe(12)
-    expect(task.timeMicros).toBe(deadline)
-    data.nowMicros = deadline
+    expect(task.timeMicros).toBe(now)
     expect(prepareMowerRelease(data, queue, task)).toBe(true)
     expect(operators.A!.mood).toBe(12)
     expect(operators.A!.upperLimit).toBe(12)

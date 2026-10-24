@@ -1,27 +1,47 @@
 import {planMowerPreferredReplacementRestore,mowerReplacementDependencyNames,mowerReplacementReservations} from './mowerReplacementCoordination'
 import {mowerRestingBindingGroups,normalizeMowerSharedArrangement} from './mowerSharedGroups'
-import {mowerGroupRecoveryDeadline} from './mowerGroupRecovery'
+import {mowerGroupRecoveryDeadline,mowerRecoveryMoodComplete,mowerObservedRecoveryDeadline} from './mowerGroupRecovery'
 import {admitMowerDerivedTasks,type MowerDependencyReturnAdmission} from './mowerTaskDerivation'
 // Mower b2d9ac8 scheduler_task.plan_metadata; recovery gap updated to ab0a4e5 (MIT, Copyright 2021 Nano).
 import {hasObservedFullMood,hasRestingMood} from './mowerOperatorState'
 import {projectMowerArrangements} from './mowerObservations'
 import {alphaPosition,alphaRebalanceClosingDorms} from './mowerAlphaDorm'
 import {generateMowerDormTasks,mergeMowerAlphaReleases,mowerArrangementResources,mowerAfterPendingArrangements,type MowerDormBatch,type MowerReturnTargets} from './mowerDormTasks'
-import {MowerTask,MOWER_TASK_TYPES as T,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
+import {MowerTask,MOWER_TASK_TYPES as T,toMowerMicros,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
 import type {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 
 export function planMowerAlphaMetadata(actual:MowerSchedulingData,queue:MowerTaskQueue,limited:MowerTask[],dependencyReturn?:MowerDependencyReturnAdmission):void {
+ // Partial execution keeps its confirmed destinations and the untouched ordinary
+ // queue. Personal upper-limit departures still follow actual bed observations.
+ if(queue.tasks.some(task=>!task.executionFailure&&(task.backupShiftActive||Object.keys(task.groupShiftExpected??{}).length>0))){
+  queue.tasks=queue.tasks.filter(task=>!task.strictMoodLimit)
+  queue.tasks.push(...limited)
+  return
+ }
  for(const group of actual.groupMoodGapExclusions){delete actual.groupRecoveryFullMembers[group];delete actual.groupRecoveryReturnMicros[group]}
  actual.refreshIdleDormSearch()
  const locked=queue.tasks.filter(t=>t.productShiftLocked),names=new Set(locked.flatMap(t=>[...t.productLockNames])),slots=new Set(locked.flatMap(t=>[...t.productLockSlots]))
  const groups=new Set([...names].map(n=>actual.operators[n]?.group??'').filter(Boolean)),existing:MowerReturnTargets={}
  if(actual.planConditions.some(Boolean))for(const task of queue.tasks)if(task.type===T.SHIFT_ON)for(const [room,row] of Object.entries(task.plan))row.forEach((name,index)=>{if(!['Current','Free',''].includes(name))existing[name]=[room,index]})
+ const previousReturns=new Map<string,[number,number]>()
+ for(const task of queue.tasks)if(task.type===T.SHIFT_ON&&!task.productShiftLocked)for(const [room,row] of Object.entries(task.plan))if(!room.startsWith('dorm'))for(const name of row){
+  const op=actual.operators[name]
+  if(op&&(!op.currentRoom||op.isResting()))previousReturns.set(name,[task.timeMicros,task.recoveryPositionVersions[name]??op.dormPositionVersion])
+ }
  queue.removeDerived(true)
  const reserved=new Set(queue.tasks.filter(t=>t.type!==T.FILL_DORM).flatMap(t=>[...mowerArrangementResources(t.plan).slots].filter(s=>s.startsWith('dorm'))))
  const vacancies=new Set(actual.dorms.filter(b=>!b.name&&!reserved.has(alphaPosition(...b.position))&&actual.effectiveFreeSlot(b)&&!actual.currentOperator(...b.position)).map(b=>alphaPosition(...b.position)))
  queue.tasks=queue.tasks.filter(t=>{if(t.type!==T.FILL_DORM||t.productShiftLocked||t.dormRecoveryRestore.length)return true;const resources=mowerArrangementResources(t.dormFillPlan&&Object.keys(t.dormFillPlan).length?t.dormFillPlan:t.plan);return resources.slots.size>0&&[...resources.slots].every(s=>vacancies.has(s))})
  const pending=queue.tasks.filter(t=>[T.SELF_CORRECTION,T.RE_ORDER].includes(t.type)&&!t.executionFailure&&!t.productShiftLocked&&Object.keys(t.plan).length).sort((a,b)=>a.timeMicros-b.timeMicros)
  const data=projectMowerArrangements(actual,pending.map(t=>t.plan)),now=data.nowMicros
+ const previousReturnTime=(name:string)=>{const previous=previousReturns.get(name);return previous&&previous[1]===data.operators[name]?.dormPositionVersion?previous[0]:undefined}
+ const normalReturnTime=(beds:MowerDormState[]):number|undefined=>{
+  const known=beds.flatMap(b=>b.timeMicros===undefined?[]:[b.timeMicros])
+  if(known.length)return Math.min(...known)
+  const previous=beds.flatMap(b=>{const due=previousReturnTime(b.name);return due===undefined?[]:[due]})
+  // generateMowerDormTasks applies the ordinary eight-minute lead once.
+  return previous.length?Math.min(...previous)+toMowerMicros(8/60):undefined
+ }
 
  const waitingForActualGroup=(name:string)=>{const op=actual.operators[name];return !!op?.independentRest&&mowerRestingBindingGroups(actual,op).length>0}
  const grouped=new Map<string,MowerDormState[]>(),free:MowerDormState[]=[]
@@ -38,15 +58,17 @@ export function planMowerAlphaMetadata(actual:MowerSchedulingData,queue:MowerTas
   const high=priority.length?priority:ordinary.length?ordinary:beds.filter(b=>(!data.operators[b.name]!.multiGroup||data.operators[b.name]!.independentRest)&&data.operators[b.name]!.isHigh()&&!(group&&data.canStandby(data.operators[b.name]!)))
   if(group){
    const recovery=mowerGroupRecoveryDeadline(data,group)
+   const previous=recovery.requiredNames.flatMap(name=>{const op=data.operators[name]!,due=previousReturnTime(name);return !mowerRecoveryMoodComplete(data,op)&&mowerObservedRecoveryDeadline(data,op)===undefined&&due!==undefined?[due]:[]})
+   if(previous.length)recovery.timeMicros=Math.max(...previous,...(recovery.timeMicros===undefined?[]:[recovery.timeMicros]))
    if(data.groupRecoveryFullMembers[group]&&data.groupIsResting(group)&&actual.groupIsResting(group)){actual.groupRecoveryFullMembers[group]=[...data.groupRecoveryFullMembers[group]!];if(data.groupRecoveryReturnMicros[group]!==undefined)actual.groupRecoveryReturnMicros[group]=data.groupRecoveryReturnMicros[group]!}
-   if(recovery.requiredNames.length||recovery.timeMicros!==undefined){
-    if(recovery.timeMicros!==undefined)add(recovery.timeMicros,high.length?high:beds.filter(b=>data.operators[b.name]!.isHigh()),true)
+   if(recovery.timeMicros!==undefined){
+    add(recovery.timeMicros,high.length?high:beds.filter(b=>data.operators[b.name]!.isHigh()),true)
     continue
    }
-   const nearest=high.filter(b=>b.timeMicros!==undefined).sort((a,b)=>a.timeMicros!-b.timeMicros!)[0]
-   if(nearest)add(nearest.timeMicros!,high,false)
+   const ordinaryDue=normalReturnTime(high)
+   if(ordinaryDue!==undefined)add(ordinaryDue,high,false)
   }
-  if(high.length&&!group)for(const b of high)if(b.timeMicros!==undefined){const full=data.operators[b.name]!.restInFull;add(b.timeMicros,[b],full)}
+  if(high.length&&!group)for(const b of high){const full=data.operators[b.name]!.restInFull,due=full?b.timeMicros??previousReturnTime(b.name):normalReturnTime([b]);if(due!==undefined)add(due,[b],full)}
  }
  if(data.freeRoom)for(const b of free){const op=data.operators[b.name]!,observed=hasObservedFullMood(op);if(b.timeMicros===undefined&&!observed)continue;const time=observed?now:b.timeMicros!,previous=releases.get(time);if(previous)previous.dorms.push(b);else releases.set(time,{timeMicros:time,dorms:[b],restInFull:null})}
  const generated=admitMowerDerivedTasks(actual,queue.tasks,generateMowerDormTasks([...batches.values(),...releases.values()],data,existing,pending),dependencyReturn);queue.tasks.push(...generated)
@@ -84,4 +106,5 @@ export function planMowerAlphaMetadata(actual:MowerSchedulingData,queue:MowerTas
  queue.tasks.push(...admitMowerDerivedTasks(actual,queue.tasks,limited,dependencyReturn))
  const retained=queue.tasks.filter(task=>task.retainsExecution),active=queue.tasks.filter(task=>!task.retainsExecution)
  mergeMowerAlphaReleases(active,data.mergeIntervalMinutes,{adjustForRunOrders:actual.adjustForRunOrders});queue.tasks=[...active,...retained]
+ for(const task of queue.tasks)if(task.type===T.SHIFT_ON&&!task.retainsExecution&&!task.productShiftLocked)task.recoveryPositionVersions=Object.fromEntries(Object.values(task.plan).flat().flatMap(name=>{const op=data.operators[name];return op?[[name,op.dormPositionVersion]]:[]}))
 }

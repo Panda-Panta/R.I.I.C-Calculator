@@ -1,7 +1,6 @@
 // Port of default exhaust_replacement.plan_exhaust_support.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import type {MowerSchedulingData} from './mowerSchedulingData'
-import {mowerReplacementCandidates} from './mowerOperatorState'
 import {projectMowerArrangements} from './mowerObservations'
 import {mowerGetRestingPlan,type MowerRestingOptions} from './mowerOrdinaryPlanning'
 import {mowerIsDormReplacement} from './mowerCorrection'
@@ -41,7 +40,7 @@ export function planMowerExhaustSupport(original:MowerSchedulingData,candidates:
   return Number(x.room.startsWith('dorm'))-Number(y.room.startsWith('dorm'))||Number(!fia.includes(a))-Number(!fia.includes(b))||Number(['factory','train'].includes(x.currentRoom))-Number(['factory','train'].includes(y.currentRoom))||(x.currentMood(data.nowMicros)-x.lowerLimit)-(y.currentMood(data.nowMicros)-y.lowerLimit)
  })
  for(const name of ordered){
-  const worker=data.operators[name]!,covers=mowerReplacementCandidates(worker,data.operators,data.policy,data.nowMicros)
+  const worker=data.operators[name]!,covers=data.replacementCandidates(worker)
   const free=covers.find(n=>available(data,n));if(free){selected.add(free);continue}
   const occupied=covers.flatMap(cover=>{
    if(!eligible(data,cover)||!working(data,cover)||data.operators[cover]!.currentRoom==='train')return []
@@ -50,7 +49,7 @@ export function planMowerExhaustSupport(original:MowerSchedulingData,candidates:
   })
   let resolved=false
   for(const {cover,owner} of occupied){
-   const alternate=mowerReplacementCandidates(owner,data.operators,data.policy,data.nowMicros).find(n=>!coverNames.has(n)&&available(data,n))
+   const alternate=data.replacementCandidates(owner).find(n=>!coverNames.has(n)&&available(data,n))
    if(!alternate)continue
    (plan[owner.room]??=Array(data.plan[owner.room]!.length).fill('Current'))[owner.index]=alternate
    data=projectMowerArrangements(original,[plan]);selected.add(cover);resolved=true;break
@@ -63,7 +62,7 @@ export function planMowerExhaustSupport(original:MowerSchedulingData,candidates:
  }
  selected.clear()
  for(const name of ordered){
-  const cover=mowerReplacementCandidates(data.operators[name]!,data.operators,data.policy,data.nowMicros).find(n=>available(data,n))
+  const cover=data.replacementCandidates(data.operators[name]!).find(n=>available(data,n))
   if(!cover)return undefined;selected.add(cover)
  }
  const canRest=(state:MowerSchedulingData)=>{

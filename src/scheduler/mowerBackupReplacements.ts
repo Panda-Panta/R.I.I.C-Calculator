@@ -1,7 +1,6 @@
 // Mower alpha ab0a4e5 resting_correction.preserve_backup_replacements (MIT).
 import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import {mowerMatchReplacements} from './mowerAlphaDorm'
-import {mowerReplacementCandidates} from './mowerOperatorState'
 import {mowerRestingBindingGroups, mowerSameGroupPrimaryReplacement, mowerSharedReplacements} from './mowerSharedGroups'
 import type {MowerSchedulingData, MowerDormState} from './mowerSchedulingData'
 import type {MowerTaskPlan} from './mowerTaskQueue'
@@ -32,7 +31,7 @@ export function preserveMowerBackupReplacements(data: MowerSchedulingData, plan:
   }
   for (const name of Object.keys(options)) {
     const owner = data.operators[name]!, position = owners.get(name)!, actual = data.currentOperator(...position)
-    const candidates = owner.multiGroup ? mowerSharedReplacements(owner, mowerRestingBindingGroups(data, owner)).filter(n => n !== 'Free') : mowerReplacementCandidates(owner, data.operators, data.policy, data.nowMicros)
+    const candidates = owner.multiGroup ? mowerSharedReplacements(owner, mowerRestingBindingGroups(data, owner)).filter(n => n !== 'Free') : data.replacementCandidates(owner)
     if (actual && candidates.includes(actual.name)) candidates.unshift(...candidates.splice(candidates.indexOf(actual.name), 1))
     for (const candidate of candidates) {
       const cover = data.operators[candidate]

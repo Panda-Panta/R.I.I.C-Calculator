@@ -1,5 +1,5 @@
-import {describe,it,expect} from 'vitest'
-import {createRosterRuntime,settleRoster,advanceRoster,type RuntimeConfig} from './rosterRuntime'
+import {describe,it,expect,vi} from 'vitest'
+import {createRosterRuntime,settleRoster,advanceRoster,nextRosterActionHours,type RuntimeConfig} from './rosterRuntime'
 import {getMowerSourceRuntime} from './mowerSourceRuntime'
 import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
 import {planMowerMetadata} from './mowerMetadata'
@@ -8,6 +8,8 @@ import {createBackupPlanController} from './backupPlans'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {compileRosterSchedule} from './compileRosterSchedule'
 import {compiledScheduleToRuntimeConfig} from './scheduleAdapter'
+import {retainMowerFailedTask} from './mowerTaskFailure'
+import * as protection from './mowerShiftProtection'
 
 const rates={workRate:()=>1,recoveryRate:()=>4}
 function fixture(dormCount=2):RuntimeConfig {
@@ -51,6 +53,51 @@ describe('Mower complete shift protection',()=>{
   expect(task.timeMicros).toBeGreaterThan(source.data.nowMicros)
   expect(task.plan.dormitory_1![4]).toBe('N')
   expect(s.diagnostics).toContainEqual(expect.objectContaining({code:'mower-shift-bed-conflict'}))
+ })
+
+ it('drains three independent due tasks after a bed deferral without retrying its future task',()=>{
+  const s=restingState(1);s.config.mowerRunLoopClock={minimumClockStepMicros:1,notificationSleepMicros:1_000_000}
+  const source=getMowerSourceRuntime(s)
+  const blocked=new MowerTask({plan:{dormitory_1:['Current','Current','Current','Current','N']}})
+  const independent=Array.from({length:3},()=>new MowerTask({plan:{room_1_1:['Current']}}))
+  source.queue.tasks=[blocked,...independent]
+  const bed=s.bedOccupants.dormitory_1_4,spy=vi.spyOn(protection,'prepareMowerShiftBeds')
+  try{
+   settleRoster(s,rates)
+   const deadline=blocked.timeMicros,plan=structuredClone(blocked.plan)
+   expect(source.queue.tasks).toContain(blocked);expect(source.queue.tasks).not.toContain(independent[0])
+   expect(deadline).toBeGreaterThan(source.data.nowMicros)
+   const due=()=>source.queue.tasks.filter(task=>!task.executionFailure&&task.timeMicros<=source.data.nowMicros).length
+   for(let pass=0;pass<5&&due();pass++){
+    const before=due(),next=nextRosterActionHours(s,rates)
+    expect(next).toBeGreaterThan(0);expect(next).toBeLessThanOrEqual(1/3_600_000_000)
+    advanceRoster(s,next,rates);settleRoster(s,rates)
+    expect(due()).toBeLessThan(before)
+    expect(blocked.timeMicros).toBe(deadline);expect(blocked.plan).toEqual(plan)
+   }
+   expect(independent.every(task=>!source.queue.tasks.includes(task))).toBe(true)
+   expect(source.queue.find()!.timeMicros).toBeGreaterThan(source.data.nowMicros)
+   expect(nextRosterActionHours(s,rates)).toBeGreaterThan(0)
+   expect(spy.mock.calls.filter(([,task])=>task===blocked)).toHaveLength(1)
+   expect(s.bedOccupants.dormitory_1_4).toBe(bed)
+  }finally{spy.mockRestore()}
+ })
+
+ it('leaves only the real bed deadline pending when all other queued tasks are suspended failures',()=>{
+  const s=restingState(1);s.config.mowerRunLoopClock={minimumClockStepMicros:1,notificationSleepMicros:1_000_000}
+  const source=getMowerSourceRuntime(s),blocked=new MowerTask({plan:{dormitory_1:['Current','Current','Current','Current','N']}}),failed=new MowerTask({time:-1})
+  source.queue.tasks=[blocked,failed];retainMowerFailedTask(s,source.data,failed,'waiting for unrelated evidence',[])
+  const spy=vi.spyOn(protection,'prepareMowerShiftBeds')
+  try{
+   settleRoster(s,rates)
+   const deadline=blocked.timeMicros
+   expect(deadline).toBeGreaterThan(source.data.nowMicros);expect(nextRosterActionHours(s,rates)).toBeGreaterThan(1/60)
+   expect(failed.executionFailure).toBeDefined();expect(source.queue.tasks).toContain(failed)
+   settleRoster(s,rates)
+   expect(blocked.timeMicros).toBe(deadline);expect(source.queue.tasks).toContain(blocked)
+   expect(spy.mock.calls.filter(([,task])=>task===blocked)).toHaveLength(1)
+   expect(failed.executionFailure).toBeDefined();expect(s.bedOccupants.dormitory_1_4).toBe('A')
+  }finally{spy.mockRestore()}
  })
 
  it('executes the retained forced task after the protected occupant completes recovery',()=>{

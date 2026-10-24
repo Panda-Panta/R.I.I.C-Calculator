@@ -27,6 +27,7 @@ export function createReceptionClueTimeline(
     .map(operator => [operator.charId, operator.elitePhase]))
   const operatorRecords = inventoryOperatorRecords(inventory)
   const tenure = new Map<string, number>()
+  let positions = new Map<string, number>()
   let progress = 0
   let warmupCompleted = 0
   let initialized = false
@@ -50,17 +51,23 @@ export function createReceptionClueTimeline(
   }
 
   return {
-    observe(config: AppConfig, start: number, end: number): void {
+    observe(config: AppConfig, start: number, end: number, workHours?: ReadonlyMap<string, number>): void {
       if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start)
         throw new Error('Invalid reception clue observation interval')
       // The same inventory supplies promotion and unlocked skills, including external providers.
       const current = { ...config, operatorRecords }
+      const currentPositions = new Map(current.facilityOperatorIds.reception.map((id, index) => [id, index]))
+      for (const id of tenure.keys())
+        if (!currentPositions.has(id) || positions.get(id) !== currentPositions.get(id)) tenure.delete(id)
+      positions = currentPositions
       if (!initialized && end > start) {
         initialized = true
         if (start === 0 && current.facilities.reception)
           for (const id of current.facilityOperatorIds.reception)
             if (isSupportOperatorWorking(current, id)) tenure.set(id, initialWorkHours[id] ?? 0)
       }
+      // Confirmed work sessions also catch leave-and-return moves between observations.
+      if (workHours) for (const id of currentPositions.keys()) tenure.set(id, workHours.get(id) ?? 0)
       if (start < warmupHours) {
         advance(current, Math.min(end, warmupHours) - start)
         warmupCompleted = completed()

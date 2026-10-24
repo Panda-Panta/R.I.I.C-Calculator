@@ -10,7 +10,7 @@ export function nextMowerRunRecoveryMicros(queue:MowerTaskQueue,nowMicros:number
  const preserved=preservedRunTypes(alpha)
  const deadlines=queue.tasks.filter(task=>!task.executionFailure&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(task))).flatMap(task=>[
   ...(task.timeMicros>nowMicros?[task.timeMicros]:[]),
-  ...(!task.retainsExecution&&!preserved.includes(task.type)?[task.timeMicros+STALE_TASK_MICROS+1]:[]),
+  ...(!task.retainsExecution&&!(alpha&&(task.strictMoodLimit||task.replacementCheck||Object.keys(task.groupShiftExpected).length))&&!preserved.includes(task.type)?[task.timeMicros+STALE_TASK_MICROS+1]:[]),
  ])
  return deadlines.length?Math.max(nowMicros+1,Math.min(...deadlines)):nowMicros+1
 }
@@ -19,8 +19,8 @@ export function prepareMowerRunEntry(queue:MowerTaskQueue,nowMicros:number,alpha
  const now=fromMowerMicros(nowMicros)
  if(!queue.find({time:now,ignoreRunOrders:options.adjustForRunOrders===false})&&!queue.find({type:T.SKILL_UPGRADE})){const task=new MowerTask();task.timeMicros=nowMicros;queue.tasks.push(task)}
  const preserved=preservedRunTypes(alpha),future=[T.RUN_ORDER,T.FURNITURE,T.DEPOT,T.CLUE,T.WORKSHOP]
- if(alpha?queue.tasks.some(t=>!t.retainsExecution&&t.timeMicros<nowMicros-STALE_TASK_MICROS&&!preserved.includes(t.type)&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t))):queue.tasks.some(t=>!t.retainsExecution&&t.timeMicros<nowMicros-STALE_TASK_MICROS&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t)))){
-  queue.tasks=queue.tasks.filter(task=>task.retainsExecution||preserved.includes(task.type)||alpha&&future.includes(task.type)&&task.timeMicros>nowMicros)
+ if(alpha?queue.tasks.some(t=>!t.retainsExecution&&!t.strictMoodLimit&&!t.replacementCheck&&!Object.keys(t.groupShiftExpected).length&&t.timeMicros<nowMicros-STALE_TASK_MICROS&&!preserved.includes(t.type)&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t))):queue.tasks.some(t=>!t.retainsExecution&&t.timeMicros<nowMicros-STALE_TASK_MICROS&&(options.adjustForRunOrders!==false||!isMowerRunOrderTask(t)))){
+  queue.tasks=queue.tasks.filter(task=>task.retainsExecution||preserved.includes(task.type)||alpha&&(task.strictMoodLimit||task.replacementCheck||Object.keys(task.groupShiftExpected).length||future.includes(task.type)&&task.timeMicros>nowMicros))
   const task=new MowerTask();task.timeMicros=nowMicros;queue.tasks.push(task)
  }
 }

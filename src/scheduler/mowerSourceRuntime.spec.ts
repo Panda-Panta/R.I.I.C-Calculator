@@ -5,13 +5,15 @@ import {mowerUpdateDetail} from './mowerObservations'
 import {alphaRestingTier} from './mowerAlphaDorm'
 import {MowerTask,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
 import {evaluateBackupExpression} from './backupPlans'
+import {retainMowerFailedTask} from './mowerTaskFailure'
+import {completeMowerGroupConfirmation} from './mowerGroupConfirmation'
 const rates={workRate:()=>1,recoveryRate:()=>4}
 function fixture():RuntimeConfig {
  const keepers=['K1','K2','K3','K4']
  return {positions:[{id:'room_1_1_0',roomId:'room_1_1',primary:'A',candidates:['R'],lowerLimit:0,upperLimit:24,shiftOffThreshold:15},...keepers.map((name,i)=>({id:'dormitory_1_'+i,roomId:'dormitory_1',primary:name,candidates:[],permanent:true,dormitory:true}))],beds:[{id:'dormitory_1_4',roomId:'dormitory_1',vip:true}],initialMorale:{A:16,R:24},idleOperators:[],mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[]},mowerSourcePlan:{room_1_1:[{agent:'A',group:'',replacement:['R']}],dormitory_1:[...keepers.map(name=>({agent:name,group:'',replacement:[]})),{agent:'Free',group:'',replacement:[]}]},mowerSourceRules:{workaholic:[],exhaustRequire:[],restInFull:[],lowPriority:[],refreshDrained:[],lingMode:0}}
 }
 describe('integrated Mower source scheduler',()=>{
- it('retains temporary standby promotion and identity when rebuilding scheduling data',()=>{
+ it('keeps standby policy and independent state while retiring temporary promotion during a rebuild',()=>{
   const config=fixture();config.mowerAlpha=true;config.mowerSourceRules!.standby=['A']
   config.mowerSourcePlan!.room_1_1![0]!.group='g'
   config.mowerPolicy!.groupMoodGapExclusions=['other','saved']
@@ -21,6 +23,7 @@ describe('integrated Mower source scheduler',()=>{
   source.data.groupShiftState.g=true
   source.data.groupRecoveryFullMembers.g=['A']
   source.data.groupRecoveryReturnMicros.g=12345
+  source.data.operators.A!.standbyLowPriority=true // Legacy snapshots may still contain the retired marker.
   const rebuilt=makeMowerSchedulingData(state,source),op=rebuilt.operators.A!
   expect(rebuilt.groupMoodGapExclusions).toEqual(['other','saved'])
   rebuilt.groupMoodGapExclusions.push('extra')
@@ -31,11 +34,11 @@ describe('integrated Mower source scheduler',()=>{
   expect(source.data.groupRecoveryReturnMicros.g).toBe(12345)
   expect(op).not.toBe(source.data.operators.A)
   expect(op.mood).toBe(24)
-  expect(op.standbyLowPriority).toBe(true)
-  expect(alphaRestingTier(rebuilt,'A')).toBe(2)
+  expect(op.standbyLowPriority).toBe(false)
+  expect(alphaRestingTier(rebuilt,'A')).toBe(6)
   expect(rebuilt.canStandby(op)).toBe(true)
   expect(rebuilt.isGroupShiftAnchor(op)).toBe(false)
-  mowerUpdateDetail(rebuilt,'A',24,'room_1_1',0,true)
+  mowerUpdateDetail(rebuilt,'A',12,'room_1_1',0,true)
   expect(op.standbyLowPriority).toBe(false)
   expect(alphaRestingTier(rebuilt,'A')).toBe(4)
  })
@@ -76,6 +79,19 @@ describe('integrated Mower source scheduler',()=>{
   const s=createRosterRuntime(fixture());settleRoster(s,rates);const source=getMowerSourceRuntime(s),old=new MowerTask({type:T.SHIFT_ON,plan:{room_1_1:['R']}});source.queue.tasks.unshift(old)
   settleRoster(s,rates,0,phase=>{if(phase==='BEGINNING'&&source.queue.tasks.includes(old))source.queue.consume(old);return false})
   expect(s.occupants.room_1_1_0).toBe('A');expect(source.trace.some(t=>t.type==='SHIFT_ON'&&t.plan.room_1_1?.includes('R'))).toBe(false)
+ })
+ it.each([false,true])('ends a removed entry task on the existing clock even with a future queue head (unsorted=%s)',unsorted=>{
+  const config=fixture();config.mowerRunLoopClock={minimumClockStepMicros:1,notificationSleepMicros:1_000_000}
+  const s=createRosterRuntime(config);settleRoster(s,rates)
+  const source=getMowerSourceRuntime(s),removed=new MowerTask({type:T.SHIFT_ON,plan:{room_1_1:['R']}}),next=new MowerTask({plan:{room_1_1:['Current']}})
+  source.queue.tasks=[removed,next];delete source.runReturn
+  settleRoster(s,rates,0,phase=>{if(phase==='BEGINNING'){source.queue.consume(removed);if(unsorted)source.queue.tasks=[new MowerTask({time:1}),next]}return false})
+  expect(source.queue.tasks).not.toContain(removed);expect(source.queue.tasks).toContain(next)
+  expect(next.timeMicros).toBe(0)
+  expect(nextRosterActionHours(s,rates)).toBe(1/3_600_000_000)
+  advanceRoster(s,1/3_600_000_000,rates);settleRoster(s,rates)
+  expect(source.queue.tasks).not.toContain(next)
+  expect(s.occupants.room_1_1_0).toBe('A')
  })
  it('preserves an old observation when a Current-only room task is an exact no-op',()=>{
   const s=createRosterRuntime(fixture());settleRoster(s,rates);const source=getMowerSourceRuntime(s),task=new MowerTask({time:1,plan:{room_1_1:['Current']}});source.queue.tasks.push(task)
@@ -255,9 +271,50 @@ describe('integrated Mower source scheduler',()=>{
   expect(source.data.operators[fia]!.timeStampMicros).toBe(fiaTimestamp)
  })
 
+ it.each([{alpha:false,named:false},{alpha:true,named:false},{alpha:false,named:true},{alpha:true,named:true}])('retains a full-to-full Fiammetta charge without polling ($alpha, named=$named)',({alpha,named})=>{
+  const config=fixture(),fia='char_300_phenxi';config.mowerAlpha=alpha
+  config.positions[1]!.primary=fia;config.mowerSourcePlan!.dormitory_1![0]!.agent=fia
+  config.idleOperators=['X'];config.initialMorale={A:24,R:24,X:24,[fia]:24}
+  config.fiammetta={operatorId:fia,orderedTargets:['A'],fool:false,threshold:21.6}
+  const state=createRosterRuntime(config),source=getMowerSourceRuntime(state);source.initial=false
+  for(const [slot,name] of Object.entries(state.occupants)){const op=source.data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]!;op.timeStampMicros=0}
+  source.queue.tasks=[new MowerTask({type:T.FIAMMETTA,...(named?{plan:{room_1_1:['Current'],dormitory_1:['A',fia]},metadata:'A'}:{})})]
+  const before={...state.occupants}
+  settleRoster(state,rates)
+  const retained=source.queue.tasks.find(task=>task.type===T.FIAMMETTA)!
+  expect(retained.executionFailure).toBeDefined();expect(retained.timeMicros).toBe(0)
+  expect(retained.plan.room_1_1).toBeUndefined()
+  expect(state.events.filter(e=>e.type==='fiammetta')).toHaveLength(0)
+  expect(state.occupants).toEqual(before)
+  const traceCount=source.trace.filter(t=>t.type==='FIAMMETTA').length
+  const independent=new MowerTask({time:.01});source.queue.tasks.push(independent)
+  state.time=.01;settleRoster(state,rates)
+  expect(source.queue.tasks).not.toContain(independent)
+  expect(source.queue.tasks.filter(task=>task.type===T.FIAMMETTA)).toEqual([retained])
+  // The independent arrangement moved R into a Free bed and refreshed the observed state.
+  expect(source.trace.filter(t=>t.type==='FIAMMETTA')).toHaveLength(traceCount+1)
+  expect(source.data.operators.R!.currentRoom).toBe('dormitory_1')
+  expect(retained.executionFailure).toBeDefined()
+  for(let attempt=0;attempt<3;attempt++)settleRoster(state,rates)
+  expect(source.trace.filter(t=>t.type==='FIAMMETTA')).toHaveLength(traceCount+1)
+  expect(source.queue.tasks.filter(task=>task.type===T.FIAMMETTA)).toEqual([retained])
+  expect(state.events.filter(e=>e.type==='fiammetta')).toHaveLength(0)
+  expect(retained.timeMicros).toBe(0)
+  expect(state.diagnostics.some(d=>d.message.includes('五分钟'))).toBe(false)
+  const target=retained.plan.dormitory_1![0]!
+  state.morale[target]=10
+  const op=source.data.operators[target]!;op.mood=10;op.timeStampMicros=36_000_000;op.moodIsPrediction=false
+  settleRoster(state,rates)
+  expect(retained.executionFailure).toBeUndefined()
+  expect(state.events.some(e=>e.type==='fiammetta'&&e.operators[1]===target)).toBe(true)
+  expect(source.queue.tasks).not.toContain(retained)
+  expect(state.occupants.dormitory_1_0).toBe(fia)
+  expect(state.occupants.room_1_1_0).toBe('A')
+ })
+
 
 it('starts an exhausted shift before observed morale reaches zero',()=>{
- const config=fixture();config.mowerAlpha=true;config.initialMorale!.A=.18;config.mowerSourceRules!.exhaustRequire=['A']
+ const config=fixture();config.mowerAlpha=true;config.initialMorale={...config.initialMorale,A:.18};config.mowerSourceRules!.exhaustRequire=['A']
  const state=createRosterRuntime(config),source=getMowerSourceRuntime(state)
  source.initial=false;source.firstInit=false
  for(const [slot,name] of Object.entries(state.occupants)){const op=source.data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]??24;op.timeStampMicros=0}
@@ -269,4 +326,124 @@ it('starts an exhausted shift before observed morale reaches zero',()=>{
  expect(source.data.operators.A!.isResting()).toBe(true)
  expect(state.morale.A).toBeGreaterThan(0)
  expect(state.occupants.room_1_1_0).toBe('R')
+})
+
+it('checks a working ordinary cover at its personal lower limit and replaces only that slot',()=>{
+ const config=fixture();config.mowerAlpha=true;config.idleOperators=['S']
+ config.mowerSourcePlan!.room_1_1![0]!.replacement=['R','S'];config.positions[0]!.candidates=['R','S']
+ config.mowerSourceRules!.restInFull=['A'];config.initialMorale={A:8,R:12,S:24}
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state),slowRecovery={workRate:()=>2,recoveryRate:()=>.1}
+ source.initial=false;source.firstInit=false
+ state.occupants.room_1_1_0='R';state.bedOccupants.dormitory_1_4='A'
+ for(const [slot,name] of Object.entries({...state.occupants,...state.bedOccupants})){
+  const op=source.data.operators[name]!
+  op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]??24;op.timeStampMicros=0
+ }
+ source.data.operators.R!.lowerLimit=4;source.data.operators.S!.mood=24;source.data.operators.S!.timeStampMicros=0;source.queue.tasks=[]
+ settleRoster(state,slowRecovery)
+ const check=source.queue.tasks.find(task=>task.replacementCheck)!
+ expect(check.time).toBe(4);expect(state.occupants.room_1_1_0).toBe('R')
+ advanceRoster(state,4,slowRecovery);settleRoster(state,slowRecovery)
+ expect(state.occupants.room_1_1_0).toBe('S')
+ expect(source.data.operators.A!.isResting()).toBe(true);expect(state.morale.A).toBeLessThan(24)
+ expect(source.queue.tasks).not.toContain(check)
+ expect(state.diagnostics.some(d=>d.code==='mower-task-exception')).toBe(false)
+})
+
+it('enables fatigue-rate invalidation after initial reads when a configured provider really changes rooms',()=>{
+ const config=fixture();config.mowerAlpha=true;config.idleOperators=['S']
+ config.mowerSourcePlan!.room_1_1![0]!.replacement=['R','S'];config.positions[0]!.candidates=['R','S']
+ config.mowerSourcePlan!.room_2_1=[{agent:'B',group:'',replacement:['S']}]
+ config.positions.push({id:'room_2_1_0',roomId:'room_2_1',primary:'B',candidates:['S']})
+ config.mowerSourceRules!.restInFull=['A'];config.mowerSourceRules!.refreshDrained=['B'];config.initialMorale={A:8,R:12,S:24,B:24}
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state)
+ state.occupants.room_1_1_0='R';state.bedOccupants.dormitory_1_4='A'
+ settleRoster(state,rates)
+ expect(source.firstInit).toBe(false)
+ const check=source.queue.tasks.find(task=>task.replacementCheck?.target.cover==='R')!
+ expect(check.replacementCheck!.revision).toBe(0)
+ source.queue.tasks.push(new MowerTask({type:T.NOT_SPECIFIC,plan:{room_2_1:['S']}}))
+ settleRoster(state,rates)
+ expect(check.replacementCheck!.revision).toBeGreaterThan(0)
+ expect(state.diagnostics.some(d=>d.code==='mower-task-exception')).toBe(false)
+})
+
+it('retains an incomplete group after physical execution and confirms the original task only after all targets are observed',()=>{
+ const config=fixture();config.mowerAlpha=true;config.mowerSourcePlan!.room_1_1![0]!.group='G';config.mowerDeviceTiming={roomReturnMicros:500_000}
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state)
+ source.initial=false;source.firstInit=false
+ for(const [slot,name] of Object.entries(state.occupants)){
+  const op=source.data.operators[name]!
+  op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]??24;op.timeStampMicros=0
+ }
+ const task=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['R'],dormitory_1:['K1','K2','K3','K4','A']}})
+ source.data.groupShiftState.G=false;source.queue.tasks=[task]
+ settleRoster(state,rates)
+ expect(source.execution?.task).toBe(task);expect(state.occupants.room_1_1_0).toBe('R')
+ expect(source.data.groupShiftState.G).toBe(false)
+ // A later real position observation invalidates a room that was already executed.
+ delete state.occupants.room_1_1_0;source.data.operators.R!.currentRoom='';source.data.operators.R!.currentIndex=-1
+ for(let attempt=0;attempt<5&&source.execution;attempt++){
+  advanceRoster(state,nextRosterActionHours(state,rates),rates);settleRoster(state,rates)
+ }
+ expect(task.executionFailure?.reason).toBe('换班实测驻员与目标不一致')
+ expect(source.queue.tasks).toContain(task);expect(task.timeMicros).toBe(0)
+ expect(task.plan).toEqual({room_1_1:['R']});expect(source.data.groupShiftState.G).toBe(false)
+ state.occupants.room_1_1_0='R';source.data.operators.R!.currentRoom='room_1_1';source.data.operators.R!.currentIndex=0;source.data.operators.R!.timeStampMicros=source.data.nowMicros
+ for(let attempt=0;attempt<8&&source.queue.tasks.includes(task);attempt++){
+  settleRoster(state,rates)
+  if(source.queue.tasks.includes(task))advanceRoster(state,nextRosterActionHours(state,rates),rates)
+ }
+ expect(source.queue.tasks).not.toContain(task);expect(task.groupShiftExpected).toEqual({})
+ expect(source.data.groupShiftState.G).toBe(true)
+})
+
+function predecessorFixture(independent=false){
+ const config=fixture();config.mowerAlpha=true;config.idleOperators=['S'];config.initialMorale={A:16,R:24,S:24,B:24};config.mowerDeviceTiming={roomReturnMicros:500_000}
+ config.mowerSourcePlan!.room_1_1![0]!.group='G'
+ if(independent){config.mowerSourcePlan!.room_2_1=[{agent:'B',group:'H',replacement:['S']}];config.positions.push({id:'room_2_1_0',roomId:'room_2_1',primary:'B',candidates:['S']})}
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state),data=source.data
+ source.initial=false;source.firstInit=false;state.occupants.room_1_1_0='R'
+ for(const [slot,name] of Object.entries(state.occupants)){const op=data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]??24;op.timeStampMicros=0}
+ Object.assign(data.operators.A!,{currentRoom:'',currentIndex:-1,mood:16,timeStampMicros:0})
+ data.groupShiftState.G=false
+ const pending=new MowerTask({type:T.SHIFT_OFF,plan:{dormitory_1:['Current','Current','Current','Current','A']}})
+ pending.arrangementStarted=true;pending.groupShiftTransitions={G:true};pending.groupShiftExpected={['room_1_1\0'+'0']:'R',['dormitory_1\0'+'4']:'A'}
+ source.queue.tasks=[pending];retainMowerFailedTask(state,data,pending,'unconfirmed group target',['dormitory_1'])
+ return {state,source,data,pending}
+}
+it.each([T.SELF_CORRECTION,T.NOT_SPECIFIC])('parks overlapping %s work while a predecessor still owns its completed targets',type=>{
+ const {state,source,pending}=predecessorFixture(),task=new MowerTask({type,plan:{room_1_1:['S']}});source.queue.tasks.push(task)
+ settleRoster(state,rates)
+ expect(state.occupants.room_1_1_0).toBe('R')
+ expect(source.waitingGroupShifts?.some(wait=>wait.task===task&&wait.predecessors.includes(pending))).toBe(true)
+ expect(source.queue.tasks).not.toContain(task);expect(task.timeMicros).toBe(0)
+ const trace=source.trace.length;settleRoster(state,rates);expect(source.trace.length).toBe(trace)
+ expect(state.diagnostics.some(d=>d.code==='mower-task-exception')).toBe(false)
+})
+it('executes independent work and resumes the same overlapping task only after actual predecessor confirmation',()=>{
+ const {state,source,data,pending}=predecessorFixture(true),task=new MowerTask({type:T.NOT_SPECIFIC,plan:{room_1_1:['S']}}),independent=new MowerTask({type:T.NOT_SPECIFIC,plan:{room_2_1:['S']}})
+ source.queue.tasks.push(task,independent);settleRoster(state,rates)
+ expect(state.occupants.room_1_1_0).toBe('R');expect(state.occupants.room_2_1_0).toBe('S')
+ expect(source.execution?.task).toBe(independent);expect(source.waitingGroupShifts?.some(wait=>wait.task===task)).toBe(true)
+ // Complete the independent room boundary, then provide the predecessor's missing real observation.
+ while(source.execution){advanceRoster(state,nextRosterActionHours(state,rates),rates);settleRoster(state,rates)}
+ state.bedOccupants.dormitory_1_4='A';Object.assign(data.operators.A!,{currentRoom:'dormitory_1',currentIndex:4,mood:16,timeStampMicros:data.nowMicros})
+ expect(completeMowerGroupConfirmation(data,pending).complete).toBe(true);source.queue.consume(pending)
+ for(let n=0;n<8&&source.waitingGroupShifts?.some(wait=>wait.task===task);n++){settleRoster(state,rates);if(source.execution)advanceRoster(state,nextRosterActionHours(state,rates),rates)}
+ expect(source.waitingGroupShifts?.some(wait=>wait.task===task)).toBe(false)
+ expect(task.timeMicros).toBe(0);expect(state.occupants.room_1_1_0).toBe('S')
+ expect(source.trace.some(entry=>entry.type==='NOT_SPECIFIC'&&entry.plan.room_1_1?.[0]==='S')).toBe(true)
+})
+it('keeps personal-cap release on its independent validation path while canceling a waiting dynamic target',()=>{
+ const {state,source,data,pending}=predecessorFixture()
+ state.bedOccupants.dormitory_1_4='A';state.morale.A=12
+ Object.assign(data.operators.A!,{currentRoom:'dormitory_1',currentIndex:4,mood:12,timeStampMicros:0,upperLimit:12,restMoodLimit:true})
+ retainMowerFailedTask(state,data,pending,'unconfirmed group target',['dormitory_1'])
+ const release=new MowerTask({type:T.RELEASE_DORM,plan:{dormitory_1:['Current','Current','Current','Current','Free']},metadata:'A',strictMoodLimit:true,moodLimit:12});release.releaseTargets={A:['dormitory_1',4]}
+ source.queue.tasks.push(release)
+ for(let n=0;n<8&&source.queue.tasks.includes(release);n++){settleRoster(state,rates);if(source.queue.tasks.includes(release))advanceRoster(state,nextRosterActionHours(state,rates),rates)}
+ expect(source.waitingGroupShifts?.some(wait=>wait.task===release)).toBeFalsy()
+ expect(source.queue.tasks).not.toContain(release);expect(Object.values(state.bedOccupants)).not.toContain('A')
+ expect(Object.values(pending.groupShiftExpected)).not.toContain('A');expect(pending.timeMicros).toBe(0)
 })

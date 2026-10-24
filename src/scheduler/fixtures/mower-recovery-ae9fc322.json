@@ -1,0 +1,671 @@
+{
+  "commit": "ae9fc3223a5429bd523901d32fa4c34c9c3e510d",
+  "nowHours": 10,
+  "scope": "Unchanged native AST with explicit synthetic physical occupancy, group membership and observations; no device, production or whole-scheduler equivalence claim.",
+  "sources": {
+    "arknights_mower/utils/operators.py": "b78ec3937be762f911c7c8d7771ac42b9071de7ef494555048eab99f90402799",
+    "arknights_mower/utils/resting_priority.py": "bd1220ddd06302a8270cddbbb4499acb2824d4a79191dd9fd059fb4554384a21",
+    "arknights_mower/utils/dorm_candidates.py": "c36ac93b60dd29614cf14526f17d27edb2a69f9c1096b5253130d56fa3222bad",
+    "arknights_mower/utils/group_recovery.py": "1299e0e22e03adc914452a3d9f9ee3c9492f7b6a664a219462a44b177ed8dcb6"
+  },
+  "methods": {
+    "current_mood": {
+      "path": "arknights_mower/utils/operators.py",
+      "line": 3375,
+      "endLine": 3387,
+      "astSha256": "b5f79aa1ce02519d6efa6579d0f52c0ae7829a61c1f55c5ce67ce2a9f723d6cb"
+    },
+    "has_resting_mood": {
+      "path": "arknights_mower/utils/resting_priority.py",
+      "line": 92,
+      "endLine": 99,
+      "astSha256": "17e8e6cd8e57ff48bed4c2fec57e7968b347dbac59fc55bff15460ac7497b7da"
+    },
+    "resting_mood": {
+      "path": "arknights_mower/utils/resting_priority.py",
+      "line": 102,
+      "endLine": 104,
+      "astSha256": "6d33d92b245dc98cd8a37e8170f03e5e773e1b3d2f3b88e3962b9ad3698c887c"
+    },
+    "card_mood_estimate": {
+      "path": "arknights_mower/utils/dorm_candidates.py",
+      "line": 67,
+      "endLine": 83,
+      "astSha256": "1ff3bae95b2027cee83b72d4e522316d6f8383002a4391f858c779ed15a74aa9"
+    },
+    "scheduling_mood_observation": {
+      "path": "arknights_mower/utils/dorm_candidates.py",
+      "line": 43,
+      "endLine": 64,
+      "astSha256": "ef2d4448aaff099b96e3b738de139445df3eb098c47737b6ef614158db867e5d"
+    },
+    "dorm_candidate_mood": {
+      "path": "arknights_mower/utils/dorm_candidates.py",
+      "line": 31,
+      "endLine": 34,
+      "astSha256": "46a48913f18e63275c8f6f0464aadee21c85f56f1913bd7abaf5da737b988a3a"
+    },
+    "scheduling_mood_reaches": {
+      "path": "arknights_mower/utils/dorm_candidates.py",
+      "line": 37,
+      "endLine": 40,
+      "astSha256": "eebe22281d0ab6ea068036cc41550584cb91a81f0fbcc18d81063698a4514a7c"
+    },
+    "recovery_mood_complete": {
+      "path": "arknights_mower/utils/group_recovery.py",
+      "line": 8,
+      "endLine": 15,
+      "astSha256": "5f6790fc8feea9c6d2cd14ac5469b5431e31bef8e80f3b67f79d4db8a67bcc3d"
+    },
+    "observed_recovery_deadline": {
+      "path": "arknights_mower/utils/group_recovery.py",
+      "line": 18,
+      "endLine": 36,
+      "astSha256": "f543f05f14d9c60dbb2ee5f2b2bc634b47803b4f9fb1c889fc34c50bcb04ba56"
+    },
+    "observed_full_mood": {
+      "path": "arknights_mower/utils/group_recovery.py",
+      "line": 39,
+      "endLine": 47,
+      "astSha256": "bb741d3898c571fd34c2086e963f1733ebd5cf9c3b93b6b1f2bc295ae80fde60"
+    },
+    "completed_mood_limit_release": {
+      "path": "arknights_mower/utils/group_recovery.py",
+      "line": 50,
+      "endLine": 57,
+      "astSha256": "9e52ccf639444296e4b7dc8fb6839cb2dbfb63af1d173301a2d1f82e639c9f44"
+    },
+    "group_recovery_workers": {
+      "path": "arknights_mower/utils/group_recovery.py",
+      "line": 60,
+      "endLine": 72,
+      "astSha256": "0ae1b7d5fb5bc5ab0b7e20c45c8820f849d3b7f9d55fede3c85d3004b8c69b52"
+    },
+    "group_recovery_deadline": {
+      "path": "arknights_mower/utils/group_recovery.py",
+      "line": 75,
+      "endLine": 140,
+      "astSha256": "66848af17fee7aa31e1e38d67e9a208245a8b585be8a783a11e5e04a63575be3"
+    }
+  },
+  "cases": [
+    {
+      "name": "newer_card_beats_old_measured",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 8,
+          "mood": 10
+        }
+      ],
+      "estimates": {
+        "A": [
+          24,
+          9.5
+        ]
+      },
+      "expected": {
+        "mood": 24,
+        "observationHours": 9.5,
+        "observedFull": false,
+        "recoveryComplete": true,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "older_card_does_not_override_measured",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 9.5,
+          "mood": 10
+        }
+      ],
+      "estimates": {
+        "A": [
+          24,
+          9.2
+        ]
+      },
+      "expected": {
+        "mood": 10,
+        "observationHours": 9.5,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "same_timestamp_prefers_measured",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 9.5,
+          "mood": 10
+        }
+      ],
+      "estimates": {
+        "A": [
+          24,
+          9.5
+        ]
+      },
+      "expected": {
+        "mood": 10,
+        "observationHours": 9.5,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "future_card_ignored",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 9.5,
+          "mood": 10
+        }
+      ],
+      "estimates": {
+        "A": [
+          24,
+          10.1
+        ]
+      },
+      "expected": {
+        "mood": 10,
+        "observationHours": 9.5,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "one_hour_old_card_expired",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": null,
+          "mood": -1
+        }
+      ],
+      "estimates": {
+        "A": [
+          24,
+          9
+        ]
+      },
+      "expected": {
+        "mood": null,
+        "observationHours": null,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "out_of_range_card_ignored",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 9.5,
+          "mood": 10
+        }
+      ],
+      "estimates": {
+        "A": [
+          25,
+          9.8
+        ]
+      },
+      "expected": {
+        "mood": 10,
+        "observationHours": 9.5,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "predicted_read_does_not_override_card",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 9.8,
+          "mood": 24,
+          "mood_is_prediction": true
+        }
+      ],
+      "estimates": {
+        "A": [
+          18,
+          9.7
+        ]
+      },
+      "expected": {
+        "mood": 18,
+        "observationHours": 9.7,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "resting_read_does_not_extrapolate_recovery",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 8,
+          "mood": 10,
+          "depletion_rate": -2
+        }
+      ],
+      "expected": {
+        "mood": 10,
+        "observationHours": 8.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "working_read_projects_consumption",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 8,
+          "mood": 10,
+          "depletion_rate": 2,
+          "current_room": "room_1_1"
+        }
+      ],
+      "expected": {
+        "mood": 6.0,
+        "observationHours": 8.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "future_measured_read_ignored",
+      "operators": [
+        {
+          "name": "A",
+          "timestampHours": 10.1,
+          "mood": 20
+        }
+      ],
+      "expected": {
+        "mood": null,
+        "observationHours": null,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "partial_explicit_deadlines_keep_known",
+      "operators": [
+        {
+          "name": "A",
+          "rest_in_full": true
+        },
+        {
+          "name": "B",
+          "rest_in_full": true
+        }
+      ],
+      "beds": {
+        "A": 12
+      },
+      "gapEnabled": false,
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A",
+          "B"
+        ],
+        "deadlineHours": 12.0,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "all_explicit_deadlines_unknown",
+      "operators": [
+        {
+          "name": "A",
+          "rest_in_full": true
+        },
+        {
+          "name": "B",
+          "rest_in_full": true
+        }
+      ],
+      "gapEnabled": false,
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A",
+          "B"
+        ],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "fixed_slot_timer_scales_personal_limit",
+      "operators": [
+        {
+          "name": "A",
+          "rest_in_full": true,
+          "upper_limit": 20,
+          "fixedObservation": [
+            "dormitory_1",
+            0,
+            10,
+            14
+          ]
+        }
+      ],
+      "gapEnabled": false,
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A"
+        ],
+        "deadlineHours": 12.857142857,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "stale_fixed_slot_timer_ignored",
+      "operators": [
+        {
+          "name": "A",
+          "rest_in_full": true,
+          "upper_limit": 20,
+          "fixedObservation": [
+            "dormitory_1",
+            1,
+            10,
+            14
+          ]
+        }
+      ],
+      "gapEnabled": false,
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A"
+        ],
+        "deadlineHours": null,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "newer_full_card_completes_recovery_without_mutation",
+      "operators": [
+        {
+          "name": "A",
+          "rest_in_full": true,
+          "timestampHours": 9,
+          "mood": 10
+        }
+      ],
+      "estimates": {
+        "A": [
+          24,
+          9.5
+        ]
+      },
+      "gapEnabled": false,
+      "expected": {
+        "mood": 24,
+        "observationHours": 9.5,
+        "observedFull": false,
+        "recoveryComplete": true,
+        "requiredNames": [
+          "A"
+        ],
+        "deadlineHours": 10.0,
+        "latches": {},
+        "anchorsHours": {},
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "idle_nonmember_does_not_rejoin_existing_latch",
+      "operators": [
+        {
+          "name": "A"
+        },
+        {
+          "name": "B",
+          "current_room": ""
+        }
+      ],
+      "beds": {
+        "A": 12
+      },
+      "latches": {
+        "G": [
+          "A"
+        ]
+      },
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A"
+        ],
+        "deadlineHours": 12.0,
+        "latches": {
+          "G": [
+            "A"
+          ]
+        },
+        "anchorsHours": {
+          "G": 11.866666667
+        },
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "gap_wait_uses_known_deadline_without_cap",
+      "operators": [
+        {
+          "name": "A"
+        },
+        {
+          "name": "B"
+        }
+      ],
+      "beds": {
+        "A": 12
+      },
+      "latches": {
+        "G": [
+          "A",
+          "B"
+        ]
+      },
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A",
+          "B"
+        ],
+        "deadlineHours": 12.0,
+        "latches": {
+          "G": [
+            "A",
+            "B"
+          ]
+        },
+        "anchorsHours": {
+          "G": 11.866666667
+        },
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "gap_wait_missing_deadline_uses_cap",
+      "operators": [
+        {
+          "name": "A"
+        },
+        {
+          "name": "B"
+        }
+      ],
+      "beds": {
+        "A": 12
+      },
+      "latches": {
+        "G": [
+          "A",
+          "B"
+        ]
+      },
+      "anchors": {
+        "G": 10
+      },
+      "maxExtraWaitHours": 1,
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A",
+          "B"
+        ],
+        "deadlineHours": 11.0,
+        "latches": {
+          "G": [
+            "A",
+            "B"
+          ]
+        },
+        "anchorsHours": {
+          "G": 10.0
+        },
+        "operatorUnchanged": true
+      }
+    },
+    {
+      "name": "explicit_full_deadline_outlasts_gap_cap",
+      "operators": [
+        {
+          "name": "A",
+          "rest_in_full": true
+        },
+        {
+          "name": "B"
+        }
+      ],
+      "beds": {
+        "A": 14,
+        "B": 12
+      },
+      "latches": {
+        "G": [
+          "A",
+          "B"
+        ]
+      },
+      "anchors": {
+        "G": 10
+      },
+      "maxExtraWaitHours": 1,
+      "expected": {
+        "mood": 10,
+        "observationHours": 10.0,
+        "observedFull": false,
+        "recoveryComplete": false,
+        "requiredNames": [
+          "A",
+          "B"
+        ],
+        "deadlineHours": 14.0,
+        "latches": {
+          "G": [
+            "A",
+            "B"
+          ]
+        },
+        "anchorsHours": {
+          "G": 10.0
+        },
+        "operatorUnchanged": true
+      }
+    }
+  ]
+}
