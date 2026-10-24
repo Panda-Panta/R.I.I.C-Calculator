@@ -33,7 +33,7 @@ describe('native recycling plan compatibility', () => {
       default: 'plan2',
       plan2: { recycle, future_room: { opaque: [1, 2] } },
       plan1: { recycle: { ...recycle, plans: [] } },
-      backup_plans: [{ trigger: 'True', plan: { recycle: ['芬', '香草'] }, custom: 7 }],
+      backup_plans: [{ trigger: {left:'True',operator:'',right:''}, plan: { recycle: ['芬', '香草'] }, custom: 7 }],
       custom_root: { selected: 'recycle' },
     }
     const workspace = importMowerJson(JSON.stringify(document))
@@ -98,7 +98,7 @@ describe('native recycling plan compatibility', () => {
     const document = {
       default: 'plan1', plan1: {},
       facility_levels: { meeting: 0, factory: 0, contact: 0, train: 0 },
-      backup_plans: [{ trigger: 'True', plan: { recycle: { plans: [{ agent: '旅骨', group: '', replacement: [] }] } } }],
+      backup_plans: [{ trigger: {left:'True',operator:'',right:''}, plan: { recycle: { plans: [{ agent: '旅骨', group: '', replacement: [] }] } } }],
     }
     const workspace = importMowerJson(JSON.stringify(document))
     expect(validateRosterWorkspace(workspace).criticalErrors).toEqual([])

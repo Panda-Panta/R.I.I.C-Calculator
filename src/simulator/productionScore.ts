@@ -20,7 +20,9 @@ export function simulationOutputAmounts(report:ScheduleSimulationReport):Complet
    fragments:received.fragment??0,orundum:received.orundum??0,virtualGold}
  }
  // Completed items include potential output that has not yet been collected.
- const fragments=p.manufacturing.filter(r=>r.product==='fragment').reduce((n,r)=>n+r.sampleCompletedItems,0)
+ // Older reports only have a final recipe and total count; newly simulated
+ // reports retain the sample count of every recipe across product switches.
+ const fragments=p.manufacturing.reduce((n,r)=>n+(r.sampleCompletedByProduct?.fragment??(r.sampleCompletedByProduct?0:r.product==='fragment'?r.sampleCompletedItems:0)),0)
  const orundum=orders.reduce((n,order)=>n+(order.orundumReward??0),0)
  return {...p.sample.completed,virtualGold,fragments,orundum}
 }

@@ -86,23 +86,28 @@ describe('Mower function backup conditions', () => {
     { function: 'max', args: [] }, { function: 'sum', args: [] },
     { function: 'abs', args: ['1', '2'] }, { function: 'eval', args: ['1'] },
     { function: 'sum', args: '1' }, { function: 'sum', args: [null] },
-    'max(1)', 'sum(1, 2)', 'abs(1, 2)', 'all([True)', 'min(1, 2',
+    'all([True)', 'min(1, 2',
     'eval(1)', 'max([1]).constructor', 'abs(__import__("os"))',
-    'sum([1 for x in [1]])', 'sum([])', 'all([])', 'max([])', 'abs([1])',
+    'sum([1 for x in [1]])',
   ])('rejects invalid or unsupported syntax %j', source => expect(() => compile(source)).toThrow('副表：'))
 
-  it('rejects nonnumeric sums and nonfinite arithmetic results', () => {
-    expect(() => compile("sum(['1', 2])").evaluate(fixture())).toThrow('需要数字')
-    expect(() => compile('sum([1e308, 1e308])').evaluate(fixture())).toThrow('不是有限数')
+  it.each(['max(1)','sum(1, 2)','max([])','abs([1])','abs(1, 2)'])('keeps valid syntax with bad runtime types as execution errors: %s',source=>{
+    expect(()=>compile(source).evaluate(fixture())).toThrow('副表：')
+  })
+
+  it('rejects nonnumeric sums and retains native floating-point infinity', () => {
+    expect(() => compile("sum(['1', 2])").evaluate(fixture())).toThrow('算术')
+    expect(compile('sum([1e308, 1e308])').evaluate(fixture())).toBe(Infinity)
   })
 
   it('bounds nested and wide function trees and their text equivalents', () => {
     let source: unknown = '1'
-    for (let i = 0; i < 34; i++) source = { function: 'abs', args: [source] }
-    expect(() => compile(source)).toThrow('条件树超过限制')
-    expect(() => compile('abs('.repeat(65) + '1' + ')'.repeat(65))).toThrow('条件嵌套超过限制')
+    for (let i = 0; i < 42; i++) source = { function: 'abs', args: [source] }
+    expect(compile(source).evaluate(fixture())).toBe(1)
+    expect(() => compile({function:'abs',args:[source]})).toThrow('复杂')
+    expect(() => compile('abs('.repeat(65) + '1' + ')'.repeat(65))).toThrow('复杂')
     expect(() => compile({ function: 'sum', args: Array(129).fill('1') })).toThrow('函数参数超过限制')
-    expect(() => compile(`sum([${Array(129).fill('1').join(',')}])`)).toThrow('函数参数超过限制')
+    expect(() => compile(`sum([${Array(129).fill('1').join(',')}])`)).toThrow('超过限制')
   })
 })
 
@@ -137,6 +142,6 @@ describe('latest Mower mood and training observations', () => {
     state.time = 24
     expect(expression.evaluate(state)).toBe(false)
     expect(state.config).toEqual(before)
-    expect(() => compile("op_data.facility_is_training('room_1_1')")).toThrow('不支持的训练室位置')
+    expect(() => compile("op_data.facility_is_training('room_1_1')").evaluate(state)).toThrow('不支持的训练室位置')
   })
 })

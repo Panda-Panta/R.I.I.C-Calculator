@@ -87,10 +87,10 @@ describe('backupPlanHelpers', () => {
       expect(result.error).toBeDefined()
     })
 
-    it('detects unknown operator error', () => {
+    it('keeps a syntactically valid unknown operator query for runtime error handling', () => {
       const result = validateBackupTrigger("op_data.operators['未知神秘人'].is_resting()")
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('未知干员')
+      expect(result.valid).toBe(true)
+      expect(result.participants).toEqual([])
     })
 
     it('validates nested functions and observes their participants without altering unknown fields', () => {
@@ -121,7 +121,7 @@ describe('backupPlanHelpers', () => {
       expect(validateBackupTrigger({ function: 'abs', args: ['1', '2'] }).error).toContain('只接受一项参数')
       let source: unknown = 'True'
       for (let i = 0; i < 34; i++) source = { function: 'any', args: [source] }
-      expect(validateBackupTrigger(source).error).toContain('条件树超过限制')
+      expect(validateBackupTrigger(source).error).toContain('复杂')
     })
   })
 

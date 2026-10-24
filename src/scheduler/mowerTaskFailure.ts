@@ -32,7 +32,7 @@ function snapshot(state:RuntimeState,data:MowerSchedulingData,task:MowerTask,roo
    correctionGroups:[...correctionGroups].sort().map(group=>[group,data.groupIsResting(group)]),
    effectivePlan:Object.fromEntries(rooms.map(room=>[room,state.config.mowerSourcePlan?.[room]])),
    products:Object.fromEntries(rooms.map(room=>[room,state.mowerFacilityProducts?.[room]??null])),
-   conditions:data.planConditions,shared,
+   shared,
    eligibility:[...names].sort().map(name=>[name,data.busyRestingNames.has(name),data.excludedCandidates.has(name),reservations.reservedNames.has(name)]),
    reservedSlots:[...reservations.reservedSlots].filter(slot=>rooms.includes(slot.split('\0')[0]!)).sort(),
   }),

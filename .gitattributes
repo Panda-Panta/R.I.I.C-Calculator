@@ -1,3 +1,10 @@
 # The portable skill validates byte hashes, including Markdown and JSON files.
 # Keep its published bytes identical across Git clients and operating systems.
 .codex/skills/arknights-riic-mechanics/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Fixed Unicode inputs and the reproducible name table have byte-hash evidence.
+scripts/unicode-escape-names/** -text
+src/scheduler/unicodeEscapeNamesData.ts -text
+public/licenses/Unicode-Data-License.txt -text
+# Preserve the official upstream comment bytes, including its trailing space.
+scripts/unicode-escape-names/NamedSequences-15.0.0.txt -whitespace

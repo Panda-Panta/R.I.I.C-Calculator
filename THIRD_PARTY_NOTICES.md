@@ -42,6 +42,10 @@ SOFTWARE.
 
 ## Architecture & Compatibility Scope
 
+### Unicode Character Names
+
+The safe condition interpreter uses character names and aliases from Unicode 15.0.0 to match Python 3.12 named string escapes. Fixed source URLs, hashes and offline regeneration are recorded in [scripts/unicode-escape-names/sources.json](scripts/unicode-escape-names/sources.json). The Unicode data license is included in [public/licenses/Unicode-Data-License.txt](public/licenses/Unicode-Data-License.txt) and distributed as `licenses/Unicode-Data-License.txt` in the frontend.
+
 ### 1. Core Main-Roster Scope (`plan1` / Active Default Plan)
 The compatibility layer focuses strictly on the **main roster workbench** (`plan1` and the active default plan) and its global configuration (`conf`).
 - **Facilities Model:** Covers the 19 facility cards:
@@ -86,6 +90,7 @@ Mower plan files do not store facility levels directly; levels are deduced based
   - Gracefully handles placeholder occupants (`Free`, `Current`, `Empty`) by filtering them out of active yield simulation.
 
 ### 5. Alpha Scheduling and Settings Adaptation
+- The 2026-10-25 full source audit and repairs retain the earlier fixed sources and add Mower alpha `f19abfa3a53489d018c6eabd115b6cb68afcdc66` startup order observations. Expression/schema probes target the release's Python 3.12 runtime and Unicode 15.0. Five common formula errors are intentionally corrected under the user's explicit local-model choice. Source hashes and verification boundaries are recorded in the skill source manifest and [UPDATE_PLAN.md](UPDATE_PLAN.md).
 - The 2026-10-24 mechanism update is pinned to Mower alpha `84e3926c0f36045d7baeb1ac050f815b40952d6d`: backup functions, recovery observations/deadlines, ordinary replacement checks, group execution confirmation, dynamic full-mood beds and confirmed-position warmup. Scope, native/local differences and source hashes are recorded in [the update note](docs/UPDATE_2026-10-24_MOWER_LATEST.md) and the skill source manifest. The MIT attribution above applies to the adapted code.
 - Current compatibility source: Mower alpha `ab0a4e5bec23f6f8d7c37b0648f05dda28f31866` (MIT). Adapted decisions include backup configuration layering, group bindings, shared replacements, dorm ordering/isolation, morale limits, product switching and plan validation. Settings labels and form organization follow the source Vue components.
 - The local simulator supports a documented subset of the scheduling lifecycle and ideal trade-order model. It does not execute ADB, device recognition, training tasks or the complete native product-switch staffing/locking sequence. Historical fixtures retain their original source revisions.

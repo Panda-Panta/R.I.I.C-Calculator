@@ -41,6 +41,14 @@ describe('RosterPosterModal.vue', () => {
     setActivePinia(createPinia())
   })
 
+  it('labels a supported fragment manufacturing recipe as source fragments in the exported poster', () => {
+    const workspace = createDefaultWorkspace()
+    workspace.mainPlan.facilities.room_1_1.product = 'fragment'
+    const wrapper = mount(RosterPosterModal, { props: { open: true, workspace, calculationReport: null }, global: { stubs: { teleport: true } } })
+    expect(wrapper.get('.product-badge.fragment').text()).toBe('源石碎片')
+    wrapper.unmount()
+  })
+
   it('renders poster title, layout badge, and facilities overview when open', () => {
     const workspace = createDefaultWorkspace()
     workspace.name = '主力243测试排班'

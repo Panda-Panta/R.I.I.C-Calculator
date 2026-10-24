@@ -72,6 +72,8 @@ export interface RuntimeState {
   mowerInventoryCounts?: Readonly<Record<string, number>>
   /** Observed products with the base-plan fallback already applied by the host. */
   mowerFacilityProducts?: Readonly<Record<string, string | null>>
+  /** Facility types observed by the production host, using native type IDs. */
+  mowerFacilityTypes?: Readonly<Record<string, string | null>>
   /** Non-enumerable live query installed only for observed inventory/product conditions. */
   mowerBackupObservationWakeMicros?: () => number | undefined
   /** Explicit stable scene input shared by headless facility adapters. */

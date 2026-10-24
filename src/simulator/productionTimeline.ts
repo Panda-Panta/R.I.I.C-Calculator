@@ -41,7 +41,7 @@ export interface ProductionReport {
  success:boolean;ledger:ReturnType<typeof createLedger>;sample:{completed:{exp:number;gold:number;orderLmd:number};opening:ResourceAmounts;closing:ResourceAmounts;inflows:ResourceAmounts;outflows:ResourceAmounts;net:ResourceAmounts}
  materialsConsumed:ResourceAmounts
  drones:ReturnType<typeof createDroneState>
- manufacturing:{roomId:string;product:string;completedItems:number;sampleCompletedItems:number;pendingItems:number;remainingBaseMinutes:number;blockedHours:number;blockedMaterialHours:number}[]
+ manufacturing:{roomId:string;product:string;completedItems:number;sampleCompletedItems:number;sampleCompletedByProduct?:Record<string,number>;pendingItems:number;remainingBaseMinutes:number;blockedHours:number;blockedMaterialHours:number}[]
  trading:{roomId:string;completedOrders:number;collectedOrders:number;pendingOrders:CompletedOrder[];remainingBaseMinutes:number|null;blockedHours:number}[]
  events:ProductionEvent[];assumptions:{outputMode:'settled'|'potential';inventoryMode:'unlimited'|'finite';seed:number;runOrderMode:'ideal';droneTarget:'gold'|'exp'|'none'|'trading';droneRoomId?:string;droneReserve:number;collectionIntervalHours:number;orderSnapshotPolicy:string}
 }
@@ -73,6 +73,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
  const ledger=createLedger(initial),materialsConsumed:ResourceAmounts={}
  let drones=createDroneState(initial.drone??0,droneCapacity),serial=0,valid=true,nextCollection=interval||Infinity
  const events:ProductionEvent[]=[],manufactures=new Map<string,ManufactureRoom>(),trades=new Map<string,TradeRoom>()
+ let observedFacilityTypes:Record<string,string>={}
  // Capture the original main plan once; a speculative backup must not change its own predicate.
  const baseProducts=Object.fromEntries(Object.values(schedule.sourceWorkspace.mainPlan.facilities).map(room=>{
   const raw=schedule.sourceWorkspace.compatibility.facilityMetadata?.[room.roomId]?.rawProduct
@@ -81,6 +82,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
  Object.defineProperties(state,{
   mowerInventoryCounts:{configurable:true,enumerable:true,get:()=>Object.fromEntries(MOWER_INVENTORY_ITEMS.map(item=>[item.name,ledger.balances[item.resource]??0]))},
   mowerFacilityProducts:{configurable:true,enumerable:true,get:()=>({...baseProducts,...actualProducts()})},
+  mowerFacilityTypes:{configurable:true,enumerable:true,get:()=>({...observedFacilityTypes})},
  })
  let recycle: ReturnType<typeof createRecycleTimeline> | undefined
  const capacityByEvaluation=new WeakMap<ProductionFrame['evaluations'],Map<string,{moodBand:string;bonus:number}>>()
@@ -96,9 +98,9 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
  }
  const completedTotals=()=>({exp:[...manufactures.values()].reduce((n,m)=>n+(m.completedByProduct.exp??0)*1000,0),gold:[...manufactures.values()].reduce((n,m)=>n+(m.completedByProduct.gold??0),0),orderLmd:events.filter(e=>e.type==='order-completed').reduce((n,e)=>n+(e.order?.lmdReward??0),0)})
  let openingCompleted={exp:0,gold:0,orderLmd:0}
- let openingManufactured=new Map<string,number>()
+ let openingManufactured=new Map<string,Record<string,number>>()
  const completedSample=()=>{const total=completedTotals();return {exp:total.exp-openingCompleted.exp,gold:total.gold-openingCompleted.gold,orderLmd:total.orderLmd-openingCompleted.orderLmd}}
- const markObservation=()=>{if(!opening&&state.time>=warmupHours-EPS){opening={...ledger.balances};openingIn={...ledger.inflows};openingOut={...ledger.outflows};openingCompleted=completedTotals();openingManufactured=new Map([...manufactures].map(([id,m])=>[id,m.state.lifetimeItems]));recycle?.markObservation()}}
+ const markObservation=()=>{if(!opening&&state.time>=warmupHours-EPS){opening={...ledger.balances};openingIn={...ledger.inflows};openingOut={...ledger.outflows};openingCompleted=completedTotals();openingManufactured=new Map([...manufactures].map(([id,m])=>[id,{...m.completedByProduct}]));recycle?.markObservation()}}
  const cost=(m:ManufacturingState):ResourceAmounts=>Object.fromEntries(m.formula.costs.map(c=>[c.id==='4001'?'lmd':c.id==='30012'?'orirock':'device',-c.count]))
  const advanceManufacture=(m:ManufactureRoom,work:number)=>{
   const progress=advanceManufacturing(m.state,work)
@@ -121,6 +123,7 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
  }
  const rng=(t:TradeRoom)=>{t.rng=(Math.imul(1664525,t.rng)+1013904223)>>>0;return t.rng/4294967296}
  const synchronize=(frame:ProductionFrame)=>{
+  observedFacilityTypes=Object.fromEntries(frame.config.rooms.map(room=>[room.id,room.type==='trading'?'trade':room.type]))
   if(frame.config.facilities.recycle&&!recycle)recycle=createRecycleTimeline(frame.config.facilities.recycle)
   for(const room of frame.config.rooms){
    const evaluation=frame.evaluations[room.id]!
@@ -338,7 +341,12 @@ export function createProductionTimeline(schedule:CompiledSchedule,state:Runtime
   const report=():ProductionReport=>({success:valid,ledger,sample:{completed:completedSample(),opening:opening??{...ledger.balances},closing:{...ledger.balances},inflows:difference(ledger.inflows,openingIn),outflows:difference(ledger.outflows,openingOut),net:difference(ledger.balances,opening??ledger.balances)},materialsConsumed:{...materialsConsumed},drones,events,
    ...(recycle?{recycle:recycle.report()}:{}),
    assumptions:{outputMode,inventoryMode,seed,runOrderMode:'ideal',droneTarget:target,droneRoomId:options.droneRoomId,droneReserve:reserve,collectionIntervalHours:interval,orderSnapshotPolicy:'acquisition-start-v1: base draw and Pepe/Closure workload at start; U-Official/Proviso/Tequila conversion at completion; payment at collection; simultaneous facilities use schedule order'},
-   manufacturing:[...manufactures.values()].map(m=>({roomId:m.roomId,product:m.state.formula.product,completedItems:m.state.lifetimeItems,sampleCompletedItems:m.state.lifetimeItems-(openingManufactured.get(m.roomId)??0),pendingItems:m.state.pendingItems,remainingBaseMinutes:m.state.remainingBaseMinutes,blockedHours:m.blockedHours,blockedMaterialHours:m.blockedMaterialHours})),
+   manufacturing:[...manufactures.values()].map(m=>{
+    const opening=openingManufactured.get(m.roomId)??{}
+    // Keep each completed item under the recipe that actually produced it.
+    const sampleCompletedByProduct=Object.fromEntries(Object.entries(m.completedByProduct).map(([product,count])=>[product,count-(opening[product]??0)]))
+    return {roomId:m.roomId,product:m.state.formula.product,completedItems:m.state.lifetimeItems,sampleCompletedItems:Object.values(sampleCompletedByProduct).reduce((sum,count)=>sum+count,0),sampleCompletedByProduct,pendingItems:m.state.pendingItems,remainingBaseMinutes:m.state.remainingBaseMinutes,blockedHours:m.blockedHours,blockedMaterialHours:m.blockedMaterialHours}
+   }),
    trading:[...trades.values()].map(t=>({roomId:t.roomId,completedOrders:t.completedOrders,collectedOrders:t.collectedOrders,pendingOrders:t.pending,remainingBaseMinutes:t.active?.remainingBaseMinutes??null,blockedHours:t.blockedHours}))})
   if(switchSettings.enable)diagnostic('PRODUCT_SWITCH_SIMULATION_MODEL','切产物按当前份基础工作量、共享无人机库存及配置的损耗和等待规则推进；旧产物先收取，已有贸易订单保留。确认缓冲按暂停开工建模，未模拟设备识别、页面操作及换班前批量切换的驻场等待。')
   if(switchSettings.enable&&switchSettings.direct_when_drones_insufficient)diagnostic('PRODUCT_SWITCH_CANCEL_COST_MODEL','直接取消当前制造份时不计完成产物，保留已发生的开工扣料；游戏取消时的材料返还规则未实测。')

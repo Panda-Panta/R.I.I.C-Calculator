@@ -78,13 +78,13 @@ describe('native ordinary cover mood checks (ae9fc322)',()=>{
   const next=queue.tasks.find(t=>t!==task)!;expect(next.timeMicros).toBe(toMowerMicros(6));expect(next.replacementCheck?.target).toEqual(task.replacementCheck?.target)
  })
  it('requires an actual read and uses countdown fallback outside recycle only',()=>{
-  const {data,queue,operators,start}=fixture(),task=start();operators.cover.depletionRate=0
+  const {data,queue,operators,start}=fixture(),task=start();operators.cover.depletionRate=0;operators.cover.moodIsPrediction=true
   expect(runMowerReplacementCheck(data,queue,task,{readRoom:()=>({agent:'cover',mood:12,observed:false})})).toBe(false)
   expect(task.executionFailure).toBeDefined()
   delete task.executionFailure;delete task.replacementCheck!.failure
   runMowerReplacementCheck(data,queue,task,{readRoom:()=>({agent:'cover',mood:12,endMicros:toMowerMicros(6)})})
   expect(task.timeMicros).toBe(toMowerMicros(4))
-  const recycle=fixture('recycle'),check=recycle.start();recycle.operators.cover.depletionRate=0
+  const recycle=fixture('recycle'),check=recycle.start();recycle.operators.cover.depletionRate=0;recycle.operators.cover.moodIsPrediction=true
   runMowerReplacementCheck(recycle.data,recycle.queue,check,{readRoom:()=>({agent:'cover',mood:12,endMicros:toMowerMicros(6)})})
   expect(check.executionFailure).toBeDefined();expect(check.timeMicros).toBe(0)
  })
@@ -118,7 +118,9 @@ describe('native ordinary cover mood checks (ae9fc322)',()=>{
   runMowerReplacementCheck(data,queue,first);runMowerReplacementCheck(data,queue,peer)
   const peerFailure=peer.executionFailure
   data.nowMicros=toMowerMicros(1)
+  operators.cover.moodIsPrediction=true
   runMowerReplacementCheck(data,queue,first,{readRoom:()=>{
+   operators.cover.moodIsPrediction=false
    operators.cover.timeStampMicros=data.nowMicros;data.operators.cover2!.timeStampMicros=data.nowMicros
    return {agent:'cover',mood:12,observed:true}
   }})
@@ -135,5 +137,97 @@ describe('native ordinary cover mood checks (ae9fc322)',()=>{
   provider.currentRoom='';provider.currentIndex=-1
   syncMowerReplacementChecks(data,queue,options)
   expect(task.executionFailure).toBeUndefined();expect(task.timeMicros).toBe(0)
+ })
+})
+
+describe('native safe working-mood cache and read barriers',()=>{
+ it.each([
+  {name:'ordinary',hours:1,reads:0},
+  {name:'ordinary',hours:2,reads:0},
+  {name:'ordinary',hours:2+1/3_600_000_000,reads:1},
+  {name:'歌蕾蒂娅',hours:.5,reads:0},
+  {name:'歌蕾蒂娅',hours:.5+1/3_600_000_000,reads:1},
+  {name:'见行者',hours:.5+1/3_600_000_000,reads:1},
+ ])('uses the native refresh window for $name at $hours hours',({name,hours,reads:expectedReads})=>{
+  const {data,queue,operators,start}=fixture();operators.cover.nativeName=name
+  data.nowMicros=toMowerMicros(hours)
+  const task=start();let reads=0
+  const measured=12-2*hours
+  expect(runMowerReplacementCheck(data,queue,task,{readRoom:()=>{
+   reads++;operators.cover.mood=measured;operators.cover.timeStampMicros=data.nowMicros
+   return {agent:'cover',mood:measured,observed:true}
+  }})).toBe(false)
+  expect(reads).toBe(expectedReads);expect(task.timeMicros).toBe(toMowerMicros(4))
+  expect(operators.cover.timeStampMicros).toBe(expectedReads?data.nowMicros:0)
+  expect(operators.cover.mood).toBe(expectedReads?measured:12)
+ })
+ it.each(['missing','future','prediction','invalid','lower-limit'])('forces a real read for %s cached evidence',kind=>{
+  const {data,queue,operators,start}=fixture();data.nowMicros=toMowerMicros(1)
+  if(kind==='missing')operators.cover.timeStampMicros=undefined
+  if(kind==='future')operators.cover.timeStampMicros=toMowerMicros(2)
+  if(kind==='prediction')operators.cover.moodIsPrediction=true
+  if(kind==='invalid')operators.cover.mood=NaN
+  if(kind==='lower-limit')operators.cover.mood=6
+  const task=start();let reads=0
+  runMowerReplacementCheck(data,queue,task,{readRoom:()=>{
+   reads++;operators.cover.mood=10;operators.cover.timeStampMicros=data.nowMicros;operators.cover.moodIsPrediction=false
+   return {agent:'cover',mood:10,observed:true}
+  }})
+  expect(reads).toBe(1);expect(task.timeMicros).toBe(toMowerMicros(4))
+ })
+ it.each(['environment','invalidation'])('requires a sample after the %s barrier before reusing the cache',change=>{
+  const {data,queue,operators,start}=fixture(),task=start()
+  runMowerReplacementCheck(data,queue,task)
+  data.nowMicros=toMowerMicros(1)
+  if(change==='environment')syncMowerReplacementChecks(data,queue,{productByRoom:{room_1_1:'gold'}})
+  else invalidateMowerReplacementChecks(data,queue)
+  let reads=0
+  runMowerReplacementCheck(data,queue,task,{readRoom:()=>{
+   reads++;operators.cover.mood=10;operators.cover.timeStampMicros=data.nowMicros
+   return {agent:'cover',mood:10,observed:true}
+  }})
+  expect(reads).toBe(1);expect(task.timeMicros).toBe(toMowerMicros(4))
+  // The successful actual sample clears the barrier, even at the same wall clock.
+  runMowerReplacementCheck(data,queue,task,{readRoom:()=>{reads++;return {agent:'cover',mood:10,observed:true}}})
+  expect(reads).toBe(1)
+ })
+ it.each([{sample:3.5,reads:1},{sample:4,reads:0}])('keeps the original deadline as a read barrier for a sample at $sample hours',({sample,reads:expectedReads})=>{
+  const {data,queue,operators,start}=fixture(),task=start()
+  runMowerReplacementCheck(data,queue,task)
+  data.nowMicros=toMowerMicros(4);operators.cover.timeStampMicros=toMowerMicros(sample);operators.cover.mood=6
+  let reads=0
+  runMowerReplacementCheck(data,queue,task,{readRoom:()=>{
+   reads++;operators.cover.mood=6-2*(4-sample);operators.cover.timeStampMicros=data.nowMicros
+   return {agent:'cover',mood:operators.cover.mood,observed:true}
+  }})
+  expect(reads).toBe(expectedReads);expect(task.timeMicros).toBe(toMowerMicros(sample+1))
+ })
+ it('retains unsafe stale evidence when no real observation can be supplied',()=>{
+  const {data,queue,operators,start}=fixture();data.nowMicros=toMowerMicros(3)
+  const task=start()
+  expect(runMowerReplacementCheck(data,queue,task)).toBe(false)
+  expect(task.executionFailure).toBeDefined();expect(task.timeMicros).toBe(data.nowMicros)
+  expect(operators.cover.timeStampMicros).toBe(0)
+ })
+ it('preserves the old saved task deadline as a read barrier when the new cache field is absent',()=>{
+  const {data,queue,operators,start}=fixture(),task=start()
+  runMowerReplacementCheck(data,queue,task)
+  Reflect.deleteProperty(task.replacementCheck!,'deadlineMicros')
+  data.nowMicros=toMowerMicros(4);operators.cover.timeStampMicros=toMowerMicros(3.5);operators.cover.mood=6
+  let reads=0
+  runMowerReplacementCheck(data,queue,task,{readRoom:()=>{
+   reads++;operators.cover.mood=5;operators.cover.timeStampMicros=data.nowMicros
+   return {agent:'cover',mood:5,observed:true}
+  }})
+  expect(reads).toBe(1);expect(task.timeMicros).toBe(toMowerMicros(4.5))
+ })
+ it('clones cache deadlines and invalidation barriers with the rest of a retained check',()=>{
+  const {data,queue,start}=fixture(),task=start()
+  runMowerReplacementCheck(data,queue,task)
+  data.nowMicros=toMowerMicros(1);invalidateMowerReplacementChecks(data,queue)
+  const copy=cloneMowerReplacementCheck(task)!
+  expect(copy).toMatchObject({deadlineMicros:toMowerMicros(4),readAfterMicros:data.nowMicros})
+  Object.assign(copy,{deadlineMicros:0,readAfterMicros:0})
+  expect(task.replacementCheck).toMatchObject({deadlineMicros:toMowerMicros(4),readAfterMicros:data.nowMicros})
  })
 })

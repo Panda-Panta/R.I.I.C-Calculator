@@ -9,6 +9,8 @@ import { useRosterWorkbenchStore } from '../store'
 import type { CalculationWorkerMessage } from '../calculationWorker'
 import type { SimulationActivity } from '../../simulator/simulationActivity'
 import { createCalculationResultSender, type CalculationResultMessage, type CalculationResultPayload } from '../calculationResultTransport'
+import { calculate } from '../../engine/calculate'
+import { createDefaultConfig } from '../../domain/defaults'
 
 const workers: TestWorker[] = []
 class TestWorker {
@@ -57,6 +59,30 @@ beforeEach(() => {
   } }))
 })
 afterEach(() => { wrapper.unmount(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
+
+it.each(['primary', 'facility', 'policy', 'backup', 'weights'] as const)('invalidates a completed income report after a %s change', kind => {
+  start()
+  const report = calculate(createDefaultConfig())
+  workers[0]!.onmessage?.({ data: { type: 'complete', result: { success: true, report }, timelineData: null } } as MessageEvent<CalculationWorkerMessage>)
+  expect(session.calculationReport.value).toEqual(report)
+  if (kind === 'primary') store.updateSlotOccupant('room_1_1', 0, { kind: 'operator', operatorId: 'char_102_texas' })
+  else if (kind === 'facility') store.updateFacility('room_1_1', { product: 'exp' })
+  else if (kind === 'policy') store.updateConf({ rest_in_full: ['char_102_texas'] })
+  else if (kind === 'backup') store.workspace.compatibility.backupPlans.push({ trigger: 'False' })
+  else store.workspace.productionWeights = { exp: 2, gold: .8, orders: .2, fragments: 0, orundum: 0 }
+  expect(session.calculationReport.value).toBeNull()
+  expect(session.simulationReport.value).toBeNull()
+  expect(session.timelineData.value).toBeNull()
+  expect(session.calculationStatus.value).toContain('重新计算')
+})
+
+it('keeps a completed report while changing only the selected editor room', () => {
+  start()
+  const report = calculate(createDefaultConfig())
+  workers[0]!.onmessage?.({ data: { type: 'complete', result: { success: true, report }, timelineData: null } } as MessageEvent<CalculationWorkerMessage>)
+  store.selectRoom('central')
+  expect(session.calculationReport.value).toEqual(report)
+})
 
 it('requests a fresh crypto uint32 for every production-mode random-seed request without persisting it', () => {
   vi.stubEnv('VITEST', '')

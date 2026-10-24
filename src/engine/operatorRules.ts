@@ -532,6 +532,7 @@ export function evaluateOperators(
     (operator) => activeInContext(operator.charId, config, activeOperatorIds),
   )
   const operatorNames = new Set(activeOperators.map((operator) => operator.name))
+  const presentOperatorNames = new Set(operators.map((operator) => operator.name))
   const details: string[] = []
   const unquantifiedSkills: string[] = []
   const automationOperators = new Set(
@@ -566,19 +567,22 @@ export function evaluateOperators(
   const controlOps = selectedOperators(config,
     config.controlOperatorIds.filter((id) => activeInContext(id, config, activeOperatorIds)),
   )
-  const gnosisInControl = controlOps.some((op) => op.charId === 'char_206_gnosis')
-  const wisdelInControl = controlOps.some((op) => op.charId === 'char_1035_wisdel')
+  const gnosisInControl = controlOps.some((op) => op.charId === 'char_206_gnosis' &&
+    op.skills.some(skill => skill.buffId === 'control_tra_limit&spd[000]'))
+  const wisdel = controlOps.find((op) => op.charId === 'char_1035_wisdel')
+  const wisdelOrderLimitBonus = wisdel?.skills.some(skill => skill.buffId === 'control_meeting&ord[001]') ? 2
+    : wisdel?.skills.some(skill => skill.buffId === 'control_meeting&ord[000]') ? 1 : 0
   const roomOrderLimitIncrease =
     room.type === 'trading'
       ? activeOperators.reduce((sum, op) => {
           let opLimit = op.skills
             .filter((skill) => skill.roomType === 'TRADING')
-            .reduce((s, skill) => s + orderLimitDelta(skill, room, operatorNames), 0)
+            .reduce((s, skill) => s + orderLimitDelta(skill, room, presentOperatorNames), 0)
           if (gnosisInControl && matchesRiicIdentity(op, 'nationId', 'kjerag')) {
             opLimit += 6
           }
-          if (wisdelInControl && op.name === '赫德雷') {
-            opLimit += 2
+          if (op.name === '赫德雷') {
+            opLimit += wisdelOrderLimitBonus
           }
           return sum + Math.max(0, opLimit)
         }, 0)
@@ -592,7 +596,8 @@ export function evaluateOperators(
     )
   const vivianaActive =
     config.controlOperatorIds.includes('char_4098_vvana') &&
-    activeInContext('char_4098_vvana', config, activeOperatorIds)
+    activeInContext('char_4098_vvana', config, activeOperatorIds) &&
+    hasOperatorSkill(config, 'char_4098_vvana', 'control_prod_fraction[000]')
   // Copy the same resolved, non-facility values that are actually applied below.
   // The copy skill itself is deferred until every colleague has been evaluated.
   let waaiFuCopyableBonus = 0
@@ -1060,9 +1065,9 @@ export function evaluateOperators(
       partners: partners.map(op => {
         const contribution = operatorContributions.find(item => item.operatorId === op.charId)!
         const skills = op.skills.filter(skill => skill.roomType === 'TRADING')
-        let capacity = skills.reduce((sum, skill) => sum + orderLimitDelta(skill, room, operatorNames), 0)
+        let capacity = skills.reduce((sum, skill) => sum + orderLimitDelta(skill, room, presentOperatorNames), 0)
         if (gnosisInControl && matchesRiicIdentity(op, 'nationId', 'kjerag')) capacity += 6
-        if (wisdelInControl && op.name === '赫德雷') capacity += 2
+        if (op.name === '赫德雷') capacity += wisdelOrderLimitBonus
         const orderLimitSkills = skills.filter(skill => ['trade_ord_spd_variable[000]', 'trade_ord_spd_variable3[000]'].includes(skill.buffId))
         const orderLimitDerivedEfficiency = orderLimitSkills.reduce((sum, skill) => {
           const item = contribution.items.find(i => i.name === `${op.name}·${skill.name}`)

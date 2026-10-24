@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 755 个索引文件，其中应用 TypeScript/Vue/CSS 文件 262 个，业务测试文件 338 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 783 个索引文件，其中应用 TypeScript/Vue/CSS 文件 270 个，业务测试文件 352 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -140,6 +140,13 @@ docs/
 scripts/
 ├── fixtures/
 │   └── neighborhood-request.json
+├── unicode-escape-names/
+│   ├── LICENSE.txt
+│   ├── NameAliases-15.0.0.txt
+│   ├── NamedSequences-15.0.0.txt
+│   ├── UnicodeData-15.0.0.txt.gz
+│   ├── generate.py
+│   └── sources.json
 ├── audit-riic-data.mjs
 ├── benchmark-cpu.mjs
 ├── benchmark-neighborhood.mjs
@@ -173,6 +180,7 @@ src/
 │       ├── BackupGroupEditor.vue
 │       ├── BackupPlanEditor.spec.ts
 │       ├── BackupPlanEditor.vue
+│       ├── BackupTaskCapacity.spec.ts
 │       ├── BaseMap.spec.ts
 │       ├── BaseMap.vue
 │       ├── CalculationActivityNotice.spec.ts
@@ -309,9 +317,11 @@ src/
 │   ├── operatorRules.ts
 │   ├── orderCapacity.spec.ts
 │   ├── orderCapacity.ts
+│   ├── orderCapacityPresence.spec.ts
 │   ├── orderRegression.spec.ts
 │   ├── shiftRoster.ts
 │   ├── singleRecoveryEligibility.ts
+│   ├── skillProviderBoundaries.spec.ts
 │   ├── supportFacilitySkills.spec.ts
 │   ├── supportFacilitySkills.ts
 │   ├── supportRecovery.ts
@@ -469,7 +479,10 @@ src/
 │   │   ├── mower-shared-groups-20261013.json
 │   │   ├── mower-task-scheduling-alpha.json
 │   │   └── mower-todo-task-alpha.json
+│   ├── backupConditionErrors.spec.ts
 │   ├── backupExpression.ts
+│   ├── backupExpressionValues.spec.ts
+│   ├── backupExpressionValues.ts
 │   ├── backupFunctionExpression.spec.ts
 │   ├── backupGroups.spec.ts
 │   ├── backupGroups.ts
@@ -477,6 +490,7 @@ src/
 │   ├── backupInventory.ts
 │   ├── backupInventoryExpression.spec.ts
 │   ├── backupInventoryWake.spec.ts
+│   ├── backupNativeSyntax.spec.ts
 │   ├── backupPlans.long.spec.ts
 │   ├── backupPlans.spec.ts
 │   ├── backupPlans.ts
@@ -526,6 +540,7 @@ src/
 │   ├── mowerBackupDepartureRecovery.ts
 │   ├── mowerBackupFacilities.spec.ts
 │   ├── mowerBackupGroupReturn.spec.ts
+│   ├── mowerBackupQueries.ts
 │   ├── mowerBackupRefresh.spec.ts
 │   ├── mowerBackupRefresh.ts
 │   ├── mowerBackupReplacements.ts
@@ -545,6 +560,8 @@ src/
 │   ├── mowerDormAdmissions.spec.ts
 │   ├── mowerDormAssignment.spec.ts
 │   ├── mowerDormAssignment.ts
+│   ├── mowerDormCapacity.spec.ts
+│   ├── mowerDormCapacity.ts
 │   ├── mowerDormIsolation.spec.ts
 │   ├── mowerDormIsolation.ts
 │   ├── mowerDormIsolationLatest.spec.ts
@@ -651,6 +668,10 @@ src/
 │   ├── mowerRunOrderRefresh.spec.ts
 │   ├── mowerRunOrderRefresh.ts
 │   ├── mowerRunOrderRuntime.spec.ts
+│   ├── mowerRunOrderStartup.spec.ts
+│   ├── mowerRunOrderStartup.ts
+│   ├── mowerRunOrderTail.spec.ts
+│   ├── mowerRunOrderTail.ts
 │   ├── mowerSameGroupReplacementCoordination.spec.ts
 │   ├── mowerSchedulingData.spec.ts
 │   ├── mowerSchedulingData.ts
@@ -696,7 +717,10 @@ src/
 │   ├── scheduleAdapter.ts
 │   ├── smartDormitoryPolicy.spec.ts
 │   ├── smartDormitoryPolicy.ts
-│   └── types.ts
+│   ├── types.ts
+│   ├── unicodeEscapeNames.spec.ts
+│   ├── unicodeEscapeNames.ts
+│   └── unicodeEscapeNamesData.ts
 ├── simulator/
 │   ├── fixtures/
 │   │   └── mower-legacy-240h-20261024.json
@@ -731,6 +755,7 @@ src/
 │   ├── productionNativeObservations.spec.ts
 │   ├── productionResources.spec.ts
 │   ├── productionRunOrder.spec.ts
+│   ├── productionScore.spec.ts
 │   ├── productionScore.ts
 │   ├── productionTimeline.spec.ts
 │   ├── productionTimeline.ts
@@ -789,12 +814,14 @@ src/
 │   │   ├── mowerFacilityLevels.spec.ts
 │   │   ├── mowerJson.spec.ts
 │   │   ├── mowerJson.ts
+│   │   ├── mowerNativeTriggerExport.spec.ts
 │   │   ├── mowerQrCodec.spec.ts
 │   │   ├── mowerQrCodec.ts
 │   │   ├── mowerQrConstants.ts
 │   │   ├── mowerQrCurrent.spec.ts
 │   │   └── mowerRecycle.spec.ts
 │   ├── composables/
+│   │   ├── useSmartRosterGeneration.spec.ts
 │   │   ├── useSmartRosterGeneration.ts
 │   │   ├── useWorkbenchCalculation.spec.ts
 │   │   ├── useWorkbenchCalculation.ts
@@ -839,6 +866,8 @@ src/
 │   ├── mowerReportMetrics.ts
 │   ├── operatorHelpers.spec.ts
 │   ├── operatorHelpers.ts
+│   ├── operatorReplacement.spec.ts
+│   ├── operatorReplacement.ts
 │   ├── reportExport.spec.ts
 │   ├── reportExport.ts
 │   ├── riicSkillDescription.spec.ts
@@ -870,6 +899,7 @@ src/
 | --- | ---: |
 | `public/avatar/` | 435 |
 | `public/building_skill/` | 557 |
+| `public/licenses/` | 1 |
 | `public/product/` | 5 |
 | `public/.nojekyll` | 1 |
 | `public/app-icon.png` | 1 |

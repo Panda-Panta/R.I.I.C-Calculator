@@ -25,7 +25,7 @@ import { compiledScheduleToRuntimeConfig } from './scheduleAdapter'
 import {normalizeMowerRecoveryBeds} from './mowerRecoveryBeds'
 import type { CompiledSchedule } from './types'
 import type { RuntimeState } from './rosterRuntime'
-import { compileBackupExpression } from './backupExpression'
+import { backupExpressionTruthy, compileBackupExpression } from './backupExpression'
 import {getMowerSourceRuntime,makeMowerSchedulingData} from './mowerSourceRuntime'
 import {projectMowerArrangements} from './mowerObservations'
 import type {MowerSchedulingData} from './mowerSchedulingData'
@@ -61,6 +61,7 @@ interface BackupPlan {
   usesMasteryPlan:boolean
   usesInventory:boolean
   usesFacilityProduct:boolean
+  usesFacilityObservation:boolean
   name: string; timing: BackupTiming; exitTiming: BackupTiming; condition: Expression
   slots: { room: MowerRoomId; index: number; agent: string; group: string | null; replacements: string[]; groupBindings?: MowerGroupBinding[] }[]
   products: Partial<Record<MowerRoomId, {product: MowerProduct; rawProduct: unknown}>>
@@ -87,6 +88,7 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
         usesMasteryPlan: ownCondition.usesMasteryPlan || groupConditionsForPlan.some(condition=>condition.usesMasteryPlan),
         usesInventory: ownCondition.usesInventory || groupConditionsForPlan.some(condition=>condition.usesInventory),
         usesFacilityProduct: ownCondition.usesFacilityProduct || groupConditionsForPlan.some(condition=>condition.usesFacilityProduct),
+        usesFacilityObservation: ownCondition.usesFacilityObservation || groupConditionsForPlan.some(condition=>condition.usesFacilityObservation),
       }
       conditionParticipants.forEach(name=>participants.add(name))
       const conditionNames=[...conditionParticipants],conditionWaitable=compiledCondition.observedOperatorDependenciesOnly
@@ -98,9 +100,10 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
       const usesMasteryPlan = compiledCondition.usesMasteryPlan
       const usesInventory = compiledCondition.usesInventory
       const usesFacilityProduct = compiledCondition.usesFacilityProduct
+      const usesFacilityObservation = compiledCondition.usesFacilityObservation
       if (compiledCondition.skipped) {
         diagnostics.push({ code: 'BACKUP_EXTERNAL_CONDITION_SKIPPED', message: `副表 ${name}（#${index + 1}）：跳过依赖 ${compiledCondition.skipped} 的整张副表；未执行其岗位、策略与任务` })
-        return { ...selectionFields, name, timing: 'AFTER_PLANNING' as const, exitTiming: 'AFTER_PLANNING' as const, condition, conditionNames, conditionWaitable, usesCurrentMood, usesMajorMaintenance, ownMajorMaintenance, maintenanceGroups, usesMasteryPlan, usesInventory, usesFacilityProduct, rooms: {}, slots: [], products: {}, task: {},conf:{} }
+        return { ...selectionFields, name, timing: 'AFTER_PLANNING' as const, exitTiming: 'AFTER_PLANNING' as const, condition, conditionNames, conditionWaitable, usesCurrentMood, usesMajorMaintenance, ownMajorMaintenance, maintenanceGroups, usesMasteryPlan, usesInventory, usesFacilityProduct, usesFacilityObservation, rooms: {}, slots: [], products: {}, task: {},conf:{} }
       }
       const timing = typeof raw.trigger_timing === 'string' ? raw.trigger_timing.toUpperCase() : ''
       const slots: BackupPlan['slots'] = [], task: BackupPlan['task'] = {}, products: BackupPlan['products'] = {}, rooms: BackupPlan['rooms'] = {}
@@ -137,7 +140,7 @@ function parsePlans(workspace: RosterWorkspace, participants: Set<string>, diagn
       }
       const entry = timing in BACKUP_TIMINGS ? timing as BackupTiming : 'AFTER_PLANNING'
       const exit = typeof raw.exit_trigger_timing === 'string' && raw.exit_trigger_timing ? raw.exit_trigger_timing.toUpperCase() : undefined
-      return { ...selectionFields, name, timing: entry, exitTiming: exit ? exit in BACKUP_TIMINGS ? exit as BackupTiming : 'AFTER_PLANNING' : entry, condition, conditionNames, conditionWaitable, usesCurrentMood, usesMajorMaintenance, ownMajorMaintenance, maintenanceGroups, usesMasteryPlan, usesInventory, usesFacilityProduct, rooms, slots, products, task,conf:record(raw.conf)?raw.conf:{} }
+      return { ...selectionFields, name, timing: entry, exitTiming: exit ? exit in BACKUP_TIMINGS ? exit as BackupTiming : 'AFTER_PLANNING' : entry, condition, conditionNames, conditionWaitable, usesCurrentMood, usesMajorMaintenance, ownMajorMaintenance, maintenanceGroups, usesMasteryPlan, usesInventory, usesFacilityProduct, usesFacilityObservation, rooms, slots, products, task,conf:record(raw.conf)?raw.conf:{} }
     } catch (error) { return fail(`${name}：${error instanceof Error ? error.message : String(error)}`) }
   })
 }
@@ -156,12 +159,22 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
   const groups = readBackupGroups(base.sourceWorkspace).filter(group=>group.id!=='default').map(group=>{const names=new Set<string>(),compiled=compileBackupExpression(group.trigger,names);names.forEach(name=>participants.add(name));return {...group,...compiled,conditionNames:[...names]}})
   let activeGroup = 'default'
   const maintenancePlans = (groupId:string) => plans.map(plan=>({...plan,usesMajorMaintenance:plan.ownMajorMaintenance || plan.maintenanceGroups.includes(groupId)}))
-  function selectionFor(currentState:RuntimeState,groupId:string,current:boolean[]){
-    return selectBackupPlans(plans,groups.filter(group=>group.evaluate(currentState)).map(group=>group.id),index=>Boolean(plans[index]!.condition(currentState)),groupId,current)
+  // Native evaluate_expression catches execution errors at the complete condition
+  // boundary. Compilation/structure errors above still fail initialization.
+  const conditionResult=(expression:Expression,label:string,currentState:RuntimeState):boolean=>{
+    try{return backupExpressionTruthy(expression(currentState))}
+    catch(error){
+      const code='MOWER_BACKUP_CONDITION_ERROR',message=`条件「${label}」求值失败，本次不触发：${error instanceof Error?error.message:String(error)}`
+      if(!state.diagnostics.some(item=>item.code===code&&item.message===message))state.diagnostics.push({code,message})
+      return false
+    }
   }
-  const observedPlans = [...plans,...groups.map(group=>({...group,condition:group.evaluate}))].filter(plan=>plan.usesInventory||plan.usesFacilityProduct)
+  function selectionFor(currentState:RuntimeState,groupId:string,current:boolean[]){
+    return selectBackupPlans(plans,groups.filter(group=>conditionResult(group.evaluate,group.name,currentState)).map(group=>group.id),index=>conditionResult(plans[index]!.condition,plans[index]!.name,currentState),groupId,current)
+  }
+  const observedPlans = [...plans,...groups.map(group=>({...group,condition:group.evaluate}))].filter(plan=>plan.usesInventory||plan.usesFacilityProduct||plan.usesFacilityObservation)
   let observedConditions: string | undefined
-  const observationSignature = () => JSON.stringify(observedPlans.map(plan=>Boolean(plan.condition(state))))
+  const observationSignature = () => JSON.stringify(observedPlans.map(plan=>conditionResult(plan.condition,plan.name,state)))
   const observationBlocked = () => {
     const source=state.mowerSource
     return source?.queue.tasks.some(task=>!task.executionFailure&&(task.backupShiftActive||task.type===T.FIAMMETTA&&task.timeMicros<=toMowerMicros(state.time)))||source?.activeTask?.type===T.FIAMMETTA

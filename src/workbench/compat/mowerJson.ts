@@ -18,6 +18,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** Native Trigger fields accept expression text inside left, never as the trigger itself.
+ * Keep the local editor text and unedited native AST/extensions unchanged.
+ */
+function exportNativeConditions(value: unknown): unknown {
+  return Array.isArray(value) ? value.map(entry => isRecord(entry) && typeof entry.trigger === 'string'
+    ? {...entry, trigger: {left: entry.trigger, operator: '', right: ''}}
+    : entry) : value
+}
+
 const CONF_LIST_FIELDS = MOWER_OPERATOR_LIST_FIELDS
 
 type ConfListField = (typeof CONF_LIST_FIELDS)[number]
@@ -439,6 +448,7 @@ export function exportMowerJson(workspace: RosterWorkspace): string {
     default: defaultKey,
     [defaultKey]: planObj,
   }
+  if ('backup_groups' in output) output.backup_groups = exportNativeConditions(output.backup_groups)
 
   const savedLevels = workspace.compatibility.unrecognizedFields.facility_levels
   const exportedLevels: Record<string, unknown> = isRecord(savedLevels) ? { ...savedLevels } : {}
@@ -462,7 +472,7 @@ export function exportMowerJson(workspace: RosterWorkspace): string {
   }
 
   if (workspace.compatibility.importedHasBackupPlans !== false) {
-    output.backup_plans = workspace.compatibility.backupPlans || []
+    output.backup_plans = exportNativeConditions(workspace.compatibility.backupPlans || [])
   }
 
   return JSON.stringify(output, null, 2)

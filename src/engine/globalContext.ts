@@ -161,6 +161,7 @@ function deriveMonsterCuisine(
 ): number {
   return config.facilityOperatorIds.dormitories.reduce((sum, ids, index) => {
     const senshiActive = ids.includes('char_4143_sensi') &&
+      hasOperatorSkill(config, 'char_4143_sensi', 'dorm_rec_bd_dungeon[000]') &&
       isActive('char_4143_sensi', config, activeOperatorIds)
     return sum + (senshiActive ? config.facilities.dormitories[index] ?? 0 : 0)
   }, 0)

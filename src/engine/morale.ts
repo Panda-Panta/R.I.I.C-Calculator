@@ -104,6 +104,9 @@ function conditionMatches(skill: OperatorSkill, assignment: Assignment, activeId
     (skill.buffId !== 'meet_spd&cost_char[000]' || isSupportOperatorWorking(config, peer.charId, activeIds)))
   if (!supportSkillConditionMatches(skill, assignment.operator.charId, peers.map(peer => peer.charId))) return false
   if (description.includes('生产作战记录类配方时') && assignment.room?.product !== 'exp') return false
+  if (skill.buffId === 'trade_ord_limit&cost_P[000]' || skill.buffId === 'trade_ord_limit&cost_P[001]') {
+    return assignment.peers.some(peer => peer.name === '德克萨斯')
+  }
   const sameRoom = description.match(/当与(.+?)在同一个(?:制造站|贸易站)时/)
   if (sameRoom) {
     return assignment.peers.some((peer) => peer.name === sameRoom[1] && activeIds.has(peer.charId))
@@ -250,28 +253,32 @@ function computeRates(
     }
   }
 
+  const hasActiveControlSkill = (sourceId: string, buffId: string) => activeControl.some(({ operator }) =>
+    operator.charId === sourceId && operator.skills.some(skill => skill.roomType === 'CONTROL' && skill.buffId === buffId),
+  )
   const applyCountRecovery = (
     sourceId: string,
+    buffId: string,
     predicate: (operator: OperatorRecord) => boolean,
     amount: number,
     label: string,
   ) => {
-    if (!activeIds.has(sourceId)) return
+    if (!hasActiveControlSkill(sourceId, buffId)) return
     const count = activeControl.filter((item) => predicate(item.operator)).length
     if (count) addAll(activeControl, -count * amount, `${label}：${count} 人，-${(count * amount).toFixed(2)}/h`)
   }
 
-  applyCountRecovery('char_010_chen', (operator) => isFaction(operator, 'lgd'), 0.05, '陈·德才兼备')
+  applyCountRecovery('char_010_chen', 'control_mp_cost&faction[000]', (operator) => isFaction(operator, 'lgd'), 0.05, '陈·德才兼备')
   for (const id of ['char_1021_kroos2', 'char_1011_lava2', 'char_1024_hbisc2']) {
-    applyCountRecovery(id, isAlter, 0.05, `${OPERATOR_MAP.get(id)?.name ?? id}·异格者`)
+    applyCountRecovery(id, 'control_mp_cost&faction[900]', isAlter, 0.05, `${OPERATOR_MAP.get(id)?.name ?? id}·异格者`)
   }
   for (const id of ['char_456_ash', 'char_457_blitz', 'char_458_rfrost', 'char_459_tachak']) {
-    applyCountRecovery(id, (operator) => isFaction(operator, 'rainbow'), 0.05, `${OPERATOR_MAP.get(id)?.name ?? id}·彩虹小队`)
+    applyCountRecovery(id, 'control_mp_cost&faction[990]', (operator) => isFaction(operator, 'rainbow'), 0.05, `${OPERATOR_MAP.get(id)?.name ?? id}·彩虹小队`)
   }
-  applyCountRecovery('char_206_gnosis', (operator) => isFaction(operator, 'kjerag', 'karlan'), 0.05, '灵知·幕后指挥')
-  applyCountRecovery('char_197_poca', (operator) => isFaction(operator, 'student'), 0.05, '早露·学生会会长')
+  applyCountRecovery('char_206_gnosis', 'control_mp_cost&faction[030]', (operator) => isFaction(operator, 'kjerag', 'karlan'), 0.05, '灵知·幕后指挥')
+  applyCountRecovery('char_197_poca', 'control_mp_cost&faction[020]', (operator) => isFaction(operator, 'student'), 0.05, '早露·学生会会长')
 
-  if (activeIds.has('char_226_hmau') && hasOperatorSkill(config,'char_226_hmau','control_mp_cost&faction2[000]')) {
+  if (hasActiveControlSkill('char_226_hmau', 'control_mp_cost&faction2[000]')) {
     const leeOperators = activeControl.filter((item) => isFaction(item.operator, 'lee'))
     if (leeOperators.length) {
       addAll(activeControl, -leeOperators.length * 0.05, `吽·坚毅随和：全员 -${(leeOperators.length * 0.05).toFixed(2)}/h`)
