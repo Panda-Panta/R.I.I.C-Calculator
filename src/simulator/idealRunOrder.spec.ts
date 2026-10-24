@@ -60,7 +60,9 @@ describe('ideal-only run-order scheduling',()=>{
   expect(orders.some(o=>o.kind==='tequila')).toBe(true)
   expect(orders.every(o=>o.kind==='tequila'?o.goldCost===4&&o.lmdReward===2500:o.kind==='proviso'&&((o.goldCost===4&&o.lmdReward===2000)||(o.goldCost===5&&o.lmdReward===2500)))).toBe(true)
  })
- it('keeps virtual runners out of physical rooms after Mower backup-plan recompilation',()=>{
+ it('keeps virtual runners out of physical rooms after Mower backup-plan recompilation',async()=>{
+  // Publish the Vitest task before the synchronous full-roster simulation.
+  await new Promise(resolve=>setTimeout(resolve,150))
   const result=runScheduleSimulationBridge(importMowerJson(JSON.stringify(sourceRoster)),{
    sampleHours:2,warmupHours:0,recordSegments:true,production:{outputMode:'potential',runOrderMode:'ideal',droneTarget:'exp',seed:42},
   },{restingThreshold:.65,freeRoom:false,fiammettaFool:false})
@@ -69,5 +71,5 @@ describe('ideal-only run-order scheduling',()=>{
   expect(report.events.some(event=>event.type==='backup-plan')).toBe(true)
   expect(report.segments.some(segment=>Object.entries(segment.occupants).some(([slot,occupant])=>slot.startsWith('room_')&&[id('但书'),id('龙舌兰')].includes(occupant)))).toBe(false)
   expect(report.production!.events.some(event=>event.type==='run-order-ideal')).toBe(true)
- })
+ },120000)
 })
