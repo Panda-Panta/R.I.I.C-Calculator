@@ -1,3 +1,16 @@
+# 2026-10-25 ArknightsUnpacker 本机数据更新（进行中）
+
+- 目标：调用本机 ArknightsUnpacker 的生产解码器，只读提取当前国服 PC 安装的干员、完整后勤阶段、术语、物品和版本；核对公开 GameData、工具箱、PRTS 与相关 Mower 来源，按实际差异更新算法和可独立离线使用的后勤 skill。
+- 基线与保护：原目录 `D:/Project/Arknights/R.I.I.C-Calculator - Codex` 位于另一个未完 Mower 修复分支，保留其所有 tracked/untracked 工作及用户数据。本任务从远端 main/test `10b5c989f4175bd13edc12cc8be90dcf25207dff` 创建隔离 worktree，在自有 `codex/gamedata-unpacker-20261025` 专项分支实施；结束条件为经审查与必要验证的普通 PR 交付，保留原分支。隔离基线备份 `artifacts/unpacker-data-20261025/backup/source-before.zip`，SHA-256 `57fbe95d78f8597320545a457cbffe7ff2e454a05fd496f6f8601d88d23d5743`；原工作区源码和未提交计划另有备份。
+- 当前事实与假设：计算器和 skill 当前为 GameData v078 / 432 人 / 929 阶段；Unpacker v0.1.10 能用 load_local_tables 指定独立缓存提取，PC building 表存在5个未知根槽，已知字段枚举可能为整数。未知字段不猜语义；当前安装版本与公网最新分别核实，文件 mtime 不作为版本或新增依据。
+- 资源与方案：复用 `scripts/import-gamedata.mjs`、`sync-riic-catalog.mjs`、`riic-catalog-evidence.mjs`、领域解释器和现有阶段/联动测试。先原始导出与语义 diff，再适配真实来源/整数枚举契约、分阶段生成和算法增量；不把 AB 哈希或 PC 版本冒作 Git commit，不手改生成数据。具体来源不足则保留可核验范围及未确认项。
+- 个人模式与并行：主 agent 负责计划、来源契约/生成器集成、共享文件、最终测试/审查/Git/交付；unpacker_source 独占原目录本任务 `source-discovery/` 的源头调查和只读提取；catalog_algorithm_audit 独占 `algorithm-audit/` 的算法覆盖/差异调查，原始表到达后再分配具体算法实现。二者首批真实并行，均不编辑现有源码、不操作 Git、原游戏、Unpacker 历史库或安装配置；第二批明确源码路径后实施。
+- 影响边界：保留每槽全部解锁阶段与等级、同槽只取有效阶段、不可获得/空占位过滤，保留干员库存、主副表、高级设置及用户配置。按新增技能影响检查同站、全局在岗/设施计数、阵营/技能类别、心情、候补和长期收支；没有新内容的场景保持旧结果。除与新数据确有调用依赖外，不修改 Mower 调度。
+- 验证：原始 AB/解码输出/规范化输入 SHA-256，来源和字段差异；新行为红绿用例、受影响技能阶段/联动/资源回归；数据审计、TypeScript、生产构建、结构索引、skill frontmatter/相对引用/版本/哈希及独立目录离线查询；必要浏览器运行。来源最新版检查、数据收录、算法量化、模拟和真实游戏运行分开记录，未知技能明确可见。
+- 文档与交付：沿用 `UPDATE_PLAN.md`、`PROJECT_STRUCTURE.md`、`DEVELOPMENT_WORKFLOW.md` 和项目领域 skill；本任务新知识补现有数据更新说明，不另建重复计划。通过独立审查与必要验证后普通 PR 合并，核对实际主线/候选树，再按既有 `sync-tools.ps1 -ValidateOnly`、备份、安全同步和逐文件哈希执行。独立 skill 同步至已授权 `Panda-Panta/arknights-riic-mechanics`，保留未知字段、未核验来源和未实测平台/游戏边界。
+- 首轮验证：14份生成数据逐项SHA核验，432/760/929完整设施审计通过；Vue类型、生产构建、17文件272项通过，审查后来源账本34项复验通过。两项独立审查关闭唯一来源delta问题；数值规则/术语/设施参数未变。全量因发现远端main已推进e9888d2而中止，不能作整套通过证据。
+- 并发主线：独立skill已合入PR2/cd9e9dc，计算器main e9888d2包含新Mower规则；本任务先固化已审查数据候选，再整合实际main并重新验证，保留并发规则及原始工作区。
+
 # 2026-10-24 最新 Mower 机制导入（源码与安装已交付）
 
 - 来源：固定 alpha `84e3926c0f36045d7baeb1ac050f815b40952d6d`；从初始 `ae9fc322` 核对后纳入后续两项机制。2026-10-24 00:07 UTC 再查该机制范围为 current，GameData/工具箱/PRTS及历史回收范围仍有 stale；本轮保留 GameData v078，不宣称全包游戏数据最新。来源原文、提交、SHA-256 和本地约定保存在领域 skill 的 `latestMechanicsImport`。

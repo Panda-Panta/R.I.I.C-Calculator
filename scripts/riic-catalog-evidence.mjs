@@ -91,7 +91,14 @@ export function verifyPrtsOperator(operator, responseBytes, checkedGameDataCommi
 /** Independently pinned extensions survive regeneration; core sources and checks are rebuilt. */
 export function mergeLogisticsEvidence(previous, fresh) {
   assert.ok(Array.isArray(fresh.prts), 'Generation must supply fresh PRTS checks')
-  return { ...previous, ...fresh }
+  const retained = { ...previous }
+  delete retained.unpackerEvidence
+  const merged = { ...retained, ...fresh }
+  // Repeating generation at the same source keeps the original upgrade delta.
+  if (fresh.gameData?.commit && previous.gameData?.commit === fresh.gameData.commit
+    && previous.delta?.toCommit === fresh.gameData.commit && fresh.delta
+    && fresh.delta.fromCommit === fresh.delta.toCommit) merged.delta = previous.delta
+  return merged
 }
 
 /** A retained numeric extension cannot silently contradict the incoming GameData. */

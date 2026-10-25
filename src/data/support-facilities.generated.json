@@ -1,7 +1,7 @@
 {
-  "sourceCommit": "17759cc8cdf37388414145d16262a3a06f3ab25e",
-  "sourceVersion": "Stream://torappu-data/v078/rel78.0\nChange:124981 on 2026/10/08\nVersionControl:78.0.0",
-  "buildingSha256": "b98657bc691224a01d3cd044bf68698e9664e7f26c5d24ae104352be7954049b",
+  "sourceCommit": "fe7d8d05edc36cf5678a24bfe9e84e891f6cf7ad",
+  "sourceVersion": "Stream://torappu-data/v078/rel78.0\nChange:126729 on 2026/10/22\nVersionControl:78.4.0",
+  "buildingSha256": "1bc8d9e968f428bd9e2fb50350815a1cb019bf5c37e02b656b1423ab06a1fcbd",
   "recycle": {
     "phases": [
       {

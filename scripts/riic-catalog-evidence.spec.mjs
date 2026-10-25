@@ -40,6 +40,24 @@ describe('offline RIIC evidence regeneration', () => {
     expect(() => mergeLogisticsEvidence(previous, { gameData: {} })).toThrow(/fresh PRTS checks/)
   })
 
+  it('keeps the original source transition when regenerating the same fixed input', () => {
+    const previous = { gameData: { commit: 'current' }, delta: { fromCommit: 'old', toCommit: 'current', changedExistingOperators: [{ name: '旅骨' }] } }
+    const fresh = { gameData: { commit: 'current' }, prts: [], delta: { fromCommit: 'current', toCommit: 'current', changedExistingOperators: [] } }
+    expect(mergeLogisticsEvidence(previous, fresh).delta).toEqual(previous.delta)
+    const next = { ...fresh, gameData: { commit: 'next' }, delta: { fromCommit: 'current', toCommit: 'next', changedExistingOperators: [] } }
+    expect(mergeLogisticsEvidence(previous, next).delta).toEqual(next.delta)
+  })
+
+  it('requires local extraction evidence to be supplied again for each generated snapshot', () => {
+    const previous = { prts: [], unpackerEvidence: { dataVersion: '78.0.0', sha256: 'old' }, mowerRecycle: { commit: 'retained' } }
+    const current = mergeLogisticsEvidence(previous, { prts: [] })
+    expect(current).not.toHaveProperty('unpackerEvidence')
+    expect(current.mowerRecycle).toEqual(previous.mowerRecycle)
+    const fresh = { dataVersion: '78.4.0', sha256: 'new' }
+    expect(mergeLogisticsEvidence(previous, { prts: [], unpackerEvidence: fresh }).unpackerEvidence).toEqual(fresh)
+    expect(previous.unpackerEvidence.dataVersion).toBe('78.0.0')
+  })
+
   it('binds evidence to actual input bytes and the current GameData comparison', () => {
     const bytes = response()
     const result = verifyPrtsOperator(operator, bytes, 'current-commit')

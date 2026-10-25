@@ -9,7 +9,9 @@ node scripts/validate.mjs
 node scripts/check-freshness.mjs --output freshness-check.json
 ```
 
-两条命令均需要 Node.js 20 或更新版本；查询 `scripts/query.mjs` 只使用内置模块，无需安装依赖。系统使用企业证书且 Node 24.6+ 支持时，可使用 `node --use-system-ca scripts/check-freshness.mjs --output freshness-check.json`。保留 TLS 校验。
+两条命令均需要 Node.js 20 或更新版本；查询 `scripts/query.mjs` 只使用内置模块，无需安装依赖。系统使用企业证书且 Node 24.6+ 支持时，可使用 `node --use-system-ca scripts/check-freshness.mjs --output freshness-check.json`。保留 TLS 校验。 配置了代理环境变量且Node版本支持时，可加 `--use-env-proxy`；本次Node 24.15.0已实际验证与 `--use-system-ca` 合用。先用 `node --help` 核对支持，不把该选项当作全部Node 20版本均可用。
+
+本机 PC 数据更新还须按 [unpacker-data.md](unpacker-data.md) 重新提取并比对。`check-freshness.mjs` 只联网检查下列公开来源，不扫描本机游戏、不验证当前安装是否为服务器最新版，也不把旧的本机提取记录自动刷新为当前。
 
 ## 检查范围
 
@@ -33,12 +35,14 @@ PRTS页面修订改变可能只涉及战斗资料，Mower新提交也可能不�
 
 导入动作应在这次 `current` 检查后进行；不要长期复用旧检查作为未来导入的凭据。脚本输出会列明PRTS核对范围，仅覆盖本次列出的六个页面，不意味着全站全部后勤页面都重新校验。源数据收录、可执行算法和真实游戏/agent运行依然是三个独立证据层。
 
-2026-10-14本轮固定规则更新保留了已有离线快照：工具箱map及character资源推进，其他四份列出资源哈希相同；原Mower回收固定来源的两个整体文件也已推进，故整体状态为stale。GameData、六个PRTS页面和新版计划固定来源仍匹配。保留这些差异，不以本次规则/PR核验宣称整个快照最新，也不自动替换未经机制审查的数据。
+2026-10-14历史固定规则更新保留了已有离线快照：工具箱map及character资源推进，其他四份列出资源哈希相同；原Mower回收固定来源的两个整体文件也已推进，故整体状态为stale。GameData、六个PRTS页面和新版计划固定来源仍匹配。保留这些差异，不以本次规则/PR核验宣称整个快照最新，也不自动替换未经机制审查的数据。
+
+2026-10-25本轮数据更新已重新检查来源：Mower alpha观察到 `0c321af26b61184bf058d4c6fcdc7a3ecf841604`，回收与计划契约相关文件仍有差异。本轮按固定来源更新78.4.0干员数据，没有移植这些后续调度；Mower状态保持 `stale`，不能将整个skill来源集合称为 `current`。联网结果、数据版本和实现范围分别报告，完整检查输出以本轮交付记录为准。
 
 ## 离线使用
 
-`scripts/validate.mjs` 验证 frontmatter、相对引用、内部版本一致性、术语依赖及包文件哈希。`scripts/query.mjs`、两个catalog与HTML检索均可离线使用；HTML的数据、样式和逻辑全部内嵌，无外部脚本、图片或网络请求依赖。
+`scripts/validate.mjs` 验证 frontmatter、相对引用、内部版本一致性、术语依赖及包文件哈希；包中含本机提取证据时，还验证它与当前公开快照的版本、提交、源文件摘要和收录计数一致。它不重新读取原AB或解包工具。`scripts/query.mjs`、两个catalog与HTML检索均可离线使用；HTML的数据、样式和逻辑全部内嵌，无外部脚本、图片或网络请求依赖。
 
 本技能遵循 [Agent Skills 规范](https://agentskills.io/specification)，目录结构与UTF-8文档可移植。各agent是否发现技能、允许脚本、支持图片或刷新索引，按其产品版本与权限分别验收；格式检查不等于所有平台都已实际导入。
 
-交付前再查：Mower alpha已推进至d52ab17c022b4fcc05fc613cd71bb4bdce9d0b7e，计划/配置/操作表/QR六项仍与固定哈希相同，base_schedule.py发生变化，故新版计划检查也为stale。完整观察见mower-plan-source-manifest.json的deliveryObservation；本轮保留验证过的PR/规则范围，不自动移植新源码。
+2026-10-14历史交付前再查：Mower alpha已推进至d52ab17c022b4fcc05fc613cd71bb4bdce9d0b7e，计划/配置/操作表/QR六项仍与固定哈希相同，base_schedule.py发生变化，故新版计划检查也为stale。完整观察见mower-plan-source-manifest.json的deliveryObservation；本轮保留验证过的PR/规则范围，不自动移植新源码。

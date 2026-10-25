@@ -5,14 +5,16 @@ import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { pinyin } from 'pinyin-pro'
+import { verifyUnpackerRiicEvidence } from './unpacker-riic-evidence.mjs'
 import { selectPrtsOperators, verifyPrtsOperator, mergeLogisticsEvidence, assertRecycleRulesCurrent } from './riic-catalog-evidence.mjs'
 
 // Offline generation: downloaded sources are hashed and cross-checked before any output.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const input = path.resolve(process.argv[2] ?? '')
 const output = process.argv[3] && path.resolve(process.argv[3])
-if (!process.argv[2] || !output || output === root) {
-  throw new Error('Usage: node scripts/sync-riic-catalog.mjs <verified source directory> <staging directory>')
+const unpackerRoot = process.argv[4] && path.resolve(process.argv[4])
+if (!process.argv[2] || !output || output === root || process.argv.length > 5) {
+  throw new Error('Usage: node scripts/sync-riic-catalog.mjs <verified source directory> <staging directory> [Unpacker export directory]')
 }
 const read = file => JSON.parse(fs.readFileSync(path.join(input, file), 'utf8'))
 const old = file => JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))
@@ -34,7 +36,18 @@ const items = read('item_table.json').items
 const toolbox = read('arkntools-data-building.json')
 const toolboxCharacters = read('arkntools-data-character.json')
 const toolboxChinese = read('arkntools-locales-cn-building.json')
+const unpackerEvidence = unpackerRoot ? verifyUnpackerRiicEvidence({
+  pcDirectory: path.join(unpackerRoot, 'normalized-tables'), mirrorDirectory: input,
+  extractionReceiptPath: path.join(unpackerRoot, 'extraction-receipt.json'),
+  normalizationReceiptPath: path.join(unpackerRoot, 'normalization-receipt.json'),
+  sourceManifestPath: path.join(unpackerRoot, 'raw-tables/sources.json'), mirrorCommit: commit,
+}) : null
+const unpackerSource = unpackerEvidence ? { unpackerEvidence: { manifest: 'unpacker-source-manifest.json',
+  sha256: sha256(Buffer.from(JSON.stringify(unpackerEvidence, null, 2) + '\n')),
+  dataVersion: unpackerEvidence.localGame.dataVersion } } : {}
 const oldCatalog = old('.codex/skills/arknights-riic-mechanics/references/catalog.json')
+const previousCatalogManifest = { ...oldCatalog.manifest }
+delete previousCatalogManifest.unpackerEvidence
 const oldDisplay = old('src/data/riic-skills-database.json')
 const oldProfiles = old('src/data/operators.generated.json')
 const previousEvidenceFile = '.codex/skills/arknights-riic-mechanics/references/logistics-update-manifest.json'
@@ -134,7 +147,7 @@ const counts = { operators: operators.length, buffDefinitions: Object.keys(build
   highestSkills: operators.reduce((sum, operator) => sum + operator.slots.filter(slot => slot.length).length, 0),
   skillStages: operators.reduce((sum, operator) => sum + operator.slots.flat().length, 0), terms: Object.keys(terms).length }
 const gameManifest = { generatedAt, repository: 'https://github.com/Kengxxiao/ArknightsGameData', commit,
-  locale: 'zh_CN', sourceVersion, sources, counts,
+  locale: 'zh_CN', sourceVersion, sources, counts, ...unpackerSource,
   evidenceType: 'Pinned extracted GameData, cross-checked with Toolbox and new operator PRTS pages; numeric regressions are separate from live-game verification.' }
 const resourceNames = { 'data/building.json': 'building', 'data/character.json': 'character',
   'locales/cn/building.json': 'cnBuilding', 'locales/cn/character.json': 'cnCharacter', 'locales/cn/term.json': 'cnTerm' }
@@ -147,20 +160,21 @@ const toolboxManifest = { schemaVersion: 1, provider: 'arkntools', route: 'https
   verification: { operators: counts.operators, skillStageEntries: toolboxChecks.length,
     skillTagLabels: Object.keys(toolboxChinese.buff.name).length, terms: counts.terms,
     comparison: 'All obtainable operator stages match GameData skill IDs, unlocks, facility types, names, raw descriptions and icons.' } }
-const manifest = { ...oldCatalog.manifest, generatedAt, sourceVersion, sourceCommit: commit,
+const manifest = { ...previousCatalogManifest, generatedAt, sourceVersion, sourceCommit: commit, ...unpackerSource,
   operatorCount: counts.operators, buffDefinitionCount: counts.buffDefinitions, skillStageCount: counts.skillStages,
   highestSkillCount: counts.highestSkills, buildingSha256: sources['building_data.json'].sha256,
   charactersSha256: sources['character_table.json'].sha256, sources,
   crossCheckManifest: 'logistics-update-manifest.json',
   annotations: { ...oldCatalog.manifest.annotations,
     isAlter: 'Previously audited isAlter flags are retained; new entries use character_table.isSpChar. RIIC term membership overrides roster affiliation where applicable.' } }
-const delta = { fromCommit: oldCatalog.manifest.sourceCommit, toCommit: commit, fromVersion: oldCatalog.manifest.sourceVersion,
+const computedDelta = { fromCommit: oldCatalog.manifest.sourceCommit, toCommit: commit, fromVersion: oldCatalog.manifest.sourceVersion,
   toVersion: sourceVersion, addedOperators: added.map(operator => ({ id: operator.sourceId, name: operator.name })),
   removedOperators: removed, changedExistingOperators: comparisons.filter(value => !value.unchanged),
   unchangedExistingOperators: comparisons.filter(value => value.unchanged).length,
   previousCounts: { operators: oldProfiles.operatorCount, highestSkills: oldProfiles.skillCount, skillStages: oldProfiles.skillStageCount }, counts }
-const crossCheck = mergeLogisticsEvidence(previousEvidence, { generatedAt, gameData: { commit, version, counts }, toolbox: toolboxManifest,
-  prts: prtsChecks, delta, coverage: 'All stages are data-checked; executable coverage is documented and tested separately.' })
+const crossCheck = mergeLogisticsEvidence(previousEvidence, { generatedAt, gameData: { commit, version, counts }, toolbox: toolboxManifest, ...unpackerSource,
+  prts: prtsChecks, delta: computedDelta, coverage: 'All stages are data-checked; executable coverage is documented and tested separately.' })
+const delta = crossCheck.delta
 const files = []
 function write(file, value, pretty = true) {
   const target = path.join(output, file)
@@ -176,6 +190,10 @@ write(skillRoot + 'catalog.decoded.json', { metadata: { ...old(skillRoot + 'cata
 write(skillRoot + 'terms.json', { sourcePath: sources['gamedata_const.json'].url, dataVersion: version,
   sourceSha256: sources['gamedata_const.json'].sha256, sourceCommit: commit, terms })
 write(skillRoot + 'gamedata-source-manifest.json', gameManifest)
+if (unpackerEvidence) {
+  write(skillRoot + 'unpacker-source-manifest.json', unpackerEvidence)
+  write('src/data/riic-unpacker-source-manifest.json', unpackerEvidence)
+}
 write(skillRoot + 'logistics-update-manifest.json', crossCheck)
 write('src/data/riic-skills-database.json', displays, false)
 write('src/data/riic-gamedata-source-manifest.json', gameManifest)
@@ -212,7 +230,7 @@ write('delta.json', delta)
 write('prts-logistics.json', prtsChecks)
 fs.writeFileSync(path.join(output, 'generated-files.json'), JSON.stringify(files, null, 2) + '\n')
 console.log(JSON.stringify({ counts, added: delta.addedOperators, unchangedExistingOperators: delta.unchangedExistingOperators,
-  changedExistingOperators: delta.changedExistingOperators, toolboxChecks: toolboxChecks.length, prtsSkillChecks: prtsChecks.flatMap(page => page.checks).length, output,
+  changedExistingOperators: delta.changedExistingOperators, unpackerChecks: unpackerEvidence?.verification ?? null, toolboxChecks: toolboxChecks.length, prtsSkillChecks: prtsChecks.flatMap(page => page.checks).length, output,
   afterApplyingStagedFiles: {
     commands: ['npm run skill:manifest', 'npm run skill:validate',
       'node --use-system-ca .codex/skills/arknights-riic-mechanics/scripts/check-freshness.mjs'],

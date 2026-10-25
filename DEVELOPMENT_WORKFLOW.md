@@ -33,6 +33,8 @@ CI 或本机需要改变测试超时时间时记录原因及实际命令。全�
 
 先将三方核对过的固定输入生成到本次 artifacts 的临时目录，再应用至软件数据与 skill；完整保留技能槽、各阶段和等级条件。现有导入器只负责指定 GameData 档案，跨来源同步使用 scripts/sync-riic-catalog.mjs，并执行相应离线审计。不要将历史补充档案当作最新官方数据。
 
+使用本机 ArknightsUnpacker 时，先按领域 skill 的 [本机数据更新说明](.codex/skills/arknights-riic-mechanics/references/unpacker-data.md) 只读提取到独立目录，并保留原始 AB、解码/归一化收据及哈希。用 `scripts/unpacker-riic-evidence.mjs` 核对本机已解码的干员、完整技能阶段和相关字段；PC 未命名根字段仍由同版本固定 GameData 补足。将导出根作为 `sync-riic-catalog.mjs` 的第三个位置参数会在生成前再次核对并输出独立来源清单。版本或已知字段不一致时停止生成，先审查差异；原始游戏文件与机器路径不纳入公开发布。
+
 项目中的 skill 位于 `.codex/skills/arknights-riic-mechanics/`，独立发布目标为 [Panda-Panta/arknights-riic-mechanics](https://github.com/Panda-Panta/arknights-riic-mechanics)。发布包保持 `SKILL.md`、`references/` 和 `scripts/` 的相对结构。检查 YAML frontmatter 的 name/description、所有相对引用、可执行查询和文件哈希，确认离线运行不依赖计算器工作目录。实际发布后记录仓库提交和可安装包的哈希。各 agent 的安装入口可按其目录约定适配；通用格式检查不能代替对所有平台的实际导入测试。
 
 应用经过三方核对的生成结果及规则说明后，运行 `npm run skill:manifest` 重建包清单，再运行 `npm run skill:validate` 和 `node --use-system-ca .codex/skills/arknights-riic-mechanics/scripts/check-freshness.mjs`。重建清单只记录当前文件字节，不代替来源检查或数值回归。主仓库与独立仓库通过 `.gitattributes` 保留 skill 字节，避免 Git 的平台换行转换破坏清单哈希。CI 会检查源码结构、skill 包完整性和回归结果。
