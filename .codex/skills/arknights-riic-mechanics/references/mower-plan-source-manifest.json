@@ -948,6 +948,10 @@
       {
         "id": "FINAL-SLOW-ROUTING-001",
         "scope": "Physical dorm residents continue recovering across backup changes between fixed and Free slot roles, regardless of which occupancy map retained their actual position. Single and batched derivatives share the same slot lookup; task deadlines and native clock gates are unchanged."
+      },
+      {
+        "id": "FINAL-RETRY-SNAPSHOT-001",
+        "scope": "Retained coordination tasks capture the native replacement dependency rooms and names, including their live scoped plan definitions and ordered replacements. Real relevant policy changes resume the original task and deadline; an empty backup activation or unrelated condition bitmap does not."
       }
     ]
   }

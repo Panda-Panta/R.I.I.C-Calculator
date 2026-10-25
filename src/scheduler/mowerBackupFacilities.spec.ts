@@ -5,6 +5,7 @@ import {runScheduleSimulationBridge} from '../workbench/scheduleSimulationBridge
 import {compileRosterSchedule} from './compileRosterSchedule'
 import {compiledScheduleToRuntimeConfig} from './scheduleAdapter'
 import {createRosterRuntime} from './rosterRuntime'
+import {compileBackupExpression} from './backupExpression'
 import {createBackupPlanController} from './backupPlans'
 import {getMowerSourceRuntime} from './mowerSourceRuntime'
 import {projectMowerArrangements} from './mowerObservations'
@@ -27,11 +28,29 @@ function runtime(raw: object, options: Partial<SimulationAssumptions> = {}) {
 
 describe('Mower backup-only right-side rooms', () => {
   it('validates omitted training slots without changing the imported main or round trip', () => {
-    const raw = fixture(), workspace = importMowerJson(JSON.stringify(raw)), before = structuredClone(workspace)
+    const raw = {...fixture(), future: {root: ['keep']}}
+    Object.assign(raw.plan1.dormitory_1, {futureRoom: {keep: true}})
+    Object.assign(raw.backup_plans[0]!, {futureBackup: ['keep']})
+    const original=structuredClone(raw),workspace = importMowerJson(JSON.stringify(raw)), before = structuredClone(workspace)
     expect(workspace.mainPlan.facilities.train).toMatchObject({level: 3, slots: []})
     expect(validateRosterWorkspace(workspace).criticalErrors).toEqual([])
     expect(workspace).toEqual(before)
-    expect(JSON.parse(exportMowerJson(workspace))).toEqual(raw)
+    const canonicalTrigger={left:'True',operator:'',right:''}
+    const expected={...raw,backup_plans:[{...raw.backup_plans[0]!,trigger:canonicalTrigger}]}
+    const output=JSON.parse(exportMowerJson(workspace))
+    expect(output).toEqual(expected)
+    expect(workspace.compatibility.backupPlans).toEqual(raw.backup_plans)
+    const state=createRosterRuntime({positions:[],beds:[]})
+    expect(compileBackupExpression(raw.backup_plans[0]!.trigger,new Set()).evaluate(state)).toBe(true)
+    expect(compileBackupExpression(output.backup_plans[0].trigger,new Set()).evaluate(state)).toBe(true)
+    const native={...expected,backup_plans:[{...expected.backup_plans[0]!,trigger:{...canonicalTrigger,future:{ast:['untouched']}}}]}
+    const importedNative=importMowerJson(JSON.stringify(native))
+    expect(importedNative.compatibility.backupPlans).toEqual(native.backup_plans)
+    expect(JSON.parse(exportMowerJson(importedNative))).toEqual(native)
+    const canonicalRoundtrip=JSON.parse(exportMowerJson(importMowerJson(JSON.stringify(output))))
+    expect(canonicalRoundtrip).toEqual(output)
+    expect(workspace).toEqual(before)
+    expect(raw).toEqual(original)
   })
 
   it('compiles and previews both introduced training positions, then restores the omitted main', () => {
@@ -146,7 +165,14 @@ describe('Mower backup-only right-side rooms', () => {
     expect(result.report?.success, result.error ?? JSON.stringify(result.report?.diagnostics)).toBe(true)
     expect(result.report?.segments.some(segment => segment.occupants.train_0 === id('桃金娘') && segment.occupants.train_1 === id('褐果'))).toBe(true)
     expect(workspace).toEqual(originalWorkspace)
-    expect(JSON.parse(exportMowerJson(workspace))).toEqual(original)
+    const canonicalTrigger={left:original.backup_plans[0]!.trigger,operator:'',right:''}
+    const output=JSON.parse(exportMowerJson(workspace))
+    expect(output).toEqual({...original,backup_plans:[{...original.backup_plans[0]!,trigger:canonicalTrigger}]})
+    expect(workspace.compatibility.backupPlans).toEqual(original.backup_plans)
+    expect(compileBackupExpression(original.backup_plans[0]!.trigger,new Set()).evaluate(state)).toBe(true)
+    expect(compileBackupExpression(output.backup_plans[0].trigger,new Set()).evaluate(state)).toBe(true)
+    const canonicalRoundtrip=JSON.parse(exportMowerJson(importMowerJson(JSON.stringify(output))))
+    expect(canonicalRoundtrip).toEqual(output)
     expect({raw, options}).toEqual({raw: original, options: originalOptions})
   })
 

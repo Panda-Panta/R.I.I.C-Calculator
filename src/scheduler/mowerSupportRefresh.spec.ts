@@ -3,7 +3,7 @@ import {advanceRoster,createRosterRuntime,nextRosterActionHours,type RuntimeConf
 import {getMowerSourceRuntime,settleMowerSource} from './mowerSourceRuntime'
 import {MowerTask,MOWER_TASK_TYPES as T,toMowerMicros} from './mowerTaskQueue'
 import {MowerDormState} from './mowerSchedulingData'
-import {retainMowerFailedTask} from './mowerTaskFailure'
+import {retainMowerFailedTask,resumeMowerFailedTasks} from './mowerTaskFailure'
 import * as supportPlanning from './mowerExhaustPlanning'
 
 const rates={workRate:()=>1,recoveryRate:()=>4,forecastRates:(state:RuntimeState)=>({work:Object.fromEntries(Object.keys(state.morale).map(name=>[name,1])),recovery:Object.fromEntries(Object.keys(state.morale).map(name=>[name,4]))})}
@@ -52,7 +52,6 @@ describe('runtime refreshes unstarted coordination support',()=>{
   const {state,source,support,retry}=generatedSupport(),time=support.timeMicros
   retainMowerFailedTask(state,source.data,support,'previous preview')
   source.data.operators.B!.replacement=['X','Z']
-  source.data.planConditions=[true]
   settleMowerSource(state,rates)
   dispatchUntilSettled(state,support)
   expect(source.trace.some(entry=>entry.type==='SELF_CORRECTION'&&entry.plan.room_1_2?.[0]==='Z')).toBe(true)
@@ -61,6 +60,25 @@ describe('runtime refreshes unstarted coordination support',()=>{
   expect(state.occupants.room_1_2_0).toBe('Z')
   expect(retry.timeMicros).toBe(0)
  })
+  it('resumes the same support when the live replacement order changes without changing its dependency set',()=>{
+   const {state,source,support}=generatedSupport(),time=support.timeMicros,plan=structuredClone(support.plan)
+   retainMowerFailedTask(state,source.data,support,'previous preview')
+   source.data.operators.B!.replacement=['Y','X']
+   expect(resumeMowerFailedTasks(state,source.data,source.queue)).toBe(true)
+   expect(support.executionFailure).toBeUndefined();expect(support.executionRetained).toBe(true)
+   expect(source.queue.tasks).toContain(support);expect(support.timeMicros).toBe(time)
+   expect(support.plan).toEqual(plan);expect(support.coordinationRequestNames).toEqual(['A'])
+  })
+  it('keeps failed support suspended for unrelated live replacement and condition changes',()=>{
+   const {state,source,support}=generatedSupport(),time=support.timeMicros,plan=structuredClone(support.plan)
+   retainMowerFailedTask(state,source.data,support,'previous preview')
+   const failure=support.executionFailure
+   source.data.operators.C!.replacement=[]
+   source.data.planConditions=[true]
+   resumeMowerFailedTasks(state,source.data,source.queue)
+   expect(support.executionFailure).toBe(failure);expect(source.queue.tasks).toContain(support)
+   expect(support.plan).toEqual(plan);expect(support.timeMicros).toBe(time)
+  })
  it('clears an obsolete recall after new observations without committing its old group transition',()=>{
   const {state,source,support,retry}=generatedSupport(true),time=support.timeMicros
   support.backupShiftIntent=structuredClone(support.plan)

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "algorithm": "SHA-256",
-  "packageSha256": "780cd1c45006336477b9aa1cc5667fba7d6dbc8e825836b1cdd9a12c0ac28ff1",
+  "packageSha256": "63d2068b0ea94362e836314060c783a7d692e5bc0f67c3cdc746c4445a40f2ce",
   "files": [
     {
       "path": "SKILL.md",
@@ -30,8 +30,8 @@
     },
     {
       "path": "references/coverage.md",
-      "bytes": 26913,
-      "sha256": "12c54110eae272ce505b73af0d64dec0584d74c3a35b0673eaeca868aa3ea6b5"
+      "bytes": 27375,
+      "sha256": "fefcc2ec2a530278b3dfd924a3db6dc072d138a3972b3c82b2c61f90ae866df9"
     },
     {
       "path": "references/facilities.md",
@@ -60,13 +60,13 @@
     },
     {
       "path": "references/mower-plan-compatibility.md",
-      "bytes": 18182,
-      "sha256": "3acd69477f1d158e79ec5af2b66c562d63b3ebc510700bf635b67e414745070e"
+      "bytes": 18682,
+      "sha256": "442dd7c614bbbfd9f3a9a684a8254d09f7cc21e26809f09c707abcffe21eb10b"
     },
     {
       "path": "references/mower-plan-source-manifest.json",
-      "bytes": 54287,
-      "sha256": "0f334c039b0dd86701600615afe190099a67021f350907bd63ee9baad8ad3d2c"
+      "bytes": 54662,
+      "sha256": "fe8ca82a022d1523b9e0d2632b741577d2d63cb65909c853d90c63d8b3a42ec8"
     },
     {
       "path": "references/new-operators-v078.md",
