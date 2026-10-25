@@ -55,7 +55,7 @@ import {prepareMowerRunEntry,nextMowerRunRecoveryMicros} from './mowerRunLifecyc
 import {ensureMowerDormRecovery} from './mowerDormRecovery'
 import {normalizeMowerRecoveryBeds} from './mowerRecoveryBeds'
 import {mowerDormCapacityAllows} from './mowerDormCapacity'
-import {mowerGroupRecoveryDeadline,mowerGroupRecoveryWorkers,mowerRecoveryMoodComplete,mowerObservedRecoveryDeadline,mowerRecoveryReady,mowerUnfinishedReturnMembers,splitMowerRecoveryTask} from './mowerGroupRecovery'
+import {mowerUnfinishedReturnMembers,splitMowerRecoveryTask} from './mowerGroupRecovery'
 import {mowerMandatoryReleaseNames,prepareMowerRelease} from './mowerRelease'
 import {nextMowerMoodPlanningWake,type MowerPlanningWake} from './mowerPlanningWake'
 import {mowerProtectedShift,prepareMowerShiftBeds} from './mowerShiftProtection'
@@ -316,43 +316,6 @@ function readMissingMowerReturnRecovery(s:RuntimeState,rates:RuntimeRates,task:M
   const indexes=rooms.get(op.currentRoom)??[];indexes.push(op.currentIndex);rooms.set(op.currentRoom,indexes)
  }
  for(const [room,indexes] of rooms)observeRoom(s,rates,room,task,indexes)
-}
-/** Recheck mandatory group recovery when a saved return task reaches dispatch. */
-function confirmMowerGroupReturn(s:RuntimeState,rates:RuntimeRates,task:MowerTask):number|undefined {
- const {data}=getMowerSourceRuntime(s)
- const groups=Object.entries(mowerArrangementGroupTransitions(data,task.plan)).filter(([group,resting])=>!resting&&data.groupIsResting(group)).map(([group])=>group)
- const explicitGroups=new Set(groups.filter(group=>data.shiftGroupMembers(group).some(name=>{
-  const op=data.operators[name]!
-  return !op.room.startsWith('dorm')&&task.plan[op.room]?.[op.index]===name&&task.backupExplicitSlots.has(op.room+'\0'+op.index)
- })))
- const relevant=groups.filter(group=>!explicitGroups.has(group)&&(!data.groupMoodGapExclusions.includes(group)&&(data.groupRestInFullOnMoodGap||data.groupRecoveryFullMembers[group]?.length)||mowerGroupRecoveryWorkers(data,group).some(op=>op.restInFull)))
- if(!relevant.length)return undefined
- const rooms=new Map<string,number[]>()
- for(const group of relevant)for(const op of mowerGroupRecoveryWorkers(data,group))if(op.isResting()&&!mowerRecoveryMoodComplete(data,op)){
-  const indexes=rooms.get(op.currentRoom)??[];indexes.push(op.currentIndex);rooms.set(op.currentRoom,indexes)
- }
- // Recovery targets may have changed since the task was generated. Re-read the
- // actual room and its displayed recovery deadline instead of trusting old timers.
- for(const [room,indexes] of rooms){
-  invalidateMowerDormTime(data,room)
-  observeRoom(s,rates,room,task,indexes)
- }
- let deadline=data.nowMicros
- for(const group of relevant){
-  const recovery=mowerGroupRecoveryDeadline(data,group)
-  const required=recovery.requiredNames.filter(name=>!task.exhaustSupport||task.ordinaryCoordination||data.operators[name]!.restInFull)
-  for(const name of required){
-   const op=data.operators[name]
-   if(mowerRecoveryReady(data,op,s.config.mowerTaskScheduling))continue
-   const due=op?.isResting()?mowerObservedRecoveryDeadline(data,op):undefined
-   if(due===undefined||due<=data.nowMicros){
-    if(!op?.restInFull&&recovery.timeMicros!==undefined&&recovery.timeMicros>data.nowMicros){deadline=Math.max(deadline,recovery.timeMicros);continue}
-    throw new MowerShiftPreviewError('组员尚未确认回满心情，保留回班任务并等待有效恢复观察：'+(op?.nativeName??name))
-   }
-   deadline=Math.max(deadline,Math.min(due,recovery.timeMicros??due))
-  }
- }
- return deadline>data.nowMicros?deadline:undefined
 }
 function readAgentMood(s:RuntimeState,rates:RuntimeRates):void {
  const {data}=getMowerSourceRuntime(s)
@@ -832,12 +795,6 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
      assertMowerGroupPredecessors(source,task,previewRules)
      previewNoop=!Object.keys(task.plan).length
      if(previewNoop&&parkMowerPreviewRecovery(source,task,original,pending,model.observationNames)){delete source.activeTask;continue}
-     // A projected return must not switch the effective backup configuration
-     // until its physical recovery prerequisites are ready.
-     if([T.SHIFT_ON,T.SELF_CORRECTION,T.RE_ORDER].includes(task.type)){
-      const readyAt=confirmMowerGroupReturn(s,rates,task)
-      if(readyAt!==undefined){task.timeMicros=readyAt;queue.sort();delete source.activeTask;continue}
-     }
      if(task.exhaustSupport&&task.coordinationRequestNames.length){
       const effective=task.backupShiftConditions?model.swap(projectMowerArrangements(data,[]),task.backupShiftConditions,task.backupGroup):data
       const projected=projectMowerArrangements(data,[task.plan]),recalls=Object.values(data.operators).some(op=>op.isHigh()&&op.isResting()&&projected.operators[op.name]?.currentRoom===op.room&&!op.room.startsWith('dorm'))

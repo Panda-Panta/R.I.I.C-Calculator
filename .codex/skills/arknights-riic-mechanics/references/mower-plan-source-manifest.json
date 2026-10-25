@@ -952,7 +952,374 @@
       {
         "id": "FINAL-RETRY-SNAPSHOT-001",
         "scope": "Retained coordination tasks capture the native replacement dependency rooms and names, including their live scoped plan definitions and ordered replacements. Real relevant policy changes resume the original task and deadline; an empty backup activation or unrelated condition bitmap does not."
+      },
+      {
+        "id": "FINAL-RETURN-DISPATCH-001",
+        "scope": "Ordinary observed alpha dispatch does not impose an extra group-full-mood confirmation after preview. Native calculated tap-confirm validation is a separate, default-off mode and excludes retained execution; this calculator does not silently enable that optional mode. Existing full-recovery planning, personal limits, task identity/deadline and precise same-task/position preview proofs remain."
       }
-    ]
+    ],
+    "sharedSchedulingCorrections": {
+      "decision": {
+        "status": "approved-local-corrections",
+        "confirmedAt": "2026-10-25T04:58:42.653Z",
+        "authority": "Latest Mower native ordinary scheduling is the primary reference for this task.",
+        "userChoice": "以原生调度为准，共同错误一并修复（建议）",
+        "sharedSchedulingChoice": "一并修复，登记为本地修正（建议）",
+        "scope": "Original 25 findings and seven canonical integration findings; fix confirmed common defects and explicitly record differences from the builtin simulator.",
+        "preservedLocalContracts": [
+          "Personal upper morale initialization; Fiammetta not forced to 16",
+          "No unfinished mastery plan; preserve raw imported advanced settings",
+          "Ideal run orders, maintenance filtering and local inventory/drone model",
+          "Low-tier tailoring fixed level-three distribution",
+          "Invalid explicit single-recovery target does not retarget",
+          "Precise same-task and position preview proof exception"
+        ],
+        "boundary": "This decision removes the scope blocker. It is not evidence that the new candidate has passed full tests, a fresh Worker window, or actual game/device validation."
+      },
+      "findings": [
+        "LR-04",
+        "FINAL-SLOW-ROUTING-001",
+        "FINAL-RETRY-SNAPSHOT-001",
+        "FINAL-RETURN-DISPATCH-001"
+      ],
+      "authority": "Mower native ordinary scheduling; test_mood_calculation is default false and is not silently enabled locally.",
+      "builtinBehaviorDiffers": true,
+      "builtinCommit": "f19abfa3a53489d018c6eabd115b6cb68afcdc66",
+      "builtinSources": [
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerSourceRuntime.ts",
+          "sha256": "cdb04798f5ff1e12ada4244a16d95b3a6743a7dd480f44248a4b41d7abeb5780",
+          "gitBlobSha1": "e29279bf899485ce526d02c7808ab5d231163799",
+          "blobVerification": "https://api.github.com/repos/ArkMowers/arknights-mower/git/blobs/e29279bf899485ce526d02c7808ab5d231163799",
+          "sourceContent": "exact UTF-8 pinned raw contents; official Git blob endpoint independently returned identical decoded content"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTaskFailure.ts",
+          "sha256": "ebe6e2c8a1c691037918cfea9eb5104e21ced00a09eb46e40fd1586342178d14",
+          "gitBlobSha1": "621acefa11da170f3865efea6874a0378dff7f1d",
+          "blobVerification": "https://api.github.com/repos/ArkMowers/arknights-mower/git/blobs/621acefa11da170f3865efea6874a0378dff7f1d",
+          "sourceContent": "exact UTF-8 pinned raw contents; official Git blob endpoint independently returned identical decoded content"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/rosterRuntime.ts",
+          "sha256": "f3a5f1991cf9627b894895acf591c1f6db8bffb39538bfa59a5062e5b3a31f75",
+          "gitBlobSha1": "87df21f67c62e5d2ee38af655e513563d367af19",
+          "blobVerification": "https://api.github.com/repos/ArkMowers/arknights-mower/git/blobs/87df21f67c62e5d2ee38af655e513563d367af19",
+          "sourceContent": "exact UTF-8 pinned raw contents; official Git blob endpoint independently returned identical decoded content"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTaskExecutor.ts",
+          "sha256": "eb5385ad4472870acaa26364b2eb21206e517b1b49bb8bd70fcdc19510615fc3",
+          "computedGitBlobSha1": "af8a7468c5d0108db3e997011a3308cb5ec45d27",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerRunOrderPlanning.ts",
+          "sha256": "749b6454c412436a2ceac899f0d9aba043b18581a9f3a96bb2f48488c67dd5b0",
+          "computedGitBlobSha1": "f8af9768be0b20236f5aae50731d3baa1b933d85",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerAlphaDorm.ts",
+          "sha256": "99ce280784b5e2d012afd9f554e22ddc12f809902cec0e02de0e7cd9a7ff4825",
+          "computedGitBlobSha1": "2123c2339afff066380713095e69aed2c981261a",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerAlphaCandidates.ts",
+          "sha256": "b512c664d5d4e66e2c3d9a0c642b9c19e4a1041f70e4b5fcc0936ef8336812ca",
+          "computedGitBlobSha1": "711f118271feefe4b77195610ca617b37467a49a",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerDormRecovery.ts",
+          "sha256": "d9474a7e9edbfeb946aa446237afaf54640ab843a143124597e896b1540b8535",
+          "computedGitBlobSha1": "b7eced0e766641ca91b9a38e0c7f848d38bb3916",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTodoTask.ts",
+          "sha256": "a739d8499d93277f33b42d38b92c1a5718f8b68f509bdf3ef598ad1aad766cc8",
+          "computedGitBlobSha1": "248bd8df26c787fe2ab84041b5bb3b56689c820d",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/backupExpression.ts",
+          "sha256": "7a78c42d94f92012dfc703744752c92f104d124f60ff8c165950eb3bab81cc41",
+          "computedGitBlobSha1": "203cfb40cdf380a601ac9d7966ca0f4a162d5c20",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/backupPlans.ts",
+          "sha256": "a8779174d59cc342d6bd58599656d79e1e859661a90965a836bdae84b4f4e649",
+          "computedGitBlobSha1": "1a21abc8f8cbbf08b451fc306773f0413984e30e",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerWorkingReplacement.ts",
+          "sha256": "a7f5106e6ca614a2faa896788b30f8f80f74dce2283e94f2aa62ec8ec5c0afa0",
+          "computedGitBlobSha1": "b7ea087effaf0d4c58aa14ec4885a91f0bbfae89",
+          "sourceContent": "Exact UTF-8 text returned by GitHub connector pinned raw URL; blob computed, not independently checked against a Git tree"
+        }
+      ],
+      "boundary": "These shared bugs are not local lag behind the builtin simulator. No complete builtin equivalence or actual device/game proof is claimed.",
+      "savedTaskScope": "Native ordinary admitted/retained tasks can continue below a member cap; explicit full recovery continues to constrain normal generated planning rather than adding a global execution gate."
+    },
+    "nativeVsBuiltinAuthorityClassification": {
+      "commit": "f19abfa3a53489d018c6eabd115b6cb68afcdc66",
+      "classificationSha256": "c6be0e68f3742969cd46bcec68a45976e13f503f48d508ebbecfd7e3fae8be6d",
+      "counts": {
+        "original": 25,
+        "originalSharedFormula": 5,
+        "originalSharedNonFormula": 9,
+        "originalLocalGapsAlreadyFixedInBuiltin": 2,
+        "originalLocalProduct": 9,
+        "latestSharedNonFormula": 7
+      },
+      "originalFindings": [
+        {
+          "id": "BG-001",
+          "title": "绑组Free缺少按组额度校验，其他组受保护成员可超额入宿",
+          "category": "local-port-gap-already-handled-by-builtin",
+          "evidence": "f19 builtin alphaSlotTakable computes pending transitions and calls mowerDormCapacityAllows before takeover; this specific quota omission is absent there. Local helper port converges with native and builtin on the reviewed premise.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerAlphaDorm.ts",
+          "builtinSha256": "99ce280784b5e2d012afd9f554e22ddc12f809902cec0e02de0e7cd9a7ff4825"
+        },
+        {
+          "id": "BG-002",
+          "title": "单回排序保留目标前方未满固定住客，却仍登记目标已确认",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Pinned builtin whole file equals the audited668 baseline after LF normalization. Before-target fixed ordinary residents are retained without full-mood padding validation, as the original native probe demonstrated.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerDormRecovery.ts",
+          "builtinSha256": "d9474a7e9edbfeb946aa446237afaf54640ab843a143124597e896b1540b8535"
+        },
+        {
+          "id": "BG-003",
+          "title": "固定绑组互换恢复床未进入单回目标选择",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Pinned builtin whole file equals audited668 baseline after LF normalization; recovery target searches dynamicDormPosition only and omits fixed group recovery beds.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerDormRecovery.ts",
+          "builtinSha256": "d9474a7e9edbfeb946aa446237afaf54640ab843a143124597e896b1540b8535"
+        },
+        {
+          "id": "BG-004",
+          "title": "仅在共享跟班附加绑组列的候补被误分为空闲层级",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin tier and referenced candidate set still inspect only current owner.replacement, not groupBindings/all replacements. The local fix follows the already-probed native resting_tier rule.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerAlphaDorm.ts",
+          "builtinSha256": "99ce280784b5e2d012afd9f554e22ddc12f809902cec0e02de0e7cd9a7ff4825"
+        },
+        {
+          "id": "INPUT-001",
+          "title": "新建或编辑条件后导出的 string trigger 无法被原生 Mower 读取",
+          "category": "local-product-native-document-compatibility",
+          "evidence": "Local editor/export round-trip creates the wrong native trigger schema; no same-path builtin scheduler equivalence claim is made for this UI product issue."
+        },
+        {
+          "id": "INPUT-002",
+          "title": "固定源允许的设施查询和多类合法表达式在正式收益入口失败",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin tokenizer/query whitelist and grammar still omit native-authorized forms present in original probe cases, including conditional expressions/list semantics/facility queries. This is a scoped static comparison to those already native-probed forms, not full Python compatibility.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/backupExpression.ts",
+          "builtinSha256": "7a78c42d94f92012dfc703744752c92f104d124f60ff8c165950eb3bab81cc41"
+        },
+        {
+          "id": "INPUT-003",
+          "title": "单条条件求值错误从原生的 false 扩大为整次收益模拟失败",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin selection and observation signatures directly evaluate conditions without native complete-condition error-to-false handling. The local correction also changes comparable diagnostic handling, as independently reviewed.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/backupPlans.ts",
+          "builtinSha256": "a8779174d59cc342d6bd58599656d79e1e859661a90965a836bdae84b4f4e649"
+        },
+        {
+          "id": "INPUT-004",
+          "title": "新增副表任务使用静态槽位数，低级设施立刻无效且训练/回收第二槽不可新建",
+          "category": "local-product-native-document-compatibility",
+          "evidence": "Local task-editor capacity creation/export/validation issue; do not claim corresponding upstream UI paths are the same application."
+        },
+        {
+          "id": "UI-LARGE-001",
+          "title": "下一个副表事件持续选回同一事件",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "UI-LARGE-002",
+          "title": "内容区光标定位把标签列计入时间宽度",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "UI-LARGE-003",
+          "title": "更改分卷天数后旧卷号越界并回退导出全周期",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "RT-01",
+          "title": "耗尽任务按归零倒计时排期，忽略正数个人下限",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin positive physical-rate branch computes mood/rate minus margin and does not subtract the personal lower limit. Same native lower-limit scaling premise as original audit.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerSourceRuntime.ts",
+          "builtinSha256": "cdb04798f5ff1e12ada4244a16d95b3a6743a7dd480f44248a4b41d7abeb5780"
+        },
+        {
+          "id": "RT-02",
+          "title": "休满标记与组名匹配错误，耗尽交接统一提前30分钟",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin fullGroups contains group names but tests fullGroups.has(op.name), with no direct op.restInFull test. This retains the audited10/30-minute handover difference.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerSourceRuntime.ts",
+          "builtinSha256": "cdb04798f5ff1e12ada4244a16d95b3a6743a7dd480f44248a4b41d7abeb5780"
+        },
+        {
+          "id": "RT-03",
+          "title": "失败保留任务仍阻挡待办服务的无人机和补货门控",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Pinned builtin whole file equals audited668 baseline after LF normalization; noPendingTask times all queue.tasks including retained executionFailure rather than dispatch view.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTodoTask.ts",
+          "builtinSha256": "a739d8499d93277f33b42d38b92c1a5718f8b68f509bdf3ef598ad1aad766cc8"
+        },
+        {
+          "id": "SE-F01",
+          "title": "切配方后按最终产物分类累计件数，导致potential碎片漏计或多计",
+          "category": "previously-authorized-shared-formula-local-exception",
+          "evidence": "Preserved five-class formula exception explicitly authorized by user and independently reviewed; not reopened."
+        },
+        {
+          "id": "SE-F02",
+          "title": "部分中枢联动仍按姓名注入，绕过实际已解锁技能阶段",
+          "category": "previously-authorized-shared-formula-local-exception",
+          "evidence": "Preserved five-class formula exception explicitly authorized by user and independently reviewed; not reopened."
+        },
+        {
+          "id": "SE-F03",
+          "title": "森西未解锁E2料理技能仍向全局制造/贸易提供料理",
+          "category": "previously-authorized-shared-formula-local-exception",
+          "evidence": "Preserved five-class formula exception explicitly authorized by user and independently reviewed; not reopened."
+        },
+        {
+          "id": "SE-F04",
+          "title": "精零拉普兰德订单容量分支绕过同站德克萨斯条件",
+          "category": "previously-authorized-shared-formula-local-exception",
+          "evidence": "Preserved five-class formula exception explicitly authorized by user and independently reviewed; not reopened."
+        },
+        {
+          "id": "SE-F05",
+          "title": "中枢阵营心情技能可由会客等其他工作设施的提供者触发",
+          "category": "previously-authorized-shared-formula-local-exception",
+          "evidence": "Preserved five-class formula exception explicitly authorized by user and independently reviewed; not reopened."
+        },
+        {
+          "id": "SURF-F1",
+          "title": "自动排班完成结果会覆盖运行期间的新排班编辑",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "SURF-F2",
+          "title": "已完成收益在普通编辑后仍作为当前结果展示并可随新排班导出",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "SURF-F3",
+          "title": "海报将支持的源石碎片配方显示为未设定",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "SURF-F4",
+          "title": "全局替换的影响预估漏掉实际会修改的关联组和副表",
+          "category": "local-product-state-display-navigation",
+          "evidence": "Local UI/report/edit behavior; original finding explicitly does not claim an upstream scheduler parity defect."
+        },
+        {
+          "id": "ORIGINAL-F2",
+          "title": "无关副表条件布尔值变化也会解除普通失败任务",
+          "category": "local-port-gap-already-handled-by-builtin",
+          "evidence": "Builtin failure intent snapshot has scoped effectivePlan/products/eligibility and no global planConditions vector. The local original bug is absent from builtin. This is separate from later missing coordination dependency collection.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTaskFailure.ts",
+          "builtinSha256": "ebe6e2c8a1c691037918cfea9eb5104e21ced00a09eb46e40fd1586342178d14"
+        },
+        {
+          "id": "ORIGINAL-F4",
+          "title": "普通替班检查未复用原生近期有效工作心情观测",
+          "category": "shared-native-builtin-io-adapter-difference",
+          "evidence": "Builtin working-replacement consumer unconditionally reads the room after applies(), while the native cached-work-mood contract used in original audit can reuse the existing observation. The audited local cached-observation correction differs from this current builtin adapter. This is a known I/O/model difference, not proof of a real-game defect or profit error.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerWorkingReplacement.ts",
+          "builtinSha256": "a7f5106e6ca614a2faa896788b30f8f80f74dce2283e94f2aa62ec8ec5c0afa0"
+        }
+      ],
+      "integrationFindings": [
+        {
+          "id": "F19A-STARTUP-1",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin settleMowerSource initializes ordinary reads/staffing without the native one-time startup order/mood observation phase. Local new startup phase is a native port and a builtin behavioral difference.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerSourceRuntime.ts",
+          "builtinSha256": "cdb04798f5ff1e12ada4244a16d95b3a6743a7dd480f44248a4b41d7abeb5780"
+        },
+        {
+          "id": "LATEST-STARTUP-REVIEW-001",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin still sequentially yield*s planDefaultRunOrder with no per-room recoverable-failure isolation; SourceRuntime catches the whole planning tail. Local independent REFRESH ownership/continuation differs from builtin.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerRunOrderPlanning.ts",
+          "builtinSha256": "749b6454c412436a2ceac899f0d9aba043b18581a9f3a96bb2f48488c67dd5b0"
+        },
+        {
+          "id": "LATEST-PRIORITY-001",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin runs trade observations in ordinary planning after arrangement metadata, without the local new pre-metadata complete-batch wrapper and per-room native critical-window gate. This is native observation-scope alignment, not same builtin behavior.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerSourceRuntime.ts",
+          "builtinSha256": "cdb04798f5ff1e12ada4244a16d95b3a6743a7dd480f44248a4b41d7abeb5780"
+        },
+        {
+          "id": "LR-04",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Builtin else if(result.generated.length) forces corrections and microsecond anchors in alpha too. Local reviewed !hooks.alpha gate preserves default-only behavior and follows native alpha.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTaskExecutor.ts",
+          "builtinSha256": "eb5385ad4472870acaa26364b2eb21206e517b1b49bb8bd70fcdc19510615fc3"
+        },
+        {
+          "id": "FINAL-SLOW-ROUTING-001",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Parent-pinned builtin physical recovery still uses logical-map-specific lookups; local two helpers plus single/bulk physical cross-map derivatives differ. Canonical aliases PHY-01/LR-05 are one fix.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/rosterRuntime.ts",
+          "builtinSha256": "f3a5f1991cf9627b894895acf591c1f6db8bffb39538bfa59a5062e5b3a31f75"
+        },
+        {
+          "id": "FINAL-RETRY-SNAPSHOT-001",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Parent-pinned builtin only expands replacement dependencies for task.type===EXHAUST_OFF and lacks the reviewed native coordination dependency closure/live plan scope for support tasks.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerTaskFailure.ts",
+          "builtinSha256": "ebe6e2c8a1c691037918cfea9eb5104e21ced00a09eb46e40fd1586342178d14"
+        },
+        {
+          "id": "FINAL-RETURN-DISPATCH-001",
+          "category": "shared-nonformula-native-builtin-difference",
+          "evidence": "Parent-pinned builtin globally readMissing/confirmMowerGroupReturn gates normal dispatch; local pending final reviewed candidate removes ordinary global gating and follows native optional calculated-validation/caller scope. No new Worker success is claimed.",
+          "builtinUrl": "https://raw.githubusercontent.com/ArkMowers/arknights-mower/f19abfa3a53489d018c6eabd115b6cb68afcdc66/ui/src/riic/vendor/scheduler/mowerSourceRuntime.ts",
+          "builtinSha256": "cdb04798f5ff1e12ada4244a16d95b3a6743a7dd480f44248a4b41d7abeb5780"
+        }
+      ],
+      "interpretation": "Original25 has nine nonformula native-vs-builtin differences in addition to the five explicitly authorized formula classes. Eight are shared scheduler/expression omissions; ORIGINAL-F4 is an I/O adapter model difference, not a proven game defect. All seven later canonical routes also differ from current builtin. Do not call these all local lag behind builtin; keep native ordinary path authority, builtin current behavior, local exception policy and actual finite Worker outcome separate.",
+      "decision": {
+        "status": "approved-local-corrections",
+        "confirmedAt": "2026-10-25T04:58:42.653Z",
+        "authority": "Latest Mower native ordinary scheduling is the primary reference for this task.",
+        "userChoice": "以原生调度为准，共同错误一并修复（建议）",
+        "sharedSchedulingChoice": "一并修复，登记为本地修正（建议）",
+        "scope": "Original 25 findings and seven canonical integration findings; fix confirmed common defects and explicitly record differences from the builtin simulator.",
+        "preservedLocalContracts": [
+          "Personal upper morale initialization; Fiammetta not forced to 16",
+          "No unfinished mastery plan; preserve raw imported advanced settings",
+          "Ideal run orders, maintenance filtering and local inventory/drone model",
+          "Low-tier tailoring fixed level-three distribution",
+          "Invalid explicit single-recovery target does not retarget",
+          "Precise same-task and position preview proof exception"
+        ],
+        "boundary": "This decision removes the scope blocker. It is not evidence that the new candidate has passed full tests, a fresh Worker window, or actual game/device validation."
+      },
+      "boundary": "Classification covers the original 25 findings and 7 canonical integration additions. It is not a claim that every intentional model difference or all possible branches were tested."
+    }
   }
 }
