@@ -21,7 +21,7 @@ node scripts/check-freshness.mjs --output freshness-check.json
 |工具箱|读取 `check.json` 和对应map；比较五份基建/干员/术语资源位置及SHA-256|`logistics-update-manifest.json.toolbox` 的版本、map和resources|
 |PRTS|查询本次三名新干员与回收站的当前页面revision|`logistics-update-manifest.json.prts` 与 `prtsRecycle` 的固定修订及响应哈希|
 |Mower回收/QR|查询 `alpha` 当前提交；提交变化时比较此次回收站/收取/QR相关文件SHA-256|`logistics-update-manifest.json.mowerRecycle` 的提交、范围与文件清单|
-|Mower新版计划|独立核对组绑定与高级设置schema/执行片段，保留基础调度原有来源|`mower-plan-source-manifest.json` 的提交、范围与文件清单|
+|Mower新版计划|独立核对组绑定与高级设置schema/执行片段，保留各固定来源；整体文件变化与后来审查的实际实现范围分别读取|`mower-plan-source-manifest.json` 的提交、范围与文件清单；PR26增量见 `fullCodeParityAudit20261025`|
 |PRTS联动边界|额外核对承曦格雷伊和歌蕾蒂娅页面revision|`mower-plan-source-manifest.json.prts` 的固定修订与响应哈希|
 
 PRTS页面修订改变可能只涉及战斗资料，Mower新提交也可能不涉及回收站。脚本保留观察到的差异；相关文件未变可以报告这一范围仍一致，页面修订变化仍需人工复核。它不下载任意页面指令，不改资料，不更新技能或执行安装。
@@ -37,7 +37,7 @@ PRTS页面修订改变可能只涉及战斗资料，Mower新提交也可能不�
 
 2026-10-14历史固定规则更新保留了已有离线快照：工具箱map及character资源推进，其他四份列出资源哈希相同；原Mower回收固定来源的两个整体文件也已推进，故整体状态为stale。GameData、六个PRTS页面和新版计划固定来源仍匹配。保留这些差异，不以本次规则/PR核验宣称整个快照最新，也不自动替换未经机制审查的数据。
 
-2026-10-25本轮数据更新已重新检查来源：Mower alpha观察到 `0c321af26b61184bf058d4c6fcdc7a3ecf841604`，回收与计划契约相关文件仍有差异。本轮按固定来源更新78.4.0干员数据，没有移植这些后续调度；Mower状态保持 `stale`，不能将整个skill来源集合称为 `current`。联网结果、数据版本和实现范围分别报告，完整检查输出以本轮交付记录为准。
+2026-10-25本次数据更新初次检查观察到Mower alpha `0c321af26b61184bf058d4c6fcdc7a3ecf841604`，与旧回收及计划整体文件pin仍有差异。并发主线的PR26随后已合入本包，保留其调度、恢复与本地公式修正；`fullCodeParityAudit20261025` 记录了固定 `94a49b4`、`f19abfa` 增量及观察至 `0c321af` 的范围、差异和验证边界。本次78.4.0数据变更叠加这些已合入规则，不以提取结果宣称进一步移植Mower。旧宽文件范围仍可报告 `stale`；这本身不等于PR26实现未合入，也不能把有限源码/AST/Worker证据扩大成全原生或游戏等价。各来源的实际联网状态以本轮完整检查输出为准，未全部确认前不把整个skill来源集合称为 `current`。
 
 ## 离线使用
 

@@ -3,7 +3,17 @@
 // Mower (MIT, Copyright 2021 Nano).
 import type {MowerSchedulingData} from './mowerSchedulingData'
 import {alphaRestingTier} from './mowerAlphaDorm'
+import {mowerDormCapacityAllows} from './mowerDormCapacity'
+import {mowerArrangementGroupTransitions,mowerRestingBindingGroups,mowerSharedReplacements,type MowerGroupTransitions} from './mowerSharedGroups'
 import type {MowerTask} from './mowerTaskQueue'
+function dynamicSelectionPosition(data:MowerSchedulingData,room:string,index:number,name:string,transitions:MowerGroupTransitions):boolean {
+ const resident=data.plan[room]?.[index]
+ if(!room.startsWith('dorm')||resident===undefined)return false
+ if(resident==='Free')return true
+ const owner=data.operators[resident]
+ if(!owner?.group||!owner.room.startsWith('dorm')||owner.nativeName==='菲亚梅塔'||name===resident||name==='Current')return false
+ return (owner.multiGroup?mowerSharedReplacements(owner,mowerRestingBindingGroups(data,owner,transitions)):owner.replacement).includes('Free')
+}
 export function mowerDormReplacementForSlot(data:MowerSchedulingData,name:string,room:string,index:number):boolean {
  const resident=data.operators[data.plan[room]?.[index]??'']
  if(data.alpha)return data.dormReplacementForSlot(name,room,index)
@@ -12,6 +22,8 @@ export function mowerDormReplacementForSlot(data:MowerSchedulingData,name:string
 export function prepareMowerDormSelection(data:MowerSchedulingData,names:string[],room:string,preserve=false,moodProbe=false,task?:MowerTask):void {
  if(data.alpha&&(moodProbe||task?.type.key==='FIAMMETTA'))return
  if(data.policy.experimentalDormLogic)throw new Error('Experimental selection and recovery ordering require their source port')
+ const capacityPlan={...task?.plan,[room]:names}
+ const transitions={...data.pendingGroupTransitions,...task?.groupShiftTransitions,...mowerArrangementGroupTransitions(data,capacityPlan)}
  const seen=new Set<string>()
  for(const [index,name] of names.entries()){
   if(data.alpha&&task?.simpleDormFill&&data.currentOperator(room,index)?.name===name){seen.add(name);continue}
@@ -19,12 +31,17 @@ export function prepareMowerDormSelection(data:MowerSchedulingData,names:string[
   else if(!['','Free','Current'].includes(name))names[index]='Free'
   const op=data.operators[names[index]!]
   if(!room.startsWith('dorm')||!op)continue
-  const dynamic=data.alpha?data.dynamicDormPosition(room,index,op.name):data.plan[room]?.[index]==='Free'
+  const dynamic=data.alpha?dynamicSelectionPosition(data,room,index,op.name,transitions):data.plan[room]?.[index]==='Free'
   const limited=!moodProbe&&data.restMoodComplete(op.name)&&dynamic
   // Alpha cancels excluded or personally capped recovery targets, not ordinary full-mood names.
   const excluded=data.alpha&&!preserve&&dynamic&&alphaRestingTier(data,op.name)===7
   const full=!data.alpha&&!preserve&&op.mood===op.upperLimit&&!op.room.startsWith('dorm')&&!mowerDormReplacementForSlot(data,op.name,room,index)
   if(limited||full||excluded){names[index]='Free';if(limited||full)op.depletionRate=0}
+ }
+ // Native alpha rechecks the complete selected row after cancelling completed targets.
+ if(data.alpha&&room.startsWith('dorm'))for(const [index,name] of names.entries()){
+  if(['','Free','Current'].includes(name)||!dynamicSelectionPosition(data,room,index,name,transitions)||data.currentOperator(room,index)?.name===name)continue
+  if(!mowerDormCapacityAllows(data,name,[room,index],capacityPlan,undefined,transitions))names[index]='Free'
  }
 }
 

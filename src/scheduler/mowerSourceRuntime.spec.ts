@@ -1,12 +1,16 @@
 import {describe,it,expect} from 'vitest'
 import {createRosterRuntime,settleRoster,advanceRoster,nextRosterActionHours,type RuntimeConfig} from './rosterRuntime'
-import {getMowerSourceRuntime,makeMowerSchedulingData} from './mowerSourceRuntime'
+import {getMowerSourceRuntime,makeMowerSchedulingData,settleMowerSource} from './mowerSourceRuntime'
 import {mowerUpdateDetail} from './mowerObservations'
 import {alphaRestingTier} from './mowerAlphaDorm'
-import {MowerTask,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
+import {MowerTask,MOWER_TASK_TYPES as T,toMowerMicros} from './mowerTaskQueue'
 import {evaluateBackupExpression} from './backupPlans'
 import {retainMowerFailedTask} from './mowerTaskFailure'
 import {completeMowerGroupConfirmation} from './mowerGroupConfirmation'
+import {createDefaultWorkspace} from '../workbench/defaults'
+import {compileRosterSchedule} from './compileRosterSchedule'
+import {compiledScheduleToRuntimeConfig} from './scheduleAdapter'
+import {resolveOperatorCharId} from '../domain/operatorIdentifiers'
 const rates={workRate:()=>1,recoveryRate:()=>4}
 function fixture():RuntimeConfig {
  const keepers=['K1','K2','K3','K4']
@@ -446,4 +450,62 @@ it('keeps personal-cap release on its independent validation path while cancelin
  expect(source.waitingGroupShifts?.some(wait=>wait.task===release)).toBeFalsy()
  expect(source.queue.tasks).not.toContain(release);expect(Object.values(state.bedOccupants)).not.toContain('A')
  expect(Object.values(pending.groupShiftExpected)).not.toContain('A');expect(pending.timeMicros).toBe(0)
+})
+
+describe.each([false,true])('native observed exhaustion deadlines, alpha=%s',alpha=>{
+ it.each([
+  {kind:'ordinary',lower:0,leadMinutes:30},
+  {kind:'personal lower limit',lower:12,leadMinutes:30},
+  {kind:'self full-rest',lower:0,leadMinutes:10},
+  {kind:'group full-rest',lower:0,leadMinutes:10},
+ ])('uses the configured lower limit and $leadMinutes minute lead for $kind',({kind,lower,leadMinutes})=>{
+  const workspace=createDefaultWorkspace(),dusk=resolveOperatorCharId('夕'),peer=resolveOperatorCharId('芬')
+  const cover=resolveOperatorCharId('砾'),peerCover=resolveOperatorCharId('克洛丝'),group=kind==='group full-rest'?'g':null
+  for(const room of Object.values(workspace.mainPlan.facilities))room.slots=[]
+  workspace.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:dusk},groupId:group,replacements:[cover]}]
+  if(group)workspace.mainPlan.facilities.room_1_1.slots.push({occupant:{kind:'operator',operatorId:peer},groupId:group,replacements:[peerCover]})
+  workspace.mainPlan.conf.ling_xi=lower?1:0
+  workspace.mainPlan.conf.exhaust_require=[dusk]
+  workspace.mainPlan.conf.rest_in_full=kind==='self full-rest'?[dusk]:group?[peer]:[]
+  const config=compiledScheduleToRuntimeConfig(compileRosterSchedule(workspace,{operatorMorale:{[dusk]:lower+2,[peer]:24}}))
+  config.mowerAlpha=alpha
+  const state=createRosterRuntime(config),source=getMowerSourceRuntime(state),op=source.data.operators[dusk]!
+  source.initial=false;source.firstInit=false
+  for(const position of config.positions)Object.assign(source.data.operators[position.primary]!,{currentRoom:position.roomId,currentIndex:Number(position.id.slice(-1)),mood:state.morale[position.primary],timeStampMicros:0,depletionRate:1})
+  source.queue.tasks=[new MowerTask({time:-1/3600})]
+  settleMowerSource(state,rates)
+  expect(op.lowerLimit).toBe(lower)
+  const task=source.queue.tasks.find(task=>task.type===T.EXHAUST_OFF&&task.metadata===dusk)
+  // Native first converts the observed zero timer to lowerLimit, then applies its lead.
+  expect(task?.timeMicros).toBe(toMowerMicros(2-leadMinutes/60))
+ })
+})
+
+it.each([false,true])('checks the grouped quota when actual Free selection resolves an unknown-mood priority replacement, alpha=%s',alpha=>{
+ const priority=resolveOperatorCharId('阿罗玛'),idle=resolveOperatorCharId('砾')
+ const config:RuntimeConfig={
+  mowerAlpha:alpha,positions:[
+   {id:'room_1_1_0',roomId:'room_1_1',primary:'H1',candidates:['R']},
+   {id:'dormitory_1_0',roomId:'dormitory_1',primary:'Keeper',candidates:[],dormitory:true,group:'g'},
+  ],beds:[{id:'dormitory_1_1',roomId:'dormitory_1',vip:true}],
+  mowerSourcePlan:{room_1_1:[{agent:'H1',group:'h',replacement:['R',priority]}],dormitory_1:[{agent:'Keeper',group:'g',replacement:['Free']},{agent:'Free',group:'',replacement:[]}]},
+  mowerSourceRules:{workaholic:[],exhaustRequire:[],restInFull:[],lowPriority:[],refreshDrained:[],lingMode:0,priorityReplacement:[priority]},
+  mowerPolicy:{restingThreshold:.65,powerPlantCount:2,opeRestingPriority:[]},availableIdleOperators:[priority,idle],
+  initialMorale:{H1:5,R:24,Keeper:24,[priority]:2,[idle]:24},
+ }
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state),data=source.data
+ source.initial=false;source.firstInit=false
+ state.occupants={room_1_1_0:'R'};state.bedOccupants={dormitory_1_1:'H1'}
+ Object.assign(data.operators.H1!,{currentRoom:'dormitory_1',currentIndex:1,mood:5,timeStampMicros:0})
+ Object.assign(data.operators.R!,{currentRoom:'room_1_1',currentIndex:0,mood:24,timeStampMicros:0})
+ Object.assign(data.operators.Keeper!,{currentRoom:'',currentIndex:-1,mood:24,timeStampMicros:0})
+ expect(data.operators[priority]!.timeStampMicros).toBeUndefined()
+ data.groupShiftState={g:true,h:true}
+ const bed=data.dorms.find(bed=>bed.position[1]===1)!
+ bed.name='H1';bed.timeMicros=toMowerMicros(5)
+ const task=new MowerTask({plan:{dormitory_1:['Free','Current']}})
+ task.groupShiftTransitions={g:true};source.queue.tasks=[task]
+ settleRoster(state,rates)
+ expect(state.bedOccupants.dormitory_1_1).toBe('H1')
+ expect(state.bedOccupants.dormitory_1_0??state.occupants.dormitory_1_0).toBe(alpha?idle:'Keeper')
 })

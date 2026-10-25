@@ -162,11 +162,14 @@ describe('observed recovery behind an empty return preview',()=>{
   }
   expect(state.occupants.room_1_1_0).toBe(fang);expect(task.arrangementStarted).toBe(true);expect(task.timeMicros).toBe(time)
  })
- it.each(["op_data.inventory_count('赤金') < 10","op_data.party_time == None","op_data.major_maintenance_remaining_hours() < 10","op_data.group_min_mood('other') < 10","op_data.facility_product('room_1_1') == 'gold'","op_data.facility_has_mastery_plan('train') == False","op_data.operators['夜莺'].upper_limit < 24"])(
+ it.each(["op_data.inventory_count('赤金') < 10","op_data.party_time == None","op_data.major_maintenance_remaining_hours() < 10","op_data.group_min_mood('other') < 10","op_data.facility_product('room_1_1') == 'gold'","op_data.facility_has_mastery_plan('train') == False"])(
   'refuses untracked dependency %s as a normal veto wait',dependency=>{
    const compiled=compileBackupExpression("op_data.operators['芬'].is_working() and "+dependency,new Set())
    expect(compiled.observedOperatorDependenciesOnly).toBe(false)
   })
+ it('rejects upper_limit because it is outside the native condition attribute whitelist',()=>{
+  expect(()=>compileBackupExpression("op_data.operators['芬'].is_working() and op_data.operators['夜莺'].upper_limit < 24",new Set())).toThrow('原生安全模型不支持干员属性 upper_limit')
+ })
  it('does not park an inventory-vetoed full return when inventory changes are untracked',()=>{
   const {state,source,data,task,bed}=fixture(false,"op_data.operators['芬'].is_working() and op_data.inventory_count('赤金') < 10")
   state.mowerInventoryCounts={'赤金':0};data.operators[fang]!.mood=24;state.morale[fang]=24;bed.timeMicros=0

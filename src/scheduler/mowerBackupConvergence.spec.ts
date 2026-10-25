@@ -5,13 +5,15 @@ import {compileRosterSchedule} from './compileRosterSchedule'
 import {compiledScheduleToRuntimeConfig} from './scheduleAdapter'
 import {createRosterRuntime,settleRoster} from './rosterRuntime'
 import {createBackupPlanController} from './backupPlans'
+import {compileBackupExpression} from './backupExpression'
 import {getMowerSourceRuntime} from './mowerSourceRuntime'
 import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T} from './mowerTaskQueue'
 import {prepareMowerShiftCycle,mergeMowerShiftTransition,coalesceMowerBackupTransition} from './mowerShiftCycle'
 import {MowerSchedulingData} from './mowerSchedulingData'
 
-function setup(trigger:unknown,extra:Record<string,unknown>={}){
- const w=createDefaultWorkspace();w.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'char_123_fang'},groupId:null,replacements:['char_502_nblade']}]
+function setup(trigger:unknown,extra:Record<string,unknown>={},groupId:string|null=null){
+ const w=createDefaultWorkspace();w.mainPlan.facilities.room_1_1.slots=[{occupant:{kind:'operator',operatorId:'char_123_fang'},groupId,replacements:['char_502_nblade']}]
+ if(groupId)w.mainPlan.facilities.dormitory_1.slots[0]={occupant:{kind:'free'},groupId:null,replacements:[]}
  w.compatibility.backupPlans=[{name:'alpha',trigger,plan:{room_1_1:{plans:[{agent:'香草',group:'',replacement:['芬']}]}},trigger_timing:'END',...extra}]
  const schedule=compileRosterSchedule(w),config=compiledScheduleToRuntimeConfig(schedule);config.mowerAlpha=true
  const state=createRosterRuntime(config),controller=createBackupPlanController(schedule,state)
@@ -26,7 +28,13 @@ describe('alpha final backup and shift convergence',()=>{
   expect(state.mowerBackupGenerated?.map(t=>t.type)).toEqual([T.SELF_CORRECTION,T.NOT_SPECIFIC])
  })
  it('rolls back a conditional plan cycle before any physical occupancy, event or task changes',()=>{
-  const {state,controller,source}=setup("op_data.operators['芬'].room == 'room_1_1'")
+  const trigger="op_data.group_min_mood('cycle') < 12"
+  const {state,controller,source}=setup(trigger,{plan:{room_1_1:{plans:[{agent:'香草',group:'cycle',replacement:['芬']}]}}},'cycle')
+  // The low-mood primary activates the backup; its high-mood primary then
+  // deactivates it. Group membership follows the memory plan before any move.
+  state.morale.char_123_fang=5
+  Object.assign(source.data.operators.char_123_fang!,{mood:5,timeStampMicros:0,depletionRate:0})
+  expect(compileBackupExpression(trigger,new Set()).evaluate(state)).toBe(true)
   const before={config:state.config,occupants:{...state.occupants},tasks:[...source.queue.tasks]}
   expect(controller.evaluate('END')).toBe(false)
   expect(controller.active).toEqual([false]);expect(state.config).toBe(before.config)

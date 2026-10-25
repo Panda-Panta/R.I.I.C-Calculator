@@ -66,4 +66,20 @@ describe('actual selected default infra_main todo-task AST 1230-1264',()=>{
   expect(()=>generator.next({kind:'reload',value:null,observedAtMicros:100})).toThrow('Inner reload_time observation')
   expect(state.flags.todoTask).toBe(false)
  })
+ it('runs an otherwise due ordinary drone service while failed work stays pending',()=>{
+  const queue=new MowerTaskQueue(),blocked=new MowerTask({time:0,type:T.SHIFT_OFF,plan:{room_1_1:['A']}})
+  blocked.executionFailure={reason:'waiting for related evidence',rooms:['room_1_1'],snapshot:{intent:'unchanged',observations:{}}}
+  queue.tasks=[blocked]
+  const failure=blocked.executionFailure,state:MowerTodoTaskState={
+   queue,flags:{todoTask:false,collectNotification:false,planned:true},enableParty:false,lastClueMicros:null,
+   droneRoom:'room_2_1',runOrderRooms:[],droneTimeMicros:null,droneIntervalHours:3,
+   reloadRooms:null,reloadTimeMicros:null,maaGapHours:3,
+  }
+  const now=3_600_000_000,generator=executeMowerTodoTask(state,{nowMicros:()=>now})
+  expect(queue.find()).toBeUndefined()
+  expect(generator.next().value).toEqual({kind:'drone',room:'room_2_1'})
+  expect(generator.next({kind:'drone',observedAtMicros:now,value:null}).done).toBe(true)
+  expect(state.droneTimeMicros).toBe(now);expect(state.flags.todoTask).toBe(true)
+  expect(queue.tasks).toEqual([blocked]);expect(blocked.executionFailure).toBe(failure);expect(blocked.timeMicros).toBe(0)
+ })
 })

@@ -1,6 +1,7 @@
 // Port of dorm_recovery.py and default ensure_dorm_recovery_order, Mower alpha.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import {MowerArrangementError} from './mowerArrangementError'
+import {mowerDormCandidateMood} from './mowerAlphaCandidates'
 import {hasRestingMood,restingMood,type MowerOperatorState,type MowerRecoveryManager} from './mowerOperatorState'
 import type {MowerSchedulingData} from './mowerSchedulingData'
 import {MOWER_TASK_TYPES as T,type MowerTask,type MowerTaskQueue} from './mowerTaskQueue'
@@ -14,7 +15,12 @@ export function mowerRecoveryManagers(data:MowerSchedulingData,room:string,names
 export function mowerRecoveryTarget(data:MowerSchedulingData,room:string,names:string[]):MowerOperatorState|undefined {
  if(!room.startsWith('dorm')||names.length!==data.plan[room]?.length)return undefined
  const managerNames=new Set(mowerRecoveryManagers(data,room,names).map(([name])=>name))
- const index=names.findIndex((name,i)=>!managerNames.has(name)&&data.dynamicDormPosition(room,i))
+ const index=names.findIndex((name,i)=>{
+  if(managerNames.has(name))return false
+  if(data.dynamicDormPosition(room,i,name))return true
+  const bed=data.alpha?data.groupDorms.find(candidate=>candidate.position[0]===room&&candidate.position[1]===i):undefined
+  return !!bed&&data.recoveryDorm(bed,name)
+ })
  const target=data.operators[names[index]??'']
  return target&&!target.singleRecoveryManager&&target.mood<24&&!target.room.startsWith('dorm')?target:undefined
 }
@@ -27,13 +33,13 @@ function tier(data:MowerSchedulingData,name:string):number {
  if(op.room==='train'&&op.index===0||op.currentRoom==='train'&&op.currentIndex===0)return 5
  if(op.isHigh())return op.restingPriority==='high'?1:op.restingPriority==='low'?2:4
  if(op.restingFromTrain)return 5
- return Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&owner.replacement.includes(name))?5:6
+ return Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&(owner.replacement.includes(name)||data.alpha&&owner.groupBindings.some(binding=>binding.replacement.includes(name))))?5:6
 }
 /** Known full padding only; unregistered UI candidates cannot confirm a 24-mood cache. */
 function fullPadding(data:MowerSchedulingData,excluded:Set<string>,room:string):string[] {
  const residents=new Set(data.currentRoom(room,true)),support=data.currentOperator('train',0)?.name
  return Object.values(data.operators).filter(op=>{
-  if(excluded.has(op.name)||data.busyRestingNames.has(op.name)||op.name===support||op.isHigh()||op.currentRoom&&!(residents.has(op.name)&&op.isResting())||data.restMoodComplete(op.name)||tier(data,op.name)===7)return false
+  if(excluded.has(op.name)||data.busyRestingNames.has(op.name)||op.name===support||op.isHigh()||data.alpha&&op.singleRecoveryManager||op.currentRoom&&!(residents.has(op.name)&&op.isResting())||data.restMoodComplete(op.name)||tier(data,op.name)===7)return false
   const checked=data.policy.experimentalDormLogic&&!op.currentRoom&&op.idleRestCheck!==undefined&&op.idleRestCheck[0]>=op.upperLimit&&op.idleRestCheck[1]===op.mood&&op.idleRestCheck[2]===op.timeStampMicros
   if(!checked&&restingMood(op,data.nowMicros)<op.upperLimit)return false
   return !op.restMoodLimit&&hasRestingMood(op,data.nowMicros)&&restingMood(op,data.nowMicros)>=24
@@ -42,13 +48,14 @@ function fullPadding(data:MowerSchedulingData,excluded:Set<string>,room:string):
 export function mowerRecoveryOrderPlan(data:MowerSchedulingData,room:string,names:string[],reserved:string[]=[]):string[]|undefined {
  const target=mowerRecoveryTarget(data,room,names);if(!target)return undefined
  const managers=mowerRecoveryManagers(data,room,names);if(!managers.length)return undefined
- const index=names.indexOf(target.name)
- if(active(target,room,index)&&sameManagers(target.dormRecoveryFixed,managers)&&managers.every(([name,i])=>data.operators[name]!.currentRoom===room&&data.operators[name]!.currentIndex===i))return undefined
+ const targetIndex=names.indexOf(target.name)
+ if(active(target,room,targetIndex)&&sameManagers(target.dormRecoveryFixed,managers)&&managers.every(([name,i])=>data.operators[name]!.currentRoom===room&&data.operators[name]!.currentIndex===i))return undefined
  const managerNames=new Set(managers.map(([name])=>name)),retained:string[]=[]
  for(const [index,name] of names.entries()){
-  if(name===target.name||managerNames.has(name)){retained.push(name);continue}
-  if(data.dynamicDormPosition(room,index)){retained.push('');continue}
   const op=data.operators[name]
+  if(name===target.name||managerNames.has(name)||op?.nativeName==='菲亚梅塔'||data.alpha&&index<targetIndex&&op?.singleRecoveryManager){retained.push(name);continue}
+  if(data.alpha&&index<targetIndex){retained.push((mowerDormCandidateMood(data,name)??-1)>=24?name:'');continue}
+  if(data.dynamicDormPosition(room,index,name)){retained.push('');continue}
   if(data.dormReplacementForSlot(name,room,index)&&(!op||op.timeStampMicros===undefined||op.mood<24)){retained.push('');continue}
   if(['','Free','Current'].includes(name))return undefined
   retained.push(name)
@@ -79,8 +86,8 @@ export function ensureMowerDormRecovery(data:MowerSchedulingData,queue:MowerTask
   const bed=data.getDormByName(target.name)?.[1]
   if(bed?.name===target.name)bed.timeMicros=undefined
  }
- const padding=retained.filter(name=>!names.includes(name))
- if(padding.some(name=>data.operators[name]!.mood<24)){target.clearDormRecovery();data.recoveryOrderVersion++;return true}
+ const padding=data.alpha?retained.slice(0,index).filter(name=>data.operators[name]?.nativeName!=='菲亚梅塔'&&!data.operators[name]?.singleRecoveryManager):retained.filter(name=>!names.includes(name))
+ if(padding.some(name=>data.alpha?(mowerDormCandidateMood(data,name)??-1)<24:data.operators[name]!.mood<24)){target.clearDormRecovery();data.recoveryOrderVersion++;return true}
  if(target.mood<24){target.dormRecoveryRoom=room;target.dormRecoveryIndex=index;target.dormRecoveryFixed=mowerRecoveryManagers(data,room,names)}
  else target.clearDormRecovery()
  data.recoveryOrderVersion++

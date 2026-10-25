@@ -3,10 +3,24 @@ import {createDefaultWorkspace} from '../workbench/defaults'
 import {runScheduleSimulationBridge} from '../workbench/scheduleSimulationBridge'
 import {summarizeIncome,compareIncome,type IncomeCase} from './incomeComparison'
 import { scoreSimulationProduction } from '../simulator/productionScore'
+import { simulateCandidate } from './candidateSimulation'
 const report=()=>runScheduleSimulationBridge(createDefaultWorkspace(),{sampleHours:1,warmupHours:0,production:{seed:1,droneTarget:'none'}},{idleOperators:[]}).report!
 const cases=():IncomeCase[]=>[1,2].flatMap(seed=>[.25,.125].map(step=>{const c=summarizeIncome(report());return {...c,seed,step,key:`${seed}:${step}`}}))
 const improved=()=>{const c=cases();c.forEach(x=>{x.daily.lmd+=100;x.closing.lmd+=100});return c}
 describe('actual net income comparison',()=>{
+ it('keeps native condition runtime failures visible without blocking otherwise complete income cases',()=>{
+  const workspace=createDefaultWorkspace()
+  workspace.compatibility.backupPlans=[
+   {name:'runtime failure',trigger:'1 / 0 > 0',plan:{}},
+   {name:'valid condition',trigger:'True',plan:{}},
+  ]
+  const result=simulateCandidate({workspace,incomeComparison:true,
+   options:{sampleHours:1,warmupHours:0,production:{droneTarget:'none',seed:7}},assumptions:{idleOperators:[]},
+  })
+  expect(result.completed,JSON.stringify(result.diagnostics)).toBe(true)
+  expect(result.incomeCase?.assumptions.some(d=>d.code==='MOWER_BACKUP_CONDITION_ERROR')).toBe(true)
+  expect(result.incomeCase?.issues).toEqual([])
+ })
  it('records the clue-only production assumption without changing income eligibility or allowing unknown mechanics',()=>{
   const r=report()
   const clueAssumption=r.diagnostics.find(d=>d.code==='RECEPTION_CLUE_PRODUCTION_MODEL')!

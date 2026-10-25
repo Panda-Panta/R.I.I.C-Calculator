@@ -23,6 +23,10 @@ export interface MowerReplacementCheckSnapshot {
 export interface MowerReplacementCheckState {
  target:MowerReplacementCheckTarget
  revision:number
+ /** New checks have no prior working deadline; omitted values preserve old task deadlines. */
+ deadlineMicros?:number|null
+ /** Environmental changes require a newer real sample before cache reuse. */
+ readAfterMicros?:number
  source?:MowerReplacementCheckSnapshot
  failure?:{reason:string;dependency:boolean;snapshot:MowerReplacementCheckSnapshot}
 }
@@ -35,9 +39,9 @@ export interface MowerReplacementCheckOptions {
  productByRoom?:Readonly<Record<string,unknown>>
  roomObservations?:Readonly<Record<string,unknown>>
  refreshDrainedNames?:readonly string[]
- /** Must force a real read of the target. A void result uses the updated operator observation. */
+ /** When cache reuse is unsafe, force a real target read. A void result uses its updated observation. */
  readRoom?:(room:string,index:number)=>MowerReplacementCheckObservation|void
- /** Ideal simulation may supply the actual working rate after the forced read. */
+ /** Ideal simulation may supply the actual working rate for the next deadline. */
  effectiveDepletionRate?:(name:string)=>number|undefined
 }
 const finiteMood=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=24
@@ -105,6 +109,7 @@ export function syncMowerReplacementChecks(data:MowerSchedulingData,queue:MowerT
   if(!targets.has(id)||existing.has(id)||concrete.has(alphaPosition(check.target.room,check.target.index))&&!task.retainsExecution){remove.add(task);continue}
   existing.add(id)
   const previous=check.source,snapshot=mowerReplacementCheckSnapshot(data,queue,task,options),cover=data.operators[check.target.cover]!
+  if(previous&&(previous.environment!==snapshot.environment||previous.revision!==snapshot.revision&&check.readAfterMicros===undefined))check.readAfterMicros=data.nowMicros
   const observation=snapshot.observations[cover.name]!,prior=previous?.observations[cover.name]
   const rateChanged=observation[4]!==null&&observation[4]>0&&observation[4]!==prior?.[4]
   if(previous&&!task.retainsExecution&&(previous.environment!==snapshot.environment||!equal(prior,observation)&&!cover.moodIsPrediction&&cover.timeStampMicros!==undefined&&finiteMood(cover.mood)&&(cover.mood<=cover.lowerLimit||rateChanged)||previous.revision!==snapshot.revision))task.timeMicros=Math.min(task.timeMicros,data.nowMicros)
@@ -117,13 +122,13 @@ export function syncMowerReplacementChecks(data:MowerSchedulingData,queue:MowerT
  for(const [id,target] of targets){
   if(existing.has(id)||concrete.has(alphaPosition(target.room,target.index)))continue
   const task=new MowerTask({time:fromMowerMicros(data.nowMicros),metadata:`替班心情检查：${data.operators[target.cover]!.nativeName}`})
-  task.replacementCheck={target,revision:0}
+  task.replacementCheck={target,revision:0,deadlineMicros:null}
   task.replacementCheck.source=mowerReplacementCheckSnapshot(data,queue,task,options)
   queue.tasks.push(task)
  }
 }
 export function invalidateMowerReplacementChecks(data:MowerSchedulingData,queue:MowerTaskQueue):void {
- for(const task of queue.tasks)if(task.replacementCheck){task.replacementCheck.revision++;if(!task.retainsExecution)task.timeMicros=Math.min(task.timeMicros,data.nowMicros)}
+ for(const task of queue.tasks)if(task.replacementCheck){task.replacementCheck.readAfterMicros=data.nowMicros;task.replacementCheck.revision++;if(!task.retainsExecution)task.timeMicros=Math.min(task.timeMicros,data.nowMicros)}
 }
 export function cloneMowerReplacementCheck(task:MowerTask):MowerReplacementCheckState|undefined {
  return task.replacementCheck?structuredClone(task.replacementCheck):undefined
@@ -140,29 +145,42 @@ function readValues(snapshot:MowerReplacementCheckSnapshot,room:string):MowerRep
  delete values.roomObservations[room]
  return values
 }
-/** Only a due real read can authorize correction; a countdown never moves the operator itself. */
+// Native replacement_check._cached_work_mood, alpha 94a49b4 (MIT).
+function cachedWorkMood(cover:MowerOperatorState,task:MowerTask,nowMicros:number):number|undefined {
+ const sampledAt=cover.timeStampMicros,check=task.replacementCheck!
+ const deadline=check.deadlineMicros===undefined?task.timeMicros:check.deadlineMicros
+ if(sampledAt===undefined||!(sampledAt<=nowMicros)||cover.moodIsPrediction||!finiteMood(cover.mood)||cover.needToRefresh(nowMicros,2,cover.currentRoom)
+  ||check.readAfterMicros!==undefined&&sampledAt<=check.readAfterMicros||deadline!==null&&sampledAt<deadline&&deadline<=nowMicros)return undefined
+ const rate=cover.depletionRate,mood=cover.mood-(Number.isFinite(rate)&&rate>0?rate*fromMowerMicros(nowMicros-sampledAt):0)
+ return mood>cover.lowerLimit?mood:undefined
+}
+/** Safe recent evidence may set a deadline; correction at its lower limit still requires a real read. */
 export function runMowerReplacementCheck(data:MowerSchedulingData,queue:MowerTaskQueue,task:MowerTask,options:MowerReplacementCheckOptions={}):boolean {
  const check=task.replacementCheck;if(!check||!applies(data,check.target))return true
  const {target}=check,room=target.room
- const peers=queue.tasks.flatMap(peer=>peer!==task&&peer.replacementCheck?.failure?[{peer,failure:peer.replacementCheck.failure,before:mowerReplacementCheckSnapshot(data,queue,peer,options)}]:[])
- const preservePeers=()=>{
-  for(const {peer,failure,before} of peers){
-   if(peer.replacementCheck?.failure!==failure||!equal(failure.snapshot,before))continue
-   const after=mowerReplacementCheckSnapshot(data,queue,peer,options)
-   if(equal(readValues(before,room),readValues(after,room))){failure.snapshot=after;if(peer.executionFailure)peer.executionFailure.snapshot.intent=JSON.stringify(after)}
+ const cached=cachedWorkMood(data.operators[target.cover]!,task,data.nowMicros)
+ let observed:MowerReplacementCheckObservation|void=cached===undefined?undefined:{agent:target.cover,mood:cached}
+ if(cached===undefined){
+  const peers=queue.tasks.flatMap(peer=>peer!==task&&peer.replacementCheck?.failure?[{peer,failure:peer.replacementCheck.failure,before:mowerReplacementCheckSnapshot(data,queue,peer,options)}]:[])
+  const preservePeers=()=>{
+   for(const {peer,failure,before} of peers){
+    if(peer.replacementCheck?.failure!==failure||!equal(failure.snapshot,before))continue
+    const after=mowerReplacementCheckSnapshot(data,queue,peer,options)
+    if(equal(readValues(before,room),readValues(after,room))){failure.snapshot=after;if(peer.executionFailure)peer.executionFailure.snapshot.intent=JSON.stringify(after)}
+   }
   }
- }
- let observed:MowerReplacementCheckObservation|void
- try{observed=options.readRoom?.(room,target.index)}catch(error){
+  try{observed=options.readRoom?.(room,target.index)}catch(error){
+   preservePeers()
+   return retain(data,queue,task,`替班心情检查未取得有效读数：${error instanceof Error?error.message:String(error)}`,options)
+  }
   preservePeers()
-  return retain(data,queue,task,`替班心情检查未取得有效读数：${error instanceof Error?error.message:String(error)}`,options)
+  const actual=data.currentOperator(room,target.index)
+  if(!observed)observed=actual?{agent:actual.name,mood:actual.mood,observed:!actual.moodIsPrediction&&actual.timeStampMicros===data.nowMicros}:{observed:false}
  }
- preservePeers()
- const actual=data.currentOperator(room,target.index)
- if(!observed)observed=actual?{agent:actual.name,mood:actual.mood,observed:!actual.moodIsPrediction&&actual.timeStampMicros===data.nowMicros}:{observed:false}
- if(observed.observed===false||!finiteMood(observed.mood))return retain(data,queue,task,'替班心情检查未取得有效读数',options)
+ if(!observed||observed.observed===false||!finiteMood(observed.mood))return retain(data,queue,task,'替班心情检查未取得有效读数',options)
  if(observed.agent!==target.cover)return typeof observed.agent==='string'?true:retain(data,queue,task,'替班心情检查未确认原岗位驻员',options)
  if(!applies(data,target))return true
+ delete check.readAfterMicros
  const cover=data.operators[target.cover]!,mood=observed.mood
  if(mood>cover.lowerLimit){
   const supplied=options.effectiveDepletionRate?.(cover.name),rate=supplied??cover.depletionRate,end=observed.endMicros
@@ -172,11 +190,11 @@ export function runMowerReplacementCheck(data:MowerSchedulingData,queue:MowerTas
   else return retain(data,queue,task,'替班心情仍高于下限，等待有效心情消耗观测',options,true)
   if(task.retainsExecution){
    const successor=new MowerTask({time:fromMowerMicros(deadline),metadata:task.metadata})
-   successor.replacementCheck={target:structuredClone(target),revision:check.revision}
+   successor.replacementCheck={target:structuredClone(target),revision:check.revision,deadlineMicros:deadline}
    successor.replacementCheck.source=mowerReplacementCheckSnapshot(data,queue,successor,options)
    queue.tasks.push(successor);return true
   }
-  task.timeMicros=deadline;check.source=mowerReplacementCheckSnapshot(data,queue,task,options);return false
+  task.timeMicros=deadline;check.deadlineMicros=deadline;check.source=mowerReplacementCheckSnapshot(data,queue,task,options);return false
  }
  const reserved=reservations(data,queue,task,options)
  if(reserved.names.has(target.cover)||reserved.slots.has(alphaPosition(room,target.index)))return retain(data,queue,task,'替班岗位仍由其他任务预约',options)

@@ -1,23 +1,56 @@
 // Mower logic_expression.py serializes (left operator right) before evaluation.
 // This interpreter preserves that syntax without evaluating imported Python/JS.
 import { OPERATOR_MAP } from '../domain/operators'
-import { MOWER_INVENTORY_ITEMS } from '../domain/simulationInventory'
+import {compileMowerBackupQuery} from './mowerBackupQueries'
 import { resolveOperatorCharId } from '../domain/operatorIdentifiers'
 import type { RuntimeState } from './rosterRuntime'
-import type {MowerDateTimeValue} from './mowerSchedulingData'
 import {toMowerMicros} from './mowerTaskQueue'
+import * as values from './backupExpressionValues'
 
-type Value = string | number | boolean | null | MowerDateTimeValue
+type Value = values.BackupExpressionValue
 type Expression = (state: RuntimeState) => Value
-type Token = { text: string; kind: 'operator' | 'value' | 'worker' | 'external' | 'query'; value?: Value; name?: string; member?: string }
-const roomName = /^(?:room_[1-3]_[1-3]|dormitory_[1-4]|central|meeting|factory|contact|train|recycle)$/
-// Inventory queries: Mower 3de2b2ac; facility-product counts: 3ad69f15 Operators (MIT).
-const inventoryNames = new Set<string>(MOWER_INVENTORY_ITEMS.map(item => item.name))
-const facilityProducts = new Set(['gold', 'exp3', 'orirock', 'orirock_device', 'lmd', 'orundum'])
-const facilityRoomName = /^(?:room_[1-3]_[1-3]|dormitory_[1-4]|gaming_[1-3]|central|meeting|factory|contact|train|recycle)$/
+type ParsedExpression = Expression & {nodes:number;numericBits:number|null;integerLiteral?:bigint;integerConstant?:boolean;items?:ParsedExpression[];constant?:{value:Value}}
+type Token = { text: string; kind: 'operator' | 'value' | 'worker' | 'attribute' | 'external' | 'query'; value?: Value; member?: string;literal?:'number'|'string'|'constant' }
+const roomName = /^(?:room_[1-3]_[1-3]|dormitory_[1-4]|gaming_[1-3]|central|meeting|factory|contact|train|recycle)$/
 const functionNames = new Set(['max', 'min', 'sum', 'any', 'all', 'abs'])
 const maxFunctionArguments = 128
 const fail = (message: string): never => { throw new Error(`副表：${message}`) }
+export const backupExpressionTruthy=values.backupExpressionTruthy
+const bits=(value:Value):number|null=>typeof value==='bigint'?Math.max(1,(value<0n?-value:value).toString(2).length):typeof value==='boolean'?1:typeof value==='number'?64:null
+function fold(evaluate:()=>Value):Pick<ParsedExpression,'constant'> {
+  // Only bounded index/comparison metadata uses this helper; general operations stay deferred.
+  try{return {constant:{value:evaluate()}}}catch{return {}} // Runtime errors remain runtime errors, including in unselected branches.
+}
+function constantConcatenation(left:ParsedExpression,right:ParsedExpression):Pick<ParsedExpression,'constant'> {
+  const a=left.constant?.value,b=right.constant?.value
+  return typeof a==='string'&&typeof b==='string'&&Array.from(a).length+Array.from(b).length<=512?{constant:{value:a+b}}:{}
+}
+function constantIndex(container:ParsedExpression,index:ParsedExpression):Pick<ParsedExpression,'constant'> {
+  const target=container.constant?.value,key=index.constant?.value
+  const size=typeof target==='string'?Array.from(target).length:Array.isArray(target)?target.length
+    :target&&typeof target==='object'&&'kind' in target&&target.kind==='bytes'?target.bytes.length:Infinity
+  const smallIndex=typeof key==='boolean'||typeof key==='bigint'&&key>=-512n&&key<=512n
+  return size<=512&&smallIndex?fold(()=>values.backupExpressionIndex(target!,key!)):{}
+}
+function constantNegation(expression:ParsedExpression):Pick<ParsedExpression,'constant'> {
+  const value=expression.constant?.value
+  return typeof value==='bigint'||typeof value==='number'?{constant:{value:-value}}
+    :typeof value==='boolean'?{constant:{value:-BigInt(value)}}:{}
+}
+function node(evaluate:Expression,nodes:number,numericBits:number|null=null,metadata:Partial<ParsedExpression>={}):ParsedExpression {
+  if(nodes+1>128)return fail('条件表达式过于复杂') // Includes ast.Expression.
+  return Object.assign(evaluate,{nodes,numericBits,...metadata})
+}
+function quotedLiteral(text:string):string|undefined {
+  const start=/^(?:[bB][rR]|[rR][bB]|[rRuUbB])?(?=['"])/.exec(text)
+  if(!start)return undefined
+  const offset=start[0].length,quote=text[offset]!,delimiter=text.slice(offset,offset+3)===quote.repeat(3)?quote.repeat(3):quote
+  for(let cursor=offset+delimiter.length;cursor<text.length;cursor++){
+    if(text[cursor]==='\\'){cursor++;continue}
+    if(text.startsWith(delimiter,cursor))return text.slice(0,cursor+delimiter.length)
+  }
+  return fail('字符串常量不完整')
+}
 
 export function actualRoom(state: RuntimeState, id: string): string {
   const position = state.config.positions.find(p => state.occupants[p.id] === id)
@@ -26,9 +59,9 @@ export function actualRoom(state: RuntimeState, id: string): string {
 
 /** Mower ae9fc322 LogicExpression / FunctionExpression; never mutates imported trees. */
 export function serializeBackupExpression(source: unknown, depth = 0, budget = { nodes: 0 }): string {
-  if (depth > 32 || ++budget.nodes > 512) return fail('条件树超过限制')
+  if (depth > 256 || ++budget.nodes > 1024) return fail('条件树超过限制')
   if (typeof source === 'string') {
-    if (source.length > 20000) return fail('条件文本超过限制')
+    if (Array.from(source).length > 2048) return fail('条件文本超过限制')
     return source
   }
   if (typeof source === 'boolean') return source ? 'True' : 'False'
@@ -44,225 +77,237 @@ export function serializeBackupExpression(source: unknown, depth = 0, budget = {
     let args = node.args.map(arg => serializeBackupExpression(arg, depth + 1, budget)).join(', ')
     if (['sum', 'any', 'all'].includes(name) || (['max', 'min'].includes(name) && node.args.length === 1)) args = `[${args}]`
     const text = `${name}(${args})`
-    if (text.length > 20000) return fail('条件文本超过限制')
+    if (Array.from(text).length > 2048) return fail('条件文本超过限制')
     return text
   }
   if ([node.left, node.operator, node.right].every(value => value == null || typeof value === 'string' && !value.trim())) return 'False'
   const text = `(${serializeBackupExpression(node.left ?? '', depth + 1, budget)} ${serializeBackupExpression(node.operator ?? '', depth + 1, budget)} ${serializeBackupExpression(node.right ?? '', depth + 1, budget)})`
-  if (text.length > 20000) return fail('条件文本超过限制')
+  if (Array.from(text).length > 2048) return fail('条件文本超过限制')
   return text
 }
 
 function tokenize(text: string): Token[] {
+  if(text.includes('\0'))return fail('条件文本包含不允许的空字符')
   const tokens: Token[] = []
   for (let rest = text.trim(); rest; rest = rest.trimStart()) {
+    if(rest.startsWith('#')){rest=rest.slice(rest.indexOf('\n')<0?rest.length:rest.indexOf('\n'));continue}
+    if(rest.startsWith('\\\n')||rest.startsWith('\\\r\n')){rest=rest.slice(rest.startsWith('\\\r\n')?3:2);continue}
     if (tokens.length >= 1024) return fail('条件文本超过限制')
-    const worker = /^op_data\.operators\[['"]([^'"\[\]]+)['"]\]\.(is_resting\(\)|is_working\(\)|current_mood\(\)|current_room|current_index|room|index|mood|upper_limit|lower_limit|group|workaholic|exhaust_require|rest_in_full|operator_type|resting_priority)\b/.exec(rest) ?? /^op_data\.operators\[['"]([^'"\[\]]+)['"]\]\.(is_resting\(\)|is_working\(\)|current_mood\(\))/.exec(rest)
-    const query = /^op_data\.(group_min_mood|group_max_mood|facility_has_mastery_plan|facility_is_training|inventory_count|facility_product_count|facility_product_type_count|facility_product)\b/.exec(rest)
-    const external = /^op_data\.(?:party_time\b|major_maintenance_remaining_hours\(\))/.exec(rest)
-    const quoted = /^(['"])((?:\\.|(?!\1)[^\\])*)\1/.exec(rest)
-    const number = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest)
-    const word = /^(?:and|or|not|is|in|True|False|None)\b/.exec(rest)
-    const symbol = /^(?:==|!=|<=|>=|[<>+*/(),\[\]\-])/.exec(rest)
+    const worker = /^op_data\s*\.\s*operators\b/.exec(rest)
+    const attribute = /^\.\s*([A-Za-z_]\w*)/.exec(rest)
+    const query = /^op_data\s*\.\s*(group_min_mood|group_max_mood|facility_has_mastery_plan|facility_is_training|inventory_count|facility_product_count|facility_product_type_count|facility_product|facility_type|facility_operator_count)\b/.exec(rest)
+    const external = /^op_data\s*\.\s*(party_time|major_maintenance_remaining_hours)\b/.exec(rest)
+    const quoted = quotedLiteral(rest)
+    const number = /^(?:0[xX]_?[\da-fA-F](?:_?[\da-fA-F])*|0[oO]_?[0-7](?:_?[0-7])*|0[bB]_?[01](?:_?[01])*|(?:\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?|\.\d(?:_?\d)*)(?:[eE][+-]?\d(?:_?\d)*)?[jJ]?)/.exec(rest)
+    const word = /^(?:and|or|not|is|in|if|else|True|False|None)\b/.exec(rest)
+    const symbol = /^(?:==|!=|<=|>=|\/\/|\*\*|[<>+*/%(),\[\]\-])/.exec(rest)
     const aggregate = /^(?:max|min|sum|any|all|abs)\b/.exec(rest)
     const room = /^(?:room_[1-3]_[1-3]|dormitory_[1-4]|gaming_[1-3]|central|meeting|factory|contact|train|recycle)\b/.exec(rest)
-    const product = /^(?:orirock_device|orirock|orundum|gold|exp3|lmd)\b/.exec(rest)
+    const product = /^(?:orirock_device|orirock|orundum|gold|exp3|lmd|manufacture|trade|power)\b/.exec(rest)
     let token: Token
-    if (worker) token = { text: worker[0], kind: 'worker', name: worker[1], member: worker[2] }
+    if (worker) token = { text: worker[0], kind: 'worker' }
+    else if (attribute) token = {text:attribute[0],kind:'attribute',member:attribute[1]}
     else if (query) token = { text: query[0], kind: 'query', member: query[1] }
-    else if (external) token = { text: external[0], kind: 'external' }
-    else if (quoted) token = { text: quoted[0], kind: 'value', value: quoted[2]!.replace(/\\(['"\\nrt])/g, (_, c: string) => ({ n: '\n', r: '\r', t: '\t' }[c] ?? c)) }
-    else if (number && Number.isFinite(Number(number[0]))) token = { text: number[0], kind: 'value', value: Number(number[0]) }
+    else if (external) token = { text: external[0], kind: 'external',member:external[1] }
+    else if (quoted) token = { text: quoted, kind: 'value', value: values.decodeBackupStringLiteral(quoted), literal:'string' }
+    else if (number) token = { text: number[0], kind: 'value', value: values.parseBackupNumberLiteral(number[0]), literal:'number' }
     else if (word) token = ['True', 'False', 'None'].includes(word[0])
-      ? { text: word[0], kind: 'value', value: word[0] === 'None' ? null : word[0] === 'True' }
+      ? { text: word[0], kind: 'value', value: word[0] === 'None' ? null : word[0] === 'True', literal:'constant' }
       : { text: word[0], kind: 'operator' }
     else if (symbol) token = { text: symbol[0], kind: 'operator' }
     else if (aggregate) token = { text: aggregate[0], kind: 'operator' }
     else if (product) token = { text: product[0], kind: 'value', value: product[0] }
     else if (room) token = { text: room[0], kind: 'value', value: room[0] }
     else return fail(`不支持的条件 ${rest.slice(0, 120)}`)
-    tokens.push(token); rest = rest.slice(token.text.length)
+    rest = rest.slice(token.text.length)
+    const previous=tokens[tokens.length-1]
+    if(previous?.literal==='string'&&token.literal==='string'){
+      previous.value=values.backupExpressionBinary('+',previous.value!,token.value!)
+      if((values.backupExpressionLiteralLength(previous.value)??0)>512)return fail('字符串常量过长')
+      previous.text+=` ${token.text}`
+    }else tokens.push(token)
   }
   return tokens
 }
 
-export function compileBackupExpression(source: unknown, participants: Set<string>): { evaluate: Expression; usesCurrentMood: boolean; usesMajorMaintenance: boolean; usesMasteryPlan: boolean; usesInventory: boolean; usesFacilityProduct: boolean; observedOperatorDependenciesOnly: boolean; skipped?: string } {
+export function compileBackupExpression(source: unknown, participants: Set<string>): { evaluate: Expression; usesCurrentMood: boolean; usesMajorMaintenance: boolean; usesMasteryPlan: boolean; usesInventory: boolean; usesFacilityProduct: boolean; usesFacilityObservation: boolean; observedOperatorDependenciesOnly: boolean; skipped?: string } {
   const tokens = tokenize(serializeBackupExpression(source))
-  let cursor = 0, nesting = 0
+  let cursor = 0, nesting = 0, observedOperatorKeysStatic = true
   const peek = () => tokens[cursor]?.text
   const take = (text: string) => peek() === text ? (++cursor, true) : false
-  const numeric = (value: Value) => typeof value === 'number' ? value : typeof value === 'boolean' ? Number(value) : fail('比较/算术运算需要数字')
-  const binary = (left: Expression, right: Expression, op: string): Expression => state => {
-    const a = left(state)
-    if (op === 'and') return a ? right(state) : a
-    if (op === 'or') return a ? a : right(state)
-    const b = right(state)
-    if (op === 'is' || op === 'is not') return op === 'is' ? a === b : a !== b
-    if (op === '==' || op === '!=') {
-      const numbers=(typeof a==='boolean'||typeof a==='number')&&(typeof b==='boolean'||typeof b==='number')
-      const dates=a!==null&&b!==null&&typeof a==='object'&&typeof b==='object'
-      const equal=numbers?numeric(a)===numeric(b):dates?a.timeMicros===b.timeMicros:a===b
-      return op==='=='?equal:!equal
-    }
-    if (op === 'in' || op === 'not in') {
-      if (typeof a !== 'string' || typeof b !== 'string') return fail('成员比较仅支持字符串')
-      return op === 'in' ? b.includes(a) : !b.includes(a)
-    }
-    const x = numeric(a), y = numeric(b)
-    if (op === '<') return x < y
-    if (op === '<=') return x <= y
-    if (op === '>') return x > y
-    if (op === '>=') return x >= y
-    const value = op === '+' ? x + y : op === '-' ? x - y : op === '*' ? x * y : x / y
-    if (!Number.isFinite(value)) return fail('条件运算结果不是有限数')
-    return value
+  function argumentsFor(name:string):ParsedExpression[] {
+    if(!take('('))return fail(`${name} 缺少参数括号`)
+    const args:ParsedExpression[]=[]
+    if(take(')'))return args
+    do {
+      if(args.length>=maxFunctionArguments)return fail('函数参数超过限制')
+      args.push(conditional())
+    } while(take(',')&&peek()!==')')
+    if(!take(')'))return fail(`${name} 参数括号不完整`)
+    return args
   }
-  function atom(): Expression {
-    if (++nesting > 64) return fail('条件嵌套超过限制')
+  function comparisonValue(a:Value,b:Value,op:string):boolean {
+    if (op === 'is' || op === 'is not') return op === 'is' ? a === b : a !== b
+    if (op === '==' || op === '!=') return op==='=='?values.backupExpressionEqual(a,b):!values.backupExpressionEqual(a,b)
+    if (op === 'in' || op === 'not in') {
+      const included=values.backupExpressionContains(b,a)
+      return op==='in'?included:!included
+    }
+    const order=values.backupExpressionCompare(a,b)
+    return op==='<'?order<0:op==='<='?order<=0:op==='>'?order>0:order>=0
+  }
+  function binary(left:ParsedExpression,right:ParsedExpression,op:string):ParsedExpression {
+    let resultBits:number|null=null
+    if(left.numericBits!==null&&right.numericBits!==null){
+      resultBits=op==='**'?Math.max(1,left.numericBits*Number(right.integerLiteral))
+        :op==='*'?left.numericBits+right.numericBits
+        :['+','-'].includes(op)?Math.max(left.numericBits,right.numericBits)+1:Math.max(left.numericBits,right.numericBits)
+    }
+    if(op==='*'&&(resultBits===null||resultBits>4096))return fail(resultBits===null?'乘法仅支持数值表达式':'乘法结果过大')
+    if(op==='**'){
+      if(right.integerLiteral===undefined||right.integerLiteral<0n||right.integerLiteral>64n)return fail('幂运算指数必须是0到64的整数常量')
+      if(resultBits===null||resultBits>4096)return fail('幂运算结果过大')
+    }
+    return node(state=>values.backupExpressionBinary(op,left(state),right(state)),left.nodes+right.nodes+2,resultBits,
+      op==='+'?constantConcatenation(left,right):{})
+  }
+  function atom():ParsedExpression {
+    let expression=primary()
+    while(take('[')){
+      const index=conditional(),container=expression
+      if(!take(']'))return fail('索引括号不完整或包含不支持的Slice')
+      expression=node(state=>values.backupExpressionIndex(container(state),index(state)),container.nodes+index.nodes+2,null,
+        constantIndex(container,index))
+    }
+    return expression
+  }
+  function primary():ParsedExpression {
+    if (++nesting > 201) return fail('条件嵌套超过限制')
     try {
       if (functionNames.has(peek() ?? '')) {
         const name = tokens[cursor++]!.text
-        if (!take('(')) return fail(`${name} 缺少参数括号`)
-        const list = ['sum', 'any', 'all'].includes(name) || (['max', 'min'].includes(name) && peek() === '[')
-        if (list && !take('[')) return fail(`${name} 需要参数列表`)
-        const args = [logicalOr()]
-        while (take(',')) {
-          if (args.length >= maxFunctionArguments) return fail('函数参数超过限制')
-          args.push(logicalOr())
-        }
-        if (list && !take(']')) return fail(`${name} 参数列表不完整`)
-        if (['max', 'min'].includes(name) && !list && args.length < 2) return fail(`${name} 需要至少两项参数或一个列表`)
-        if (name === 'abs' && args.length !== 1) return fail('abs 条件只接受一项参数')
-        if (!take(')')) return fail(`${name} 参数括号不完整`)
-        if (name === 'abs') return state => Math.abs(numeric(args[0]!(state)))
-        return state => {
-          // Python evaluates the complete argument list before any/all are called.
-          // Boolean and/or inside each argument still short-circuit normally.
-          const values = args.map(arg => arg(state))
-          if (name === 'any') return values.some(Boolean)
-          if (name === 'all') return values.every(Boolean)
-          if (name === 'sum') {
-            const result = values.reduce<number>((total, value) => total + numeric(value), 0)
-            if (!Number.isFinite(result)) return fail('条件运算结果不是有限数')
-            return result
+        const args = argumentsFor(name)
+        let resultBits:number|null=null
+        if(['any','all'].includes(name)&&args.length===1)resultBits=1
+        else if(name==='abs'&&args.length===1)resultBits=args[0]!.numericBits
+        else {
+          const numericArgs=['max','min'].includes(name)&&args.length>=2?args:name==='sum'&&args.length===1?args[0]!.items:undefined
+          if(numericArgs?.every(arg=>arg.numericBits!==null)){
+            resultBits=Math.max(1,...numericArgs.map(arg=>arg.numericBits!))
+            if(name==='sum'&&numericArgs.length)resultBits+=(numericArgs.length-1).toString(2).replace(/^0$/,'').length
           }
-          return values.reduce((a, b) => {
-            if (typeof a === 'string' && typeof b === 'string') return (name === 'max' ? a >= b : a <= b) ? a : b
-            const x = numeric(a), y = numeric(b)
-            return (name === 'max' ? x >= y : x <= y) ? a : b
-          })
         }
+        // Eager call arguments; only and/or and conditional expressions short-circuit.
+        return node(state=>values.backupExpressionCall(name,args.map(arg=>arg(state))),3+args.reduce((total,arg)=>total+arg.nodes,0),resultBits)
+      }
+      if(take('[')){
+        const items:ParsedExpression[]=[]
+        if(!take(']')){
+          do{if(items.length>=128)return fail('条件列表超过限制');items.push(conditional())}while(take(',')&&peek()!==']')
+          if(!take(']'))return fail('条件列表不完整')
+        }
+        return node(state=>items.map(item=>item(state)),2+items.reduce((total,item)=>total+item.nodes,0),null,{items,
+          ...items.every(item=>item.constant)?{constant:{value:items.map(item=>item.constant!.value)}}:{}})
       }
       if (take('(')) {
-        if (take(')')) return () => false // Mower's empty tuple is false.
-        const expr = logicalOr()
+        if (take(')')) return fail('原生安全模型不支持Tuple')
+        const expr = conditional()
         if (!take(')')) return fail('条件括号不完整')
         return expr
       }
-      if (take('+')) { const expr = atom(); return state => numeric(expr(state)) }
-      if (take('-')) { const expr = atom(); return state => -numeric(expr(state)) }
       const token = tokens[cursor++]
-      if (token?.kind === 'value') return () => token.value!
+      if (token?.kind === 'value') {
+        const integerLiteral=typeof token.value==='bigint'?token.value:typeof token.value==='boolean'?BigInt(token.value):undefined
+        return node(()=>token.value!,token.literal?1:2,token.literal==='number'&&/[jJ]$/.test(token.text)?64:bits(token.value!),{integerLiteral,integerConstant:integerLiteral!==undefined,constant:{value:token.value!}})
+      }
       if (token?.kind === 'query') {
-        if (!take('(')) return fail(`${token.member} 缺少参数括号`)
-        if (token.member === 'facility_product_type_count') {
-          if (!take(')')) return fail('facility_product_type_count 不接受参数')
-          return state => {
-            const products = state.mowerFacilityProducts
-            if (!products) return fail('缺少设施产物状态')
-            return new Set(Object.values(products).filter(product => product !== null && facilityProducts.has(product))).size
+        const args=argumentsFor(token.member!)
+        const resultBits=['inventory_count','facility_operator_count','facility_product_count','facility_product_type_count','group_min_mood','group_max_mood'].includes(token.member!)?64:null
+        return node(state=>{
+          const inputs=args.map(arg=>arg(state))
+          if(token.member==='facility_product_type_count'){
+            if(inputs.length)return fail('facility_product_type_count 不接受参数')
+            const count=compileMowerBackupQuery(token.member)(state)
+            if(typeof count!=='number')return fail('设施产物种类数量必须是整数')
+            return BigInt(count)
           }
-        }
-        const argument = tokens[cursor++]
-        if (argument?.kind !== 'value' || typeof argument.value !== 'string' || !take(')')) return fail(`${token.member} 需要一个字符串参数`)
-        const name = argument.value
-        if (token.member === 'inventory_count') {
-          if (!inventoryNames.has(name)) return fail(`不支持的副表仓库资源：${name}`)
-          return state => {
-            const inventory = state.mowerInventoryCounts
-            if (!inventory) return fail('缺少库存状态；请预设初始物品数量')
-            const count = Object.prototype.hasOwnProperty.call(inventory, name) ? inventory[name]! : 0
-            if (!Number.isFinite(count) || count < 0) return fail(`库存数量必须为非负有限数：${name}`)
-            return count
-          }
-        }
-        if (token.member === 'facility_product_count') {
-          if (!facilityProducts.has(name)) return fail(`不支持的产物或订单类型：${name}`)
-          return state => {
-            const products = state.mowerFacilityProducts
-            if (!products) return fail('缺少设施产物状态')
-            return Object.values(products).filter(product => product === name).length
-          }
-        }
-        if (token.member === 'facility_product') {
-          if (!facilityRoomName.test(name)) return fail(`不支持的设施位置：${name}`)
-          return state => {
-            const products = state.mowerFacilityProducts
-            if (!products) return fail('缺少设施产物状态')
-            return Object.prototype.hasOwnProperty.call(products, name) ? products[name] ?? null : null
-          }
-        }
-        if (token.member === 'facility_has_mastery_plan' || token.member === 'facility_is_training') {
-          if (name !== 'train') return fail(`不支持的训练室位置：${name}`)
-          // User contract: local simulation assumes no unfinished plan or active training.
-          return () => false
-        }
-        // Alpha _group_moods uses the current effective group and only fixed work anchors.
-        return state => {
-          const data = state.mowerSource?.data
-          if (!data) return fail('缺少绑组心情观测状态')
-          const members = name ? data.group(name) : []
-          if (!members.length) return fail(`不存在的绑组：${name}`)
-          const anchors = members.map(member => data.operators[member]!).filter(op => data.isGroupShiftAnchor(op))
-          if (!anchors.length) return fail(`绑组内没有可统计心情的干员：${name}`)
-          const moods = anchors.map(op => op.currentMood(toMowerMicros(state.time)))
-          return token.member === 'group_max_mood' ? Math.max(...moods) : Math.min(...moods)
-        }
+          if(inputs.length!==1||typeof inputs[0]!=='string')return fail(`${token.member} 需要一个字符串参数`)
+          const value=compileMowerBackupQuery(token.member!,inputs[0])(state)
+          return ['inventory_count','facility_operator_count','facility_product_count'].includes(token.member!)&&typeof value==='number'&&Number.isInteger(value)?BigInt(value):value
+        },5+args.reduce((total,arg)=>total+arg.nodes,0),resultBits)
       }
       if (token?.kind === 'external') {
-        if (token.text === 'op_data.major_maintenance_remaining_hours()') return state => {const remaining=(state.config.majorMaintenanceStartHours??Infinity)-state.time;return remaining>0?remaining:Infinity}
-        return state => state.mowerSource?.data.partyTime ?? null
+        if (token.member === 'major_maintenance_remaining_hours') {
+          const args=argumentsFor(token.member)
+          return node(state=>{
+            const inputs=args.map(arg=>arg(state))
+            if(inputs.length)return fail('major_maintenance_remaining_hours 不接受参数')
+            const remaining=(state.config.majorMaintenanceStartHours??Infinity)-state.time
+            return remaining>0?remaining:Infinity
+          },5+args.reduce((total,arg)=>total+arg.nodes,0),64)
+        }
+        return node(state => state.mowerSource?.data.partyTime ?? null,4)
       }
       if (token?.kind === 'worker') {
-        const id = resolveOperatorCharId(token.name!)
-        if (!OPERATOR_MAP.has(id)) return fail(`未知干员 ${token.name}`)
-        participants.add(id)
-        return state => {
+        if(!take('['))return fail('干员查询缺少下标')
+        const start=cursor,name=conditional()
+        for(const candidate of tokens.slice(start,cursor))if(typeof candidate.value==='string'){
+          const id=resolveOperatorCharId(candidate.value)
+          if(OPERATOR_MAP.has(id))participants.add(id)
+        }
+        const staticId=typeof name.constant?.value==='string'?resolveOperatorCharId(name.constant.value):undefined
+        if(staticId&&OPERATOR_MAP.has(staticId))participants.add(staticId)
+        else observedOperatorKeysStatic=false
+        if(!take(']'))return fail('干员下标不完整')
+        const attribute=tokens[cursor++]
+        if(attribute?.kind!=='attribute'||!['current_room','is_resting','is_working','current_mood'].includes(attribute.member!))return fail(`原生安全模型不支持干员属性 ${attribute?.member??attribute?.text??''}`)
+        const called=peek()==='(',args=called?argumentsFor(attribute.member!):[]
+        if(attribute.member!=='current_room'&&!called)return fail('干员观测方法需要调用括号')
+        return node(state => {
+          const selected=name(state),inputs=args.map(arg=>arg(state))
+          if(typeof selected!=='string')return fail('干员下标必须是字符串')
+          const id=resolveOperatorCharId(selected)
+          if(!OPERATOR_MAP.has(id))return fail(`未知干员 ${selected}`)
+          if(inputs.length||attribute.member==='current_room'&&called)return fail('干员观测方法参数不正确')
+          const source=state.mowerSource?.data.operators
+          if(source&&!Object.prototype.hasOwnProperty.call(source,id)||!source&&!Object.prototype.hasOwnProperty.call(state.morale,id))return fail(`缺少 ${selected} 的干员观测`)
           const observed=state.mowerSource?.data.operators[id]
           const room = observed?.currentRoom??actualRoom(state, id)
-          if (token.member === 'is_resting()') return room.startsWith('dormitory_')
-          if (token.member === 'is_working()') return roomName.test(room) && !room.startsWith('dormitory_')
-          if (token.member === 'current_room') return room
-          if(token.member==='room')return observed?.room??state.config.positions.find(p=>p.primary===id)?.roomId??''
-          if(token.member==='index'){const parts=state.config.positions.find(p=>p.primary===id)?.id.split('_');return observed?.index??Number(parts?.[parts.length-1]??-1)}
-          if(token.member==='current_index')return observed?.currentIndex??-1
-          if(token.member==='mood')return observed?.mood??state.morale[id]??24
-          if(token.member==='upper_limit')return observed?.upperLimit??24
-          if(token.member==='lower_limit')return observed?.lowerLimit??0
-          if(token.member==='group')return observed?.group??''
-          if(token.member==='workaholic')return observed?.workaholic??false
-          if(token.member==='exhaust_require')return observed?.exhaustRequire??false
-          if(token.member==='rest_in_full')return observed?.restInFull??false
-          if(token.member==='operator_type')return observed?.operatorType??'low'
-          if(token.member==='resting_priority')return observed?.restingPriority??'low'
+          if (attribute.member === 'is_resting') return room.startsWith('dormitory_')
+          if (attribute.member === 'is_working') return roomName.test(room) && !room.startsWith('dormitory_')
+          if (attribute.member === 'current_room') return room
           if(observed)return observed.currentMood(toMowerMicros(state.time))
-          return state.morale[id] ?? fail(`缺少 ${token.name} 的心情`)
-        }
+          return state.morale[id] ?? fail(`缺少 ${selected} 的心情`)
+        },8+name.nodes+(called?1+args.reduce((total,arg)=>total+arg.nodes,0):0),attribute.member==='current_mood'&&called?64:null)
       }
       return fail(`不支持的条件 ${token?.text ?? '空操作数'}`)
     } finally { nesting-- }
   }
-  function product(): Expression {
-    let expr = atom()
-    while (peek() === '*' || peek() === '/') { const op = tokens[cursor++]!.text; expr = binary(expr, atom(), op) }
+  function power():ParsedExpression {
+    const left=atom()
+    if(!take('**'))return left
+    return binary(left,unary(),'**')
+  }
+  function unary():ParsedExpression {
+    if(take('+'))return fail('原生安全模型不支持UAdd')
+    if(take('-')){
+      const expr=unary()
+      return node(state=>values.backupExpressionUnary(expr(state)),expr.nodes+2,expr.numericBits,{integerLiteral:expr.integerConstant?-expr.integerLiteral!:undefined,
+        ...constantNegation(expr)})
+    }
+    return power()
+  }
+  function product():ParsedExpression {
+    let expr = unary()
+    while (['*','/','//','%'].includes(peek()??'')) { const op = tokens[cursor++]!.text; expr = binary(expr, unary(), op) }
     return expr
   }
-  function sum(): Expression {
+  function sum():ParsedExpression {
     let expr = product()
     while (peek() === '+' || peek() === '-') { const op = tokens[cursor++]!.text; expr = binary(expr, product(), op) }
     return expr
   }
-  function comparison(): Expression {
+  function comparison():ParsedExpression {
     const operands = [sum()], operators: string[] = []
     while (['==', '!=', '<', '<=', '>', '>=', 'is', 'in', 'not'].includes(peek() ?? '')) {
       let op = tokens[cursor++]!.text
@@ -271,33 +316,72 @@ export function compileBackupExpression(source: unknown, participants: Set<strin
       operators.push(op); operands.push(sum())
     }
     if (!operators.length) return operands[0]!
-    return state => {
-      let left = operands[0]!(state)
+    const compareAll=(resolve:(index:number)=>Value):Value=>{
+      let left = resolve(0)
       for (let i = 0; i < operators.length; i++) {
-        const right = operands[i + 1]!(state)
-        if (!binary(() => left, () => right, operators[i]!)(state)) return false
+        const right = resolve(i+1)
+        if (!comparisonValue(left,right,operators[i]!)) return false
         left = right
       }
       return true
     }
+    return node(state=>compareAll(index=>operands[index]!(state)),1+operators.length+operands.reduce((total,operand)=>total+operand.nodes,0),1,
+      operands.every(operand=>operand.constant)?fold(()=>compareAll(index=>operands[index]!.constant!.value)):{})
   }
-  function negation(): Expression {
+  function negation():ParsedExpression {
     let count = 0
     while (take('not')) count++
     const expr = comparison()
-    return count ? state => count % 2 ? !expr(state) : Boolean(expr(state)) : expr
+    return count?node(state=>count%2?!backupExpressionTruthy(expr(state)):backupExpressionTruthy(expr(state)),expr.nodes+2*count,expr.numericBits,
+      expr.constant?{constant:{value:count%2?!backupExpressionTruthy(expr.constant.value):backupExpressionTruthy(expr.constant.value)}}:{}):expr
   }
-  function logicalAnd(): Expression { let expr = negation(); while (take('and')) expr = binary(expr, negation(), 'and'); return expr }
-  function logicalOr(): Expression { let expr = logicalAnd(); while (take('or')) expr = binary(expr, logicalAnd(), 'or'); return expr }
-  const evaluate = tokens.length ? logicalOr() : () => false
+  function logicalAnd():ParsedExpression {
+    const operands=[negation()]
+    while(take('and'))operands.push(negation())
+    return operands.length===1?operands[0]!:node(state=>{
+      let value:Value=false
+      for(const operand of operands){value=operand(state);if(!backupExpressionTruthy(value))break}
+      return value
+    },2+operands.reduce((total,operand)=>total+operand.nodes,0),1,logicalConstant(operands,false))
+  }
+  function logicalOr():ParsedExpression {
+    const operands=[logicalAnd()]
+    while(take('or'))operands.push(logicalAnd())
+    return operands.length===1?operands[0]!:node(state=>{
+      let value:Value=false
+      for(const operand of operands){value=operand(state);if(backupExpressionTruthy(value))break}
+      return value
+    },2+operands.reduce((total,operand)=>total+operand.nodes,0),1,logicalConstant(operands,true))
+  }
+  function logicalConstant(operands:ParsedExpression[],shortCircuitWhen:boolean):Pick<ParsedExpression,'constant'> {
+    let constant:ParsedExpression['constant']
+    for(const operand of operands){
+      if(!operand.constant)return {}
+      constant=operand.constant
+      if(backupExpressionTruthy(constant.value)===shortCircuitWhen)break
+    }
+    return {constant}
+  }
+  function conditional():ParsedExpression {
+    const body=logicalOr()
+    if(!take('if'))return body
+    const condition=logicalOr()
+    if(!take('else'))return fail('条件表达式缺少else')
+    const alternative=conditional()
+    const resultBits=body.numericBits!==null&&alternative.numericBits!==null?Math.max(body.numericBits,alternative.numericBits):null
+    return node(state=>backupExpressionTruthy(condition(state))?body(state):alternative(state),1+body.nodes+condition.nodes+alternative.nodes,resultBits,
+      condition.constant?{constant:(backupExpressionTruthy(condition.constant.value)?body:alternative).constant}:{})
+  }
+  const parsed = tokens.length ? conditional() : node(() => false,1,1)
   if (cursor !== tokens.length) return fail(`条件存在未解析内容 ${peek()}`)
-  const usesMajorMaintenance = tokens.some(token => token.kind === 'external' && token.text === 'op_data.major_maintenance_remaining_hours()')
+  const usesMajorMaintenance = tokens.some(token => token.kind === 'external' && token.member === 'major_maintenance_remaining_hours')
   return {
-    evaluate, usesMajorMaintenance,
-    observedOperatorDependenciesOnly:tokens.some(token=>token.kind==='worker')&&tokens.every(token=>token.kind==='operator'||token.kind==='value'||token.kind==='worker'&&['is_working()','is_resting()','current_room','current_index','room','index','current_mood()','mood'].includes(token.member!)),
+    evaluate:state=>values.normalizeBackupExpressionValue(parsed(state)), usesMajorMaintenance,
+    observedOperatorDependenciesOnly:observedOperatorKeysStatic&&tokens.some(token=>token.kind==='worker')&&tokens.every(token=>['operator','value','worker','attribute'].includes(token.kind)),
     usesInventory: tokens.some(token=>token.kind==='query'&&token.member==='inventory_count'),
     usesFacilityProduct: tokens.some(token=>token.kind==='query'&&['facility_product','facility_product_count','facility_product_type_count'].includes(token.member!)),
+    usesFacilityObservation:tokens.some(token=>token.kind==='query'&&['facility_type','facility_operator_count'].includes(token.member!)),
     usesMasteryPlan: tokens.some(token=>token.kind==='query'&&['facility_has_mastery_plan','facility_is_training'].includes(token.member!)),
-    usesCurrentMood: tokens.some(token=>token.kind==='worker'&&token.member==='current_mood()'||token.kind==='query'&&['group_min_mood','group_max_mood'].includes(token.member!)),
+    usesCurrentMood: tokens.some(token=>token.kind==='attribute'&&token.member==='current_mood'||token.kind==='query'&&['group_min_mood','group_max_mood'].includes(token.member!)),
   }
 }

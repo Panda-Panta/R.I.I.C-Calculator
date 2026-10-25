@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "algorithm": "SHA-256",
-  "packageSha256": "dbf8c823cb340840873555a58e1b2a8cf70dff7004bcc3eff6c429451486e43c",
+  "packageSha256": "db112525c4d2264e86e4822c529f16a62f434950636eed09e53e0a595eddc059",
   "files": [
     {
       "path": "SKILL.md",
@@ -30,8 +30,8 @@
     },
     {
       "path": "references/coverage.md",
-      "bytes": 25195,
-      "sha256": "e9523aba8018912cc7a92a697df272edb3fe0ca16f373afa30db30199891856a"
+      "bytes": 30056,
+      "sha256": "73b58e7f26deb7fb9eaaab479c4cd253fd0789a14a685681d2a4bd17abef319f"
     },
     {
       "path": "references/facilities.md",
@@ -40,8 +40,8 @@
     },
     {
       "path": "references/freshness.md",
-      "bytes": 5557,
-      "sha256": "2e85166568ae0aa7971a5b33635c9678314dd2c67743305cc50e4382080ddefa"
+      "bytes": 6004,
+      "sha256": "d21a408c4b47ca53ae18b0d49d45a5b901eda93cf57afc5fc7a049f442e37f39"
     },
     {
       "path": "references/gamedata-source-manifest.json",
@@ -50,8 +50,8 @@
     },
     {
       "path": "references/links.md",
-      "bytes": 16066,
-      "sha256": "b4d21351a0f099e5265e0a0e6f517791761a429406795880c1e249931596684e"
+      "bytes": 16336,
+      "sha256": "0fe16f4fccc79c74f120daca2f7118a26f7d32d8aa2b8c12bf98947893fbd4c3"
     },
     {
       "path": "references/logistics-update-manifest.json",
@@ -60,13 +60,13 @@
     },
     {
       "path": "references/mower-plan-compatibility.md",
-      "bytes": 12973,
-      "sha256": "754e62acfbb69bc35cb469a61216d0aa981f6f29bb72f4299920d58777756e5d"
+      "bytes": 21264,
+      "sha256": "7d1f8829b78753d9e77541178833964fbe2b206fa22dfccd8b87ba8b7707059c"
     },
     {
       "path": "references/mower-plan-source-manifest.json",
-      "bytes": 40017,
-      "sha256": "6b48ab1f8219688cb26070aad614deaab95ce05eddcb9b601f2daf35f97e7ac6"
+      "bytes": 94817,
+      "sha256": "1bc008fb59a543d91d0067d315d645cd6b901b91eb58365fe865cc5ea705cebd"
     },
     {
       "path": "references/new-operators-v078.md",
@@ -85,8 +85,8 @@
     },
     {
       "path": "references/simulation.md",
-      "bytes": 59054,
-      "sha256": "76d5360b21eddc404e021da80c064a083572c35d87f78ff8bf9f70a3386e5b3e"
+      "bytes": 60950,
+      "sha256": "f1a2131e19d9f884cceb0feb3bfc8b6e64ac5b747a1bec75af819ebb0017bc8c"
     },
     {
       "path": "references/taxonomy.md",

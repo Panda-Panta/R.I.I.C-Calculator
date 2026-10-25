@@ -1,0 +1,102 @@
+{
+  "kind": "calculator-runtime-regression",
+  "sourceMechanismCommit": "84e3926c0f36045d7baeb1ac050f815b40952d6d",
+  "capturedOn": "2026-10-25",
+  "input": "validation/mower-backup-2026-09-22/roster.json",
+  "inputSha256": "620e6e62bc7d6f752416e8cd9837dc572a65c29f8b179d67b03495a68b8771b2",
+  "profile": {
+    "schedulingModel": "mower-default",
+    "warmupHours": 72,
+    "sampleHours": 168,
+    "warmupModel": "hourly",
+    "recordSegments": true,
+    "maxEvents": 50000,
+    "production": {
+      "outputMode": "potential",
+      "runOrderMode": "ideal",
+      "droneTarget": "exp",
+      "seed": 42
+    },
+    "assumptions": {
+      "restingThreshold": 0.65,
+      "rescueThreshold": 0.75,
+      "fiammettaThreshold": 0.9,
+      "fiammettaFool": false,
+      "freeRoom": false
+    }
+  },
+  "result": {
+    "success": true,
+    "elapsedHours": 240,
+    "gladiiaExhaustedHours": 0,
+    "fiammettaCharges": 50,
+    "score82": 109128.57143730043
+  },
+  "evidence": "artifacts/mower-parity-fixes-20261025/final-legacy-diagnosis/final-current-72+168.report.json.gz",
+  "boundary": "Versioned local public calculation-bridge snapshot after the reviewed2026-10-25 bundle. sourceMechanismCommit keeps the existing mower-default frozen reference; calculatorCandidate separately identifies the calculator base HEAD and final frozen working-tree source hashes. Not a native Python oracle or game/device validation. Keep20261024 unchanged. No individual formula or physical repair is claimed as the unique cause. The final TaskFailure6432799e candidate reproduced the exact same complete report bytes as the earlier capture; all11 bound source hashes were stable.",
+  "windowsInputSha256": "9fbf30bdc32927318f74e8661f4a4883f3bbd41c0f5ca2fd373133025692b377",
+  "inputHashNormalization": "UTF-8 text with CRLF normalized to LF; original input is imported unchanged",
+  "priorFixture": {
+    "path": "src/simulator/fixtures/mower-legacy-240h-20261024.json",
+    "sha256": "67025e98fb6b7b9ea3802d2573759279abc580803ded0d4e07d5d20083e81aea"
+  },
+  "reportGzipSha256": "08169323ba4be81b3551f514dcb885f2eda9633e97719be85ebf0233132b08e8",
+  "calculatorCandidate": {
+    "head": "3e00c9f309463ac005e5974cef2c93ad4893a442",
+    "actualSourceHashes": [
+      {
+        "file": "src/scheduler/mowerTaskFailure.ts",
+        "sha256": "6432799e6a04d469f8de5ad716aff089b8ec025b1d8e322ffaa09eadff02776b"
+      },
+      {
+        "file": "src/scheduler/rosterRuntime.ts",
+        "sha256": "d833e59cac6ca191be32a8ca1fa264000020e15c17a9fe71b27a51e09fcdb9c0"
+      },
+      {
+        "file": "src/scheduler/mowerSourceRuntime.ts",
+        "sha256": "d293bff2a30ef037762bc83b538b615601649e8f8e91bf3fa1a6ebe770fa608f"
+      },
+      {
+        "file": "src/engine/morale.ts",
+        "sha256": "fd7a6a597324be31c49515b518c7aaa58c82013e83568526ed00cd9241750e72"
+      },
+      {
+        "file": "src/engine/globalContext.ts",
+        "sha256": "9dac9650e9f67d4c0175d07e6f75646a3010be78f1346f253e7f1695e0163591"
+      },
+      {
+        "file": "src/engine/operatorRules.ts",
+        "sha256": "817ee673912aa24b79e62dc85a759a23e345982ded8ecead2db67ee3da78da8a"
+      },
+      {
+        "file": "src/engine/orderCapacity.ts",
+        "sha256": "ce9f06bbd563d02486272d9a22f80d7a3ac38d7db06a64375d94609c7445eaf2"
+      },
+      {
+        "file": "src/simulator/scheduleSimulation.ts",
+        "sha256": "798ccfad3bec73dc2a87bea8c06e4dafa0e4cc8f7e02996d741abf9a3646e5e8"
+      },
+      {
+        "file": "src/simulator/productionTimeline.ts",
+        "sha256": "5d6bc89b0fc78a6e3374c3ae9eba2cbffcb96ecabb207ea012c128f62196fdca"
+      },
+      {
+        "file": "src/simulator/productionScore.ts",
+        "sha256": "d110d5990b9627cb8c4c72d4931f73719e76aada86bd7e751a248e7f3e560d58"
+      },
+      {
+        "file": "src/workbench/calculationBridge.ts",
+        "sha256": "aef655919d9c9e03c1b27b1cd1aea8bf95eccedf43ba2e3984087aca262f1792"
+      }
+    ],
+    "sourceHashScope": "Eleven bound runtime/engine/simulation files; TaskFailure is the final frozen post-HEAD working-tree delta. All11 were verified before and after the final run; not a claim to hash every transitive source dependency.",
+    "headIsBaseForFrozenWorkingTree": true,
+    "frozenWorkingTreeDelta": [
+      {
+        "file": "src/scheduler/mowerTaskFailure.ts",
+        "sha256": "6432799e6a04d469f8de5ad716aff089b8ec025b1d8e322ffaa09eadff02776b"
+      }
+    ]
+  },
+  "reportRawSha256": "06a01b740e84b638106f94f39e08618a16d6dd04277d3237fa324bc63fdbeead"
+}

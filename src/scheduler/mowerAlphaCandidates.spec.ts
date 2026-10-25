@@ -190,3 +190,34 @@ describe('native priority replacement bed takeover', () => {
     expect(planMowerAlphaDormFill(data, new MowerTaskQueue(), true)?.plan.dormitory_1).toEqual(['R'])
   })
 })
+
+describe('recovery identity from every configured binding',()=>{
+ function data(){
+  return new MowerSchedulingData({alpha:true,nowMicros:0,plan:{work:['Follower'],dormitory_1:['Free']},dorms:[new MowerDormState(['dormitory_1',0],'Idle',toMowerMicros(3))],operators:{
+   Follower:new MowerOperatorState({name:'Follower',room:'work',index:0,currentRoom:'work',currentIndex:0,operatorType:'high',group:'a',replacement:['First'],groupBindings:[{group:'a',replacement:['First']},{group:'b',replacement:['Secondary']}],mood:24,timeStampMicros:0}),
+   First:new MowerOperatorState({name:'First',mood:24,timeStampMicros:0}),
+   Secondary:new MowerOperatorState({name:'Secondary',mood:5,timeStampMicros:0}),
+   Idle:new MowerOperatorState({name:'Idle',mood:10,timeStampMicros:0,currentRoom:'dormitory_1',currentIndex:0}),
+  }})
+ }
+ it.each([false,true])('admits an additional-column replacement ahead of idle occupants (priority=%s)',priority=>{
+  const state=data();if(priority)state.priorityReplacement=['Secondary']
+  expect(dorm.alphaRestingTier(state,'Secondary')).toBe(priority?3:5)
+  expect(planMowerAlphaDormFill(state,new MowerTaskQueue(),priority)?.plan.dormitory_1).toEqual(['Secondary'])
+  expect(state.operators.Follower!.replacement).toEqual(['First'])
+ })
+ it('ranks a recovering additional-column candidate above a lower-mood ordinary idle candidate',()=>{
+  const state=data();state.operators.OtherIdle=new MowerOperatorState({name:'OtherIdle',mood:4,timeStampMicros:0})
+  expect(mowerAlphaDormCandidates(state).recovering).toEqual(['Secondary','OtherIdle'])
+ })
+ it('keeps that identity when the currently selected binding changes',()=>{
+  const state=data(),owner=state.operators.Follower!
+  owner.replacement=['Secondary'];expect(dorm.alphaRestingTier(state,'Secondary')).toBe(5)
+  owner.replacement=['First'];expect(dorm.alphaRestingTier(state,'Secondary')).toBe(5)
+ })
+ it('keeps Fiammetta exchange targets out of ordinary replacement identity',()=>{
+  const state=data();state.operators.Follower!.nativeName='菲亚梅塔'
+  expect(dorm.alphaRestingTier(state,'Secondary')).toBe(6)
+  expect(planMowerAlphaDormFill(state,new MowerTaskQueue())).toBeUndefined()
+ })
+})

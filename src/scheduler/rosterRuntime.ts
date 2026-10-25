@@ -72,6 +72,8 @@ export interface RuntimeState {
   mowerInventoryCounts?: Readonly<Record<string, number>>
   /** Observed products with the base-plan fallback already applied by the host. */
   mowerFacilityProducts?: Readonly<Record<string, string | null>>
+  /** Facility types observed by the production host, using native type IDs. */
+  mowerFacilityTypes?: Readonly<Record<string, string | null>>
   /** Non-enumerable live query installed only for observed inventory/product conditions. */
   mowerBackupObservationWakeMicros?: () => number | undefined
   /** Explicit stable scene input shared by headless facility adapters. */
@@ -641,6 +643,10 @@ function updateMowerReturnDeadlines(s: RuntimeState, rates: RuntimeRates): void 
   s.returnDeadlines=deadlines
 }
 
+// Switching a backup changes the slot's planned role without moving its resident.
+// Keep reading that actual dorm resident from either physical occupancy map.
+const positionOccupant=(s:RuntimeState,p:RuntimePosition)=>s.occupants[p.id]??(p.dormitory?s.bedOccupants[p.id]:undefined)
+const bedOccupant=(s:RuntimeState,bed:RuntimeBed)=>s.bedOccupants[bed.id]??s.occupants[bed.id]
 function placedMoraleDerivative(s:RuntimeState,id:string,rates:RuntimeRates,p?:RuntimePosition,bed?:RuntimeBed,snapshot?:ReturnType<NonNullable<RuntimeRates['snapshotRates']>>):number {
   if (id === s.config.fiammetta?.operatorId && (p?.dormitory || bed)) return 2
   const recovery=(room:string)=>snapshot?(snapshot.recovery[id]??0):rates.recoveryRate(id,room,s)
@@ -650,19 +656,19 @@ function placedMoraleDerivative(s:RuntimeState,id:string,rates:RuntimeRates,p?:R
   return rate
 }
 export function moraleDerivative(s: RuntimeState, id: string, rates: RuntimeRates): number {
-  const p = s.config.positions.find(p => s.occupants[p.id] === id)
-  const bed = s.config.beds.find(b => s.bedOccupants[b.id] === id)
+  const p = s.config.positions.find(p => positionOccupant(s,p) === id)
+  const bed = s.config.beds.find(b => bedOccupant(s,b) === id)
   return placedMoraleDerivative(s,id,rates,p,bed)
 }
 /** Index the current physical roster once for a whole rate sweep. */
 function moraleRateSnapshot(s:RuntimeState,rates:RuntimeRates):{derivatives:Record<string,number>;primary:Map<string,RuntimePosition>} {
  const occupied=new Map<string,RuntimePosition>(),beds=new Map<string,RuntimeBed>(),primary=new Map<string,RuntimePosition>()
  for(const p of s.config.positions){
-  const id=s.occupants[p.id]
+  const id=positionOccupant(s,p)
   if(id&&!occupied.has(id))occupied.set(id,p)
   if(!primary.has(p.primary))primary.set(p.primary,p)
  }
- for(const bed of s.config.beds){const id=s.bedOccupants[bed.id];if(id&&!beds.has(id))beds.set(id,bed)}
+ for(const bed of s.config.beds){const id=bedOccupant(s,bed);if(id&&!beds.has(id))beds.set(id,bed)}
  const rateSnapshot=rates.snapshotRates?.()
  const derivatives:Record<string,number>={}
  for(const id of Object.keys(s.morale))derivatives[id]=placedMoraleDerivative(s,id,rates,occupied.get(id),beds.get(id),rateSnapshot)

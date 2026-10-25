@@ -5,7 +5,7 @@ import {matchesRiicIdentity} from '../domain/riicIdentity'
 import {evaluateHighestPhaseJaye,TRADING_BASE_ORDER_LIMIT} from './jayeRules'
 import type {OperatorEfficiencyResult} from './operatorRules'
 export interface TradeOrderCapacityResult {limit:number|null;unquantified:string[]}
-/** Highest phase only. Live capacity never rewrites or deletes already captured orders. */
+/** Selected unlocked skills only. Live capacity never rewrites or deletes already captured orders. */
 export function evaluateTradeOrderCapacity(room:OutputRoom,config:AppConfig,activeIds:ReadonlySet<string>,evaluation:Pick<OperatorEfficiencyResult,'operatorContributions'>):TradeOrderCapacityResult {
  if(room.type!=='trading'||![1,2,3].includes(room.level))throw new Error('Trading capacity requires a valid trading room')
  const operators=room.operatorIds.filter(id=>activeIds.has(id)).map(id=>operatorFor(config, id)).filter((op):op is OperatorRecord=>Boolean(op))
@@ -16,12 +16,12 @@ export function evaluateTradeOrderCapacity(room:OutputRoom,config:AppConfig,acti
   for(const skill of op.skills.filter(s=>s.roomType==='TRADING')){
    if(['trade_ord_limit&trade&lv[000]','trade_ord_limit&trade&lv[001]'].includes(skill.buffId)){value+=room.level;continue}
    if(skill.buffId==='trade_ord_limit&cost_P[020]'){if(presentNames.has('伺夜'))value+=2;continue}
-   if(skill.buffId==='trade_ord_limit&cost_P[001]'){if(presentNames.has('德克萨斯'))value+=4;continue}
+   if(skill.buffId==='trade_ord_limit&cost_P[000]'||skill.buffId==='trade_ord_limit&cost_P[001]'){if(presentNames.has('德克萨斯'))value+=skill.buffId.endsWith('[001]')?4:2;continue}
    const direct=skill.description.match(/订单上限([+-])(\d+)/)
    if(direct)value+=Number(direct[2])*(direct[1]==='-'?-1:1)
   }
   if(control.has('灵知')&&hasOperatorSkill(config,'char_206_gnosis','control_tra_limit&spd[000]')&&matchesRiicIdentity(op,'nationId','kjerag'))value+=6
-  if(control.has('维什戴尔')&&op.name==='赫德雷')value+=2
+  if(control.has('维什戴尔')&&op.name==='赫德雷')value+=hasOperatorSkill(config,'char_1035_wisdel','control_meeting&ord[001]')?2:hasOperatorSkill(config,'char_1035_wisdel','control_meeting&ord[000]')?1:0
   return value
  }
  const jaye=operators.find(op=>op.skills.some(s=>s.buffId==='trade_ord_limit_diff[000]'))

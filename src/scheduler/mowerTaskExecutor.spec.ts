@@ -40,6 +40,35 @@ it('anchors only newly created SELF_CORRECTION tasks after BEFORE_PLANNING',()=>
  expect(executeMowerTaskArrangement(t,q,{backup:p=>({changed:p==='BEFORE_PLANNING',generated:p==='BEFORE_PLANNING'?[backup]:[]}),arrangeRoom:()=>{},metadata:()=>{},corrections:()=>[old,fresh,reorder]})).toBe(true);expect(old.time).toBe(2);expect(reorder.time).toBe(4);expect(fresh.timeMicros).toBe(backup.timeMicros-1)
 })
 
+describe('latest alpha post-arrangement backup continuation',()=>{
+ it.each([T.SHIFT_OFF,T.SELF_CORRECTION])('does not force another correction ahead of newly generated alpha work: %s',type=>{
+  const queue=new MowerTaskQueue(),task=new MowerTask({type,plan:{room_1_1:['R']}})
+  const generated=[new MowerTask({time:0,plan:{room_1_2:['A']}}),new MowerTask({time:0,plan:{dormitory_1:['Free']}})]
+  const correction=new MowerTask({time:1,type:T.SELF_CORRECTION,plan:{room_1_1:['X']}})
+  correction.derivedCorrection=true;queue.tasks=[task]
+  let correctionCalls=0,metadataCalls=0
+  expect(executeMowerTaskArrangement(task,queue,{alpha:true,
+   backup:phase=>({changed:phase==='BEFORE_PLANNING',generated:phase==='BEFORE_PLANNING'?generated:[]}),
+   arrangeRoom:()=>{},metadata:()=>{metadataCalls++},corrections:()=>{correctionCalls++;return [correction]},
+  })).toBe(true)
+  // Fixed alpha infra_main calls only backup_solver here. Its normal planning
+  // branch is separately gated by these immediately pending generated tasks.
+  expect(correctionCalls).toBe(0);expect(metadataCalls).toBe(0)
+  expect(queue.tasks).toEqual(generated)
+  expect(generated.map(pending=>pending.timeMicros)).toEqual([0,0])
+  expect(queue.tasks).not.toContain(task)
+ })
+ it('does not require a force-correction adapter when the alpha backup creates work',()=>{
+  const queue=new MowerTaskQueue(),task=new MowerTask({type:T.SHIFT_OFF,plan:{room_1_1:['R']}})
+  const generated=new MowerTask({plan:{room_1_2:['A']}});queue.tasks=[task]
+  expect(executeMowerTaskArrangement(task,queue,{alpha:true,
+   backup:phase=>({changed:phase==='BEFORE_PLANNING',generated:phase==='BEFORE_PLANNING'?[generated]:[]}),
+   arrangeRoom:()=>{},metadata:()=>{throw Error('changed backup does not rebuild metadata here')},
+  })).toBe(true)
+  expect(queue.tasks).toEqual([generated]);expect(generated.timeMicros).toBe(0)
+ })
+})
+
 it('consumes an initially empty SHIFT_OFF without downshift planning phases',()=>{const q=new MowerTaskQueue(),t=new MowerTask({type:T.SHIFT_OFF});q.tasks.push(t);expect(executeMowerTaskArrangement(t,q,{backup:()=>{throw Error('no arrangement phases')},arrangeRoom:()=>{throw Error('empty')},metadata:()=>{throw Error('no get_time')} })).toBe(true);expect(q.tasks).toEqual([])})
 
 it.each([T.SHIFT_OFF,T.SHIFT_ON])('finishes an activated shift when full preview removes every physical move: %s',type=>{

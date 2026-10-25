@@ -16,7 +16,13 @@ export interface MowerTaskFailureSnapshot {
 function snapshot(state:RuntimeState,data:MowerSchedulingData,task:MowerTask,rooms:readonly string[]):MowerTaskFailureSnapshot {
  rooms=[...new Set([...rooms,...Object.keys(task.groupShiftExpected??{}).map(key=>key.slice(0,key.lastIndexOf('\0')))])]
  const names=new Set([...Object.values(task.plan).flat(),...Object.values(task.groupShiftExpected??{})])
- if(task.type===T.EXHAUST_OFF)mowerReplacementDependencyNames(data,task.metadata.split(',')).forEach(name=>names.add(name))
+ if(task.type===T.EXHAUST_OFF||task.coordinationRequestNames.length){
+  mowerReplacementDependencyNames(data,task.coordinationRequestNames.length?task.coordinationRequestNames:task.metadata.split(',')).forEach(name=>names.add(name))
+  // Native coordination failures depend on the entire connected handoff and its beds.
+  rooms=[...new Set([...rooms,...Object.keys(data.plan).filter(room=>room.startsWith('dorm')),...[...names].flatMap(name=>{
+   const op=data.operators[name];return op?[op.room,...(op.currentRoom?[op.currentRoom]:[])]:[]
+  })])]
+ }
  const reservations=mowerReplacementReservations(data,state.mowerSource?.queue.tasks.filter(other=>other!==task)??[])
  const transitions={...mowerArrangementGroupTransitions(data,task.plan),...task.groupShiftTransitions}
  // A rejected normalization leaves implicit shared rooms out of task.plan.
@@ -31,8 +37,12 @@ function snapshot(state:RuntimeState,data:MowerSchedulingData,task:MowerTask,roo
   intent:JSON.stringify({plan:task.plan,metadata:task.metadata,expected:task.groupShiftExpected??{},
    correctionGroups:[...correctionGroups].sort().map(group=>[group,data.groupIsResting(group)]),
    effectivePlan:Object.fromEntries(rooms.map(room=>[room,state.config.mowerSourcePlan?.[room]])),
+   // Local plan rows store names; native Plan slot vars also retain live replacement order.
+   livePlan:Object.fromEntries(rooms.map(room=>[room,(data.plan[room]??[]).map(agent=>{
+    const op=data.operators[agent];return {agent,group:op?.group??'',replacement:op?.replacement??[],groupBindings:op?.groupBindings??[]}
+   })])),
    products:Object.fromEntries(rooms.map(room=>[room,state.mowerFacilityProducts?.[room]??null])),
-   conditions:data.planConditions,shared,
+   shared,
    eligibility:[...names].sort().map(name=>[name,data.busyRestingNames.has(name),data.excludedCandidates.has(name),reservations.reservedNames.has(name)]),
    reservedSlots:[...reservations.reservedSlots].filter(slot=>rooms.includes(slot.split('\0')[0]!)).sort(),
   }),

@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
 import { buildTimelineData } from '../../workbench/timeline/timelineModel'
@@ -124,6 +125,26 @@ function createSampleReport(): ScheduleSimulationReport {
     diagnostics: [],
   }
 }
+
+function createLongReport(backupEventTimes: number[] = [80, 160]): ScheduleSimulationReport {
+  const report = createSampleReport()
+  report.observedHours = 336
+  report.elapsedHours = 336
+  report.assumptions.sampleHours = 336
+  report.events = backupEventTimes.map((time, index): ScheduleSimulationReport['events'][number] => ({
+    time,
+    type: 'backup-plan',
+    operators: [],
+    active: true,
+    backupName: `副表${index + 1}`,
+    timing: 'AFTER_PLANNING',
+  }))
+  return report
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('ScheduleTimelineGantt.vue', () => {
   it('reveals worker-prepared timeline data without rebuilding it on expansion', async () => {
@@ -322,6 +343,8 @@ describe('ScheduleTimelineGantt.vue', () => {
   })
 
   it('opens export modal for full sampling phase facility swimlane gantt chart and handles download', async () => {
+    // jsdom cannot navigate to the generated download URL.
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const wrapper = mount(ScheduleTimelineGantt, {
       props: { report: createSampleReport() },
     })
@@ -402,5 +425,188 @@ describe('ScheduleTimelineGantt.vue', () => {
     // Change volume
     await volumeSelect.setValue('1')
     expect(modal.text()).toContain('第 2 卷')
+  })
+
+  it('advances through nearby backup events and wraps after the last event', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport([80, 81, 160]), initialWindowHours: 24 },
+    })
+    try {
+      const jump = wrapper.get('[data-test="jump-backup-event-btn"]')
+      for (const expected of ['T+72.0h 至 T+96.0h', 'T+73.0h 至 T+97.0h', 'T+152.0h 至 T+176.0h', 'T+72.0h 至 T+96.0h']) {
+        await jump.trigger('click')
+        expect(wrapper.get('.time-window-info').text()).toContain(expected)
+      }
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('starts backup navigation from the viewport after manual navigation', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport(), initialWindowHours: 24 },
+    })
+    try {
+      const jump = wrapper.get('[data-test="jump-backup-event-btn"]')
+      await jump.trigger('click')
+      await wrapper.get('[data-test="nav-jump-start"]').trigger('click')
+      await jump.trigger('click')
+      expect(wrapper.get('.time-window-info').text()).toContain('T+72.0h 至 T+96.0h')
+
+      await jump.trigger('click')
+      await wrapper.get('[data-test="cycle-select"]').setValue('4')
+      await jump.trigger('click')
+      expect(wrapper.get('.time-window-info').text()).toContain('T+152.0h 至 T+176.0h')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('starts backup navigation from the viewport after zooming', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport(), initialWindowHours: 24 },
+    })
+    try {
+      const jump = wrapper.get('[data-test="jump-backup-event-btn"]')
+      await jump.trigger('click')
+      await wrapper.get('[data-test="window-size-slider"]').setValue('6')
+      await jump.trigger('click')
+      expect(wrapper.get('.time-window-info').text()).toContain('T+78.0h 至 T+84.0h')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('clears the backup cursor when a report is replaced without changing its duration', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport(), initialWindowHours: 24 },
+    })
+    try {
+      await wrapper.get('[data-test="jump-backup-event-btn"]').trigger('click')
+      await wrapper.setProps({ report: createLongReport([90, 170]) })
+      await wrapper.get('[data-test="jump-backup-event-btn"]').trigger('click')
+      expect(wrapper.get('.time-window-info').text()).toContain('T+82.0h 至 T+106.0h')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('clears the backup cursor when worker-prepared timeline data is replaced', async () => {
+    const report = createLongReport()
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report, timelineData: buildTimelineData(report), initialWindowHours: 24 },
+    })
+    try {
+      await wrapper.get('[data-test="jump-backup-event-btn"]').trigger('click')
+      await wrapper.setProps({ timelineData: buildTimelineData(createLongReport([90, 170])) })
+      await wrapper.get('[data-test="jump-backup-event-btn"]').trigger('click')
+      expect(wrapper.get('.time-window-info').text()).toContain('T+82.0h 至 T+106.0h')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it.each(['facility', 'operator'] as const)('aligns the %s lane cursor with the ruler and excludes the label column', async mode => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport(), initialWindowHours: 24 },
+    })
+    try {
+      if (mode === 'operator') await wrapper.get('[data-test="view-mode-operator"]').trigger('click')
+      const body = wrapper.get('.gantt-tracks-body')
+      const lane = wrapper.get('.track-content-lane')
+      const ruler = wrapper.get('.ruler-track')
+      vi.spyOn(body.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 0, 900, 280))
+      vi.spyOn(lane.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(290, 0, 710, 34))
+      vi.spyOn(ruler.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(290, 0, 710, 38))
+      for (const [clientX, time] of [[290, '0.00'], [645, '12.00'], [1000, '24.00']] as const) {
+        await lane.trigger('mousemove', { clientX })
+        expect(wrapper.get('.cursor-info').text()).toContain(`T+${time}h`)
+        const laneCursor = wrapper.get('.scrubber-line').attributes('style')
+        await ruler.trigger('mousemove', { clientX })
+        expect(wrapper.get('.cursor-info').text()).toContain(`T+${time}h`)
+        expect(wrapper.get('.scrubber-line').attributes('style')).toBe(laneCursor)
+      }
+      await wrapper.get('.track-label-col').trigger('mousemove', { clientX: 200 })
+      expect(wrapper.find('.cursor-info').exists()).toBe(false)
+      expect(wrapper.find('.scrubber-line').exists()).toBe(false)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('uses the scrolled lane rectangle and current zoom window for cursor time', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport(), initialWindowHours: 24 },
+    })
+    try {
+      const lane = wrapper.get('.track-content-lane')
+      vi.spyOn(wrapper.get('.gantt-tracks-body').element, 'getBoundingClientRect').mockReturnValue(new DOMRect(-260, 0, 900, 280))
+      vi.spyOn(lane.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(-70, 0, 710, 34))
+      await wrapper.get('[data-test="window-size-slider"]').setValue('6')
+      await wrapper.get('[data-test="nav-next-window"]').trigger('click')
+      await lane.trigger('mousemove', { clientX: 285 })
+      expect(wrapper.get('.cursor-info').text()).toContain('T+9.00h')
+      expect(wrapper.get('.scrubber-line').attributes('style')).toContain('left: 50%')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('pans by the real lane width when dragging a zoomed timeline', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, {
+      props: { report: createLongReport(), initialWindowHours: 24 },
+    })
+    try {
+      const body = wrapper.get('.gantt-tracks-body')
+      const lane = wrapper.get('.track-content-lane')
+      vi.spyOn(body.element, 'clientWidth', 'get').mockReturnValue(900)
+      vi.spyOn(lane.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(290, 0, 710, 34))
+      await wrapper.get('[data-test="nav-next-window"]').trigger('click')
+      await lane.trigger('mousedown', { button: 0, clientX: 645 })
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: 290 }))
+      await nextTick()
+      expect(wrapper.get('.time-window-info').text()).toContain('T+36.0h 至 T+60.0h')
+    } finally {
+      window.dispatchEvent(new MouseEvent('mouseup'))
+      wrapper.unmount()
+    }
+  })
+
+  it('clamps the selected export volume when increasing days per volume', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, { props: { report: createLongReport() } })
+    try {
+      await wrapper.get('[data-test="export-gantt-btn"]').trigger('click')
+      await wrapper.get('[data-test="scope-btn-volume"]').trigger('click')
+      await wrapper.get('[data-test="volume-days-select"]').setValue('2')
+      await wrapper.get('[data-test="volume-select"]').setValue('6')
+      expect(wrapper.get('.banner-time-badge').text()).toContain('T+288.0h 至 T+336.0h')
+
+      await wrapper.get('[data-test="volume-days-select"]').setValue('7')
+      expect(wrapper.get<HTMLSelectElement>('[data-test="volume-select"]').element.value).toBe('1')
+      expect(wrapper.get('.banner-time-badge').text()).toContain('第 2 / 2 卷')
+      expect(wrapper.get('.banner-time-badge').text()).toContain('T+168.0h 至 T+336.0h')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('clamps the selected export volume when a shorter report replaces the current one', async () => {
+    const wrapper = mount(ScheduleTimelineGantt, { props: { report: createLongReport() } })
+    try {
+      await wrapper.get('[data-test="export-gantt-btn"]').trigger('click')
+      await wrapper.get('[data-test="scope-btn-volume"]').trigger('click')
+      await wrapper.get('[data-test="volume-days-select"]').setValue('2')
+      await wrapper.get('[data-test="volume-select"]').setValue('6')
+      const shorterReport = createLongReport()
+      shorterReport.observedHours = 96
+      shorterReport.elapsedHours = 96
+      shorterReport.assumptions.sampleHours = 96
+      await wrapper.setProps({ report: shorterReport })
+      expect(wrapper.get<HTMLSelectElement>('[data-test="volume-select"]').element.value).toBe('1')
+      expect(wrapper.get('.banner-time-badge').text()).toContain('第 2 / 2 卷')
+      expect(wrapper.get('.banner-time-badge').text()).toContain('T+48.0h 至 T+96.0h')
+    } finally {
+      wrapper.unmount()
+    }
   })
 })
