@@ -1,4 +1,5 @@
 import {mowerDormIsolationCost,planMowerDormIsolation} from './mowerDormIsolation'
+import {mowerDormCapacityAllows} from './mowerDormCapacity'
 import {mowerRetainedTaskReservations} from './mowerRetainedRecovery'
 // Shared dorm candidates and observed-card estimates, Mower alpha b2d9ac8 (MIT).
 import {orderMowerAlphaDormIndices} from './mowerDormOrder'
@@ -19,7 +20,7 @@ export function mowerSchedulingMoodObservation(data:MowerSchedulingData,name:str
 }
 export function mowerAlphaDormCandidates(data:MowerSchedulingData,excluded=new Set<string>(),currentResidents=new Set<string>()){
  // Candidate state is fixed during this synchronous pass; rebuild keys on every call.
- const referenced=new Set(Object.values(data.operators).flatMap(op=>op.nativeName==='菲亚梅塔'?[]:op.replacement)),tiers=new Map<string,number>()
+ const referenced=new Set(Object.values(data.operators).flatMap(op=>op.nativeName==='菲亚梅塔'?[]:[...op.replacement,...op.groupBindings.flatMap(binding=>binding.replacement)])),tiers=new Map<string,number>()
  const tier=(name:string):number=>{let value=tiers.get(name);if(value===undefined){value=alphaRestingTier(data,name,referenced);tiers.set(name,value)}return value}
  const support=data.currentOperator('train',0)?.name
  const eligible=Object.values(data.operators).filter(op=>!excluded.has(op.name)&&!data.busyRestingNames.has(op.name)&&op.name!==support&&(!op.isHigh()||data.isStandby(op.name))&&(!op.currentRoom||currentResidents.has(op.name)&&op.isResting())&&!data.restMoodComplete(op.name)&&tier(op.name)!==7)
@@ -83,17 +84,17 @@ function alphaFill(data:MowerSchedulingData,pending:MowerTask[],emptyOnly:boolea
    incoming=recovering.find(name=>{
     return (c.recovering.includes(name)||alphaRestingTier(data,name)<=3||alphaFullDormFiller(data,occupant!.name))
      &&alphaBedTakeoverAllowed(data,name,occupant!.name)
-     &&alphaSlotTakable(data,bed,name)
+     &&alphaSlotTakable(data,bed,name,undefined,plan)
    })
    if(!incoming)continue
   }
   if(incoming)recovering.splice(recovering.indexOf(incoming),1)
-  else incoming=recovering.shift()
+  else {incoming=recovering.find(name=>mowerDormCapacityAllows(data,name,bed.position,plan));if(incoming)recovering.splice(recovering.indexOf(incoming),1)}
   if(!incoming&&unknown){incoming='Free';if(occupant)residents.push(occupant.name)}
   if(!incoming){incoming=full.shift();if(!incoming)break;if(data.operators[incoming])data.operators[incoming]!.dormMoodFallback=bed.position[0];else incoming='Free'}
   let selected=bed
   if(vacancies.size&&data.dormIsolation.length&&incoming!=='Free'){
-   const available=data.dorms.filter(candidate=>vacancies.has(alphaPosition(...candidate.position))&&(plan[candidate.position[0]]?.[candidate.position[1]]??'Current')==='Current')
+   const available=data.dorms.filter(candidate=>vacancies.has(alphaPosition(...candidate.position))&&(plan[candidate.position[0]]?.[candidate.position[1]]??'Current')==='Current'&&mowerDormCapacityAllows(data,incoming!,candidate.position,plan))
    selected=available.reduce((best,candidate)=>mowerDormIsolationCost(data,incoming!,...candidate.position,plan)<mowerDormIsolationCost(data,incoming!,...best.position,plan)?candidate:best,available[0]!)
    if(selected!==bed)beds.push(bed)
    if(!recoveryNames.has(incoming)&&data.operators[incoming])data.operators[incoming]!.dormMoodFallback=selected.position[0]

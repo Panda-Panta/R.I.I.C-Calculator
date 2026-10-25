@@ -38,6 +38,29 @@ describe('GlobalReplaceModal.vue', () => {
     })
   }
 
+  it('previews changes in additional bindings, native backup tasks, mood limits and advanced settings before applying them', async () => {
+    const store = useRosterWorkbenchStore()
+    store.updateSlot('room_1_1', 0, { occupant: { kind: 'operator', operatorId: 'char_002_amiya' }, groupId: 'A', replacements: [],
+      groupBindings: [{ groupId: 'B', replacements: ['char_002_amiya'], metadata: { keep: 1 } }] })
+    store.workspace.mainPlan.conf.operator_mood_limits = { 阿米娅: { lower: 1, upper: 20 } }
+    store.workspace.compatibility.backupPlans = [{ name: 'native backup', trigger: 'True', task: { dormitory_1: ['阿米娅', 'Current'] }, extension: { keep: '阿米娅' } }]
+    store.workspace.compatibility.unrecognizedFields.advanced_settings = { favorite: '阿米娅', extension: { keep: '阿米娅' } }
+    const wrapper = mountModal()
+    await wrapper.get('[data-test="source-select"]').setValue('char_002_amiya')
+    await wrapper.get('[data-test="target-select"]').setValue('char_102_texas')
+    expect(wrapper.get('[data-test="impact-total-count"]').text()).toContain('5')
+    expect(wrapper.get('[data-test="impact-extra-list"]').text()).toContain('native backup')
+    expect(wrapper.get('[data-test="impact-extra-list"]').text()).toContain('operator_mood_limits')
+    expect(wrapper.get('[data-test="impact-extra-list"]').text()).toContain('favorite')
+    await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+    expect(store.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupBindings).toEqual([{ groupId: 'B', replacements: ['char_102_texas'], metadata: { keep: 1 } }])
+    expect(store.workspace.mainPlan.conf.operator_mood_limits).toEqual({ 德克萨斯: { lower: 1, upper: 20 } })
+    expect(store.workspace.compatibility.backupPlans[0]).toMatchObject({ task: { dormitory_1: ['德克萨斯', 'Current'] }, extension: { keep: '阿米娅' } })
+    expect(store.workspace.compatibility.unrecognizedFields.advanced_settings).toEqual({ favorite: '德克萨斯', extension: { keep: '阿米娅' } })
+    expect((wrapper.emitted('replaced')?.[0]?.[0] as { impact: { totalCount: number } }).impact.totalCount).toBe(5)
+    wrapper.unmount()
+  })
+
   describe('Modal Rendering and Title', () => {
     it('renders Naive card modal titled 一键替换干员 when visible or open is true', () => {
       const wrapper = mountModal({ visible: true })

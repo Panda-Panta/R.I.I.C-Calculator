@@ -62,9 +62,10 @@ describe('local Mower expression and backup contracts', () => {
   })
   it('rejects deep or oversized expressions without executing imported code', () => {
     const {state}=setup('False')
-    expect(()=>evaluateBackupExpression('('.repeat(100)+'True'+')'.repeat(100),state)).toThrow(/限制/)
+    expect(evaluateBackupExpression('('.repeat(200)+'True'+')'.repeat(200),state)).toBe(true)
+    expect(()=>evaluateBackupExpression('('.repeat(201)+'True'+')'.repeat(201),state)).toThrow(/限制/)
     expect(()=>evaluateBackupExpression('True '.repeat(5000),state)).toThrow(/限制/)
-    expect(()=>evaluateBackupExpression('1 / 0',state)).toThrow(/有限数/)
+    expect(()=>evaluateBackupExpression('1 / 0',state)).toThrow(/除零/)
   })
   it('keeps a party-dependent backup inactive when no party timestamp has been read', () => {
     const {schedule}=setup({left:'op_data.party_time',operator:'==',right:'True'})

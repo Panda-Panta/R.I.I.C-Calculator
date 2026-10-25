@@ -242,6 +242,15 @@
             </ul>
             <div v-else class="impact-card-empty">无策略名单包含该干员</div>
           </div>
+          <div v-if="impact.additionalLocations?.length" class="impact-card">
+            <div class="impact-card-title">
+              <span>关联组、副表与其他配置</span>
+              <span class="badge">{{ impact.additionalLocations.length }} 处</span>
+            </div>
+            <ul class="impact-list" data-test="impact-extra-list">
+              <li v-for="(location, idx) in impact.additionalLocations" :key="`additional-${idx}`" class="impact-list-item">{{ location }}</li>
+            </ul>
+          </div>
         </div>
       </div>
       <div v-else class="impact-prompt" data-test="prompt-missing-choice">
@@ -453,7 +462,7 @@ const impact = computed<ReplacementScopeResult>(() => {
       confLocations: [],
     }
   }
-  return computeReplacementScope(store.workspace.mainPlan, sourceId.value)
+  return computeReplacementScope(store.workspace.mainPlan, sourceId.value, store.workspace.compatibility)
 })
 
 const isSameOperator = computed<boolean>(() => {
@@ -506,6 +515,7 @@ function handleConfirm(): void {
     mainLocations: [...impact.value.mainLocations],
     replacementLocations: [...impact.value.replacementLocations],
     confLocations: [...impact.value.confLocations],
+    additionalLocations: [...(impact.value.additionalLocations ?? [])],
   }
 
   // Exactly one call to store.replaceOperatorGlobally

@@ -403,7 +403,7 @@ const layoutModeBadge = computed(() => {
 function getProductLabel(product?: string): string {
   if (product === 'gold') return '赤金生产'
   if (product === 'exp') return '作战记录'
-  if (product === 'originium') return '源石碎片'
+  if (product === 'fragment') return '源石碎片'
   return '未设定'
 }
 
@@ -768,7 +768,7 @@ async function handleCopyPoster(): Promise<void> {
 
 .product-badge.gold { background: rgba(234, 179, 8, 0.2); color: #facc15; }
 .product-badge.exp { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.product-badge.originium { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.product-badge.fragment { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 .product-badge.trading-product { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
 
 .room-occupants {

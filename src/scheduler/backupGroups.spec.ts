@@ -84,7 +84,8 @@ describe('backup group runtime',()=>{
  it('roundtrips groups and types through calculator JSON export',()=>{
   const f=fixture(),json=exportMowerJson(f.workspace)
   const imported=importMowerJson(json)
-  expect(imported.compatibility.unrecognizedFields.backup_groups).toEqual(f.workspace.compatibility.unrecognizedFields.backup_groups)
-  expect(imported.compatibility.backupPlans).toEqual(f.workspace.compatibility.backupPlans)
+  expect(JSON.parse(exportMowerJson(imported))).toEqual(JSON.parse(json))
+  expect((imported.compatibility.unrecognizedFields.backup_groups as {trigger:unknown}[])[1]!.trigger).toEqual({left:'True',operator:'',right:''})
+  expect((imported.compatibility.backupPlans[0] as {trigger:unknown}).trigger).toEqual({left:'True',operator:'',right:''})
  })
 })

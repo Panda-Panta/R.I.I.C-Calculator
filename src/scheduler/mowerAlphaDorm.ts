@@ -1,8 +1,9 @@
 import {MowerShiftPreviewError} from './mowerNativeErrors'
 import {mowerDormCandidateMood} from './mowerAlphaCandidates'
 import {mowerDormIsolationCost} from './mowerDormIsolation'
+import {mowerDormCapacityAllows} from './mowerDormCapacity'
 import { orderMowerAlphaDormIndices } from './mowerDormOrder'
-import {mowerRestingBindingGroups,mowerSharedReplacements,mowerSameGroupPrimaryReplacement} from './mowerSharedGroups'
+import {mowerSameGroupPrimaryReplacement,mowerArrangementGroupTransitions} from './mowerSharedGroups'
 // October 3 alpha b2d9ac85fe070e805aadf0d5f44fc095c1e95253 (Mower, MIT).
 // Shared identity and takeover rules; actual room I/O stays in the adapter.
 import {restingMood,hasRestingMood} from './mowerOperatorState'
@@ -36,7 +37,7 @@ export function alphaRestingTier(data:MowerSchedulingData,name:string,referenced
   if(op.isHigh())return {high:1,low:2,standby:4}[op.restingPriority]
   if(op.restingFromTrain)return replacement
  }
- return (referencedReplacements?.has(name)??Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&owner.replacement.includes(name)))?replacement:6
+ return (referencedReplacements?.has(name)??Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&(owner.replacement.includes(name)||owner.groupBindings.some(binding=>binding.replacement.includes(name)))))?replacement:6
 }
 export function alphaRestingKey(data:MowerSchedulingData,name:string):[number,number]{return [alphaRestingTier(data,name),(mowerDormCandidateMood(data,name)??24)-(data.operators[name]?.upperLimit??24)]}
 export const compareAlphaKeys=(a:readonly number[],b:readonly number[])=>a[0]!-b[0]!||a[1]!-b[1]!
@@ -54,9 +55,9 @@ export function mowerMatchReplacements(options:Record<string,string[]>,allowPart
  for(const name of Object.keys(options))if(![...owners.values()].includes(name)&&!reserve(name,new Set())&&!allowPartial)return undefined
  return Object.fromEntries([...owners].map(([cover,name])=>[name,cover]))
 }
-function alphaSlotEffective(data:MowerSchedulingData,bed:MowerDormState,activeGroups?:Set<string>):boolean{
- const owner=data.operators[data.plan[bed.position[0]]?.[bed.position[1]]??''],groups=owner?.multiGroup?mowerRestingBindingGroups(data,owner,Object.fromEntries([...(activeGroups??[])].map(group=>[group,true]))):[]
- return data.effectiveFreeSlot(bed)||!!(bed.autoFree&&(owner?.multiGroup?groups.length>0&&mowerSharedReplacements(owner,groups).includes('Free'):activeGroups?.has(owner?.group??'')))
+function alphaSlotEffective(data:MowerSchedulingData,bed:MowerDormState,activeGroups?:Set<string>,plan:MowerTaskPlan={}):boolean{
+ const transitions={...data.pendingGroupTransitions,...mowerArrangementGroupTransitions(data,plan),...Object.fromEntries([...(activeGroups??[])].map(group=>[group,true]))}
+ return data.effectiveFreeSlot(bed,new Set(Object.keys(transitions).filter(group=>!transitions[group])),new Set(Object.keys(transitions).filter(group=>transitions[group])))
 }
 export function alphaBedTakeoverAllowed(data:MowerSchedulingData,requester:string,resident:string):boolean{
  const requesterTier=alphaRestingTier(data,requester),residentTier=alphaRestingTier(data,resident)
@@ -66,8 +67,9 @@ export function alphaBedTakeoverAllowed(data:MowerSchedulingData,requester:strin
  if(!(requesterTier<residentTier&&residentTier<7))return false
  return requesterTier<=3||!!incoming&&mood!==undefined&&mood<=incoming.upperLimit*.8
 }
-export function alphaSlotTakable(data:MowerSchedulingData,bed:MowerDormState,requester?:string,activeGroups?:Set<string>):boolean{
- if(!alphaSlotEffective(data,bed,activeGroups))return false
+export function alphaSlotTakable(data:MowerSchedulingData,bed:MowerDormState,requester?:string,activeGroups?:Set<string>,plan:MowerTaskPlan={}):boolean{
+ if(!alphaSlotEffective(data,bed,activeGroups,plan))return false
+ if(requester&&!mowerDormCapacityAllows(data,requester,bed.position,plan,activeGroups))return false
  const reserved=data.reservedProductBeds.get(alphaPosition(...bed.position));if(reserved&&requester!==reserved&&(!requester||![3,5,6].includes(alphaRestingTier(data,requester))))return false
  const actual=data.currentOperator(...bed.position),name=bed.name||(actual&&data.recoveryDorm(bed,actual.name)?actual.name:'')
  if(!name)return true
@@ -84,8 +86,8 @@ export function alphaFindDormSlot(data:MowerSchedulingData,name:string,used:Set<
  if(data.restMoodComplete(name)||alphaRestingTier(data,name)===7)return undefined
  const vip=Object.keys(data.plan).filter(room=>room.startsWith('dorm')).length,indices=orderMowerAlphaDormIndices(data,activeGroups)
  const order=alphaRestingTier(data,name)<=1||data.dormOrder.some(value=>value.endsWith('_low'))?indices:[...indices.slice(vip),...indices.slice(0,vip)]
- const candidates=order.filter(i=>!used.has(i)&&!reservedSlots.has(alphaPosition(...data.dorms[i]!.position))&&alphaSlotTakable(data,data.dorms[i]!,name,activeGroups))
- const compatibleBeds=indices.map(i=>data.dorms[i]!).filter(b=>alphaSlotEffective(data,b,activeGroups))
+ const candidates=order.filter(i=>!used.has(i)&&!reservedSlots.has(alphaPosition(...data.dorms[i]!.position))&&alphaSlotTakable(data,data.dorms[i]!,name,activeGroups,plan))
+ const compatibleBeds=indices.map(i=>data.dorms[i]!).filter(b=>alphaSlotEffective(data,b,activeGroups,plan))
  const cost=(i:number)=>{const bed=data.dorms[i]!,isolation=mowerDormIsolationCost(data,name,...bed.position,plan),single=data.operators[name]?.singleRecoveryManager?singleRecoveryBedCost(bed,compatibleBeds):0;if(!bed.name)return [0,0,single,0,isolation];const [tier,mood]=alphaRestingKey(data,bed.name);return [alphaFullDormFiller(data,bed.name)?1:2,-tier,single,isolation,-mood]}
  candidates.sort((a,b)=>{const x=cost(a),y=cost(b);return x[0]!-y[0]!||x[1]!-y[1]!||x[2]!-y[2]!||x[3]!-y[3]!||x[4]!-y[4]!})
  return candidates[0]

@@ -14,7 +14,8 @@ function fixture(options:MowerOperatorOptions[]=[]){
 }
 const expression=(text:string)=>compileBackupExpression(text,new Set())
 
-// Native contracts: alpha ab0a4e5, Operators._group_moods and facility_has_mastery_plan.
+// Native f19a: these method arguments are checked during execution, while
+// evalidate rejects attributes outside its whitelist before execution.
 describe('alpha backup group and mastery predicates',()=>{
  it('uses cached current moods at the evaluation clock and registers clock dependence',()=>{
   const far=resolveOperatorCharId('远牙'),state=fixture([{name:'A',mood:20,depletionRate:2},{name:far,mood:20,depletionRate:1}])
@@ -63,16 +64,22 @@ describe('alpha backup group and mastery predicates',()=>{
   expect(expression(`op_data.facility_has_mastery_plan('train') == False`).evaluate(state)).toBe(true)
  })
  it('rejects rooms other than train as the native method does',()=>{
-  expect(()=>expression(`op_data.facility_has_mastery_plan('room_1_1')`)).toThrow('不支持的训练室位置')
+  const compiled=expression(`op_data.facility_has_mastery_plan('room_1_1')`)
+  expect(()=>compiled.evaluate(fixture())).toThrow('不支持的训练室位置')
+  expect(expression(`True or op_data.facility_has_mastery_plan('room_1_1')`).evaluate(fixture())).toBe(true)
  })
  it.each([
   `op_data.group_min_mood()`,
   `op_data.group_min_mood(1)`,
   `op_data.group_min_mood('红松', 'other')`,
   `op_data.facility_has_mastery_plan(op_data.party_time)`,
-  `op_data.group_min_mood('红松').anything`,
- ])('rejects unsupported call syntax: %s',source=>{
-  expect(()=>expression(source)).toThrow('副表：')
+ ])('keeps syntactically valid bad arguments as execution errors: %s',source=>{
+  const compiled=expression(source)
+  expect(()=>compiled.evaluate(fixture())).toThrow('需要一个字符串参数')
+  expect(expression(`True or ${source}`).evaluate(fixture())).toBe(true)
+ })
+ it('rejects attributes outside the native whitelist before execution',()=>{
+  expect(()=>expression(`op_data.group_min_mood('红松').anything`)).toThrow('副表：')
  })
  it('keeps Python short-circuiting for unused external states',()=>{
   expect(expression(`True or op_data.facility_has_mastery_plan('train')`).evaluate(fixture())).toBe(true)

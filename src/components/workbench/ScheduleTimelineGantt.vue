@@ -37,8 +37,8 @@ const isTimelineExpanded = ref(!props.initiallyCollapsed)
 const zoomPreset = ref<'6' | '12' | '24' | '48' | '72' | '168' | 'all'>(props.initialWindowHours === 24 ? '24' : '72')
 const customWindowStart = ref(0)
 const customWindowEnd = ref<number>(props.initialWindowHours)
-const tracksContainerRef = ref<HTMLElement | null>(null)
 const isDraggingTimeline = ref(false)
+const backupEventCursor = ref<number | null>(null)
 
 // Overview scrubber dragging state
 const overviewTrackRef = ref<HTMLElement | null>(null)
@@ -149,8 +149,13 @@ const dataset = computed(() => {
 
 const totalObservedHours = computed(() => props.report?.observedHours ?? props.initialWindowHours)
 
+watch(() => exportVolumes.value.length, (count) => {
+  exportSelectedVolumeIndex.value = Math.max(0, Math.min(exportSelectedVolumeIndex.value, count - 1))
+}, { flush: 'sync' })
+
 watch(() => props.report, () => {
   isTimelineExpanded.value = !props.initiallyCollapsed
+  backupEventCursor.value = null
 })
 
 // Initialize zoom window based on report observed hours
@@ -171,6 +176,7 @@ const windowDuration = computed(() => {
 })
 
 function setWindowDuration(targetDur: number): void {
+  backupEventCursor.value = null
   const maxH = totalObservedHours.value
   const dur = Math.max(6, Math.min(maxH, targetDur))
   let start = customWindowStart.value
@@ -218,6 +224,7 @@ const quickWindowPresets = computed<QuickPreset[]>(() => {
 
 // Pan window forward or backward by delta hours
 function panWindow(deltaHours: number): void {
+  backupEventCursor.value = null
   const maxH = totalObservedHours.value
   const dur = windowDuration.value
   let newStart = customWindowStart.value + deltaHours
@@ -236,6 +243,7 @@ function panWindow(deltaHours: number): void {
 }
 
 function panWindowTo(targetStart: number): void {
+  backupEventCursor.value = null
   const maxH = totalObservedHours.value
   const dur = windowDuration.value
   let start = Math.max(0, Math.min(maxH - dur, targetStart))
@@ -245,12 +253,14 @@ function panWindowTo(targetStart: number): void {
 }
 
 function jumpToStart(): void {
+  backupEventCursor.value = null
   const dur = windowDuration.value
   customWindowStart.value = 0
   customWindowEnd.value = Math.min(totalObservedHours.value, dur)
 }
 
 function jumpToEnd(): void {
+  backupEventCursor.value = null
   const maxH = totalObservedHours.value
   const dur = windowDuration.value
   customWindowStart.value = Math.max(0, maxH - dur)
@@ -528,10 +538,18 @@ async function handleCopyGanttImage(): Promise<void> {
 let dragStartX = 0
 let dragStartWindowStart = 0
 
+function getTimelineLane(e: MouseEvent): HTMLElement | null {
+  return e.target instanceof Element
+    ? e.target.closest<HTMLElement>('.track-content-lane, .ruler-track')
+    : null
+}
+
 function handleTimelineMouseDown(e: MouseEvent): void {
   if (e.button !== 0) return
   const target = e.target as HTMLElement
   if (target.closest('button, a, input, select, textarea, .event-marker, .gantt-block')) return
+  const lane = getTimelineLane(e)
+  if (!lane || lane.getBoundingClientRect().width <= 0) return
 
   isDraggingTimeline.value = true
   dragStartX = e.clientX
@@ -540,8 +558,9 @@ function handleTimelineMouseDown(e: MouseEvent): void {
   const onMouseMove = (moveEvent: MouseEvent) => {
     if (!isDraggingTimeline.value) return
     const dx = moveEvent.clientX - dragStartX
-    const containerWidth = tracksContainerRef.value?.clientWidth || 1000
-    const timeDelta = -(dx / containerWidth) * windowDuration.value
+    const laneWidth = lane.getBoundingClientRect().width
+    if (laneWidth <= 0) return
+    const timeDelta = -(dx / laneWidth) * windowDuration.value
     panWindowTo(dragStartWindowStart + timeDelta)
   }
 
@@ -698,20 +717,34 @@ const backupEvents = computed<TimelineMarkerEvent[]>(() => {
   return dataset.value.events.filter(e => e.type === 'backup-plan' || e.type === 'backup-task')
 })
 
+watch(backupEvents, () => {
+  backupEventCursor.value = null
+})
+
 function jumpToNextBackupEvent(): void {
   const events = backupEvents.value
   if (!events.length) return
-  const cur = customWindowStart.value
-  const next = events.find(e => e.time > cur + 0.1) ?? events[0]
-  if (next) {
-    panWindowTo(Math.max(0, next.time - windowDuration.value / 3))
-  }
+  const nextIndex = backupEventCursor.value === null
+    ? events.findIndex(event => event.time >= customWindowStart.value)
+    : (backupEventCursor.value + 1) % events.length
+  const selectedIndex = nextIndex < 0 ? 0 : nextIndex
+  const next = events[selectedIndex]!
+  panWindowTo(Math.max(0, next.time - windowDuration.value / 3))
+  backupEventCursor.value = selectedIndex
 }
 
 // Track mouse cursor over timeline
 function handleMouseMove(e: MouseEvent): void {
-  const container = (e.currentTarget as HTMLElement)
-  const rect = container.getBoundingClientRect()
+  const lane = getTimelineLane(e)
+  if (!lane) {
+    handleMouseLeave()
+    return
+  }
+  const rect = lane.getBoundingClientRect()
+  if (rect.width <= 0) {
+    handleMouseLeave()
+    return
+  }
   const mouseX = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
   const frac = mouseX / rect.width
   cursorXPercent.value = frac * 100
@@ -1084,7 +1117,6 @@ function getStatusBadgeClass(status: TimelineInterval['status'], roomType: strin
 
         <!-- Tracks Body -->
         <div
-          ref="tracksContainerRef"
           class="gantt-tracks-body"
           :class="{ 'is-dragging': isDraggingTimeline }"
           @mousemove="handleMouseMove"

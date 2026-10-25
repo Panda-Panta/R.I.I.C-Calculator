@@ -7,7 +7,8 @@
 import { match, pinyin } from 'pinyin-pro'
 import { OPERATOR_MAP, OPERATORS, type OperatorRecord } from '../domain/operators'
 import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
-import type { MowerFacilityType, MowerMainConf, MowerMainPlan, MowerRoomId } from '../domain/roster'
+import type { MowerCompatibilityEnvelope, MowerFacilityType, MowerMainPlan, MowerRoomId } from '../domain/roster'
+import { operatorReplacementLocations } from './operatorReplacement'
 import { resolveAssetUrl } from '../utils/assets'
 export { resolveAssetUrl }
 
@@ -215,68 +216,24 @@ export interface ReplacementScopeResult {
   mainLocations: OperatorScopeLocation[]
   replacementLocations: OperatorScopeLocation[]
   confLocations: string[]
+  additionalLocations?: string[]
 }
 
 export function computeReplacementScope(
   mainPlan: MowerMainPlan,
   operatorId: string,
+  compatibility?: MowerCompatibilityEnvelope,
 ): ReplacementScopeResult {
-  const mainLocations: OperatorScopeLocation[] = []
-  const replacementLocations: OperatorScopeLocation[] = []
-  const confLocations: string[] = []
-
-  if (!mainPlan || !operatorId) {
-    return { totalCount: 0, mainLocations, replacementLocations, confLocations }
-  }
-
-  const op = OPERATOR_MAP.get(operatorId)
-  const targetIds = new Set<string>([operatorId])
-  if (op) {
-    targetIds.add(op.name)
-    targetIds.add(op.charId)
-  }
-
-  if (mainPlan.facilities) {
-    for (const roomId of Object.keys(mainPlan.facilities) as MowerRoomId[]) {
-      const facility = mainPlan.facilities[roomId]
-      if (!facility) continue
-      const roomName = getRoomDisplayName(facility.roomId, facility.type)
-
-      facility.slots.forEach((slot, slotIndex) => {
-        if (slot.occupant.kind === 'operator' && targetIds.has(slot.occupant.operatorId)) {
-          mainLocations.push({ roomId, roomName, slotIndex })
-        }
-        if (slot.replacements.some((rep) => targetIds.has(rep))) {
-          replacementLocations.push({ roomId, roomName, slotIndex })
-        }
-      })
-    }
-  }
-
-  if (mainPlan.conf) {
-    const policyKeys: Array<keyof MowerMainConf> = [
-      'exhaust_require',
-      'rest_in_full',
-      'resting_priority',
-      'workaholic',
-      'refresh_trading',
-      'refresh_drained',
-      'ope_resting_priority',
-    ]
-    for (const key of policyKeys) {
-      if (typeof key !== 'string') continue
-      const list = mainPlan.conf[key]
-      if (Array.isArray(list) && list.some((id: string) => targetIds.has(id))) {
-        confLocations.push(key)
-      }
-    }
-  }
-
-  const totalCount = mainLocations.length + replacementLocations.length + confLocations.length
+  const locations = mainPlan ? operatorReplacementLocations(mainPlan, operatorId, compatibility) : []
+  const slotLocation = (location: (typeof locations)[number]): OperatorScopeLocation => ({
+    roomId: location.roomId!, slotIndex: location.slotIndex!,
+    roomName: getRoomDisplayName(location.roomId!, mainPlan.facilities[location.roomId!]?.type),
+  })
   return {
-    totalCount,
-    mainLocations,
-    replacementLocations,
-    confLocations,
+    totalCount: locations.length,
+    mainLocations: locations.filter(location => location.kind === 'main').map(slotLocation),
+    replacementLocations: locations.filter(location => location.kind === 'replacement').map(slotLocation),
+    confLocations: locations.filter(location => location.kind === 'conf').map(location => location.label),
+    additionalLocations: locations.filter(location => location.kind === 'additional').map(location => location.label),
   }
 }

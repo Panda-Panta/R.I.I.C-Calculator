@@ -819,7 +819,7 @@ const taskRooms = computed<string[]>(() => {
 
 const availableFacilityOptions = computed<SelectOption[]>(() => {
   const configured = new Set(taskRooms.value)
-  return MOWER_ROOM_IDS.filter((id) => !id.startsWith('gaming') && !configured.has(id)).map((id) => ({
+  return MOWER_ROOM_IDS.filter((id) => !id.startsWith('gaming') && !configured.has(id) && getFacilityMaxSlots(id,store.workspace,activePlan.value?.plan)>0).map((id) => ({
     label: `${getFacilityRoomDisplayName(id)} (${id})`,
     value: id,
   }))
@@ -828,8 +828,9 @@ const availableFacilityOptions = computed<SelectOption[]>(() => {
 function handleAddFacilityTask(): void {
   const roomId = selectedFacilityToAdd.value
   if (!roomId || !activePlan.value) return
+  const maxSlots = getFacilityMaxSlots(roomId,store.workspace,activePlan.value.plan)
+  if(!maxSlots)return
   activePlan.value.task ??= {}
-  const maxSlots = getFacilityMaxSlots(roomId)
   activePlan.value.task[roomId] = Array(maxSlots).fill('Current')
   selectedFacilityToAdd.value = null
   saveCurrentPlan()
@@ -848,7 +849,7 @@ function resetTaskFacilityToCurrent(roomId: string): void {
 }
 
 function getSlotCountForRoom(roomId: string): number {
-  return activePlan.value?.task?.[roomId]?.length || getFacilityMaxSlots(roomId)
+  return activePlan.value?.task?.[roomId]?.length ?? getFacilityMaxSlots(roomId,store.workspace,activePlan.value?.plan)
 }
 
 function getTaskSlotValue(roomId: string, slotIdx: number): string {

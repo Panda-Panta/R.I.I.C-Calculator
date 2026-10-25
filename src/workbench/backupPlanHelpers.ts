@@ -1,5 +1,8 @@
 import { compileBackupExpression, serializeBackupExpression } from '../scheduler/backupExpression'
 import { getOperatorName } from './operatorHelpers'
+import {facilityCapacity} from '../domain/facilities'
+import {MOWER_RIGHT_SIDE_CAPACITY,mowerBackupRoomCapacity} from '../domain/mowerBackupFacilities'
+import type {MowerRoomId,RosterWorkspace} from '../domain/roster'
 
 export type BackupTiming = 'BEGINNING' | 'BEFORE_PLANNING' | 'AFTER_PLANNING' | 'END'
 
@@ -200,10 +203,22 @@ export function getFacilityRoomDisplayName(roomId: string): string {
   return roomId
 }
 
-export function getFacilityMaxSlots(roomId: string): number {
+export function getFacilityMaxSlots(roomId: string, workspace?:RosterWorkspace, overrides?:MowerBackupPlan['plan']): number {
+  if(workspace){
+    const facility=workspace.mainPlan.facilities[roomId as MowerRoomId]
+    if(!facility)return 0
+    const overlaySlots=overrides?.[roomId]?.plans.length??0
+    const established=Math.max(facility.slots.length,overlaySlots)
+    const levels=workspace.compatibility.unrecognizedFields.facility_levels
+    const implicitRightSide=overlaySlots>0&&MOWER_RIGHT_SIDE_CAPACITY[roomId as MowerRoomId]!==undefined
+      &&!(levels&&Object.prototype.hasOwnProperty.call(levels,roomId))
+    const effectiveLevel=facility.level>0?facility.level:implicitRightSide?3:0
+    if(!effectiveLevel)return 0
+    return Math.min(established,facilityCapacity(facility.type,effectiveLevel),mowerBackupRoomCapacity(workspace,roomId))
+  }
   if (roomId === 'central' || roomId.startsWith('dormitory_')) return 5
   if (roomId.startsWith('room_')) return 3
-  if (roomId === 'meeting') return 2
+  if (roomId === 'meeting' || roomId === 'train' || roomId === 'recycle') return 2
   return 1
 }
 

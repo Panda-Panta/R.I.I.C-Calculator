@@ -4,6 +4,8 @@ import { createDefaultWorkspace } from './defaults'
 import { validateRosterWorkspace } from './validate'
 import { resolveOperatorCharId } from '../domain/operatorIdentifiers'
 import { exportMowerJson, importMowerJson } from './compat/mowerJson'
+import {compileBackupExpression} from '../scheduler/backupExpression'
+import {createRosterRuntime} from '../scheduler/rosterRuntime'
 
 describe('validateRosterWorkspace', () => {
   it.each(['mood_limits', 'operator_mood_limits'])('validates imported reactive backup %s without changing the plan', field => {
@@ -437,12 +439,28 @@ describe('alpha shared group validation', () => {
     ws.mainPlan.facilities.room_1_2.slots[0] = {occupant: {kind: 'operator', operatorId: 'char_286_cast3'}, groupId: 'A', replacements: ['char_500_noirc']}
     expect(validateRosterWorkspace(ws).criticalErrors).toEqual([])
     const document = JSON.parse(exportMowerJson(ws))
-    document.backup_plans = [{name: 'personal', trigger: 'True', plan: {room_1_1: document.plan1.room_1_1}}]
+    document.future={root:['keep']}
+    document.plan1.room_1_1.futureRoom={keep:true}
+    document.plan1.room_1_1.plans[0].futureSlot=['keep']
+    document.plan1.room_1_1.plans[0].group_bindings[0].futureBinding={emptyFirst,keep:['binding']}
+    document.backup_plans = [{name: 'personal', trigger: 'True', plan: {room_1_1: document.plan1.room_1_1},futureBackup:['keep']}]
+    const original=structuredClone(document)
     const imported = importMowerJson(JSON.stringify(document))
+    const before=structuredClone(imported)
     expect(validateRosterWorkspace(imported).criticalErrors).toEqual([])
     const output = JSON.parse(exportMowerJson(imported))
     expect(output.plan1.room_1_1).toEqual(document.plan1.room_1_1)
-    expect(output.backup_plans).toEqual(document.backup_plans)
+    const canonicalTrigger={left:'True',operator:'',right:''}
+    expect(output.backup_plans).toEqual([{...document.backup_plans[0],trigger:canonicalTrigger}])
+    expect(output).toEqual({...document,backup_plans:[{...document.backup_plans[0],trigger:canonicalTrigger}]})
+    expect(imported.compatibility.backupPlans).toEqual(document.backup_plans)
+    const state=createRosterRuntime({positions:[],beds:[]})
+    expect(compileBackupExpression(document.backup_plans[0].trigger,new Set()).evaluate(state)).toBe(true)
+    expect(compileBackupExpression(output.backup_plans[0].trigger,new Set()).evaluate(state)).toBe(true)
+    const canonicalRoundtrip=JSON.parse(exportMowerJson(importMowerJson(JSON.stringify(output))))
+    expect(canonicalRoundtrip).toEqual(output)
+    expect(imported).toEqual(before)
+    expect(document).toEqual(original)
     const entry = imported.mainPlan.facilities.room_1_1.slots[0]!
     entry.groupBindings!.push({...personal})
     expect(validateRosterWorkspace(imported).criticalErrors.some(e => e.message.includes('空组名最多一列'))).toBe(true)

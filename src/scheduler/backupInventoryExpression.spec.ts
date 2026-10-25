@@ -32,7 +32,7 @@ describe('safe inventory backup queries',()=>{
   expect(participants.size).toBe(0)
  })
  it.each(['基础作战记录','unknown','gold','__proto__','constructor'])('rejects non-native inventory item %s',name=>{
-  expect(()=>compile(`op_data.inventory_count('${name}')`)).toThrow('不支持的副表仓库资源')
+  expect(()=>compile(`op_data.inventory_count('${name}')`).evaluate(fixture())).toThrow('不支持的副表仓库资源')
  })
  it.each([-1,NaN,Infinity])('rejects invalid host inventory amount %s',value=>{
   const state=fixture();state.mowerInventoryCounts={'赤金':value}
@@ -65,7 +65,7 @@ describe('safe effective facility-product backup queries',()=>{
   expect(compile(`op_data.facility_product(${room}) is None`).evaluate(state)).toBe(true)
  })
  it.each(['room_0_1','room_4_1','dormitory_5','gaming_4','__proto__'])('rejects unknown room %s',room=>{
-  expect(()=>compile(`op_data.facility_product('${room}')`)).toThrow('不支持的设施位置')
+  expect(()=>compile(`op_data.facility_product('${room}')`).evaluate(fixture())).toThrow('不支持的设施位置')
  })
  it('detects both dependencies even when evaluation short-circuits an absent state',()=>{
   const expression=compile(`True or (op_data.inventory_count('赤金') > 0 and op_data.facility_product('room_1_1') == 'gold')`)
@@ -75,7 +75,10 @@ describe('safe effective facility-product backup queries',()=>{
  })
  it.each([
   `op_data.inventory_count()`, `op_data.inventory_count(1)`, `op_data.inventory_count('赤金', '装置')`,
-  `op_data.inventory_count(op_data.party_time)`, `op_data.inventory_count('赤金').constructor`,
+  `op_data.inventory_count(op_data.party_time)`,
+ ])('rejects invalid query arguments only during execution %s',source=>expect(()=>compile(source).evaluate(fixture())).toThrow('副表：'))
+ it.each([
+  `op_data.inventory_count('赤金').constructor`,
   `op_data.inventory_count('赤金')()`, `op_data.facility_product('room_1_1').__class__`,
   `op_data.facility_product('room_1_1') == arbitrary_name`,
  ])('rejects unsupported syntax %s',source=>expect(()=>compile(source)).toThrow('副表：'))
@@ -123,12 +126,13 @@ describe('effective facility-product counts',()=>{
   expect(compile('True or op_data.facility_product_type_count() > 0')).toMatchObject({usesFacilityProduct:true,usesInventory:false})
  })
  it.each(['unknown','exp','fragment','money','__proto__','constructor'])('rejects unsupported count product %s',name=>{
-  expect(()=>compile(`op_data.facility_product_count('${name}')`)).toThrow('不支持的产物或订单类型')
+  expect(()=>compile(`op_data.facility_product_count('${name}')`).evaluate(fixture())).toThrow('不支持的产物或订单类型')
  })
  it.each([
   'op_data.facility_product_count()', 'op_data.facility_product_count(1)', "op_data.facility_product_count('gold', 'exp3')",
-  'op_data.facility_product_count(op_data.party_time)', "op_data.facility_product_count('gold').constructor",
-  "op_data.facility_product_count('gold')()", "op_data.facility_product_type_count('gold')",
-  'op_data.facility_product_type_count(1)', 'op_data.facility_product_type_count().constructor',
+  'op_data.facility_product_count(op_data.party_time)', "op_data.facility_product_type_count('gold')", 'op_data.facility_product_type_count(1)',
+ ])('rejects invalid count arguments only during execution %s',source=>expect(()=>compile(source).evaluate(fixture())).toThrow('副表：'))
+ it.each([
+  "op_data.facility_product_count('gold').constructor", "op_data.facility_product_count('gold')()", 'op_data.facility_product_type_count().constructor',
  ])('rejects unsupported count syntax %s',source=>expect(()=>compile(source)).toThrow('副表：'))
 })

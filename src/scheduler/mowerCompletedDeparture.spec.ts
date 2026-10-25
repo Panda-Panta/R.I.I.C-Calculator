@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { advanceRoster, createRosterRuntime, settleRoster, type RuntimeConfig } from './rosterRuntime'
 import { getMowerSourceRuntime } from './mowerSourceRuntime'
 import { mowerCorrectionPlan } from './mowerCorrection'
-import { mowerGroupRecoveryDeadline } from './mowerGroupRecovery'
-import { mowerHasMeasuredDormDeparture, projectMowerArrangements } from './mowerObservations'
+import { mowerGroupRecoveryDeadline, mowerRecoveryReady } from './mowerGroupRecovery'
+import { planMowerMetadata } from './mowerMetadata'
+import { invalidateMowerDormTime, mowerHasMeasuredDormDeparture, mowerRefreshDormTime, mowerUpdateDetail, projectMowerArrangements } from './mowerObservations'
 import { MowerTask, MOWER_TASK_TYPES as T, toMowerMicros } from './mowerTaskQueue'
 import { prepareMowerRelease } from './mowerRelease'
 
@@ -158,7 +159,7 @@ describe('confirmed ordinary dorm departure keeps measured morale', () => {
   })
 })
 
-describe('group full-rest execution confirmation', () => {
+describe('group full-rest planning and native return dispatch', () => {
   it('lets a completed member leave under idle release while preserving the unfinished group and cap', () => {
     const f = fixture(24, 24), data = f.source.data
     data.freeRoom = true
@@ -174,23 +175,30 @@ describe('group full-rest execution confirmation', () => {
     expect(mowerGroupRecoveryDeadline(data, 'g').timeMicros).toBe(toMowerMicros(1.5))
   })
 
-  it('reschedules an early saved return only as far as the original gap cap', () => {
+  it('preserves the original gap-cap deadline while executing an already retained early return', () => {
     const f = fixture(24, 24), data = f.source.data
     data.groupRestInFullOnMoodGap = true
     data.groupMoodGapMaxExtraWaitHours = .5
     data.groupRecoveryFullMembers.g = ['A', 'B']
     data.groupRecoveryReturnMicros.g = toMowerMicros(1)
+    expect(mowerGroupRecoveryDeadline(data, 'g').timeMicros).toBe(toMowerMicros(1.5))
     const task = new MowerTask({ time: 1, type: T.SHIFT_ON, plan: { room_1_1: ['A'], room_1_2: ['B'] } })
     task.backupShiftActive = true
     f.source.queue.tasks = [task]
+    // f19 ordinary dispatch (2659-2752) trusts the saved due arrangement;
+    // the optional calculated-mood check also excludes protected shifts (1429).
     finish(f)
-    expect(task.timeMicros).toBe(toMowerMicros(1.5))
+    expect(task.timeMicros).toBe(toMowerMicros(1))
+    expect(data.operators.A!.currentRoom).toBe('room_1_1')
     expect(data.operators.B!.isResting()).toBe(true)
     expect(data.groupRecoveryReturnMicros.g).toBe(toMowerMicros(1))
     expect(task.executionFailure).toBeUndefined()
+    advanceRoster(f.state, .5 / 3600, rates)
+    finish(f)
+    expect(data.operators.B!.currentRoom).toBe('room_1_2')
   })
 
-  it.each([{explicit:false,excluded:false},{explicit:true,excluded:false},{explicit:false,excluded:true},{explicit:true,excluded:true}])('returns with gap cap or exclusion while retaining explicit recovery: %j', ({explicit,excluded}) => {
+  it.each([{explicit:false,excluded:false},{explicit:true,excluded:false},{explicit:false,excluded:true},{explicit:true,excluded:true}])('preserves gap/exclusion/full-rest planning without reblocking a retained return: %j', ({explicit,excluded}) => {
     const f = fixture(24, 24), data = f.source.data
     data.groupRestInFullOnMoodGap = true
     data.groupMoodGapMaxExtraWaitHours = excluded ? 0 : .5
@@ -198,23 +206,23 @@ describe('group full-rest execution confirmation', () => {
     data.groupRecoveryFullMembers.g = ['A', 'B']
     data.groupRecoveryReturnMicros.g = toMowerMicros(.5)
     data.operators.B!.restInFull = explicit
+    const recovery = mowerGroupRecoveryDeadline(data, 'g')
+    expect(recovery.timeMicros).toBe(explicit ? toMowerMicros(5) : excluded ? undefined : toMowerMicros(1))
+    if (explicit) expect(recovery.requiredNames).toContain('B')
     const task = new MowerTask({ time: 1, type: T.SHIFT_ON, plan: { room_1_1: ['A'], room_1_2: ['B'] } })
     task.backupShiftActive = true
     f.source.queue.tasks = [task]
     finish(f)
-    expect(data.operators.A!.currentRoom).toBe(explicit ? room : 'room_1_1')
-    if (!explicit) {
-      advanceRoster(f.state, .5 / 3600, rates)
-      finish(f)
-      expect(data.operators.B!.currentRoom).toBe('room_1_2')
-      expect(data.operators.B!.mood).toBeLessThan(24)
-    } else {
-      expect(data.operators.B!.isResting()).toBe(true)
-      expect(f.source.queue.tasks).toContain(task)
-    }
+    expect(data.operators.A!.currentRoom).toBe('room_1_1')
+    advanceRoster(f.state, .5 / 3600, rates)
+    finish(f)
+    expect(data.operators.B!.currentRoom).toBe('room_1_2')
+    expect(data.operators.B!.mood).toBeLessThan(24)
+    expect(task.timeMicros).toBe(toMowerMicros(1))
+    expect(task.executionFailure).toBeUndefined()
   })
 
-  it.each([false, true])('reschedules an old return against the observed explicit full-rest deadline, shared=%s', shared => {
+  it.each([false, true])('rebuilds saved return metadata from the actual explicit full-rest deadline, shared=%s', shared => {
     const f = fixture(24, 24)
     f.source.data.operators.B!.restInFull = true
     if (shared) { f.source.data.operators.B!.groupBindings = [{ group: 'g', replacement: ['S'] }, { group: 'h', replacement: ['S'] }]; f.source.data.groupShiftState.h = false }
@@ -222,17 +230,23 @@ describe('group full-rest execution confirmation', () => {
     f.source.data.operators.B!.moodIsPrediction = true
     f.source.data.dorms[1]!.timeMicros = toMowerMicros(1)
     f.state.morale.B = 20
-    const task = new MowerTask({ time: 1, type: T.SHIFT_ON, plan: { room_1_1: ['A'], room_1_2: ['B'] } })
-    task.backupShiftActive = true
-    f.source.queue.tasks = [task]
+    const oldReturn = new MowerTask({ time: 1, type: T.SHIFT_ON, plan: { room_1_1: ['A'], room_1_2: ['B'] } })
+    f.source.queue.tasks = [oldReturn]
     const slowerRates = { workRate: () => 1, recoveryRate: (name: string) => name === 'B' ? 2 : 4 }
-    settleRoster(f.state, slowerRates)
+    // An actual room read replaces the stale prediction; native metadata, not
+    // an unconditional dispatcher gate, owns the generated future return time.
+    invalidateMowerDormTime(f.source.data, room)
+    mowerUpdateDetail(f.source.data, 'B', f.state.morale.B, room, 4, true)
+    mowerRefreshDormTime(f.source.data, room, 4, 'B', toMowerMicros(3))
+    planMowerMetadata(f.source.data, f.source.queue)
     expect(f.source.data.operators.B!.isResting()).toBe(true)
     expect(f.source.data.operators.B!.mood).toBe(20)
     expect(f.source.data.operators.B!.moodIsPrediction).toBe(false)
-    expect(f.source.queue.tasks).toContain(task)
-    expect(task.timeMicros).toBe(toMowerMicros(3))
-    expect(task.executionFailure).toBeUndefined()
+    expect(mowerGroupRecoveryDeadline(f.source.data, 'g').timeMicros).toBe(toMowerMicros(3))
+    const generated = f.source.queue.tasks.find(task => task.type === T.SHIFT_ON && task.plan.room_1_2?.[0] === 'B')!
+    expect(generated).toBeDefined()
+    expect(generated.timeMicros).toBe(toMowerMicros(3))
+    expect(f.source.queue.tasks).not.toContain(oldReturn)
     advanceRoster(f.state, 2, slowerRates)
     settleRoster(f.state, slowerRates)
     advanceRoster(f.state, .5 / 3600, slowerRates)
@@ -241,7 +255,7 @@ describe('group full-rest execution confirmation', () => {
     expect(f.state.morale.B).toBe(24)
   })
 
-  it.each([T.SELF_CORRECTION, T.RE_ORDER])('keeps a completed anchor from returning through $key while its latched low-priority primary is unfinished', type => {
+  it.each([T.SELF_CORRECTION, T.RE_ORDER])('keeps the low-priority recovery deadline without reblocking a retained $key return', type => {
     const f = fixture(24, 24)
     const a = f.source.data.operators.A!, b = f.source.data.operators.B!, r = f.source.data.operators.R!
     a.currentRoom = ''; a.currentIndex = -1; a.depletionRate = 0
@@ -250,15 +264,20 @@ describe('group full-rest execution confirmation', () => {
     f.source.data.dorms[0]!.reset()
     b.restingPriority = 'low'
     f.source.data.groupRecoveryFullMembers.g = ['A', 'B']
+    expect(mowerGroupRecoveryDeadline(f.source.data, 'g').timeMicros).toBe(toMowerMicros(5))
     const plan = { room_1_1: ['A'], room_1_2: ['B'] }
     const task = new MowerTask({ time: 1, type, plan })
     task.backupShiftActive = true
     f.source.queue.tasks = [task]
     finish(f)
-    expect(a.currentRoom).toBe('')
+    expect(a.currentRoom).toBe('room_1_1')
     expect(b.isResting()).toBe(true)
     expect(f.source.queue.tasks).toContain(task)
-    expect(task.timeMicros).toBe(toMowerMicros(5))
+    expect(task.timeMicros).toBe(toMowerMicros(1))
+    expect(task.executionFailure).toBeUndefined()
+    advanceRoster(f.state, .5 / 3600, rates)
+    finish(f)
+    expect(b.currentRoom).toBe('room_1_2')
   })
 
   it.each(['standby', 'shared'] as const)('returns a completed primary without waiting for an ordinary %s member in an old latch', kind => {
@@ -284,7 +303,7 @@ describe('group full-rest execution confirmation', () => {
     expect(f.source.data.groupRecoveryFullMembers.g ?? []).not.toContain('B')
   })
 
-  it.each(['recovering', 'unknown'] as const)('does not activate projected return backups before %s full-rest members are ready', status => {
+  it.each(['recovering', 'unknown'] as const)('activates a saved due return backup through native dispatch with %s full-rest observations', status => {
     const f = fixture(24, 24), b = f.source.data.operators.B!
     b.restInFull = true
     f.source.data.planConditions = [true]
@@ -292,6 +311,9 @@ describe('group full-rest execution confirmation', () => {
       b.currentRoom = ''; b.currentIndex = -1; b.timeStampMicros = undefined
       delete f.state.bedOccupants[room + '_4']; f.source.data.dorms[1]!.reset()
     }
+    const recovery = mowerGroupRecoveryDeadline(f.source.data, 'g')
+    expect(recovery.requiredNames).toContain('B')
+    expect(recovery.timeMicros).toBe(status === 'unknown' ? undefined : toMowerMicros(5))
     const intent = { room_1_1: ['A'], room_1_2: ['B'] }
     const task = new MowerTask({ time: 1, type: T.SHIFT_ON, plan: structuredClone(intent) })
     f.source.queue.tasks = [task]
@@ -304,35 +326,25 @@ describe('group full-rest execution confirmation', () => {
       activate: conditions => { activated.push([...conditions]); f.source.data.planConditions = [...conditions] },
     }
     finish(f)
-    expect(task.backupShiftConditions).toEqual(status==='unknown'?undefined:[false])
-    expect(activated).toEqual([])
-    expect(f.source.data.planConditions).toEqual([true])
+    // f19 activates the converged backup at ordinary dispatch (2736-2748).
+    // Its calculated-mode tap-confirm check is optional and is not this path.
+    expect(task.backupShiftConditions).toEqual([false])
+    expect(activated).toEqual([[false]])
+    expect(f.source.data.planConditions).toEqual([false])
     expect(f.source.queue.tasks).toContain(task)
-    expect(task.backupShiftIntent).toEqual(status==='unknown'?undefined:intent)
-    expect(task.plan).toMatchObject(intent)
-    if (status === 'unknown') {
-      expect(task.plan).toEqual(intent)
-      expect(task.timeMicros).toBe(toMowerMicros(1))
-      expect(task.executionFailure).toBeDefined()
-      const plan = structuredClone(task.plan)
+    expect(task.backupShiftIntent).toEqual(intent)
+    expect(task.plan.room_1_2).toEqual(['B'])
+    expect(task.timeMicros).toBe(toMowerMicros(1))
+    expect(task.executionFailure).toBeUndefined()
+    for (let i = 0; i < 12 && f.source.queue.tasks.includes(task); i++) {
+      advanceRoster(f.state, .5 / 3600, rates)
       finish(f)
-      expect(task.plan).toEqual(plan)
-      expect(activated).toEqual([])
-    } else {
-      expect(task.timeMicros).toBe(toMowerMicros(5))
-      expect(task.executionFailure).toBeUndefined()
-      advanceRoster(f.state, 4, rates)
-      finish(f)
-      expect(activated).toEqual([[false]])
-      expect(f.source.data.planConditions).toEqual([false])
-      expect(b.mood).toBe(24)
-      for (let i = 0; i < 12 && f.source.queue.tasks.includes(task); i++) {
-        advanceRoster(f.state, .5 / 3600, rates)
-        finish(f)
-      }
-      expect(f.source.queue.tasks).not.toContain(task)
-      expect(b.currentRoom).toBe('room_1_2')
     }
+    expect(f.source.queue.tasks).not.toContain(task)
+    expect(activated).toEqual([[false]])
+    expect(b.currentRoom).toBe('room_1_2')
+    expect(b.moodIsPrediction).toBe(false)
+    expect(b.mood).toBeLessThan(24)
   })
 
   it('preserves an explicitly requested backup return independently of automatic group recovery', () => {
@@ -349,7 +361,7 @@ describe('group full-rest execution confirmation', () => {
     expect(f.state.morale.B).toBeLessThan(24)
   })
 
-  it('retains an unobserved full-rest member and admits no repeat on unchanged observations', () => {
+  it('continues a retained return without repeating the room before its real observation', () => {
     const f = fixture(24, 24)
     f.source.data.operators.B!.restInFull = true
     f.source.data.operators.B!.currentRoom = ''
@@ -363,26 +375,25 @@ describe('group full-rest execution confirmation', () => {
     settleRoster(f.state, rates)
     expect(f.source.queue.tasks).toContain(task)
     expect(task.timeMicros).toBe(toMowerMicros(1))
-    expect(task.executionFailure).toBeDefined()
-    const failure = task.executionFailure
+    expect(task.executionFailure).toBeUndefined()
+    const execution = f.source.execution, traceLength = f.source.trace.length
+    expect(execution?.task).toBe(task)
     settleRoster(f.state, rates)
-    expect(task.executionFailure).toBe(failure)
+    expect(f.source.execution).toBe(execution)
+    expect(f.source.trace).toHaveLength(traceLength)
     expect(f.state.occupants.room_1_2_0).toBe('S')
-    // A separate physical arrangement supplies the previously missing observation.
-    f.state.morale.B = 24
-    const admission = new MowerTask({ time: f.state.time, type: T.RE_ORDER, plan: { [room]: ['K1', 'K2', 'K3', 'A', 'B'] } })
-    admission.backupShiftActive = true
-    f.source.queue.tasks.push(admission)
-    finish(f)
+    // The saved arrangement itself supplies the missing physical observation.
     for (let i = 0; i < 8 && f.source.queue.tasks.includes(task); i++) {
       advanceRoster(f.state, .5 / 3600, rates)
       finish(f)
     }
-    expect(f.source.queue.tasks).not.toContain(admission)
     expect(f.source.queue.tasks).not.toContain(task)
     expect(task.executionFailure).toBeUndefined()
     expect(f.source.data.operators.B!.currentRoom).toBe('room_1_2')
+    expect(f.source.data.operators.B!.mood).toBe(8)
+    expect(f.source.data.operators.B!.timeStampMicros).toBe(toMowerMicros(1 + .5 / 3600))
   })
+
 })
 
 describe('ordinary departure observation evidence', () => {
@@ -483,24 +494,29 @@ it('executes an advanced personal-limit release during a group recovery wait', (
   expect(f.source.data.groupShiftState.g).toBe(true)
 })
 
-it.each([{ mood: 23.95, history: false, ready: true }, { mood: 23, history: false, ready: false }, { mood: 23.87, history: false, ready: false }, { mood: 23.87, history: true, ready: true }])('checks every full-rest member against its room allowance: $mood, history=$history', ({ mood, history, ready }) => {
+it.each([{ mood: 23.95, history: false, ready: true }, { mood: 23, history: false, ready: false }, { mood: 23.87, history: false, ready: false }, { mood: 23.87, history: true, ready: true }])('keeps observed full-rest readiness separate from retained dispatch: $mood, history=$history', ({ mood, history, ready }) => {
   const f = fixture(23.95, 24)
   f.state.morale.B = mood
   if (history) f.state.config.mowerTaskScheduling!.dormDurations = { [room]: [100] }
   for (const name of ['A', 'B']) f.source.data.operators[name]!.restInFull = true
+  invalidateMowerDormTime(f.source.data, room)
+  for (const [name, index] of [['A', 3], ['B', 4]] as const) {
+    mowerUpdateDetail(f.source.data, name, f.state.morale[name]!, room, index, true)
+    mowerRefreshDormTime(f.source.data, room, index, name, toMowerMicros(1 + (24 - f.state.morale[name]!) / 4))
+  }
+  expect(mowerRecoveryReady(f.source.data, f.source.data.operators.A!, f.state.config.mowerTaskScheduling)).toBe(true)
+  expect(mowerRecoveryReady(f.source.data, f.source.data.operators.B!, f.state.config.mowerTaskScheduling)).toBe(ready)
   const task = new MowerTask({ time: 1, type: T.SHIFT_ON, plan: { room_1_1: ['A'], room_1_2: ['B'] } })
   task.backupShiftActive = true
   f.source.queue.tasks = [task]
+  // The readiness helper still protects planning/proof callers; f19 excludes
+  // this already protected continuation from calculated tap-confirm validation.
   for (let i = 0; i < 8; i++) { finish(f); advanceRoster(f.state, .5 / 3600, rates) }
-  if (ready) {
-    expect(f.source.data.operators.A!.currentRoom).toBe('room_1_1')
-    expect(f.source.data.operators.B!.currentRoom).toBe('room_1_2')
-    expect(f.state.morale.A).toBeLessThan(24)
-    expect(f.state.morale.B).toBeLessThan(24)
-    expect(f.source.queue.tasks).not.toContain(task)
-  } else {
-    expect(f.source.data.operators.A!.isResting()).toBe(true)
-    expect(f.source.data.operators.B!.isResting()).toBe(true)
-    expect(f.source.queue.tasks).toContain(task)
-  }
+  expect(f.source.data.operators.A!.currentRoom).toBe('room_1_1')
+  expect(f.source.data.operators.B!.currentRoom).toBe('room_1_2')
+  expect(f.state.morale.A).toBeLessThan(24)
+  expect(f.state.morale.B).toBeLessThan(24)
+  expect(f.source.queue.tasks).not.toContain(task)
+  expect(task.timeMicros).toBe(toMowerMicros(1))
+  expect(task.executionFailure).toBeUndefined()
 })

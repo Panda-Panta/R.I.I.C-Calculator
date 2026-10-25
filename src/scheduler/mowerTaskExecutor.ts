@@ -83,7 +83,9 @@ export function* executeMowerTaskArrangementSteps(task:MowerTask,queue:MowerTask
  if(getTime){
   const result=hooks.backup('BEFORE_PLANNING',task,{appendEmptyTask:true,restoreOnDeactivate:false});enqueueGenerated(queue,result.generated)
   if(!result.changed)hooks.metadata()
-  else if(result.generated.length){
+  // Latest alpha leaves immediate backup work to its own task ownership. The
+  // forced correction/anchor below belongs only to the frozen default model.
+  else if(!hooks.alpha&&result.generated.length){
    if(!hooks.corrections)throw new Error('Mower backup after a downshift requires the correction adapter')
    const previous=new Set(queue.tasks),created=hooks.corrections();enqueueGenerated(queue,created)
    const corrections=queue.tasks.filter(t=>!previous.has(t)&&t.type===T.SELF_CORRECTION)

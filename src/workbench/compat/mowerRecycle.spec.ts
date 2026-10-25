@@ -11,6 +11,8 @@ import { compileRosterSchedule } from '../../scheduler/compileRosterSchedule'
 import { compiledScheduleToRuntimeConfig } from '../../scheduler/scheduleAdapter'
 import { createRosterRuntime } from '../../scheduler/rosterRuntime'
 import { createBackupPlanController } from '../../scheduler/backupPlans'
+import { buildRiicGlobalContext } from '../../engine/globalContext'
+import { evaluateRecycleEfficiency } from '../../engine/supportFacilitySkills'
 import { exportMowerJson, importMowerJson, promotePreservedRecycleRoom } from './mowerJson'
 
 const recycle = {
@@ -31,7 +33,7 @@ describe('native recycling plan compatibility', () => {
       default: 'plan2',
       plan2: { recycle, future_room: { opaque: [1, 2] } },
       plan1: { recycle: { ...recycle, plans: [] } },
-      backup_plans: [{ trigger: 'True', plan: { recycle: ['芬', '香草'] }, custom: 7 }],
+      backup_plans: [{ trigger: {left:'True',operator:'',right:''}, plan: { recycle: ['芬', '香草'] }, custom: 7 }],
       custom_root: { selected: 'recycle' },
     }
     const workspace = importMowerJson(JSON.stringify(document))
@@ -49,11 +51,67 @@ describe('native recycling plan compatibility', () => {
   })
 
   it('keeps an absent recycling room unbuilt and omits it from old native exports', () => {
-    const workspace = importMowerJson(JSON.stringify({ default: 'plan1', plan1: {}, facility_levels: { recycle: 0 } }))
+    const document = { default: 'plan1', plan1: {} }
+    const workspace = importMowerJson(JSON.stringify(document))
     expect(workspace.mainPlan.facilities.recycle).toMatchObject({ level: 0, slots: [] })
-    expect(compileMainPlanToAppConfig(workspace.mainPlan, workspace, createDefaultConfig()).facilities.recycle).toBeUndefined()
-    expect(compiledScheduleToRuntimeConfig(compileRosterSchedule(workspace)).mowerRecycleBuilt).toBeUndefined()
-    expect(JSON.parse(exportMowerJson(workspace)).plan1).not.toHaveProperty('recycle')
+    const config = compileMainPlanToAppConfig(workspace.mainPlan, workspace, createDefaultConfig())
+    const schedule = compileRosterSchedule(workspace)
+    expect(config.facilities.recycle).toBeUndefined()
+    expect(config.facilityOperatorIds.recycle).toBeUndefined()
+    expect(schedule.rooms.some(room => room.roomId === 'recycle')).toBe(false)
+    expect(compiledScheduleToRuntimeConfig(schedule).mowerRecycleBuilt).toBeUndefined()
+    expect(evaluateRecycleEfficiency(config)).toMatchObject({ efficiencyPercent: 0, capacity: 0, hoursPerMaterial: null })
+    const withoutRecycle = structuredClone(config)
+    delete withoutRecycle.facilities.recycle
+    expect(buildRiicGlobalContext(config).engineeringRobots).toBe(buildRiicGlobalContext(withoutRecycle).engineeringRobots)
+    // Preserve the existing missing-right-side-room defaults independently.
+    expect(workspace.mainPlan.facilities.meeting.level).toBe(3)
+    expect(workspace.mainPlan.facilities.factory.level).toBe(3)
+    expect(workspace.mainPlan.facilities.contact.level).toBe(3)
+    expect(workspace.mainPlan.facilities.train.level).toBe(3)
+    expect(JSON.parse(exportMowerJson(workspace))).toEqual(document)
+    expect(JSON.parse(exportMowerJson(importMowerJson(exportMowerJson(workspace))))).toEqual(document)
+  })
+
+  it('keeps an explicitly listed empty recycling room built', () => {
+    const document = { default: 'plan1', plan1: { recycle: { name: '', plans: [] } } }
+    const workspace = importMowerJson(JSON.stringify(document))
+    const config = compileMainPlanToAppConfig(workspace.mainPlan, workspace, createDefaultConfig())
+    expect(workspace.mainPlan.facilities.recycle).toMatchObject({ level: 3, slots: [] })
+    expect(config.facilities.recycle).toBe(3)
+    expect(compiledScheduleToRuntimeConfig(compileRosterSchedule(workspace)).mowerRecycleBuilt).toBe(true)
+    expect(evaluateRecycleEfficiency(config)).toMatchObject({ efficiencyPercent: 120, capacity: 10, hoursPerMaterial: 40 })
+    expect(JSON.parse(exportMowerJson(workspace))).toEqual(document)
+  })
+
+  it.each([0, 1, 2, 3])('honors saved recycling level %i when its main-plan room is absent', level => {
+    const document = { default: 'plan1', plan1: {}, facility_levels: { recycle: level } }
+    const workspace = importMowerJson(JSON.stringify(document))
+    const config = compileMainPlanToAppConfig(workspace.mainPlan, workspace, createDefaultConfig())
+    expect(workspace.mainPlan.facilities.recycle).toMatchObject({ level, slots: [] })
+    expect(config.facilities.recycle).toBe(level || undefined)
+    expect(compileRosterSchedule(workspace).rooms.some(room => room.roomId === 'recycle')).toBe(level > 0)
+    expect(JSON.parse(exportMowerJson(workspace))).toEqual(document)
+  })
+
+  it('allows a backup-only recycling room without building it in the imported main plan', () => {
+    const document = {
+      default: 'plan1', plan1: {},
+      facility_levels: { meeting: 0, factory: 0, contact: 0, train: 0 },
+      backup_plans: [{ trigger: {left:'True',operator:'',right:''}, plan: { recycle: { plans: [{ agent: '旅骨', group: '', replacement: [] }] } } }],
+    }
+    const workspace = importMowerJson(JSON.stringify(document))
+    expect(validateRosterWorkspace(workspace).criticalErrors).toEqual([])
+    expect(workspace.mainPlan.facilities.recycle.level).toBe(0)
+    const schedule = compileRosterSchedule(workspace)
+    const state = createRosterRuntime(compiledScheduleToRuntimeConfig(schedule))
+    const controller = createBackupPlanController(schedule, state)
+    controller.evaluate('END')
+    expect(controller.active).toEqual([true])
+    expect(state.config.positions.find(position => position.id === 'recycle_0')?.primary).toBe(id('旅骨'))
+    expect(state.config.mowerRecycleBuilt).toBe(true)
+    expect(workspace.mainPlan.facilities.recycle).toMatchObject({ level: 0, slots: [] })
+    expect(JSON.parse(exportMowerJson(workspace))).toEqual(document)
   })
 
   it('honors explicit local level zero rather than automatically building a room', () => {

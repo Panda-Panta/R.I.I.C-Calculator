@@ -31,19 +31,35 @@ describe('native task failures retain work and release dispatch',()=>{
   expect(queue.tasks).toContain(task)
   expect(task.timeMicros).toBe(0)
  })
- it.each(['measurement','position','effective-plan','product','backup-conditions'])('resumes after a new relevant %s',change=>{
+ it.each(['measurement','position','effective-plan','product','reservation'])('resumes after a new relevant %s',change=>{
   const {state,data,task,queue}=fixture()
   if(change==='measurement')data.operators.A!.timeStampMicros=1
   if(change==='position')data.operators.A!.currentRoom='dormitory_1'
   if(change==='effective-plan')state.config.mowerSourcePlan!.room_1_1![0]!.replacement=[]
   if(change==='product')state.mowerFacilityProducts={room_1_1:'exp3'}
-  if(change==='backup-conditions')data.planConditions=[true]
+  if(change==='reservation')data.reservedProductReplacements.add('R')
   expect(resumeMowerFailedTasks(state,data,queue)).toBe(true)
   expect(queue.tasks).toEqual([task]);expect(task.executionFailure).toBeUndefined()
   expect(task.executionRetained).toBe(true);expect(task.timeMicros).toBe(0)
   prepareMowerRunEntry(queue,toMowerMicros(2),true)
   expect(queue.tasks).toContain(task)
   queue.removeDerived();expect(queue.tasks).toContain(task)
+ })
+ it('keeps the same failed task suspended when only unrelated global backup conditions change',()=>{
+  const {state,data,task,queue}=fixture(),failure=task.executionFailure,plan=structuredClone(task.plan)
+  data.planConditions=[true,false,true]
+  expect(resumeMowerFailedTasks(state,data,queue)).toBe(false)
+  expect(queue.tasks).toEqual([task]);expect(task.executionFailure).toBe(failure)
+  expect(task.plan).toEqual(plan);expect(task.timeMicros).toBe(0)
+ })
+ it('still resumes the retained work after its actual replacement reservation is released',()=>{
+  const {state,data,task,queue}=fixture()
+  data.reservedProductReplacements.add('R');retainMowerFailedTask(state,data,task,'replacement reserved')
+  data.planConditions=[true]
+  expect(resumeMowerFailedTasks(state,data,queue)).toBe(false)
+  data.reservedProductReplacements.delete('R')
+  expect(resumeMowerFailedTasks(state,data,queue)).toBe(true)
+  expect(queue.tasks).toEqual([task]);expect(task.executionFailure).toBeUndefined();expect(task.timeMicros).toBe(0)
  })
  it('ignores unrelated observations and product changes',()=>{
   const {state,data,task,queue}=fixture()

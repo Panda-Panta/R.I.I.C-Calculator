@@ -72,7 +72,12 @@ export function useWorkbenchCalculation(store: ReturnType<typeof useRosterWorkbe
     if (isCalculating.value) {
       stopCalculation('changed')
       calculationStatus.value = '排班已变更，本次产出计算已中止，请重新计算。'
+    } else if (calculationReport.value || simulationReport.value || timelineData.value) {
+      calculationStatus.value = '排班已变更，原产出报告已失效，请重新计算。'
     }
+    calculationReport.value = null
+    simulationReport.value = null
+    timelineData.value = null
   }, { deep: true, flush: 'sync' })
   onBeforeUnmount(stopCalculation)
 

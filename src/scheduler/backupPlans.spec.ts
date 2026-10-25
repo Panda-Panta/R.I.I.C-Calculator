@@ -63,13 +63,13 @@ describe('Mower backup source contract', () => {
     state.morale[id('阿罗玛')]=24;controller.evaluate('END')
     expect(state.config.positions.find(p=>p.id==='dormitory_1_0')?.primary).toBe(schedule.rooms.find(r=>r.roomId==='dormitory_1')!.slots[0]!.primaryOperatorId)
   })
-  it('rejects non-finite arithmetic without committing a changed activation', () => {
+  it('disables division by zero without committing a changed activation', () => {
     const workspace=importMowerJson(source)
     workspace.compatibility.backupPlans=[{trigger:{left:'1',operator:'/',right:'0'}}]
     const schedule=compileRosterSchedule(workspace),state=createRosterRuntime(compiledScheduleToRuntimeConfig(schedule)),controller=createBackupPlanController(schedule,state)
     const before=structuredClone(state)
-    expect(()=>controller.evaluate('END')).toThrow('有限数')
-    expect(state).toEqual(before)
+    expect(controller.evaluate('END')).toBe(false)
+    expect(state).toEqual({...before,diagnostics:[...before.diagnostics,expect.objectContaining({code:'MOWER_BACKUP_CONDITION_ERROR'})]})
     expect(controller.active).toEqual([false])
   })
   it('does not mutate a compiled schedule across repeated simulations', () => {

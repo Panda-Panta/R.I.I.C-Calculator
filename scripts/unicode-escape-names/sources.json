@@ -1,0 +1,43 @@
+{
+  "unicodeVersion": "15.0.0",
+  "target": "Mower 94a49b4c78bf03f30007f9384b4163630f8da98d requires Python >=3.12,<3.13; release builds use3.12",
+  "generation": "Python3.12 unicodedata + fixed official Unicode15 inputs; all canonical names/aliases checked with ast.literal_eval. Never download during generation or runtime.",
+  "files": {
+    "UnicodeData-15.0.0.txt.gz": {
+      "url": "https://www.unicode.org/Public/15.0.0/ucd/UnicodeData.txt",
+      "sha256": "806e9aed65037197f1ec85e12be6e8cd870fc5608b4de0fffd990f689f376a73",
+      "hashScope": "uncompressed official bytes",
+      "storage": "gzip9 mtime0"
+    },
+    "NameAliases-15.0.0.txt": {
+      "url": "https://www.unicode.org/Public/15.0.0/ucd/NameAliases.txt",
+      "sha256": "3e39509e8fae3e5d50ba73759d0b97194501d14a9c63107a6372a46b38be18e8"
+    },
+    "NamedSequences-15.0.0.txt": {
+      "url": "https://www.unicode.org/Public/15.0.0/ucd/NamedSequences.txt",
+      "sha256": "1d5202155f14841973aa540b1625f4befbde185ac77ce5aceaaaa0501a68bd66",
+      "purpose": "Negative completeness check; not included in runtime names table"
+    },
+    "LICENSE.txt": {
+      "url": "https://www.unicode.org/license.txt",
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+      "license": "Unicode-3.0",
+      "retrieved": "2026-10-25"
+    }
+  },
+  "nativeSources": {
+    "setup": {
+      "url": "https://github.com/ArkMowers/arknights-mower/blob/94a49b4c78bf03f30007f9384b4163630f8da98d/setup.py",
+      "gitBlob": "3158e0f552f6e978420ab87d4b4c7d017fa7a237"
+    },
+    "release": {
+      "url": "https://github.com/ArkMowers/arknights-mower/blob/94a49b4c78bf03f30007f9384b4163630f8da98d/.github/workflows/release-build.yml",
+      "gitBlob": "ffe30f6131ef8295d5a077d6b60b674a57650ba4"
+    },
+    "nameAlgorithm": {
+      "url": "https://github.com/python/cpython/blob/v3.12.0/Modules/unicodedata.c",
+      "gitBlob": "41dcd5f8f883f2ce9809988234340542b991f6bc",
+      "sections": "is_unified_ideograph, find_syllable, _getcode; no CPython C code copied"
+    }
+  }
+}

@@ -31,6 +31,53 @@ function fixture(groupHole=false,padding='known'){
  return {room,agents,data,task,queue,operators,trace,ensure,marker,restore:()=>{physical=[...agents];observe()}}
 }
 describe('actual alpha default dorm recovery ordering',()=>{
+ it.each([false,true])('confirms a fixed same-group recovery bed before any later Free target (later Free=%s)',later=>{
+  const room='dormitory_1',names=['Manager','Worker','Keeper',...(later?['Other']:[])]
+  const operators:Record<string,MowerOperatorState>={
+   Manager:new MowerOperatorState({name:'Manager',room,index:0,currentRoom:room,currentIndex:0,operatorType:'high',singleRecoveryManager:true,mood:24,timeStampMicros:0}),
+   Owner:new MowerOperatorState({name:'Owner',room,index:1,group:'g',replacement:['Worker'],currentRoom:'work',currentIndex:0,operatorType:'high',mood:24,timeStampMicros:0}),
+   Worker:new MowerOperatorState({name:'Worker',room:'work',index:0,group:'g',replacement:['Owner'],currentRoom:room,currentIndex:1,operatorType:'high',mood:10,upperLimit:12,restMoodLimit:true,timeStampMicros:0}),
+   Keeper:new MowerOperatorState({name:'Keeper',room,index:2,currentRoom:room,currentIndex:2,operatorType:'high',mood:24,timeStampMicros:0}),
+  }
+  if(later)operators.Other=new MowerOperatorState({name:'Other',currentRoom:room,currentIndex:3,mood:3,timeStampMicros:0})
+  const data=new MowerSchedulingData({alpha:true,plan:{work:['Worker'],[room]:['Manager','Owner','Keeper',...(later?['Free']:[])]},operators,dorms:later?[new MowerDormState([room,3],'Other',toMowerMicros(3))]:[],nowMicros:0,groupShiftState:{g:true}})
+  expect(data.getDormByName('Worker')?.[1]).toBe(data.groupDorms[0])
+  expect(mowerRecoveryTarget(data,room,names)?.name).toBe('Worker')
+  const task=new MowerTask({plan:{[room]:names}}),queue=new MowerTaskQueue();queue.tasks=[task]
+  expect(ensureMowerDormRecovery(data,queue,task,room,names,{arrangeTemporary:row=>{
+   for(const op of Object.values(operators))if(op.currentRoom===room&&!row.includes(op.name)){op.currentRoom='';op.currentIndex=-1}
+   row.forEach((name,index)=>{operators[name]!.currentRoom=room;operators[name]!.currentIndex=index})
+  }})).toBe(true)
+  expect(mowerConfirmedRecoveryTarget(data,room,'Manager')).toBe('Worker')
+  expect(operators.Worker!.upperLimit).toBe(12)
+ })
+ it('replaces an unfinished ordinary fixed resident before the target with full padding',()=>{
+  const f=fixture();f.data.alpha=true;f.operators.M1!.mood=3
+  f.operators.Padding=new MowerOperatorState({name:'Padding',mood:24,timeStampMicros:0})
+  expect(f.ensure()).toBe(true)
+  expect(f.trace).toEqual([{intermediate:['M0','Padding','H','','']}])
+  expect(mowerConfirmedRecoveryTarget(f.data,f.room,'M0')).toBe('H')
+  expect(f.operators.M1!.mood).toBe(3)
+ })
+ it('does not record a target when an unfinished fixed prefix has no full padding',()=>{
+  const f=fixture();f.data.alpha=true;f.operators.M1!.mood=3
+  expect(f.ensure()).toBe(false)
+  expect(f.trace).toEqual([])
+  expect(mowerConfirmedRecoveryTarget(f.data,f.room,'M0')).toBeUndefined()
+ })
+ it('does not use a single-recovery provider as an ordinary full padding resident',()=>{
+  const f=fixture();f.data.alpha=true;f.operators.M1!.mood=3
+  f.operators.Padding=new MowerOperatorState({name:'Padding',mood:24,timeStampMicros:0,singleRecoveryManager:true})
+  expect(f.ensure()).toBe(false)
+  expect(f.trace).toEqual([])
+ })
+ it.each(['provider','fiammetta'])('preserves an unfinished %s before the target',kind=>{
+  const f=fixture();f.data.alpha=true;f.operators.M1!.mood=3
+  if(kind==='provider')f.operators.M1!.singleRecoveryManager=true
+  else f.operators.M1!.nativeName='菲亚梅塔'
+  expect(f.ensure()).toBe(true)
+  expect(f.trace).toEqual([{intermediate:['M0','M1','H','','']}])
+ })
  it.each([false,true])('never proactively targets a single-recovery provider, sole unfinished recipient=%s',sole=>{
   const f=fixture();f.ensure();f.restore();f.operators.H!.singleRecoveryManager=true
   if(sole)for(const name of ['R','Q'])f.operators[name]!.mood=24

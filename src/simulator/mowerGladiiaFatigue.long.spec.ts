@@ -5,7 +5,7 @@ import {importMowerJson} from '../workbench/compat/mowerJson'
 import {runCalculationBridge} from '../workbench/calculationBridge'
 import {MORALE_EPSILON} from '../scheduler/rosterRuntime'
 
-const baseline=JSON.parse(readFileSync(new URL('./fixtures/mower-legacy-240h-20261024.json',import.meta.url),'utf8'))
+const baseline=JSON.parse(readFileSync(new URL('./fixtures/mower-legacy-240h-20261025.json',import.meta.url),'utf8'))
 
 it('keeps the original nine-backup legacy roster complete with current recovery and retained-task scheduling',async()=>{
  // Let Vitest publish the task before entering the synchronous long simulation.

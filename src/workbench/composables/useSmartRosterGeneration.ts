@@ -12,22 +12,35 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
   const smartRosterConfigModalOpen = ref(false)
   const generationProgress = ref<SmartRosterProgress | null>(null)
   const activeRosterWorker = shallowRef<Worker | null>(null)
+  function stopGeneration(): void {
+    const worker = activeRosterWorker.value
+    activeRosterWorker.value = null
+    if (worker) {
+      worker.onmessage = null
+      worker.onerror = null
+      worker.onmessageerror = null
+      worker.terminate()
+    }
+    isGeneratingRoster.value = false
+    generationProgress.value = null
+  }
   watch(() => simSettings.value.productionWeights, value => {
     const weights = normalizeProductionWeights(value)
     const current = normalizeProductionWeights(store.workspace.productionWeights)
     if ((Object.keys(weights) as Array<keyof typeof weights>).some(key => weights[key] !== current[key])) {
       if (activeRosterWorker.value) {
-        const worker = activeRosterWorker.value
-        activeRosterWorker.value = null
-        worker.terminate()
-        isGeneratingRoster.value = false
-        generationProgress.value = null
+        stopGeneration()
         replaceStatusMessage.value = '产出加权系数已变更，自动排班计算已中止，请重新生成。'
       }
       store.workspace.productionWeights = weights
     }
   }, { deep: true, flush: 'sync' })
-  onBeforeUnmount(() => activeRosterWorker.value?.terminate())
+  watch(() => store.workspace, () => {
+    if (!activeRosterWorker.value) return
+    stopGeneration()
+    replaceStatusMessage.value = '排班已变更，自动排班计算已中止，请重新生成。'
+  }, { deep: true, flush: 'sync' })
+  onBeforeUnmount(stopGeneration)
 
   function handleAutoGenerate(explicitConfig?: SmartRosterConfig): void {
     if (isCalculating.value || isGeneratingRoster.value) return
@@ -69,6 +82,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
   }
 
   function handleConfirmSmartRosterConfig(config: SmartRosterConfig): void {
+    if (isCalculating.value || isGeneratingRoster.value) return
     smartRosterConfigModalOpen.value = false
 
     let inventoryEntries: OwnedOperatorInput[] = []
@@ -129,6 +143,8 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
     const onSmartRosterComplete = (report: SmartRosterResult): void => {
       if (report.status === 'draft' && report.workspace) {
         store.loadWorkspace(report.workspace)
+        // Finish the persisted name sync before publishing this workspace's report.
+        store.workspace.mainPlan.name = store.workspace.name
         const scoreStr = report.score !== null ? `（加权预测：${report.score.toFixed(1)} 分/日）` : ''
         replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并完成空位组队与动态仿真验证${scoreStr}。`
         simSettings.value.droneTarget = runOptions.droneTarget
@@ -158,26 +174,19 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
           if (event.data.type === 'progress') {
             generationProgress.value = event.data.progress
           } else if (event.data.type === 'complete') {
+            // Release the snapshot before adopting its own workspace so that
+            // the edit watcher cannot cancel a successful result application.
+            stopGeneration()
             onSmartRosterComplete(event.data.report)
-            worker.terminate()
-            activeRosterWorker.value = null
-            isGeneratingRoster.value = false
-            generationProgress.value = null
           } else if (event.data.type === 'error') {
+            stopGeneration()
             replaceStatusMessage.value = `自动排班生成失败：${event.data.error}`
-            worker.terminate()
-            activeRosterWorker.value = null
-            isGeneratingRoster.value = false
-            generationProgress.value = null
           }
         }
         worker.onerror = (err) => {
           if (activeRosterWorker.value !== worker) return
+          stopGeneration()
           replaceStatusMessage.value = `自动排班任务发生错误：${err.message || 'Worker 执行失败'}`
-          worker.terminate()
-          activeRosterWorker.value = null
-          isGeneratingRoster.value = false
-          generationProgress.value = null
         }
         worker.postMessage({
           base: baseWorkspace,
@@ -204,12 +213,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
   }
 
   function handleAbortAutoGenerate(): void {
-    if (activeRosterWorker.value) {
-      activeRosterWorker.value.terminate()
-      activeRosterWorker.value = null
-    }
-    isGeneratingRoster.value = false
-    generationProgress.value = null
+    stopGeneration()
     replaceStatusMessage.value = '已中止自动排班计算。'
   }
 

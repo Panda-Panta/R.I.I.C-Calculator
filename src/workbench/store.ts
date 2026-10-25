@@ -1,5 +1,5 @@
 import {promoteMowerAlphaWorkspace} from './migrate'
-import {resolveOperatorCharId, restoreOperatorMowerName} from '../domain/operatorIdentifiers'
+import { replaceWorkspaceOperator } from './operatorReplacement'
 import { defineStore } from 'pinia'
 import { computed, ref, toRaw } from 'vue'
 import { createDefaultWorkspace } from './defaults'
@@ -9,7 +9,6 @@ import { promotePreservedRecycleRoom } from './compat/mowerJson'
 import { isDroneCapacity } from '../domain/droneCapacity'
 import {
   MOWER_OUTPUT_ROOM_IDS,
-  MOWER_OPERATOR_LIST_FIELDS,
   type MowerFacility,
   type MowerMainConf,
   type MowerOccupant,
@@ -180,63 +179,7 @@ export const useRosterWorkbenchStore = defineStore('rosterWorkbench', () => {
   }
 
   function replaceOperatorGlobally(targetOpId: string, replacementOpId: string): void {
-    if (!targetOpId || !replacementOpId || targetOpId === replacementOpId) return
-    const facilities = workspace.value.mainPlan.facilities
-
-    for (const roomId of Object.keys(facilities) as MowerRoomId[]) {
-      const facility = facilities[roomId]
-      let modified = false
-      for (const slot of facility.slots) {
-        if (slot.occupant.kind === 'operator' && slot.occupant.operatorId === targetOpId) {
-          slot.occupant.operatorId = replacementOpId
-          modified = true
-        }
-        for (const binding of [slot, ...(slot.groupBindings ?? [])]) {
-          if (binding.replacements.includes(targetOpId)) {
-            binding.replacements = binding.replacements.map(id => id === targetOpId ? replacementOpId : id)
-            modified = true
-          }
-        }
-      }
-      if (modified) {
-        markRoomPresent(roomId)
-      }
-    }
-
-    const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
-    const replace = (value: unknown): unknown => {
-      if (typeof value !== 'string') return value
-      const suffix = value.indexOf('('), name = suffix < 0 ? value : value.slice(0, suffix)
-      if (resolveOperatorCharId(name.trim()) !== resolveOperatorCharId(targetOpId)) return value
-      return (name.startsWith('char_') ? replacementOpId : restoreOperatorMowerName(replacementOpId)) + (suffix < 0 ? '' : value.slice(suffix))
-    }
-    const replaceList = (value: unknown): unknown => Array.isArray(value) ? value.map(replace) : typeof value === 'string' ? value.split(/[,，]/).map(replace).join(',') : value
-    const replaceConf = (conf: Record<string, unknown>) => {
-      for (const field of MOWER_OPERATOR_LIST_FIELDS) if (conf[field] !== undefined) conf[field] = replaceList(conf[field])
-      if (record(conf.removed_operators)) for (const field of MOWER_OPERATOR_LIST_FIELDS) if (conf.removed_operators[field] !== undefined) conf.removed_operators[field] = replaceList(conf.removed_operators[field])
-      if (record(conf.operator_mood_limits)) conf.operator_mood_limits = Object.fromEntries(Object.entries(conf.operator_mood_limits).map(([name, limits]) => [String(replace(name)), limits]))
-    }
-    replaceConf(workspace.value.mainPlan.conf)
-    const advanced = workspace.value.compatibility.unrecognizedFields.advanced_settings
-    if (record(advanced)) {
-      if (Array.isArray(advanced.dorm_isolation)) advanced.dorm_isolation = advanced.dorm_isolation.map(group => Array.isArray(group) ? group.map(replace) : group)
-      if (advanced.favorite !== undefined) advanced.favorite = replaceList(advanced.favorite)
-    }
-    for (const backup of workspace.value.compatibility.backupPlans) {
-      if (!record(backup)) continue
-      if (record(backup.conf)) replaceConf(backup.conf)
-      if (record(backup.task)) for (const room of Object.keys(backup.task)) backup.task[room] = replaceList(backup.task[room])
-      if (!record(backup.plan)) continue
-      for (const facility of Object.values(backup.plan)) {
-        if (!record(facility) || !Array.isArray(facility.plans)) continue
-        for (const slot of facility.plans) {
-          if (!record(slot)) continue
-          slot.agent = replace(slot.agent)
-          if (slot.replacement !== undefined) slot.replacement = replaceList(slot.replacement)
-          if (Array.isArray(slot.group_bindings)) for (const binding of slot.group_bindings) if (record(binding) && binding.replacement !== undefined) binding.replacement = replaceList(binding.replacement)
-        }
-      }
-    }
+    for (const roomId of replaceWorkspaceOperator(workspace.value, targetOpId, replacementOpId)) markRoomPresent(roomId)
   }
 
   function updateConf(confPatch: Partial<MowerMainConf>): void {

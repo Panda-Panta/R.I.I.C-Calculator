@@ -112,8 +112,8 @@ describe('Mower simulation event boundaries',()=>{
   expect(evaluateBackupExpression(windowCondition,state)).toBe(true)
   expect(source.data.operators[aroma]!.timeStampMicros).toBe(0)
   expect(source.data.operators[aroma]!.mood).toBe(24)
-  // Isolate a prediction-only retry. A real END backup activation changes the
-  // configuration and is a separate valid recovery edge, covered below.
+   // Isolate a prediction-only retry. An END activation also needs a related
+   // effective configuration change before it can resume this work.
   settleRoster(state,rates)
   expect(previewCalls).toBe(failedCalls)
   expect(task.executionFailure).toBeDefined()
@@ -146,10 +146,10 @@ describe('Mower simulation event boundaries',()=>{
   expect(activation!.time).toBeGreaterThan(.1)
   expect(activation!.time).toBeLessThan(.15)
  })
- it('treats a real END backup activation as a relevant configuration recovery edge',()=>{
+  it.each([{label:'empty payload',related:false},{label:'related replacement row',related:true}])('resumes after an END activation only for a relevant effective change: $label',({related})=>{
   const workspace=emptyWorkspace()
   workspace.mainPlan.facilities.dormitory_1.slots=[...residents.slice(0,4).map(operatorId=>({occupant:{kind:'operator' as const,operatorId},groupId:null,replacements:[]})),{occupant:{kind:'free'},groupId:null,replacements:[]}]
-  workspace.compatibility.backupPlans=[{name:'Measured phase configuration',trigger:windowCondition,trigger_timing:'END',plan:{},task:{},conf:{}}]
+   workspace.compatibility.backupPlans=[{name:'Measured phase configuration',trigger:windowCondition,trigger_timing:'END',plan:related?{room_1_1:{plans:[{agent:aroma,group:'',replacement:[gravel,resolveOperatorCharId('香草')]}]}}:{},task:{},conf:{}}]
   const schedule=compileRosterSchedule(workspace),config=compiledScheduleToRuntimeConfig(schedule);config.mowerAlpha=true
   const state=createRosterRuntime(config),controller=createBackupPlanController(schedule,state),source=getMowerSourceRuntime(state)
   source.initial=false
@@ -161,12 +161,19 @@ describe('Mower simulation event boundaries',()=>{
   const rates={workRate:()=>1,recoveryRate:()=>4}
   settleRoster(state,rates,0,controller.evaluate)
   expect(task.executionFailure).toBeDefined()
+   const failure=task.executionFailure,plan=structuredClone(task.plan)
   rejecting=false;advanceRoster(state,.12,rates)
   expect(source.data.operators[aroma]!.timeStampMicros).toBe(0)
   controller.evaluate('END')
   expect(source.data.planConditions).toEqual([true])
-  expect(nextRosterActionHours(state,rates)).toBe(0)
-  expect(task.executionFailure).toBeUndefined()
+   if(related){
+    expect(nextRosterActionHours(state,rates)).toBe(0)
+    expect(task.executionFailure).toBeUndefined()
+   }else{
+    expect(nextRosterActionHours(state,rates)).toBeGreaterThan(0)
+    expect(task.executionFailure).toBe(failure)
+   }
+   expect(task.plan).toEqual(plan)
   expect(source.queue.tasks).toContain(task);expect(task.timeMicros).toBe(0)
   expect(state.events.some(event=>event.type==='backup-plan'&&event.active&&event.timing==='END')).toBe(true)
  })
