@@ -944,6 +944,10 @@
       {
         "id": "LR-04",
         "scope": "Alpha post-arrangement backup changes do not force another microsecond-anchored correction; frozen default semantics remain separate."
+      },
+      {
+        "id": "FINAL-SLOW-ROUTING-001",
+        "scope": "Physical dorm residents continue recovering across backup changes between fixed and Free slot roles, regardless of which occupancy map retained their actual position. Single and batched derivatives share the same slot lookup; task deadlines and native clock gates are unchanged."
       }
     ]
   }
