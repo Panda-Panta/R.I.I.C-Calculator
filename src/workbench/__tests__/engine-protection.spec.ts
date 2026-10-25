@@ -18,11 +18,14 @@ describe('Engine Protection & Calculation Equivalence', () => {
   it('protects engine source files against unauthorized modifications', () => {
     // Authorized 2026-10-14 changes reuse PR10 exhausted Abyssal grants and add
     // the 45/90% Gladiia stage cap. Mainline 1092f3f also incorporates PR20's
-    // Ling/Sui consumption reset. The current Mower import preserves all three
-    // engine files from that accepted baseline. Hashes are normalized to LF.
+    // Ling/Sui consumption reset. Authorized 2026-10-25 formula corrections
+    // restrict control morale providers to their unlocked skills/current room,
+    // gate synergy providers by skill stage, and require Texas beside Lappland.
+    // calculate.ts and the default report oracle retain their accepted baseline.
+    // Hashes are normalized to LF.
     expect(fileSha256('engine/calculate.ts')).toBe('34739fc18ac6f96af10dda40d03e3b0fe92a698b8556dd4dfd905998ce345c4a')
-    expect(fileSha256('engine/morale.ts')).toBe('26e1e6f229430619eed7ef31cfaf1fa334380bce5270d2ffe5692099bfcf338f')
-    expect(fileSha256('engine/operatorRules.ts')).toBe('c07812ea02bed35cf503e2acbcba399cf1915b0413e7c72d59befb9e70fa26a0')
+    expect(fileSha256('engine/morale.ts')).toBe('0158fdf05cd05698eef1e998f83753dc2d06422c92af04d3797bf8614afa0b62')
+    expect(fileSha256('engine/operatorRules.ts')).toBe('209f1d8765e5c1db35f3601e28ce123e6bac1109b66c08fbe63c5b86c8543558')
   })
 
   it('produces deterministic baseline report for default configuration', () => {
