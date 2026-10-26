@@ -229,7 +229,11 @@ function syncReplacementChecks(s:RuntimeState,rates:RuntimeRates):void {
  if(!source.data.alpha||source.execution||source.phaseExecution)return
  syncMowerReplacementChecks(source.data,source.queue,replacementCheckOptions(s,rates))
  const next=Math.min(...source.queue.tasks.filter(task=>task.replacementCheck&&!task.executionFailure).map(task=>task.timeMicros))
- if(source.runReturn&&next<source.runReturn.wakeMicros)source.runReturn.wakeMicros=next
+ // A room operation can leave a check overdue without changing its original deadline.
+ // Shorten an outer wait only to a future wake; once reached, keep it due so
+ // repeated action queries cannot postpone the check or rewind the run clock.
+ const wake=next<=source.data.nowMicros?source.data.nowMicros+(s.config.mowerRunLoopClock?.minimumClockStepMicros??1):next
+ if(source.runReturn&&wake<source.runReturn.wakeMicros)source.runReturn.wakeMicros=wake
 }
 /** Operator.current_room setter calls this before index/mood assignment, also on cleanup. */
 function currentRoomChanged(s:RuntimeState,op:MowerOperatorState,startedWorking=false):void {
