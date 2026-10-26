@@ -18,6 +18,13 @@ prefixes that cannot admit native injective group replacement coverage. It does
 not write the matching witness, repair output, globally ban reused group members,
 or prove available beds or long-horizon completion. Legacy defaults remain intact.
 
+The action-layer successor `latest-native-group-occupants-v4` additionally forbids
+grouping or adding binding columns after a Free/Fiammetta occupant is committed,
+exactly as the native validator requires. It retains null/empty group names,
+absent/empty binding arrays and Fiammetta refresh targets. Singleton legal choices
+are reported as forced, not learned decisions. Existing modes retain their behavior;
+formal training admission of V4 requires its separately reviewed source/fork contract.
+
 The paired source transition `latest-default-to-aligned-group-cover-v4` requires
 exclusive `--continue-from` and continuation ID
 `aligned-union-native-cover-continuation-v1`. The supported parent is an authenticated

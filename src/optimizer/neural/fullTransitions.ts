@@ -134,8 +134,8 @@ export function finalizeFullState(s: FullScenario, state: FullState): FullFinalR
         if (!checked.valid) issue('LATEST_WARMUP_POLICY_UNSUPPORTED', checked.diagnostics.filter(d => d.severity === 'error').map(d => d.message).join('; '));
         if (checked.addedExhaustOperatorIds.length) issue('LATEST_WARMUP_POLICY_MISSING', checked.addedExhaustOperatorIds.join(', '));
     }
-    if (['latest-warmup-runorder-v2', 'latest-native-group-cover-v3'].includes(s.policyMode)) diagnostics.push(...fullNativeRuntimeAdmissionIssues(workspace, s.simulationConditioning.schedulerAssumptions));
-    if (s.policyMode === 'latest-native-group-cover-v3' && !fullGroupCoverageFeasible(workspace)) issue('LATEST_GROUP_COVERAGE_INFEASIBLE', 'Closed group replacement lists have no native injective cover');
+    if (['latest-warmup-runorder-v2', 'latest-native-group-cover-v3', 'latest-native-group-occupants-v4'].includes(s.policyMode)) diagnostics.push(...fullNativeRuntimeAdmissionIssues(workspace, s.simulationConditioning.schedulerAssumptions));
+    if (['latest-native-group-cover-v3', 'latest-native-group-occupants-v4'].includes(s.policyMode) && !fullGroupCoverageFeasible(workspace)) issue('LATEST_GROUP_COVERAGE_INFEASIBLE', 'Closed group replacement lists have no native injective cover');
     const owned = new Set(s.inventory.operators.map(o => o.charId)), reserved = new Set<string>(), permanent = new Set(workspace.mainPlan.conf.workaholic.map(id));
     for (const room of Object.values(workspace.mainPlan.facilities)) {
         if (room.level > 0 && room.type === 'dormitory' && !room.slots.some(p => p.occupant.kind === 'operator')) {

@@ -18,7 +18,7 @@ export interface FullDiagnostic {
 }
 export type FullConstructionOrder = 'legacy-v1' | 'staffing-first-v1';
 /** Opt-in action-domain constraints, not a post-decoding roster repair. */
-export type FullPolicyMode = 'legacy-unconstrained-v1' | 'latest-warmup-exhaustion-v1' | 'latest-warmup-runorder-v2' | 'latest-native-group-cover-v3';
+export type FullPolicyMode = 'legacy-unconstrained-v1' | 'latest-warmup-exhaustion-v1' | 'latest-warmup-runorder-v2' | 'latest-native-group-cover-v3' | 'latest-native-group-occupants-v4';
 export type FullDecisionKind = 'occupant' | 'resident' | 'group' | 'replacement' | 'bindings' | 'binding-group' | 'binding-replacement' | 'conf-list' | 'ling_xi';
 export interface FullDecision {
     kind: FullDecisionKind;
@@ -90,7 +90,7 @@ export function createFullScenario(base: RosterWorkspace, inventory: OperatorInv
             code: 'INVALID_CONSTRUCTION_ORDER', message: String(constructionOrder)
         });
     }
-    if (!['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2', 'latest-native-group-cover-v3'].includes(policyMode)
+    if (!['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2', 'latest-native-group-cover-v3', 'latest-native-group-occupants-v4'].includes(policyMode)
         || policyMode !== 'legacy-unconstrained-v1' && constructionOrder !== 'staffing-first-v1') {
         diagnostics.push({ code: 'INVALID_POLICY_MODE', message: 'Latest warmup constraints require explicit staffing-first-v1 construction' });
     }
@@ -346,7 +346,7 @@ function referenceOperatorAllowed(s: FullScenario, workspace: RosterWorkspace, d
         && !refs.some(ref => id(ref) === operator.charId)
         && (s.constructionOrder !== 'staffing-first-v1' || d.kind === 'conf-list' || nativePrimaryReferenceAllowed(workspace, d, operator.charId))
         && (s.policyMode === 'legacy-unconstrained-v1' || d.kind === 'conf-list' || nativeWarmupReferenceAllowed(s, workspace, d, operator.charId))
-        && (!['latest-warmup-runorder-v2', 'latest-native-group-cover-v3'].includes(s.policyMode) || nativeRunOrderReferenceAllowed(workspace, d, operator.charId))
+        && (!['latest-warmup-runorder-v2', 'latest-native-group-cover-v3', 'latest-native-group-occupants-v4'].includes(s.policyMode) || nativeRunOrderReferenceAllowed(workspace, d, operator.charId))
         && (d.kind === 'conf-list' || room?.type === 'dormitory' || !physicalBackupOperatorIds(room!, { replacements: [operator.charId] }).length || canReferencePhysical(workspace, d, operator.charId));
 }
 function referenceFreeAllowed(s: FullScenario, workspace: RosterWorkspace, d: FullDecision): boolean {
@@ -362,6 +362,10 @@ function legalFullActionsBase(s: FullScenario, state: FullState): FullAction[] {
     }
     const room = d.roomId ? state.workspace.mainPlan.facilities[d.roomId] : undefined, slot = room?.slots[d.slotIndex!];
     const ops = s.inventory.operators.filter(o => room?.type !== 'trading' || !['佩佩', 'U-Official'].includes(o.name));
+    // Native checks group truthiness OR any additional column, including an empty-name one.
+    // Absent/empty column arrays and Fiammetta refresh targets retain their original semantics.
+    const groupForbiddenOccupant = s.policyMode === 'latest-native-group-occupants-v4'
+        && (slot?.occupant.kind === 'free' || slot?.occupant.kind === 'operator' && id(slot.occupant.operatorId) === id('菲亚梅塔'));
     if (d.kind === 'occupant') {
         // A one-pass occupant decision cannot refill this seat later. These are
         // necessary terminal constraints, not a staffing preference or ranker.
@@ -385,13 +389,14 @@ function legalFullActionsBase(s: FullScenario, state: FullState): FullAction[] {
         for (let i = 0; groups.has(fresh); i++) {
             fresh = `neural_group_${i + 1}`;
         }
-        return [action('value', null), ...[...groups].map(g => action('value', g)), action('value', fresh)];
+        return [action('value', null), ...[...groups].map(g => action('value', g)), action('value', fresh)]
+            .filter(candidate => !groupForbiddenOccupant || !candidate.value);
     }
     if (d.kind === 'bindings') {
         const unsupportedWarmupGroup = s.policyMode !== 'legacy-unconstrained-v1' && slot?.occupant.kind === 'operator'
             && isWarmupOperatorInFacility(slot.occupant.operatorId, room!.type, s.inventory)
             && !state.workspace.mainPlan.conf.workaholic.some(ref => id(ref) === id(slot.occupant.kind === 'operator' ? slot.occupant.operatorId : ''));
-        return [...(d.listIndex === undefined ? [action('absent')] : []), action('end'), ...(!unsupportedWarmupGroup && (slot?.groupBindings?.length ?? 0) < s.inventory.operators.length ? [action('binding')] : [])];
+        return [...(d.listIndex === undefined ? [action('absent')] : []), action('end'), ...(!groupForbiddenOccupant && !unsupportedWarmupGroup && (slot?.groupBindings?.length ?? 0) < s.inventory.operators.length ? [action('binding')] : [])];
     }
     if (d.kind === 'ling_xi') {
         return [0, 1, 2, 3].map(n => action('value', n));
@@ -420,7 +425,7 @@ function projectedReference(workspace: RosterWorkspace, d: FullDecision, a: Full
 }
 export function legalFullActions(s: FullScenario, state: FullState): FullAction[] {
     const actions = legalFullActionsBase(s, state), d = nextDecision(s, state);
-    if (s.policyMode !== 'latest-native-group-cover-v3' || !d || !['replacement', 'binding-replacement'].includes(d.kind)
+    if (!['latest-native-group-cover-v3', 'latest-native-group-occupants-v4'].includes(s.policyMode) || !d || !['replacement', 'binding-replacement'].includes(d.kind)
         || !Object.values(state.workspace.mainPlan.facilities).some(room => room.level > 0 && room.slots.some(slot => slot.occupant.kind === 'operator' && [slot, ...(slot.groupBindings ?? [])].some(binding => binding.groupId)))) return actions;
     const key = (decision: FullDecision) => fullGroupReferenceKey(decision.roomId!, decision.slotIndex!, decision.kind === 'binding-replacement' ? decision.bindingIndex! : -1);
     const pending = new Map(state.decisions.slice(state.decisionIndex).filter(decision => ['replacement', 'binding-replacement'].includes(decision.kind)).map(decision => [key(decision), decision]));
