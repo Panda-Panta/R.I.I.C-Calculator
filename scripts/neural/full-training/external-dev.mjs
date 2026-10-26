@@ -1,3 +1,4 @@
+import {GROUP_COVER_SOURCE_TRANSITION} from './aligned-continuation-contract.mjs';
 import { referenceManifestContract } from '../full-baseline/reference-protocol.mjs';
 /** Snapshot a TRAIN model, then evaluate on separately qualified exposed FULL DEV families. */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -26,7 +27,7 @@ export function validateExternalSources(training, dev, trainingData, devData) {
 }
 export function validateExternalTeacherContract(training, sources) {
     const policy = training.config?.sourceTransition ?? 'none';
-    if(policy===ALIGNED_SOURCE_TRANSITION&&training.config.featureMigration!==FEATURE_MIGRATION_ID)throw Error('External feature migration binding missing');
+    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION].includes(policy)&&training.config.featureMigration!==FEATURE_MIGRATION_ID)throw Error('External feature migration binding missing');
     if (policy !== 'none' && (![STAFFING_SOURCE_TRANSITION, ...Object.keys(LATEST_POLICY_TRANSITIONS)].includes(policy) || training.config?.constructionOrder !== 'staffing-first-v1')) throw Error('Invalid external reference action transition');
     if (Object.hasOwn(LATEST_POLICY_TRANSITIONS, policy) && (training.config?.policyMode !== LATEST_POLICY_TRANSITIONS[policy] || training.config?.teacherKind !== 'full-optimizer')) throw Error('Latest external transition requires bound full-reference policy mode');
     if (isLatestPolicyMode(training.config?.policyMode) && LATEST_POLICY_TRANSITIONS[policy] !== training.config.policyMode) throw Error('Latest external policy mode requires independent producer replay transition');

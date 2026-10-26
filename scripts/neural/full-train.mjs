@@ -7,6 +7,7 @@ import { dirname, resolve, join, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { verifyTeacherSourceCompatibility, STAFFING_SOURCE_TRANSITION, LATEST_POLICY_TRANSITIONS, isLatestPolicyMode } from './full-training/source-compatibility.mjs';
 import { prepareProducerReplay } from './full-training/producer-replay.mjs';
+import {ALIGNED_CONTINUATION_ID,GROUP_COVER_SOURCE_TRANSITION} from './full-training/aligned-continuation-contract.mjs';
 import {FEATURE_MIGRATION_ID,ALIGNED_SOURCE_TRANSITION} from './full-training/feature-migration-contract.mjs';
 import {FULL_UNION_KIND,validateFullUnionDefinition,composeFullTrainingUnion,fullUnionDatasetContract} from './full-training/full-union-contract.mjs';
 import { mergeLinkedAuxiliarySources } from './full-training/linked-sources.mjs';
@@ -100,7 +101,7 @@ export async function collectFullUnionSources(definitionPath,directory,provenanc
     return composeFullTrainingUnion(members,{definition,excludedCohorts,trainingProvenance:provenance,sourceTransition});
 }
 export function parseFullTrainingOptions(args) {
-    const out = { source: 'pilot-20261027', run: '', purpose: 'dev-overfit', 'budget-ms': '120000', 'epochs': '10', 'chunk-size': '128', 'hidden-size': '64', seed: '43', 'learning-rate': '.03', optimizer: 'sgd-v1', 'teacher-kind': 'full-optimizer', 'linked-retry': '', 'construction-order': 'legacy-v1', 'input-profile': 'actual-mixture-v1', 'source-transition': 'none', 'policy-mode': 'legacy-unconstrained-v1', 'producer-replay-run': '', 'full-source-union':'', 'fork-from': '', 'fresh-from': '', 'migrate-from':'', 'feature-migration':'', 'init-reason': '' };
+    const out = { source: 'pilot-20261027', run: '', purpose: 'dev-overfit', 'budget-ms': '120000', 'epochs': '10', 'chunk-size': '128', 'hidden-size': '64', seed: '43', 'learning-rate': '.03', optimizer: 'sgd-v1', 'teacher-kind': 'full-optimizer', 'linked-retry': '', 'construction-order': 'legacy-v1', 'input-profile': 'actual-mixture-v1', 'source-transition': 'none', 'policy-mode': 'legacy-unconstrained-v1', 'producer-replay-run': '', 'full-source-union':'', 'fork-from': '', 'fresh-from': '', 'migrate-from':'', 'feature-migration':'', 'continue-from':'', 'continuation-id':'', 'init-reason': '' };
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--resume') {
             out.resume = true;
@@ -130,7 +131,10 @@ export function parseFullTrainingOptions(args) {
         out['full-source-union']=resolve(root,out['full-source-union']);
         if(!out['full-source-union'].startsWith(root+'/')||!out['full-source-union'].endsWith('.json'))throw Error('Full union definition must be explicit repository JSON');
     }
-    if(out['feature-migration']||out['migrate-from']||out['source-transition']===ALIGNED_SOURCE_TRANSITION){
+    if(out['continue-from']||out['continuation-id']||out['source-transition']===GROUP_COVER_SOURCE_TRANSITION){
+        if(out['continuation-id']!==ALIGNED_CONTINUATION_ID||out['source-transition']!==GROUP_COVER_SOURCE_TRANSITION||out['feature-migration']!==FEATURE_MIGRATION_ID||out.purpose!=='train'||!out['full-source-union']||out['fork-from']||out['fresh-from']||out['migrate-from']||(!out.resume&&!/^[\w-]+$/.test(out['continue-from'])))throw Error('Aligned continuation requires exclusive continue-from and explicit inherited migration/source/union contract');
+        initializationSpec(out);
+    }else if(out['feature-migration']||out['migrate-from']||out['source-transition']===ALIGNED_SOURCE_TRANSITION){
         if(out['feature-migration']!==FEATURE_MIGRATION_ID||out['source-transition']!==ALIGNED_SOURCE_TRANSITION||out.purpose!=='train'||out['fork-from']||out['fresh-from']||(!out.resume&&!/^[\w-]+$/.test(out['migrate-from'])))throw Error('Feature migration requires explicit paired source contract and exclusive migrate-from TRAIN initialization');
         initializationSpec(out);
     }
@@ -154,10 +158,11 @@ export function parseFullTrainingOptions(args) {
         throw Error('Invalid learning rate');
     return out;
 }
-export function fullTrainingConfig(o) { return { source: o.source, purpose: o.purpose, chunkSize: o['chunk-size'], hiddenSize: o['hidden-size'], seed: o.seed, learningRate: o['learning-rate'], optimizer: o.optimizer, teacherKind: o['teacher-kind'], constructionOrder: o['construction-order'], inputProfile: o['input-profile'], sourceTransition: o['source-transition'], ...(o['linked-retry'] ? { linkedRetry: o['linked-retry'] } : {}), policyMode: o['policy-mode'], ...(o['producer-replay-run'] ? { producerReplayRun: o['producer-replay-run'] } : {}),...(o['feature-migration']?{featureMigration:o['feature-migration']}:{}),...(o['full-source-union']?{fullSourceUnion:o['full-source-union']}:{}) }; }
+export function fullTrainingConfig(o) { return { source: o.source, purpose: o.purpose, chunkSize: o['chunk-size'], hiddenSize: o['hidden-size'], seed: o.seed, learningRate: o['learning-rate'], optimizer: o.optimizer, teacherKind: o['teacher-kind'], constructionOrder: o['construction-order'], inputProfile: o['input-profile'], sourceTransition: o['source-transition'], ...(o['linked-retry'] ? { linkedRetry: o['linked-retry'] } : {}), policyMode: o['policy-mode'], ...(o['producer-replay-run'] ? { producerReplayRun: o['producer-replay-run'] } : {}),...(o['feature-migration']?{featureMigration:o['feature-migration']}:{}),...(o['continuation-id']?{continuationId:o['continuation-id']}:{}),...(o['full-source-union']?{fullSourceUnion:o['full-source-union']}:{}) }; }
 export async function main(args = process.argv.slice(2)) {
     if (args.includes('--help')) {
         console.log('node scripts/neural/full-train.mjs --source pilot-20261027 --run NAME --purpose dev-overfit --budget-ms 120000 --epochs 10 [--resume]\nAdditional: --chunk-size 128 --hidden-size 64 --seed 43 --learning-rate .03 --optimizer sgd-v1|common-l2-sgd-v1. Epochs is absolute target; wall budget applies per invocation. DEV overfit never promotes a model. Resume requires exact dataset/source/feature/numerical settings; increasing epochs/budget is allowed. Create CANCEL in run directory for cooperative cancellation, remove before resume. Status and binary checkpoints are under training_data/neural-full-v2/training-runs/NAME. No automatic teacher or fallback in inference.\nNew experiments: --fork-from RUN --init-reason TEXT preserves exact parameters/cumulative updates but resets outer curriculum to epoch0; --fresh-from RUN --init-reason TEXT records a justified fresh initialization. Feature mismatch forbids fork. Original runs are never modified.\nAuxiliary TRAIN only: --teacher-kind molecular-simulated --purpose train. Requires explicit manifest sourceKind/purpose and completed candidate evidence; never accepted as full baseline/parity. Optional --linked-retry SOURCE/retries/NAME explicitly unions a same-input failed-family retry with verified parent lineage; requires a new dataset phase. --construction-order legacy-v1|staffing-first-v1 binds the explicit decoding/training trace protocol. --source-transition legacy-action-replay-to-staffing-first-v1 permits only four declared action/replay module drifts with independent legacy proof; all other shared sources remain exact. --input-profile TRAIN-enriched-catalog-high-stage-v1 explicitly authorizes enriched TRAIN metadata. Latest full-reference phases require paired --policy-mode latest-warmup-exhaustion-v1 --source-transition latest-default-to-warmup-policy-v1, or --policy-mode latest-warmup-runorder-v2 --source-transition latest-default-to-warmup-runorder-v2 --producer-replay-run ORIGINAL_PREPARED_RUN and staffing-first-v1; independently replay original frozen full targets before exact new-policy inversion.');
+        console.log('Same-aligned continuation: --continue-from STOPPED_TRAIN_RUN --continuation-id aligned-union-native-cover-continuation-v1 --policy-mode latest-native-group-cover-v3 --source-transition latest-default-to-aligned-group-cover-v4 plus inherited --feature-migration and complete --full-source-union. Exact learned binary and numerical settings retained; only outer curriculum resets. No repeat zero migration.');
         console.log('Aligned migration: --migrate-from TRAIN_RUN --feature-migration input-conf-to-slot-group-alignment-zero-v1 --source-transition latest-default-to-aligned-warmup-runorder-v3. Ordinary fork remains feature-exact. Optional --full-source-union REPOSITORY_JSON binds independent full TRAIN members and per-member original replay; it cannot combine with auxiliary retry or primary producer-replay-run.');
         return;
     }
@@ -181,7 +186,7 @@ export async function main(args = process.argv.slice(2)) {
                 verifyBinding(manifest.lineage.spec, initializationSpec(o, manifest.lineage.spec));
                 verifyBinding(read(join(directory, 'lineage.json')), manifest.lineage);
             }
-            else if (o['fork-from'] || o['fresh-from'] || o['migrate-from'] || o['feature-migration'] || o['init-reason'])
+            else if (o['fork-from'] || o['fresh-from'] || o['migrate-from'] || o['feature-migration'] || o['continue-from'] || o['continuation-id'] || o['init-reason'])
                 throw Error('Cannot change existing initialization');
             verifyBinding(manifest.config, fullTrainingConfig(o));
             verifySources(manifest.provenance);

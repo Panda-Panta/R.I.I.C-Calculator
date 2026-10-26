@@ -9,6 +9,7 @@ import { compiledScheduleToRuntimeConfig } from '../../scheduler/scheduleAdapter
 import { createRosterRuntime } from '../../scheduler/rosterRuntime';
 import { getMowerSourceRuntime } from '../../scheduler/mowerSourceRuntime';
 import type { SimulationAssumptions } from '../../scheduler/types';
+import { fullGroupCoverageFeasible } from './fullGroupCoverage';
 import { legalFullActions, nextDecision, canReferencePhysical, needsOrdinaryRelief, type FullScenario, type FullState, type FullAction, type FullDiagnostic } from './fullActionSpace';
 import { MOWER_OPERATOR_LIST_FIELDS, type RosterWorkspace } from '../../domain/roster';
 export interface FullFinalResult {
@@ -133,7 +134,8 @@ export function finalizeFullState(s: FullScenario, state: FullState): FullFinalR
         if (!checked.valid) issue('LATEST_WARMUP_POLICY_UNSUPPORTED', checked.diagnostics.filter(d => d.severity === 'error').map(d => d.message).join('; '));
         if (checked.addedExhaustOperatorIds.length) issue('LATEST_WARMUP_POLICY_MISSING', checked.addedExhaustOperatorIds.join(', '));
     }
-    if (s.policyMode === 'latest-warmup-runorder-v2') diagnostics.push(...fullNativeRuntimeAdmissionIssues(workspace, s.simulationConditioning.schedulerAssumptions));
+    if (['latest-warmup-runorder-v2', 'latest-native-group-cover-v3'].includes(s.policyMode)) diagnostics.push(...fullNativeRuntimeAdmissionIssues(workspace, s.simulationConditioning.schedulerAssumptions));
+    if (s.policyMode === 'latest-native-group-cover-v3' && !fullGroupCoverageFeasible(workspace)) issue('LATEST_GROUP_COVERAGE_INFEASIBLE', 'Closed group replacement lists have no native injective cover');
     const owned = new Set(s.inventory.operators.map(o => o.charId)), reserved = new Set<string>(), permanent = new Set(workspace.mainPlan.conf.workaholic.map(id));
     for (const room of Object.values(workspace.mainPlan.facilities)) {
         if (room.level > 0 && room.type === 'dormitory' && !room.slots.some(p => p.occupant.kind === 'operator')) {

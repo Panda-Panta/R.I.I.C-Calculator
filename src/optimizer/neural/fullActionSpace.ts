@@ -11,13 +11,14 @@ import { physicalBackupOperatorIds } from '../combinationModel';
 import { validatePhysicalRoster } from '../rosterDraft';
 import { isOrdinaryReplacementCandidate } from '../../scheduler/scheduleAdapter';
 import { isWarmupOperatorInFacility } from '../generatedWarmupPolicy';
+import { fullGroupCoverageFeasible, fullGroupCoverageProof, fullGroupReferenceKey } from './fullGroupCoverage';
 export interface FullDiagnostic {
     code: string;
     message: string;
 }
 export type FullConstructionOrder = 'legacy-v1' | 'staffing-first-v1';
 /** Opt-in action-domain constraints, not a post-decoding roster repair. */
-export type FullPolicyMode = 'legacy-unconstrained-v1' | 'latest-warmup-exhaustion-v1' | 'latest-warmup-runorder-v2';
+export type FullPolicyMode = 'legacy-unconstrained-v1' | 'latest-warmup-exhaustion-v1' | 'latest-warmup-runorder-v2' | 'latest-native-group-cover-v3';
 export type FullDecisionKind = 'occupant' | 'resident' | 'group' | 'replacement' | 'bindings' | 'binding-group' | 'binding-replacement' | 'conf-list' | 'ling_xi';
 export interface FullDecision {
     kind: FullDecisionKind;
@@ -89,7 +90,7 @@ export function createFullScenario(base: RosterWorkspace, inventory: OperatorInv
             code: 'INVALID_CONSTRUCTION_ORDER', message: String(constructionOrder)
         });
     }
-    if (!['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2'].includes(policyMode)
+    if (!['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2', 'latest-native-group-cover-v3'].includes(policyMode)
         || policyMode !== 'legacy-unconstrained-v1' && constructionOrder !== 'staffing-first-v1') {
         diagnostics.push({ code: 'INVALID_POLICY_MODE', message: 'Latest warmup constraints require explicit staffing-first-v1 construction' });
     }
@@ -338,7 +339,23 @@ export function needsOrdinaryRelief(workspace: RosterWorkspace, roomId: MowerRoo
         && !physicalBackupOperatorIds(room, slot).length
         && !(slot.groupBindings ?? []).some(binding => physicalBackupOperatorIds(room, binding).length);
 }
-export function legalFullActions(s: FullScenario, state: FullState): FullAction[] {
+function referenceOperatorAllowed(s: FullScenario, workspace: RosterWorkspace, d: FullDecision, operator: FullScenario['inventory']['operators'][number]): boolean {
+    const room = d.roomId ? workspace.mainPlan.facilities[d.roomId] : undefined, slot = room?.slots[d.slotIndex!];
+    const refs = d.kind === 'conf-list' ? workspace.mainPlan.conf[d.field!] ?? [] : d.kind === 'replacement' ? slot!.replacements : slot!.groupBindings![d.bindingIndex!]!.replacements;
+    return (room?.type !== 'trading' || !['佩佩', 'U-Official'].includes(operator.name))
+        && !refs.some(ref => id(ref) === operator.charId)
+        && (s.constructionOrder !== 'staffing-first-v1' || d.kind === 'conf-list' || nativePrimaryReferenceAllowed(workspace, d, operator.charId))
+        && (s.policyMode === 'legacy-unconstrained-v1' || d.kind === 'conf-list' || nativeWarmupReferenceAllowed(s, workspace, d, operator.charId))
+        && (!['latest-warmup-runorder-v2', 'latest-native-group-cover-v3'].includes(s.policyMode) || nativeRunOrderReferenceAllowed(workspace, d, operator.charId))
+        && (d.kind === 'conf-list' || room?.type === 'dormitory' || !physicalBackupOperatorIds(room!, { replacements: [operator.charId] }).length || canReferencePhysical(workspace, d, operator.charId));
+}
+function referenceFreeAllowed(s: FullScenario, workspace: RosterWorkspace, d: FullDecision): boolean {
+    const room = d.roomId ? workspace.mainPlan.facilities[d.roomId] : undefined, slot = room?.slots[d.slotIndex!];
+    const binding = d.kind === 'binding-replacement' ? slot!.groupBindings![d.bindingIndex!] : slot;
+    return room?.type === 'dormitory' && !binding!.replacements.includes('Free') && (s.constructionOrder !== 'staffing-first-v1'
+        || slot?.occupant.kind === 'operator' && id(slot.occupant.operatorId) !== id('菲亚梅塔') && !!binding?.groupId);
+}
+function legalFullActionsBase(s: FullScenario, state: FullState): FullAction[] {
     const d = nextDecision(s, state);
     if (!s.valid || !d || state.diagnostics.length) {
         return [];
@@ -379,22 +396,64 @@ export function legalFullActions(s: FullScenario, state: FullState): FullAction[
     if (d.kind === 'ling_xi') {
         return [0, 1, 2, 3].map(n => action('value', n));
     }
-    const refs = d.kind === 'conf-list' ? state.workspace.mainPlan.conf[d.field!] ?? [] : d.kind === 'replacement' ? slot!.replacements : slot!.groupBindings![d.bindingIndex!]!.replacements;
     const staffingFirst = s.constructionOrder === 'staffing-first-v1';
     const coverRequired = staffingFirst && d.kind === 'replacement' && needsOrdinaryRelief(state.workspace, d.roomId!, d.slotIndex!);
     const policyRequired = s.policyMode !== 'legacy-unconstrained-v1' && d.kind === 'conf-list'
         && (d.field === 'workaholic' || d.field === 'exhaust_require') && missingWarmupPolicy(s, state.workspace, d.field);
-    const binding = d.kind === 'binding-replacement' ? slot!.groupBindings![d.bindingIndex!] : slot;
-    const freeAllowed = room?.type === 'dormitory' && !refs.includes('Free') && (!staffingFirst ||
-        slot?.occupant.kind === 'operator' && id(slot.occupant.operatorId) !== id('菲亚梅塔') && !!binding?.groupId);
     return [
         ...(d.kind === 'conf-list' && d.listIndex === 0 && !policyRequired && !Object.prototype.hasOwnProperty.call(s.workspace.mainPlan.conf, d.field!) ? [action('absent')] : []),
         ...(!coverRequired && !policyRequired ? [action('end')] : []),
-        ...(freeAllowed ? [action('free')] : []),
-        ...ops.filter(o => !refs.some(r => id(r) === o.charId)
-            && (!staffingFirst || d.kind === 'conf-list' || nativePrimaryReferenceAllowed(state.workspace, d, o.charId))
-            && (s.policyMode === 'legacy-unconstrained-v1' || d.kind === 'conf-list' || nativeWarmupReferenceAllowed(s, state.workspace, d, o.charId))
-            && (s.policyMode !== 'latest-warmup-runorder-v2' || nativeRunOrderReferenceAllowed(state.workspace, d, o.charId))
-            && (d.kind === 'conf-list' || room?.type === 'dormitory' || !physicalBackupOperatorIds(room!, { replacements: [o.charId] }).length || canReferencePhysical(state.workspace, d, o.charId))).map(o => action('operator', o.charId)),
+        ...(referenceFreeAllowed(s, state.workspace, d) ? [action('free')] : []),
+        ...ops.filter(o => referenceOperatorAllowed(s, state.workspace, d, o)).map(o => action('operator', o.charId)),
     ];
+}
+/** Pure prospective list append, sharing untouched data only for read-only feasibility. */
+function projectedReference(workspace: RosterWorkspace, d: FullDecision, a: FullAction): RosterWorkspace {
+    if (a.kind === 'end') return workspace;
+    const room = workspace.mainPlan.facilities[d.roomId!], slot = room.slots[d.slotIndex!]!, ref = a.kind === 'free' ? 'Free' : String(a.value);
+    const changed = d.kind === 'replacement' ? { ...slot, replacements: [...slot.replacements, ref] } : {
+        ...slot, groupBindings: slot.groupBindings!.map((binding, index) => index === d.bindingIndex ? { ...binding, replacements: [...binding.replacements, ref] } : binding),
+    };
+    return { ...workspace, mainPlan: { ...workspace.mainPlan, facilities: { ...workspace.mainPlan.facilities,
+        [d.roomId!]: { ...room, slots: room.slots.map((value, index) => index === d.slotIndex ? changed : value) },
+    } } };
+}
+export function legalFullActions(s: FullScenario, state: FullState): FullAction[] {
+    const actions = legalFullActionsBase(s, state), d = nextDecision(s, state);
+    if (s.policyMode !== 'latest-native-group-cover-v3' || !d || !['replacement', 'binding-replacement'].includes(d.kind)
+        || !Object.values(state.workspace.mainPlan.facilities).some(room => room.level > 0 && room.slots.some(slot => slot.occupant.kind === 'operator' && [slot, ...(slot.groupBindings ?? [])].some(binding => binding.groupId)))) return actions;
+    const key = (decision: FullDecision) => fullGroupReferenceKey(decision.roomId!, decision.slotIndex!, decision.kind === 'binding-replacement' ? decision.bindingIndex! : -1);
+    const pending = new Map(state.decisions.slice(state.decisionIndex).filter(decision => ['replacement', 'binding-replacement'].includes(decision.kind)).map(decision => [key(decision), decision]));
+    const current = key(d), eligibility = new Map<string, Map<string, boolean>>();
+    const future = (projected: RosterWorkspace, closed: string | null, selected: string | null) => (listKey: string) => {
+            const decision = pending.get(listKey);
+            if (!decision || listKey === closed) return undefined;
+            return { free: referenceFreeAllowed(s, projected, decision), operators: function* () {
+                let cache = eligibility.get(listKey);
+                if (!cache) eligibility.set(listKey, cache = new Map());
+                for (const operator of s.inventory.operators) {
+                    if (isTradeRunOrderOperator(operator.charId)) continue;
+                    let allowed = cache.get(operator.charId);
+                    if (allowed === undefined) {
+                        allowed = referenceOperatorAllowed(s, state.workspace, decision, operator);
+                        cache.set(operator.charId, allowed);
+                    }
+                    // V2 operator legality reads fixed occupants/groups and candidate-local references,
+                    // not beds or matching. Free is dorm-only and reserves no physical operator.
+                    // All comparisons canonicalize aliases; appending changes only this identity.
+                    if (allowed && (operator.charId !== selected || referenceOperatorAllowed(s, projected, decision, operator))) yield operator.charId;
+                }
+            } };
+        };
+    const proof = fullGroupCoverageProof(state.workspace, future(state.workspace, null, null));
+    if (!proof) return [];
+    return actions.filter(a => {
+        const selected = a.kind === 'operator' ? String(a.value) : null;
+        // Free only relaxes its dorm row. An unrelated append preserves the existing
+        // witness unless it creates a zero-mood obligation; no assignment is chosen.
+        if (a.kind === 'free' || selected && !proof.relevantOperatorIds.has(selected)
+            && !(proof.optionalZeroMoodLists.has(current) && !isTradeRunOrderOperator(selected))) return true;
+        const projected = projectedReference(state.workspace, d, a);
+        return fullGroupCoverageFeasible(projected, future(projected, a.kind === 'end' ? current : null, selected));
+    });
 }

@@ -5,6 +5,35 @@ optimizer, UI replacement, or claim of superior income. The policy scores legal
 next actions from partial-roster features; it does not rank completed rosters.
 The decoder never calls a heuristic roster builder to finish its output.
 
+## Full-action pipeline (experimental, not parity-qualified)
+
+The commands below describe the original small pipeline. The full-action pipeline
+uses `full-train.mjs`, `full-train-worker.ts`, and the contracts in `full-training/`;
+its current status and frozen evaluation evidence are recorded in `UPDATE_PLAN.md`.
+Do not interchange their model formats or treat an old smoke run as full acceptance.
+
+The full policy currently uses the 56,177-feature slot/group-aligned catalog.
+`latest-native-group-cover-v3` is an explicit opt-in action mode: it excludes
+prefixes that cannot admit native injective group replacement coverage. It does
+not write the matching witness, repair output, globally ban reused group members,
+or prove available beds or long-horizon completion. Legacy defaults remain intact.
+
+The paired source transition `latest-default-to-aligned-group-cover-v4` requires
+exclusive `--continue-from` and continuation ID
+`aligned-union-native-cover-continuation-v1`. The supported parent is an authenticated
+direct aligned-feature-migration TRAIN run. Parameters, inherited update count,
+all 24 ordered TRAIN members, feature identity and numerical settings are retained;
+the original migration receipt remains separate from the new continuation receipt.
+Ordinary resume requires identical source/configuration. Changing the learning rate,
+using a continuation as a new migration parent, or silently re-zeroing learned rows
+is not supported by this contract and must not be disguised as resume.
+
+External evaluation authenticates model, dataset, lineage, frozen source, input,
+physics and actual completion. Incomplete or timed-out simulations remain unknown,
+not zero or dropped rows. The exposed DEV result of 2026-10-26 has eight wins and
+eight losses against the latest default mathematical reference; no release parity
+or equal-resource claim is established. Experimental weights are not defaults.
+
 ## Commands
 
 Requires the repository's installed Node 24+ toolchain. No new ML package or GPU

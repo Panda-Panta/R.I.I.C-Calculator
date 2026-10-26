@@ -17,14 +17,18 @@ import { FULL_UNION_KIND, verifyFullTrainingUnion, fullUnionDatasetContract } fr
 import { FEATURE_MIGRATION_ID, FEATURE_MIGRATION_CONTRACT, FEATURE_MIGRATION_SOURCE_PAIRS, ALIGNED_SOURCE_TRANSITION } from './feature-migration-contract.mjs';
 import { inspectPolicyBinary, verifyAppendOnlyPolicyMigration, reconstructMigrationByteReceipt } from './parity-report-migration.mjs';
 import { verifyPreparedUnionMembership, verifyMigrationParentMembership } from './parity-report-populations.mjs';
+import { verifyAlignedContinuationEvidence, verifyContinuationCheckpointState } from './parity-report-continuation.mjs';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const LEGACY_POLICY = 'legacy-unconstrained-v1', LATEST_POLICY = 'latest-warmup-exhaustion-v1', RUNORDER_POLICY = 'latest-warmup-runorder-v2';
+const LEGACY_POLICY = 'legacy-unconstrained-v1', LATEST_POLICY = 'latest-warmup-exhaustion-v1', RUNORDER_POLICY = 'latest-warmup-runorder-v2', GROUP_POLICY = 'latest-native-group-cover-v3';
+const GROUP_TRANSITION = 'latest-default-to-aligned-group-cover-v4', CONTINUATION_ID = 'aligned-union-native-cover-continuation-v1';
+const GROUP_HELPER = Object.freeze({ path: 'src/optimizer/neural/fullGroupCoverage.ts', sha256: '0ede4f5221fae29c837923b9b601ac718091953c94f37abbe47f68118916fa38' });
+const alignedTransition = transition => transition === ALIGNED_SOURCE_TRANSITION || transition === GROUP_TRANSITION;
 // Explicitly reviewed versions only: importing a future producer mode never opts this reporter in.
-const POLICY_TRANSITIONS = Object.freeze({ [LATEST_POLICY]: LATEST_POLICY_SOURCE_TRANSITION, [RUNORDER_POLICY]: LATEST_RUNORDER_SOURCE_TRANSITION });
+const POLICY_TRANSITIONS = Object.freeze({ [LATEST_POLICY]: LATEST_POLICY_SOURCE_TRANSITION, [RUNORDER_POLICY]: LATEST_RUNORDER_SOURCE_TRANSITION, [GROUP_POLICY]: GROUP_TRANSITION });
 const constrainedPolicy = mode => Object.hasOwn(POLICY_TRANSITIONS, mode);
 export function objectiveVersionForPolicy(mode = LEGACY_POLICY) {
-    if (![LEGACY_POLICY, LATEST_POLICY, RUNORDER_POLICY].includes(mode)) throw Error('Unsupported explicit policy mode');
-    return mode === RUNORDER_POLICY ? 'latest-default-runtime-lexicographic-v3' : 'latest-default-lexicographic-v2';
+    if (![LEGACY_POLICY, LATEST_POLICY, RUNORDER_POLICY, GROUP_POLICY].includes(mode)) throw Error('Unsupported explicit policy mode');
+    return [RUNORDER_POLICY, GROUP_POLICY].includes(mode) ? 'latest-default-runtime-lexicographic-v3' : 'latest-default-lexicographic-v2';
 }
 const read = path => JSON.parse(readFileSync(path, 'utf8'));
 const equal = (a, b, label) => { if (digest(a) !== digest(b)) throw Error(label + ' mismatch'); };
@@ -184,9 +188,9 @@ function verifyReviewedFeatureContract() {
     equal(digest(FEATURE_MIGRATION_SOURCE_PAIRS), '3457c9874ca6532856320ed89f712a503d8ec3ddff3499d1ab1b47b3bf8644cf', 'Reviewed feature source pairs');
 }
 function verifyPreparedFeatureBinding(manifest, dataset, proof) {
-    if (manifest.config.sourceTransition === ALIGNED_SOURCE_TRANSITION) {
+    if (alignedTransition(manifest.config.sourceTransition)) {
         verifyReviewedFeatureContract();
-        requireThat(manifest.config.policyMode === RUNORDER_POLICY && manifest.config.featureMigration === FEATURE_MIGRATION_ID && dataset.schemaVersion === 6, 'Missing explicit aligned feature migration');
+        requireThat(manifest.config.policyMode === (manifest.config.sourceTransition === GROUP_TRANSITION ? GROUP_POLICY : RUNORDER_POLICY) && manifest.config.featureMigration === FEATURE_MIGRATION_ID && dataset.schemaVersion === 6, 'Missing explicit aligned feature migration');
         equal(dataset.featureMigration, FEATURE_MIGRATION_CONTRACT, 'Prepared feature migration declaration');
         requireThat(dataset.featureManifestHash === FEATURE_MIGRATION_CONTRACT.newHash && proof.featureManifestHash === FEATURE_MIGRATION_CONTRACT.oldHash, 'Prepared old/new feature identities mismatch');
     } else requireThat(!manifest.config.featureMigration && !dataset.featureMigration, 'Unexpected feature migration');
@@ -194,10 +198,14 @@ function verifyPreparedFeatureBinding(manifest, dataset, proof) {
 export function verifyPolicyContract(manifest, dataset, sources) {
     const mode = manifest.config.policyMode ?? LEGACY_POLICY, transition = manifest.config.sourceTransition ?? 'none', union = sources.kind === FULL_UNION_KIND;
     objectiveVersionForPolicy(mode);
+    if (mode === GROUP_POLICY) {
+        requireThat(transition === GROUP_TRANSITION && union && manifest.config.continuationId === CONTINUATION_ID && manifest.lineage?.spec?.mode === 'aligned-continuation' && manifest.lineage.spec.continuationId === CONTINUATION_ID, 'Missing explicit same-feature continuation');
+        equal(manifest.provenance?.sourceHashes?.[GROUP_HELPER.path], GROUP_HELPER.sha256, 'Reviewed group-cover dependency');
+    } else requireThat(!manifest.config.continuationId, 'Unexpected continuation declaration');
     requireThat((dataset.policyMode ?? LEGACY_POLICY) === mode && dataset.records.every(r => (r.policyMode ?? LEGACY_POLICY) === mode), 'Dataset/record policy-mode mismatch');
     if (constrainedPolicy(mode)) {
-        const aligned = transition === ALIGNED_SOURCE_TRANSITION;
-        requireThat((transition === POLICY_TRANSITIONS[mode] || (aligned && mode === RUNORDER_POLICY)) && manifest.config.constructionOrder === 'staffing-first-v1' && manifest.config.teacherKind === 'full-optimizer', 'Latest mode lacks explicit producer replay transition');
+        const aligned = alignedTransition(transition);
+        requireThat((transition === POLICY_TRANSITIONS[mode] || (transition === ALIGNED_SOURCE_TRANSITION && mode === RUNORDER_POLICY)) && manifest.config.constructionOrder === 'staffing-first-v1' && manifest.config.teacherKind === 'full-optimizer', 'Latest mode lacks explicit producer replay transition');
         if (union) {
             requireThat(aligned && !manifest.config.producerReplayRun && isAbsolute(manifest.config.fullSourceUnion ?? ''), 'Unsupported union initialization contract');
             verifyPreparedUnionMembership(dataset, sources);
@@ -377,7 +385,7 @@ function preparedRun(root, directory, purpose) {
     if (constrainedPolicy(policyMode)) {
         producerReplay = authenticateProducerReplay(root, join(directory, 'producer-replay'), sources.producerReplay, sources, run.manifest.provenance,
             join(root, 'training_data/neural-full-v2/training-runs', run.manifest.config.producerReplayRun), run.manifest.config.sourceTransition);
-        if (run.manifest.config.sourceTransition === ALIGNED_SOURCE_TRANSITION) equal(digest(read(join(directory, 'feature-manifest.json'))), FEATURE_MIGRATION_CONTRACT.newManifestSha256, 'Prepared aligned complete feature manifest');
+        if (alignedTransition(run.manifest.config.sourceTransition)) equal(digest(read(join(directory, 'feature-manifest.json'))), FEATURE_MIGRATION_CONTRACT.newManifestSha256, 'Prepared aligned complete feature manifest');
         else equal(dataset.featureManifestHash, sources.producerReplay.featureManifestHash, 'Policy transition feature manifest');
         verifyCurrentPolicyQualification(directory, dataset, () => sources.producerReplay, teachers);
     }
@@ -390,8 +398,9 @@ export function verifyTrainForkLink({ lineage, childManifest, childDataset, pare
     requireThat(childManifest.config.purpose === 'train' && parentManifest.config.purpose === 'train', 'DEV parameters cannot enter TRAIN lineage');
     const childMode = childManifest.config.policyMode ?? LEGACY_POLICY, parentMode = parentManifest.config.policyMode ?? LEGACY_POLICY;
     objectiveVersionForPolicy(childMode); objectiveVersionForPolicy(parentMode);
+    requireThat(childMode !== GROUP_POLICY && parentMode !== GROUP_POLICY, 'Group-cover requires distinct direct aligned continuation, never a generic fork');
     const policyTransition = childMode !== parentMode;
-    requireThat(!policyTransition || (constrainedPolicy(childMode) && (parentMode === LEGACY_POLICY || (parentMode === LATEST_POLICY && childMode === RUNORDER_POLICY))), 'Unsupported parameter fork policy direction');
+    requireThat(!policyTransition || ([LATEST_POLICY, RUNORDER_POLICY].includes(childMode) && (parentMode === LEGACY_POLICY || (parentMode === LATEST_POLICY && childMode === RUNORDER_POLICY))), 'Unsupported parameter fork policy direction');
     const omit = (value, fields) => Object.fromEntries(Object.entries(value).filter(([key]) => !fields.includes(key)));
     equal(omit(childManifest.config, policyTransition ? ['chunkSize', 'policyMode', 'sourceTransition', 'producerReplayRun'] : ['chunkSize']), omit(parentManifest.config, policyTransition ? ['chunkSize', 'policyMode', 'sourceTransition', 'producerReplayRun'] : ['chunkSize']), 'Fork numerical/training configuration');
     if (policyTransition) {
@@ -488,12 +497,32 @@ function authenticateTrainingLineage(root, training, runtime, seen = new Set()) 
         requireThat(lineage.parent === null && lineage.initialModelHash === null && lineage.spec.parentRun === null, 'Unsupported fresh TRAIN ancestry');
         return [{ directory: training.directory, mode: 'fresh', manifestHash: digest(training.manifest), lineageHash: digest(lineage) }];
     }
-    requireThat(['fork', 'feature-migration'].includes(lineage?.spec?.mode) && /^[\w-]+$/.test(lineage.spec.parentRun) && /^checkpoint-[\d-]+$/.test(lineage.parent?.generation), 'Unknown TRAIN lineage policy');
+    requireThat(['fork', 'feature-migration', 'aligned-continuation'].includes(lineage?.spec?.mode) && /^[\w-]+$/.test(lineage.spec.parentRun) && /^checkpoint-[\d-]+$/.test(lineage.parent?.generation), 'Unknown TRAIN lineage policy');
     const parentDirectory = safeChild(root, relative(root, join(dirname(training.directory), lineage.spec.parentRun))), parent = preparedRun(root, parentDirectory, 'train');
     const generation = safeChild(parentDirectory, lineage.parent.generation), parentState = read(join(generation, 'state.json'));
     equal(read(join(training.directory, 'parent-manifest.json')), parent.manifest, 'Frozen copied parent manifest');
     equal(read(join(training.directory, 'parent-checkpoint.json')), parentState, 'Frozen copied parent checkpoint');
     const initialBytes = readFileSync(join(training.directory, 'initial-model.bin')), parentBytes = readFileSync(join(generation, 'model.bin'));
+    if (lineage.spec.mode === 'aligned-continuation') {
+        verifyParentCheckpointLink({ lineage, parentManifest: parent.manifest, parentDataset: parent.dataset, parentState, initialBytes, parentBytes });
+        requireThat(parent.manifest.lineage?.spec?.mode === 'feature-migration', 'Continuation requires direct feature-migration parent');
+        equal(read(join(training.directory, 'parent-dataset.json')), parent.dataset, 'Continuation original parent full dataset');
+        const features = read(join(training.directory, 'feature-manifest.json')), parentFeatures = read(join(training.directory, 'parent-feature-manifest.json'));
+        equal(parentFeatures, read(join(parent.directory, 'feature-manifest.json')), 'Continuation original parent feature sidecar');
+        // Authenticate the original e645-style migration recursively, including original binary counters/numerics.
+        const ancestors = authenticateTrainingLineage(root, parent, runtime, seen), parentMigration = ancestors[0]?.featureMigration;
+        requireThat(parentMigration, 'Missing independently authenticated original migration');
+        const inheritedHashes = {};
+        for (const name of ['manifest.json', 'lineage.json', 'dataset.json', 'source-records.json', 'source-snapshot.json', 'feature-manifest.json', 'feature-migration.json', 'parent-manifest.json', 'parent-checkpoint.json', 'parent-dataset.json', 'parent-feature-manifest.json', 'initial-model.bin', 'migrated-initial-model.bin']) {
+            const copied = readFileSync(join(training.directory, 'inherited-migration', name)), original = readFileSync(join(parent.directory, name));
+            requireThat(copied.equals(original), 'Inherited migration raw file mismatch: ' + name); inheritedHashes[name] = digest(copied);
+        }
+        const receipt = verifyAlignedContinuationEvidence({ lineage, manifest: training.manifest, dataset: training.dataset, parentManifest: parent.manifest, parentState, parentDataset: parent.dataset, parentDirectory,
+            initialBytes, parentBytes, features, parentFeatures, parentReplays: parent.producerReplays, childReplays: training.producerReplays, parentMigration, groupHelper: GROUP_HELPER });
+        equal(read(join(training.directory, 'continuation.json')), receipt, 'Independently reconstructed learned continuation receipt');
+        return [{ directory: training.directory, mode: 'aligned-continuation', manifestHash: digest(training.manifest), lineageHash: digest(lineage), parentStateHash: digest(parentState), initialModelHash: digest(initialBytes),
+            alignedContinuation: { id: CONTINUATION_ID, parentUpdates: receipt.model.trainingUpdates, receiptHash: digest(receipt), model: receipt.model, population: receipt.population, inheritedMigration: receipt.inheritedMigration, inheritedFileHashes: inheritedHashes } }, ...ancestors];
+    }
     if (lineage.spec.mode === 'feature-migration') {
         equal(read(join(training.directory, 'parent-dataset.json')), parent.dataset, 'Original migration parent dataset sidecar');
         const oldFeatures = read(join(training.directory, 'parent-feature-manifest.json')), newFeatures = read(join(training.directory, 'feature-manifest.json'));
@@ -537,7 +566,7 @@ async function reportRuntime(root, training) {
     try {
         const path = join(directory, 'runtime.mjs'); writeFileSync(path, built.outputFiles[0].contents);
         const runtime = await import(pathToFileURL(path).href);
-        return { runtime, provenance: { ...canonicalReporterSourceManifest(sourceHashes), bundleHash: digest(built.outputFiles[0].contents), adapterHash: digest(readFileSync(fileURLToPath(import.meta.url))), adapterSupportHashes: Object.fromEntries(['parity-report-migration.mjs', 'parity-report-populations.mjs'].map(name => [name, digest(readFileSync(join(root, 'scripts/neural/full-training', name)))])) } };
+        return { runtime, provenance: { ...canonicalReporterSourceManifest(sourceHashes), bundleHash: digest(built.outputFiles[0].contents), adapterHash: digest(readFileSync(fileURLToPath(import.meta.url))), adapterSupportHashes: Object.fromEntries(['parity-report-migration.mjs', 'parity-report-populations.mjs', 'parity-report-continuation.mjs'].map(name => [name, digest(readFileSync(join(root, 'scripts/neural/full-training', name)))])) } };
     } finally { rmSync(directory, { recursive: true, force: true }); }
 }
 function authenticateCheckpoint(training, evaluationDirectory, binding, runtime, checkpointArchive) {
@@ -562,7 +591,10 @@ function authenticateCheckpoint(training, evaluationDirectory, binding, runtime,
         const state = read(join(directory, directory === evaluationDirectory ? 'checkpoint-state.json' : 'state.json'));
         if (state.modelHash !== binding.modelHash || digest(state.cursor) !== digest(binding.cursor)) continue;
         equal(state.binding, expected, 'TRAIN checkpoint source/data/config binding');
-        if (training.manifest.config.featureMigration) {
+        if (training.manifest.config.continuationId) {
+            requireThat(training.manifest.config.continuationId === CONTINUATION_ID, 'Unsupported checkpoint continuation');
+            verifyContinuationCheckpointState(state, read(join(training.directory, 'continuation.json')));
+        } else if (training.manifest.config.featureMigration) {
             const receipt = read(join(training.directory, 'feature-migration.json'));
             equal(state.initializationProofHash, digest(receipt), 'TRAIN checkpoint feature initialization proof');
             requireThat(state.cursor.updates >= receipt.metadata.trainingUpdates, 'Migrated update counter regressed');
@@ -630,7 +662,7 @@ export async function authenticatedParityReport({ root = ROOT, trainingDirectory
             const proof = read(join(evaluationDirectory, 'producer-replay/proof.json'));
             equal(binding.producerReplayProofHash, digest(proof), 'External independent replay hash');
             externalProducerReplay = authenticateProducerReplay(root, join(evaluationDirectory, 'producer-replay'), proof, dev.sources, training.manifest.provenance, devDirectory, training.manifest.config.sourceTransition);
-            if (training.manifest.config.sourceTransition === ALIGNED_SOURCE_TRANSITION) verifyPreparedFeatureBinding(training.manifest, training.dataset, proof);
+            if (alignedTransition(training.manifest.config.sourceTransition)) verifyPreparedFeatureBinding(training.manifest, training.dataset, proof);
             else equal(proof.featureManifestHash, training.dataset.featureManifestHash, 'External original/current feature manifest');
             report.authentication.commitments.externalProducerReplay = omitReplayRecords(externalProducerReplay);
         } else requireThat(!binding.producerReplayProofHash, 'Unexpected external policy transition proof');
@@ -643,10 +675,10 @@ export async function authenticatedParityReport({ root = ROOT, trainingDirectory
         for (const [path, hash] of Object.entries(training.manifest.provenance.sourceHashes)) equal(hash, digest(readFileSync(safeChild(root, path))), 'Current frozen TRAIN inference source: ' + path);
         const checkpoint = authenticateCheckpoint(training, evaluationDirectory, binding, runtime, checkpointArchive);
         Object.assign(report.authentication.commitments, { evaluationBindingHash: digest(binding), modelHash: binding.modelHash, checkpoint });
-        const transitionRecord = trainingLineage.find(r => r.featureMigration || r.policyTransition), transition = transitionRecord?.featureMigration ?? transitionRecord?.policyTransition;
+        const transitionRecord = trainingLineage.find(r => r.alignedContinuation || r.featureMigration || r.policyTransition), transition = transitionRecord?.alignedContinuation ?? transitionRecord?.featureMigration ?? transitionRecord?.policyTransition;
         if (transition) {
             requireThat(binding.cursor.updates >= transition.parentUpdates, 'Policy-transition cumulative update counter regressed');
-            report.learningEvidence = { policyMode: training.policyMode, ...(transitionRecord.featureMigration ? { featureMigration: transitionRecord.featureMigration.id, initializationProofHash: transitionRecord.featureMigration.receiptHash } : {}), inheritedTrainingUpdates: transition.parentUpdates, evaluatedCumulativeUpdates: binding.cursor.updates, newUpdatesSincePolicyTransition: binding.cursor.updates - transition.parentUpdates,
+            report.learningEvidence = { policyMode: training.policyMode, ...(transitionRecord.alignedContinuation ? { continuationId: transition.id, initializationProofHash: transition.receiptHash, inheritedFeatureMigrationProofHash: transition.inheritedMigration.receiptHash, featureMigrationInitialTrainingUpdates: transition.inheritedMigration.initialTrainingUpdates, updatesSinceFeatureMigration: binding.cursor.updates - transition.inheritedMigration.initialTrainingUpdates } : {}), ...(transitionRecord.featureMigration ? { featureMigration: transitionRecord.featureMigration.id, initializationProofHash: transitionRecord.featureMigration.receiptHash } : {}), inheritedTrainingUpdates: transition.parentUpdates, evaluatedCumulativeUpdates: binding.cursor.updates, newUpdatesSincePolicyTransition: binding.cursor.updates - transition.parentUpdates,
                 limitation: 'A zero-update policy fork is not new learning. Comparisons against an earlier differently weighted checkpoint cannot isolate a policy-only income effect.' };
         }
         const summaryPath = join(evaluationDirectory, 'summary.json'), summary = existsSync(summaryPath) ? read(summaryPath) : null;

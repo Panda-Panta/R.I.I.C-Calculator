@@ -8,6 +8,8 @@ import { fullCatalogIdleInventory } from '../../../src/domain/operatorInventory'
 import { normalizeProductionWeights } from '../../../src/domain/productionWeights';
 import { createFullPolicy, serializeFullPolicy } from '../../../src/optimizer/neural/fullPolicy';
 import { digest } from './state.mjs';
+import {FEATURE_MIGRATION_ID,FEATURE_MIGRATION_CONTRACT,ALIGNED_SOURCE_TRANSITION} from './feature-migration-contract.mjs';
+import {GROUP_COVER_SOURCE_TRANSITION,GROUP_COVER_POLICY_MODE} from './aligned-continuation-contract.mjs';
 process.argv.push('--external-library');
 const { decodeExternalDev } = await import('./external-dev-worker');
 const workspace = createDefaultWorkspace();
@@ -31,6 +33,11 @@ try {
     assert.throws(() => decodeExternalDev({ ...job, constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-exhaustion-v1' }), /producer replay proof/i);
     assert.throws(() => decodeExternalDev({ ...job, constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-runorder-v2' }), /producer replay proof/i);
     assert.throws(() => decodeExternalDev({ ...job, constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-runorder-v2', producerReplayProof: {}, referenceContract: { policy: 'latest-default-to-warmup-policy-v1' } }), /transition/i);
+    for(const [policyMode,policy]of [['latest-warmup-runorder-v2',ALIGNED_SOURCE_TRANSITION],[GROUP_COVER_POLICY_MODE,GROUP_COVER_SOURCE_TRANSITION]]){
+        const aligned={...job,constructionOrder:'staffing-first-v1',policyMode,producerReplayProof:{featureManifestHash:FEATURE_MIGRATION_CONTRACT.oldHash},referenceContract:{policy,featureMigration:FEATURE_MIGRATION_CONTRACT}};
+        assert.throws(()=>decodeExternalDev(aligned),/feature migration commitment/);
+        assert.throws(()=>decodeExternalDev({...aligned,featureMigration:FEATURE_MIGRATION_ID,archivedTeacherTrace:undefined}),/Missing archived/);
+    }
     assert.throws(() => decodeExternalDev({ ...job, trainingInputs: [{ ...input, familyId: 'DIFFERENT-FAMILY' }] }), /canonical inventory overlap/);
     assert.throws(() => decodeExternalDev({ ...job, modelHash: 'bad' }), /snapshot mismatch/);
     const result = decodeExternalDev(job);

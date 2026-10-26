@@ -1,3 +1,4 @@
+import {ALIGNED_CONTINUATION_ID,GROUP_COVER_SOURCE_TRANSITION,buildAlignedContinuationReceipt} from './full-training/aligned-continuation-contract.mjs';
 /** CPU-only full-v2 trainer. Teacher optimizer is deliberately not imported. */
 import { readFileSync, existsSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -71,7 +72,7 @@ export function prepare(job: any) {
     if (isLatestPolicyMode(policyMode)) {
         verifyLatestPolicyTransition(policyMode, sources.sourceCompatibility?.policy);
         if (job.sourceTransition !== sources.sourceCompatibility.policy) throw Error('Preparation source-transition binding mismatch');
-        if(job.sourceTransition===ALIGNED_SOURCE_TRANSITION&&job.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Preparation requires explicit feature migration contract');
+        if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION].includes(job.sourceTransition)&&job.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Preparation requires explicit feature migration contract');
     }
     if (sources.sourceCompatibility?.legacyProofRequired && job.constructionOrder !== 'staffing-first-v1')
         throw Error('Replay-preserving transition requires staffing-first learning protocol');
@@ -153,6 +154,13 @@ export function featureMigrationReceipt(job:any,bytes:Uint8Array,migrated:Uint8A
     if(manifest.provenance.sourceHash!==job.binding.sourceHash||manifest.provenance.bundleHash!==job.binding.bundleHash)throw Error('Feature migration implementation binding mismatch');
     return {...verifyFeatureMigrationBytes(bytes,migrated),population:verifyFeatureMigrationPopulation(read(join(job.directory,'parent-dataset.json')),read(join(job.directory,'dataset.json')),lineage),lineageHash:job.binding.lineageHash,parentFeatureManifestHash:digest(legacyManifest),featureManifestHash:digest(read(join(job.directory,'feature-manifest.json'))),sourceHash:job.binding.sourceHash,bundleHash:job.binding.bundleHash};
 }
+export function continuationReceipt(job:any,bytes:Uint8Array){
+    const directory=job.directory,lineage=read(join(directory,'lineage.json')),inherited=join(directory,'inherited-migration');
+    verifyInitialization(lineage,job.binding);
+    const inheritedManifest=read(join(inherited,'manifest.json')),inheritedDataset=read(join(inherited,'dataset.json')),inheritedLineage=read(join(inherited,'lineage.json'));
+    verifyInitialization(inheritedLineage,{datasetHash:digest(inheritedDataset),sourceHash:inheritedManifest.provenance.sourceHash,bundleHash:inheritedManifest.provenance.bundleHash,featureManifestHash:inheritedDataset.featureManifestHash,...inheritedManifest.config,lineageHash:digest(inheritedLineage)});
+    return buildAlignedContinuationReceipt({lineage,manifest:read(join(directory,'manifest.json')),dataset:read(join(directory,'dataset.json')),parentManifest:read(join(directory,'parent-manifest.json')),parentState:read(join(directory,'parent-checkpoint.json')),parentDataset:read(join(directory,'parent-dataset.json')),parentFeatureManifest:read(join(directory,'parent-feature-manifest.json')),featureManifest:read(join(directory,'feature-manifest.json')),initialBytes:bytes,parentBytes:readFileSync(join(directory,'initial-model.bin')),binding:job.binding,inheritedMigration:{manifest:inheritedManifest,lineage:inheritedLineage,dataset:inheritedDataset,sourceSnapshot:read(join(inherited,'source-snapshot.json')),featureManifest:read(join(inherited,'feature-manifest.json')),oldFeatureManifest:read(join(inherited,'parent-feature-manifest.json')),oldDataset:read(join(inherited,'parent-dataset.json')),oldManifest:read(join(inherited,'parent-manifest.json')),oldState:read(join(inherited,'parent-checkpoint.json')),oldBytes:readFileSync(join(inherited,'initial-model.bin')),migratedBytes:readFileSync(join(inherited,'migrated-initial-model.bin')),receipt:read(join(inherited,'feature-migration.json'))}});
+}
 export function initialModel(job: any) {
     if (!job.binding.lineageHash)
         return createFullPolicy({ hiddenSize: job.binding.hiddenSize, seed: job.binding.seed });
@@ -177,6 +185,11 @@ export function initialModel(job: any) {
         return model;
     }
     const model = deserializeFullPolicy(bytes);
+    if(lineage.spec.mode==='aligned-continuation'){
+        const receipt=continuationReceipt(job,bytes),path=join(job.directory,'continuation.json');
+        if(existsSync(path)&&digest(read(path))!==digest(receipt))throw Error('Existing continuation receipt changed');
+        if(!existsSync(path))atomic(path,receipt);
+    }
     if (model.hiddenSize !== job.binding.hiddenSize || model.metadata.seed !== job.binding.seed || model.metadata.trainingUpdates !== lineage.parent.cursor.updates)
         throw Error('Fork model dimensions/seed/cumulative updates mismatch');
     if (digest(serializeFullPolicy(model)) !== lineage.initialModelHash)
@@ -198,7 +211,13 @@ export function trainPreparedDataset(job: any) {
     const checkpoint = loadCheckpoint(directory, job.binding);
     let model = checkpoint ? deserializeFullPolicy(checkpoint.bytes) : initialModel(job), cursor = checkpoint?.state.cursor ?? { epoch: 0, family: 0, action: 0, updates: model.metadata.trainingUpdates };
     let initializationProofHash:string|null=null;
-    if(job.binding.featureMigration){
+    if(job.binding.continuationId){
+        if(job.binding.continuationId!==ALIGNED_CONTINUATION_ID)throw Error('Unknown aligned continuation');
+        const receipt=read(join(directory,'continuation.json')),expected=continuationReceipt(job,readFileSync(join(directory,'initial-model.bin')));initializationProofHash=digest(expected);
+        if(digest(receipt)!==initializationProofHash||(checkpoint&&checkpoint.state.initializationProofHash!==initializationProofHash))throw Error('Continuation saved initialization proof mismatch');
+        if(cursor.updates===expected.model.trainingUpdates&&(digest(serializeFullPolicy(model))!==expected.model.modelHash||cursor.epoch!==0||cursor.family!==0||cursor.action!==0))throw Error('Zero-update continuation changed learned parameters/cursor');
+        if(cursor.updates<expected.model.trainingUpdates)throw Error('Continuation cumulative updates regressed');
+    }else if(job.binding.featureMigration){
         if(job.binding.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Unknown numerical feature migration');
         const receipt=read(join(directory,'feature-migration.json')),expected=featureMigrationReceipt(job,readFileSync(join(directory,'initial-model.bin')),readFileSync(join(directory,'migrated-initial-model.bin')));
         initializationProofHash=digest(expected);
