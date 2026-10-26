@@ -1,6 +1,6 @@
 # 自动排班搜索与验证
 
-本工作分支的自动排班优化固定布局下的人员和主替安排，以完整仿真采样窗口内的日均加权产出为最终比较标准。合法占位、已有人员锁定、组合完整、实际技能阶段和恢复容量是约束，不参与收益取舍。现有排班的独立收益计算与本入口分别运行。本轮交付限于新分支本地提交，不更新 `main` 或 `D:\Tools\R.I.I.C-Calculator`。
+自动排班优化固定布局下的人员和主替安排，以完整仿真采样窗口内的日均加权产出为最终比较标准。合法占位、已有人员锁定、组合完整、实际技能阶段和恢复容量是约束，不参与收益取舍。现有排班的独立收益计算与本入口分别运行。源码合并、安装备份及验证状态统一记录在 [当前计划](../UPDATE_PLAN.md)。
 
 ## 默认搜索
 
@@ -59,7 +59,7 @@
 
 独立构建还在内置浏览器的新本地地址完成一次实际界面流程：导入432人测试库存，默认72h采样、随机种子设置为-1、深度比较关闭，经24h预热后显示99,866.7分/日、排班校验通过及达到计算预算提示。该界面验收未捕获原始Worker请求/报告，不用于复现随机种子或度量运行速度；其结果也不代替真实游戏验收。
 
-整合后的完整回归为368文件、4955项通过，另1文件/1项原有跳过，0失败；类型、生产构建、结构索引和离线领域包校验通过。来源、完整测试JSON及逐文件哈希集中记录在本机 `artifacts/constraint-model/main-clock-integration/validation/verification-summary.json`。本轮仅本地分支交付，未推送远程、未修改主分支、未同步安装目录。
+整合后的完整回归为368文件、4955项通过，另1文件/1项原有跳过，0失败；类型、生产构建、结构索引和离线领域包校验通过。来源、完整测试JSON及逐文件哈希集中记录在本机 `artifacts/constraint-model/main-clock-integration/validation/verification-summary.json`。该汇总保存本地验收时的交付状态；用户后续授权的主线和本地安装交付另记录在 `artifacts/auto-roster-release-20261026/` 及当前计划。
 
 早期6+2方案曾出现CPU增加约11.7%，局部周期模型最优也曾对应F下降或持平；这些反例保留，用于界定模型能力。旧88591口径的v2记录位于 `artifacts/constraint-model/solver-prototype/production-pipeline-v2-run/comparison.json`；当前新主线比较以 `artifacts/constraint-model/main-clock-integration/independent-audit/REPORT.md` 为准。
 
