@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 786 个索引文件，其中应用 TypeScript/Vue/CSS 文件 270 个，业务测试文件 354 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 810 个索引文件，其中应用 TypeScript/Vue/CSS 文件 277 个，业务测试文件 360 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -140,6 +140,18 @@ docs/
 scripts/
 ├── fixtures/
 │   └── neighborhood-request.json
+├── neural/
+│   ├── README.md
+│   ├── experiment.ts
+│   ├── infer.ts
+│   ├── integration.node-test.mjs
+│   ├── migrate-checkpoint.mjs
+│   ├── process.mjs
+│   ├── process.node-test.mjs
+│   ├── provenance.mjs
+│   ├── provenance.node-test.mjs
+│   ├── run.mjs
+│   └── simulation-worker.ts
 ├── unicode-escape-names/
 │   ├── LICENSE.txt
 │   ├── NameAliases-15.0.0.txt
@@ -332,6 +344,20 @@ src/
 ├── optimizer/
 │   ├── fixtures/
 │   │   └── mixed-level-inventory.json
+│   ├── neural/
+│   │   ├── actionSpace.spec.ts
+│   │   ├── actionSpace.ts
+│   │   ├── decode.spec.ts
+│   │   ├── decode.ts
+│   │   ├── experiment.spec.ts
+│   │   ├── experiment.ts
+│   │   ├── features.ts
+│   │   ├── policy.spec.ts
+│   │   ├── policy.ts
+│   │   ├── teacherTraces.spec.ts
+│   │   ├── teacherTraces.ts
+│   │   ├── training.spec.ts
+│   │   └── training.ts
 │   ├── automaticCombinationPreferences.spec.ts
 │   ├── automaticCombinationPreferences.ts
 │   ├── automaticPepeMain.spec.ts

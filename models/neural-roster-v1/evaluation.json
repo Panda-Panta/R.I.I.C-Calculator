@@ -1,0 +1,1466 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "originalReportHash": "268f710b1d2d48de7ec8172b86fa0f60cf5b3b6aa07916d2c274d8086110da31",
+  "originalManifestHash": "0ccfe24b3bc28074bda85cb42beabb83dc15e36a2c9a3f776b97c3808498ce64",
+  "trainingSourceHash": "9b8461bccc20052767b852198a3784e5b4f547166c029c8203b3b63d1dd88368",
+  "simulation": {
+    "engine": "candidateSimulation -> scheduleSimulationBridge",
+    "schedulingModel": "mower-alpha",
+    "warmupHours": 24,
+    "sampleHours": 72,
+    "production": {
+      "runOrderMode": "ideal",
+      "outputMode": "potential",
+      "droneTarget": "gold",
+      "seed": 20261026
+    },
+    "assumptions": {
+      "restingThreshold": 0.65,
+      "operationDurationHours": 0
+    },
+    "wallTimeoutMs": 120000,
+    "concurrency": 1
+  },
+  "training": {
+    "updates": 12480,
+    "epochsCompleted": 60,
+    "initialLoss": 5.1396653637533625,
+    "finalLoss": 3.5359256282234095,
+    "cancelled": false,
+    "durationMs": 45501.51936600008,
+    "samples": 208,
+    "datasetHash": "5827db91bd46810bbb2a75337f223d0e2941b0b4a4a6f94bdb2e7680e86869bc",
+    "modelHash": "0d7757e698cfe54c05aed3904413b7cab23ccad1dd2b15836b87821a384a67fd",
+    "freshModelHash": "b941862ebf4d4b4144bae2aed48dadad104b5af5ea5f598e5956766a8e1990b0",
+    "qualifiedFamilies": 4,
+    "serializationParity": true
+  },
+  "bySplit": {
+    "dev": {
+      "teacher": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 69304.1666721852,
+        "violations": 0,
+        "fallbackPlacements": 0
+      },
+      "fresh": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 48195.833335477066,
+        "violations": 0,
+        "fallbackPlacements": 0
+      },
+      "random": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 47370.833335230076,
+        "violations": 0,
+        "fallbackPlacements": 0
+      },
+      "trained": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 53266.66666886752,
+        "violations": 0,
+        "fallbackPlacements": 0
+      }
+    },
+    "test": {
+      "teacher": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 69795.83333970784,
+        "violations": 0,
+        "fallbackPlacements": 0
+      },
+      "fresh": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 48191.66666909505,
+        "violations": 0,
+        "fallbackPlacements": 0
+      },
+      "random": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 46725.00000222809,
+        "violations": 0,
+        "fallbackPlacements": 0
+      },
+      "trained": {
+        "attempted": 4,
+        "completed": 4,
+        "completionRate": 1,
+        "meanCompletedScore": 54779.16666948844,
+        "violations": 0,
+        "fallbackPlacements": 0
+      }
+    }
+  },
+  "summary": {
+    "teacher": {
+      "attempted": 8,
+      "completed": 8,
+      "completionRate": 1,
+      "meanCompletedScore": 69550.00000594652,
+      "violations": 0,
+      "fallbackPlacements": 0
+    },
+    "fresh": {
+      "attempted": 8,
+      "completed": 8,
+      "completionRate": 1,
+      "meanCompletedScore": 48193.75000228606,
+      "violations": 0,
+      "fallbackPlacements": 0
+    },
+    "random": {
+      "attempted": 8,
+      "completed": 8,
+      "completionRate": 1,
+      "meanCompletedScore": 47047.916668729085,
+      "violations": 0,
+      "fallbackPlacements": 0
+    },
+    "trained": {
+      "attempted": 8,
+      "completed": 8,
+      "completionRate": 1,
+      "meanCompletedScore": 54022.91666917799,
+      "violations": 0,
+      "fallbackPlacements": 0
+    }
+  },
+  "acceptanceWindow": true,
+  "limitations": [
+    "Singleton/neutral production masks only; no atomic combos",
+    "Fixed dorm keeper and Free beds are context, not learned placements",
+    "Tiny layout is a mechanism fixture, not practical full-base performance",
+    "Actual levels are randomized explicit synthetic ownership, not user inventory",
+    "Finite simulation success is not game validation or universal policy safety",
+    "Only four independent training inventories (208 decisions), one model seed and one practical 243 layout.",
+    "Operator identities overlap across independently sampled inventory families; this is not unseen-operator generalization.",
+    "Trained scores are below the teacher on every held-out case; no heuristic-superiority or general performance claim."
+  ],
+  "evaluations": [
+    {
+      "familyId": "inventory-20261026-0",
+      "split": "test",
+      "inventorySize": 100,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 55933.33333601775,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 1.4279969999333844,
+      "simulation": {
+        "completed": true,
+        "score": 55933.33333601775,
+        "diagnostics": [],
+        "durationMs": 26050.60596
+      }
+    },
+    {
+      "familyId": "inventory-20261026-0",
+      "split": "test",
+      "inventorySize": 100,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 48466.66666892174,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4098_vvana\"] -> [\"char_4032_provs\",\"char_4098_vvana\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_431_ashlok\"] -> [\"char_4032_provs\",\"char_431_ashlok\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 24404.512858999893,
+      "simulation": {
+        "completed": true,
+        "score": 48466.66666892174,
+        "diagnostics": [],
+        "durationMs": 24269.22694600001
+      }
+    },
+    {
+      "familyId": "inventory-20261026-0",
+      "split": "test",
+      "inventorySize": 100,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 46800.0000014472,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_107_liskam\"] -> [\"char_4032_provs\",\"char_107_liskam\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4179_monstr\"] -> [\"char_4032_provs\",\"char_4179_monstr\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 22021.149994000094,
+      "simulation": {
+        "completed": true,
+        "score": 46800.0000014472,
+        "diagnostics": [],
+        "durationMs": 21948.005952000036
+      }
+    },
+    {
+      "familyId": "inventory-20261026-0",
+      "split": "test",
+      "inventorySize": 100,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 51833.33333601611,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_1038_whitw2\"] -> [\"char_4032_provs\",\"char_1038_whitw2\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4081_warmy\"] -> [\"char_4032_provs\",\"char_4081_warmy\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 25088.231054999982,
+      "simulation": {
+        "completed": true,
+        "score": 51833.33333601611,
+        "diagnostics": [],
+        "durationMs": 25000.85098700004
+      }
+    },
+    {
+      "familyId": "inventory-20261026-1",
+      "split": "test",
+      "inventorySize": 200,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 70666.66667358537,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 1.4806640000315383,
+      "simulation": {
+        "completed": true,
+        "score": 70666.66667358537,
+        "diagnostics": [],
+        "durationMs": 49416.498802
+      }
+    },
+    {
+      "familyId": "inventory-20261026-1",
+      "split": "test",
+      "inventorySize": 200,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 46666.66666949254,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4140_lasher\"] -> [\"char_4228_closur\",\"char_4140_lasher\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4173_nowell\"] -> [\"char_4228_closur\",\"char_4173_nowell\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 33583.22560299991,
+      "simulation": {
+        "completed": true,
+        "score": 46666.66666949254,
+        "diagnostics": [],
+        "durationMs": 33372.123653999995
+      }
+    },
+    {
+      "familyId": "inventory-20261026-1",
+      "split": "test",
+      "inventorySize": 200,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 49533.33333686177,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "singleton-work-policy",
+          "detail": "Applied existing singleton exhaustion policy (no staffing change)"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_278_orchid\"] -> [\"char_4228_closur\",\"char_278_orchid\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4011_lessng\"] -> [\"char_4228_closur\",\"char_4011_lessng\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 29586.03972400003,
+      "simulation": {
+        "completed": true,
+        "score": 49533.33333686177,
+        "diagnostics": [],
+        "durationMs": 29362.13531199994
+      }
+    },
+    {
+      "familyId": "inventory-20261026-1",
+      "split": "test",
+      "inventorySize": 200,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 56866.6666695514,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4098_vvana\"] -> [\"char_4228_closur\",\"char_4098_vvana\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4107_vrdant\"] -> [\"char_4228_closur\",\"char_4107_vrdant\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 39342.46692799998,
+      "simulation": {
+        "completed": true,
+        "score": 56866.6666695514,
+        "diagnostics": [],
+        "durationMs": 39039.275594000006
+      }
+    },
+    {
+      "familyId": "inventory-20261026-6",
+      "split": "dev",
+      "inventorySize": 300,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 77666.66667389584,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 1.7160720000974834,
+      "simulation": {
+        "completed": true,
+        "score": 77666.66667389584,
+        "diagnostics": [],
+        "durationMs": 48242.32885799999
+      }
+    },
+    {
+      "familyId": "inventory-20261026-6",
+      "split": "dev",
+      "inventorySize": 300,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 51366.66666864137,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4066_highmo\"] -> [\"char_4032_provs\",\"char_4066_highmo\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_106_franka\"] -> [\"char_486_takila\",\"char_106_franka\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_179_cgbird\"] -> [\"char_4032_provs\",\"char_179_cgbird\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_4187_graceb\"] -> [\"char_486_takila\",\"char_4187_graceb\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 37557.487295,
+      "simulation": {
+        "completed": true,
+        "score": 51366.66666864137,
+        "diagnostics": [],
+        "durationMs": 37199.91489300004
+      }
+    },
+    {
+      "familyId": "inventory-20261026-6",
+      "split": "dev",
+      "inventorySize": 300,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 50733.33333554796,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_133_mm\"] -> [\"char_4032_provs\",\"char_133_mm\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4186_tmoris\"] -> [\"char_486_takila\",\"char_4186_tmoris\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_117_myrrh\"] -> [\"char_4032_provs\",\"char_117_myrrh\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_427_vigil\"] -> [\"char_486_takila\",\"char_427_vigil\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 35042.50051000004,
+      "simulation": {
+        "completed": true,
+        "score": 50733.33333554796,
+        "diagnostics": [],
+        "durationMs": 34629.716671
+      }
+    },
+    {
+      "familyId": "inventory-20261026-6",
+      "split": "dev",
+      "inventorySize": 300,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 55200.0000019422,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_124_kroos\"] -> [\"char_4032_provs\",\"char_124_kroos\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4037_demetr\"] -> [\"char_486_takila\",\"char_4037_demetr\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_420_flamtl\"] -> [\"char_4032_provs\",\"char_420_flamtl\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_103_angel\"] -> [\"char_486_takila\",\"char_103_angel\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 40930.190417999984,
+      "simulation": {
+        "completed": true,
+        "score": 55200.0000019422,
+        "diagnostics": [],
+        "durationMs": 40594.20519599994
+      }
+    },
+    {
+      "familyId": "inventory-20261026-7",
+      "split": "dev",
+      "inventorySize": 400,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 79250.0000084306,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 2.9715480000013486,
+      "simulation": {
+        "completed": true,
+        "score": 79250.0000084306,
+        "diagnostics": [],
+        "durationMs": 46727.302410000004
+      }
+    },
+    {
+      "familyId": "inventory-20261026-7",
+      "split": "dev",
+      "inventorySize": 400,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 46350.000002302186,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_1020_reed2\"] -> [\"char_4032_provs\",\"char_1020_reed2\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_1502_crosly\"] -> [\"char_486_takila\",\"char_1502_crosly\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_279_excu\"] -> [\"char_4032_provs\",\"char_279_excu\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_4141_marcil\"] -> [\"char_486_takila\",\"char_4141_marcil\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 36148.565309999976,
+      "simulation": {
+        "completed": true,
+        "score": 46350.000002302186,
+        "diagnostics": [],
+        "durationMs": 35662.62360500009
+      }
+    },
+    {
+      "familyId": "inventory-20261026-7",
+      "split": "dev",
+      "inventorySize": 400,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 44883.33333534892,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4004_pudd\"] -> [\"char_4032_provs\",\"char_4004_pudd\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_427_vigil\"] -> [\"char_486_takila\",\"char_427_vigil\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_183_skgoat\"] -> [\"char_4032_provs\",\"char_183_skgoat\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_405_absin\"] -> [\"char_486_takila\",\"char_405_absin\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 37209.77175100008,
+      "simulation": {
+        "completed": true,
+        "score": 44883.33333534892,
+        "diagnostics": [],
+        "durationMs": 36760.440337000065
+      }
+    },
+    {
+      "familyId": "inventory-20261026-7",
+      "split": "dev",
+      "inventorySize": 400,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 57733.33333646331,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_185_frncat\"] -> [\"char_4032_provs\",\"char_185_frncat\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4063_quartz\"] -> [\"char_486_takila\",\"char_4063_quartz\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_459_tachak\"] -> [\"char_4032_provs\",\"char_459_tachak\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_103_angel\"] -> [\"char_486_takila\",\"char_103_angel\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 33898.69750500005,
+      "simulation": {
+        "completed": true,
+        "score": 57733.33333646331,
+        "diagnostics": [],
+        "durationMs": 33453.63428700005
+      }
+    },
+    {
+      "familyId": "inventory-20261026-8",
+      "split": "dev",
+      "inventorySize": 100,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 49633.33333536796,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 1.058422000030987,
+      "simulation": {
+        "completed": true,
+        "score": 49633.33333536796,
+        "diagnostics": [],
+        "durationMs": 26315.471784999943
+      }
+    },
+    {
+      "familyId": "inventory-20261026-8",
+      "split": "dev",
+      "inventorySize": 100,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 44066.66666809912,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4191_tippi\"] -> [\"char_4032_provs\",\"char_4191_tippi\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4031_liesel\"] -> [\"char_4032_provs\",\"char_4031_liesel\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 23344.80804299994,
+      "simulation": {
+        "completed": true,
+        "score": 44066.66666809912,
+        "diagnostics": [],
+        "durationMs": 23211.725618000026
+      }
+    },
+    {
+      "familyId": "inventory-20261026-8",
+      "split": "dev",
+      "inventorySize": 100,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 46533.33333493844,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_394_hadiya\"] -> [\"char_4032_provs\",\"char_394_hadiya\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_401_elysm\"] -> [\"char_4032_provs\",\"char_401_elysm\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 24781.619114,
+      "simulation": {
+        "completed": true,
+        "score": 46533.33333493844,
+        "diagnostics": [],
+        "durationMs": 24706.137516000075
+      }
+    },
+    {
+      "familyId": "inventory-20261026-8",
+      "split": "dev",
+      "inventorySize": 100,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 46866.666668509475,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_332_archet\"] -> [\"char_4032_provs\",\"char_332_archet\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_440_pinecn\"] -> [\"char_4032_provs\",\"char_440_pinecn\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 23356.990382999997,
+      "simulation": {
+        "completed": true,
+        "score": 46866.666668509475,
+        "diagnostics": [],
+        "durationMs": 23267.448014999973
+      }
+    },
+    {
+      "familyId": "inventory-20261026-9",
+      "split": "dev",
+      "inventorySize": 200,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 70666.66667104639,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 13.852111999993213,
+      "simulation": {
+        "completed": true,
+        "score": 70666.66667104639,
+        "diagnostics": [],
+        "durationMs": 43632.40200200002
+      }
+    },
+    {
+      "familyId": "inventory-20261026-9",
+      "split": "dev",
+      "inventorySize": 200,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 51000.0000028656,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_278_orchid\"] -> [\"char_4032_provs\",\"char_278_orchid\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_416_zumama\"] -> [\"char_4032_provs\",\"char_416_zumama\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 36536.15351600002,
+      "simulation": {
+        "completed": true,
+        "score": 51000.0000028656,
+        "diagnostics": [],
+        "durationMs": 36290.916396999964
+      }
+    },
+    {
+      "familyId": "inventory-20261026-9",
+      "split": "dev",
+      "inventorySize": 200,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 47333.33333508498,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4130_luton\"] -> [\"char_4032_provs\",\"char_4130_luton\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_421_crow\"] -> [\"char_4032_provs\",\"char_421_crow\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 35933.16485700011,
+      "simulation": {
+        "completed": true,
+        "score": 47333.33333508498,
+        "diagnostics": [],
+        "durationMs": 35736.28762800014
+      }
+    },
+    {
+      "familyId": "inventory-20261026-9",
+      "split": "dev",
+      "inventorySize": 200,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 53266.6666685551,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_151_myrtle\"] -> [\"char_4032_provs\",\"char_151_myrtle\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_2015_dusk\"] -> [\"char_4032_provs\",\"char_2015_dusk\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 36396.331596999895,
+      "simulation": {
+        "completed": true,
+        "score": 53266.6666685551,
+        "diagnostics": [],
+        "durationMs": 36133.19805300003
+      }
+    },
+    {
+      "familyId": "inventory-20261026-10",
+      "split": "test",
+      "inventorySize": 300,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 74900.00000776628,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 1.8714819999877363,
+      "simulation": {
+        "completed": true,
+        "score": 74900.00000776628,
+        "diagnostics": [],
+        "durationMs": 48935.56799800001
+      }
+    },
+    {
+      "familyId": "inventory-20261026-10",
+      "split": "test",
+      "inventorySize": 300,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 48283.333335424664,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_110_deepcl\"] -> [\"char_4032_provs\",\"char_110_deepcl\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4088_hodrer\"] -> [\"char_486_takila\",\"char_4088_hodrer\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_2015_dusk\"] -> [\"char_4032_provs\",\"char_2015_dusk\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_226_hmau\"] -> [\"char_486_takila\",\"char_226_hmau\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 37168.725399000105,
+      "simulation": {
+        "completed": true,
+        "score": 48283.333335424664,
+        "diagnostics": [],
+        "durationMs": 36747.6196049999
+      }
+    },
+    {
+      "familyId": "inventory-20261026-10",
+      "split": "test",
+      "inventorySize": 300,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 44016.6666684705,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_494_vendla\"] -> [\"char_4032_provs\",\"char_494_vendla\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4203_kichi\"] -> [\"char_486_takila\",\"char_4203_kichi\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_136_hsguma\"] -> [\"char_4032_provs\",\"char_136_hsguma\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_4224_turdus\"] -> [\"char_486_takila\",\"char_4224_turdus\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 23234.781181000173,
+      "simulation": {
+        "completed": true,
+        "score": 44016.6666684705,
+        "diagnostics": [],
+        "durationMs": 22928.41920699994
+      }
+    },
+    {
+      "familyId": "inventory-20261026-10",
+      "split": "test",
+      "inventorySize": 300,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 57566.66666988561,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_420_flamtl\"] -> [\"char_4032_provs\",\"char_420_flamtl\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4037_demetr\"] -> [\"char_486_takila\",\"char_4037_demetr\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_183_skgoat\"] -> [\"char_4032_provs\",\"char_183_skgoat\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_4220_kormr\"] -> [\"char_486_takila\",\"char_4220_kormr\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 29632.811952999793,
+      "simulation": {
+        "completed": true,
+        "score": 57566.66666988561,
+        "diagnostics": [],
+        "durationMs": 29269.47078800015
+      }
+    },
+    {
+      "familyId": "inventory-20261026-11",
+      "split": "test",
+      "inventorySize": 400,
+      "method": "teacher",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 77683.33334146194,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 0,
+      "heuristicPlacements": 52,
+      "frozenAssignments": 4,
+      "mechanicalChanges": null,
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 3.0198360001668334,
+      "simulation": {
+        "completed": true,
+        "score": 77683.33334146194,
+        "diagnostics": [],
+        "durationMs": 46977.739046
+      }
+    },
+    {
+      "familyId": "inventory-20261026-11",
+      "split": "test",
+      "inventorySize": 400,
+      "method": "fresh",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 49350.00000254126,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_378_asbest\"] -> [\"char_4032_provs\",\"char_378_asbest\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_1027_greyy2\"] -> [\"char_486_takila\",\"char_1027_greyy2\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4088_hodrer\"] -> [\"char_4032_provs\",\"char_4088_hodrer\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_421_crow\"] -> [\"char_486_takila\",\"char_421_crow\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 40607.86023500003,
+      "simulation": {
+        "completed": true,
+        "score": 49350.00000254126,
+        "diagnostics": [],
+        "durationMs": 39976.90348099987
+      }
+    },
+    {
+      "familyId": "inventory-20261026-11",
+      "split": "test",
+      "inventorySize": 400,
+      "method": "random",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 46550.00000213291,
+      "violations": [],
+      "neuralPlacements": 0,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_4013_kjera\"] -> [\"char_4032_provs\",\"char_4013_kjera\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_230_savage\"] -> [\"char_486_takila\",\"char_230_savage\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4051_akkord\"] -> [\"char_4032_provs\",\"char_4051_akkord\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_275_breeze\"] -> [\"char_486_takila\",\"char_275_breeze\"]"
+        }
+      ],
+      "neuralPlacementShare": 0,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 29051.435532999923,
+      "simulation": {
+        "completed": true,
+        "score": 46550.00000213291,
+        "diagnostics": [],
+        "durationMs": 28567.733554000035
+      }
+    },
+    {
+      "familyId": "inventory-20261026-11",
+      "split": "test",
+      "inventorySize": 400,
+      "method": "trained",
+      "decodeComplete": true,
+      "simulationComplete": true,
+      "score": 52850.00000250064,
+      "violations": [],
+      "neuralPlacements": 52,
+      "generatedPlacements": 52,
+      "heuristicPlacements": 0,
+      "frozenAssignments": 4,
+      "mechanicalChanges": [
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:0: [\"char_196_sunbr\"] -> [\"char_4032_provs\",\"char_196_sunbr\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_1:1: [\"char_4037_demetr\"] -> [\"char_486_takila\",\"char_4037_demetr\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:0: [\"char_4202_haruka\"] -> [\"char_4032_provs\",\"char_4202_haruka\"]"
+        },
+        {
+          "kind": "ideal-run-order",
+          "detail": "room_3_2:1: [\"char_208_melan\"] -> [\"char_486_takila\",\"char_208_melan\"]"
+        }
+      ],
+      "neuralPlacementShare": 0.9285714285714286,
+      "fallbackPlacements": 0,
+      "diagnostics": [],
+      "durationMs": 42406.22664000001,
+      "simulation": {
+        "completed": true,
+        "score": 52850.00000250064,
+        "diagnostics": [],
+        "durationMs": 41941.88632999989
+      }
+    }
+  ],
+  "inventoryFamilies": [
+    {
+      "familyId": "inventory-20261026-0",
+      "split": "test",
+      "inventorySize": 100,
+      "inventoryHash": "aa37f2395806cfbae17af625ca7f6fe1a476f2a6d253bcf3dabe2341375cc2ed",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 2,
+        "level": 80
+      },
+      "stageSummary": {
+        "E2": 29,
+        "E0": 48,
+        "E1": 23
+      }
+    },
+    {
+      "familyId": "inventory-20261026-1",
+      "split": "test",
+      "inventorySize": 200,
+      "inventoryHash": "9258862d8f2241d2ff4f7041f9d40952d6d9c27586e8dbf8eab2ed6f7672ee6e",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E0": 105,
+        "E2": 54,
+        "E1": 41
+      }
+    },
+    {
+      "familyId": "inventory-20261026-2",
+      "split": "train",
+      "inventorySize": 300,
+      "inventoryHash": "76d91a81d6d872805697ddd7a4e5f6fc0734a04ed940ca3cdb631a43faa03bc2",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 1,
+        "level": 1
+      },
+      "stageSummary": {
+        "E0": 162,
+        "E2": 63,
+        "E1": 75
+      }
+    },
+    {
+      "familyId": "inventory-20261026-3",
+      "split": "train",
+      "inventorySize": 400,
+      "inventoryHash": "65976328278cba2d41b11fddd29e409340648f5b12f4798112b68c37170c4686",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 1,
+        "level": 1
+      },
+      "stageSummary": {
+        "E1": 102,
+        "E0": 210,
+        "E2": 88
+      }
+    },
+    {
+      "familyId": "inventory-20261026-4",
+      "split": "train",
+      "inventorySize": 100,
+      "inventoryHash": "4e4fb09da4684200db199e15ef6860f8619f029d7f6b797bc0653ea35d3d8bbd",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E2": 22,
+        "E1": 32,
+        "E0": 46
+      }
+    },
+    {
+      "familyId": "inventory-20261026-5",
+      "split": "train",
+      "inventorySize": 200,
+      "inventoryHash": "d79b318be2fba3a46cce66b47e3480801d0685c3759d4f572c6272ad26ca616c",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 2,
+        "level": 80
+      },
+      "stageSummary": {
+        "E1": 51,
+        "E0": 101,
+        "E2": 48
+      }
+    },
+    {
+      "familyId": "inventory-20261026-6",
+      "split": "dev",
+      "inventorySize": 300,
+      "inventoryHash": "5b48d4dae8cac2a3a282ea4aab30401c135735fa5e71c6e8ab86e28b578bd14d",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E2": 85,
+        "E0": 153,
+        "E1": 62
+      }
+    },
+    {
+      "familyId": "inventory-20261026-7",
+      "split": "dev",
+      "inventorySize": 400,
+      "inventoryHash": "a1a57ae808ffab6a6e83860bb6d9efd817976ad91843b9bb4be760779647e8d8",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E2": 97,
+        "E0": 206,
+        "E1": 97
+      }
+    },
+    {
+      "familyId": "inventory-20261026-8",
+      "split": "dev",
+      "inventorySize": 100,
+      "inventoryHash": "716cbcd76019c71237b32409250bfa2d2345fb7688bf1e4797b0df7c8f50771c",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E1": 27,
+        "E2": 17,
+        "E0": 56
+      }
+    },
+    {
+      "familyId": "inventory-20261026-9",
+      "split": "dev",
+      "inventorySize": 200,
+      "inventoryHash": "ef4fffb8af212bdf60c5fff44e159091fd64bca62bef7b562996d1581ea2afe2",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E2": 41,
+        "E1": 60,
+        "E0": 99
+      }
+    },
+    {
+      "familyId": "inventory-20261026-10",
+      "split": "test",
+      "inventorySize": 300,
+      "inventoryHash": "f213f11de30bab6b5a1086143e2d0c04294a275770f79e47b29b9e841c33add4",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E0": 166,
+        "E2": 72,
+        "E1": 62
+      }
+    },
+    {
+      "familyId": "inventory-20261026-11",
+      "split": "test",
+      "inventorySize": 400,
+      "inventoryHash": "9e006a14bbf10a7f22761bf3288207a8b02b8046beaac7e93478fc37cf337db7",
+      "requiredProviso": {
+        "operator": "char_4032_provs",
+        "elitePhase": 0,
+        "level": 1
+      },
+      "stageSummary": {
+        "E0": 225,
+        "E1": 89,
+        "E2": 86
+      }
+    }
+  ]
+}

@@ -1,0 +1,1078 @@
+{
+  "workspace": {
+    "schemaVersion": 8,
+    "name": "默认排班",
+    "mainPlan": {
+      "id": "plan1",
+      "name": "主力排班",
+      "facilities": {
+        "room_1_1": {
+          "roomId": "room_1_1",
+          "type": "manufacture",
+          "level": 3,
+          "product": "gold",
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_1_2": {
+          "roomId": "room_1_2",
+          "type": "manufacture",
+          "level": 3,
+          "product": "gold",
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_1_3": {
+          "roomId": "room_1_3",
+          "type": "power",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_2_1": {
+          "roomId": "room_2_1",
+          "type": "manufacture",
+          "level": 3,
+          "product": "exp",
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_2_2": {
+          "roomId": "room_2_2",
+          "type": "manufacture",
+          "level": 3,
+          "product": "exp",
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_2_3": {
+          "roomId": "room_2_3",
+          "type": "power",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_3_1": {
+          "roomId": "room_3_1",
+          "type": "trading",
+          "level": 3,
+          "product": "money",
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_3_2": {
+          "roomId": "room_3_2",
+          "type": "trading",
+          "level": 3,
+          "product": "money",
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "room_3_3": {
+          "roomId": "room_3_3",
+          "type": "power",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "central": {
+          "roomId": "central",
+          "type": "central",
+          "level": 5,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "dormitory_1": {
+          "roomId": "dormitory_1",
+          "type": "dormitory",
+          "level": 5,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "operator",
+                "operatorId": "char_1016_agoat2"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "dormitory_2": {
+          "roomId": "dormitory_2",
+          "type": "dormitory",
+          "level": 5,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "operator",
+                "operatorId": "char_1041_angel2"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "dormitory_3": {
+          "roomId": "dormitory_3",
+          "type": "dormitory",
+          "level": 5,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "operator",
+                "operatorId": "char_143_ghost"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "dormitory_4": {
+          "roomId": "dormitory_4",
+          "type": "dormitory",
+          "level": 5,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "operator",
+                "operatorId": "char_147_shining"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "free"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "meeting": {
+          "roomId": "meeting",
+          "type": "meeting",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "factory": {
+          "roomId": "factory",
+          "type": "factory",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "contact": {
+          "roomId": "contact",
+          "type": "contact",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "train": {
+          "roomId": "train",
+          "type": "train",
+          "level": 3,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            },
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "recycle": {
+          "roomId": "recycle",
+          "type": "recycle",
+          "level": 0,
+          "slots": []
+        },
+        "gaming_1": {
+          "roomId": "gaming_1",
+          "type": "gaming",
+          "level": 1,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "gaming_2": {
+          "roomId": "gaming_2",
+          "type": "gaming",
+          "level": 1,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        },
+        "gaming_3": {
+          "roomId": "gaming_3",
+          "type": "gaming",
+          "level": 1,
+          "slots": [
+            {
+              "occupant": {
+                "kind": "empty"
+              },
+              "groupId": null,
+              "replacements": []
+            }
+          ]
+        }
+      },
+      "conf": {
+        "ling_xi": 1,
+        "exhaust_require": [],
+        "rest_in_full": [],
+        "resting_priority": [],
+        "workaholic": [],
+        "refresh_trading": [],
+        "refresh_drained": [],
+        "ope_resting_priority": []
+      }
+    },
+    "compatibility": {
+      "defaultPlanKey": "plan1",
+      "backupPlans": [],
+      "otherPlans": {},
+      "unrecognizedFields": {}
+    }
+  },
+  "entries": [
+    {
+      "operator": "char_1016_agoat2",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_1023_ghost2",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_1027_greyy2",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_1038_whitw2",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_1039_thorn2",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_1041_angel2",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_1043_leizi2",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_1045_svash2",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_106_franka",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_107_liskam",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_113_cqbw",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_130_doberm",
+      "elitePhase": 2,
+      "level": 70
+    },
+    {
+      "operator": "char_143_ghost",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_145_prove",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_147_shining",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_148_nearl",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_149_scave",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_157_dagda",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_172_svrash",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_173_slchan",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_179_cgbird",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_183_skgoat",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_187_ccheal",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_193_frostl",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_194_leto",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_201_moeshd",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_2014_nian",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_202_demkni",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_209_ardign",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_212_ansel",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_213_mostma",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_214_kafka",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_240_wyvern",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_245_cello",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_249_mlyss",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_252_bibeak",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_284_spot",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_289_gyuki",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_291_aglina",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_298_susuro",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_306_leizi",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_308_swire",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_322_lmlee",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_336_folivo",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_340_shwaz",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_350_surtr",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_356_broca",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_362_saga",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_363_toddi",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_365_aprl",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_378_asbest",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_383_snsant",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_385_finlpp",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_391_rosmon",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4016_kazema",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4023_rfalcn",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4031_liesel",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4032_provs",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4036_forcer",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4040_rockr",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4047_pianst",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4048_doroth",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_405_absin",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4064_mlynar",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4067_lolxh",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4081_warmy",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4087_ines",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4098_vvana",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4102_threye",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_411_tomimi",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4119_wanqin",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4121_zuole",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_4124_iana",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4126_fuze",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4136_phonor",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4141_marcil",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4147_mitm",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_416_zumama",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_4166_varkis",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4173_nowell",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4177_brigid",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4179_monstr",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4185_amoris",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4186_tmoris",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4187_graceb",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_420_flamtl",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4203_kichi",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4207_branch",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_4208_wintim",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4226_veen",
+      "elitePhase": 1,
+      "level": 1
+    },
+    {
+      "operator": "char_4227_gallus",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_4237_jcinta",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_427_vigil",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_431_ashlok",
+      "elitePhase": 2,
+      "level": 80
+    },
+    {
+      "operator": "char_450_necras",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_474_glady",
+      "elitePhase": 2,
+      "level": 90
+    },
+    {
+      "operator": "char_487_bobb",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_489_serum",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_492_quercu",
+      "elitePhase": 0,
+      "level": 1
+    },
+    {
+      "operator": "char_499_kaitou",
+      "elitePhase": 0,
+      "level": 1
+    }
+  ]
+}

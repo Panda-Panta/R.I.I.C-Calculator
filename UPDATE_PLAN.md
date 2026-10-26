@@ -1,3 +1,77 @@
+# 2026-10-26 神经网络排班重新开发 Implementation Plan
+
+> Delegated workers implement only their assigned paths; parent integrates and independently reviews. User delegated technical decisions and requires cloud-only work and a new branch.
+
+**Goal:** Train a real masked autoregressive policy generating main and ordinary relief assignments from owned inventories, then verify free-running outputs with the current Calculator simulator.
+**Architecture:** Experimental CLI and isolated optimizer modules, not a replacement for default automatic search. Candidate-scoring MLP observes partial roster, position role and candidate features; legal masks constrain each placement. Teacher imitation is followed by held-out inventory evaluation; a heuristic-completed roster is never labeled neural output.
+**Tech Stack:** Existing TypeScript toolchain; CPU numerical implementation, no GPU or paid service required. Training implementation and exported inference share a versioned numerical contract.
+**Spec:** This section records the autonomous design decision authorized by user “自行决断”.
+
+## Global constraints
+- Cloud only. Branch codex/neural-roster-restart-20261026; base 89070dcb29410de68364aca32556215de04c8b0d. Do not merge, deploy, or access user devices.
+- Existing default algorithm, simulator rules, score semantics, and fixtures remain unchanged.
+- No backup plans; actual owned levels and skill stages only; enforce explicit trade exclusions and valid run-order policy. First checkpoint may explicitly restrict supported operator/layout curriculum, never claim universal coverage.
+- Failed, incomplete or timed-out simulations have null labels, never zero reward. Split by inventory/scenario before trace generation; normalization must not see held-out labels.
+- All model-generated placements and deterministic postprocessing/fallbacks are separately counted. Preserve seed, source/feature/model/dataset hashes and simulation settings.
+- Baseline archive ../backups/riic-89070dc-before-neural.tar.gz SHA256 e2542cf95a037f9b59d34013ad3cec65c5d7179ddf29b2167c56a686eec59a4d.
+- Read repository AGENTS, DEVELOPMENT_WORKFLOW and RIIC skill. Uploaded agent-dev-workflow was cloned/read at ../workflow-skill/agent-dev-workflow/SKILL.md; repository blob 6d28f8d4000f3e28d466f4bd78e9eb2e0bac0cfc. Personal mode with parent-owned Git/integration and independent parallel implementation. Current user cloud-only/new-branch instruction overrides historical installation/main-merge defaults.
+
+## Review focus
+1. Teacher trace action forbidden under prefix mask: reject with diagnostic, never unmask silently.
+2. Decode dead end: report incomplete, never hide heuristic completion.
+3. Model nonfinite/dimension/version errors: reject before inference.
+4. Inventory-family leakage and simulator target leakage: stable separate splits, input features independent of score.
+5. Score improvement attribution: same budgets/seeds and completed real simulator results, no training-loss-only success claim.
+
+## Task 1: CPU neural policy and training
+Files: src/optimizer/neural/policy.ts, policy.spec.ts, training.ts, training.spec.ts.
+Interfaces: PolicySample { candidates: number[][]; targetIndex: number }; versioned PolicyModel with feature dimension, hidden dimensions, finite weights and seed metadata. createPolicyModel(featureCount, hiddenSize, seed); policyLogits(model, candidates); trainPolicy(model, samples, options); validatePolicyModel(unknown). Export exact interfaces to sibling implementer before integration.
+- [x] Write and run failing deterministic initialization, masked-choice CE/gradient, serialization parity, nonfinite/dimension and learning tests.
+- [x] Implement small real MLP shared over candidate features and stable softmax cross-entropy, deterministic optimizer with cancellation/max epochs.
+- [x] Verify finite-difference gradients, loss decrease, weights actually change and no input mutation; commit scoped files.
+
+## Task 2: Constrained autoregressive roster generation
+Files: src/optimizer/neural/actionSpace.ts, features.ts, decode.ts, teacherTraces.ts, related *.spec.ts.
+Interfaces: neural scenario includes empty/locked workspace and compiled inventory; decoder accepts scorer (candidate feature rows => logits), returns complete flag, workspace, placement trace and diagnostics. Teacher replay uses the identical action space. Model implementation is not imported until interface finalized.
+- [x] Write and run failing tests for ownership, actual stage, duplicate reservations, facilities, locks, main/relief roles, feasible completion, trace replay and permutation stability.
+- [x] Implement documented first curriculum with deterministic positions and actual learned main/relief choices; use remaining bipartite feasibility masks, never complete roster heuristic in decoder.
+- [x] Record all fixed/mechanical postprocessing. Reject unsupported grouping/policy instead of silently projecting it.
+- [x] Verify physical, compiled schedule and recovery-capacity constraints; commit scoped files.
+
+## Task 3: Dataset, real evaluation and reproducible experiment
+Files: scripts/neural/*, src/optimizer/neural/experiment.ts and tests if shared logic needed; package.json scripts, small model/manifest artifact as appropriate.
+- [x] Create fixed train/dev/test inventory families with real stages and declared layouts. Collect teacher workspaces and replay traces; preserve rejected/incomplete records.
+- [x] Smoke-test real simulator bridge, measuring cost before scaling. Train only qualified records; save/reload model and verify forward parity.
+- [x] Compare free-running neural outputs with deterministic teacher and random legal policy under same budgets; include actual completed multi-day simulation and at least declared 100/200/300/400 inventory coverage diagnostics where feasible.
+- [x] Save cancellation/resume-safe provenance and exact runnable commands; do not claim superiority absent measured evidence.
+
+## Task 4: Independent review and final validation
+- [x] Review new code and experiment evidence independently; fix material issues and rerun affected checks.
+- [x] Run focused optimizer regressions, typecheck, independent build, structure update/check, then full test suite if resources permit. Report preexisting failures separately.
+- [x] Update this plan and PROJECT_STRUCTURE, commit new branch, preserve source/model/reports for delivery. Save only the requested new branch; no main merge or installation.
+
+## Progress
+- Read-only source/architecture audit complete. Latest main has no existing ML code; in-game training docs are unrelated.
+- Cloud clone and new branch created; base source archive verified; plan commit 84b3fec.
+- Parallel batch: implement_neural_policy_training owns policy/training modules and specs; implement_autoregressive_roster_decoder owns actionSpace/features/decode/teacherTraces and specs; implement_neural_experiment_pipeline owns scripts/neural and experiment module/spec. Parent exclusively owns package/lock, plans/index, Git, integration/reviews. No worker commits.
+- Frozen dependencies installed with pnpm 11.25.0 (manifest requests 11.19.0); existing lockfile unchanged. Default home store unavailable, so explicit task-local /tmp cache/store used. Node 24.22.1, CPU-only environment; no new ML dependency.
+- Focused unchanged baseline passed: 3 files / 10 tests, including mixed-level real 24h warmup + 72h simulation (52.57s overall); artifacts/neural/baseline/tests.log.
+- Task 1 committed as 32907e4: numerical policy/training, 18 tests and scoped strict TS passed. Independent spec/quality review passed with source hashes verified. Synthetic CE 0.78263 -> 0.00535 after 300 SGD updates is only a numerical learning check, not roster performance. Reports artifacts/neural/policy and artifacts/neural/reviews/policy-review.md.
+
+## 当前结果（2026-10-26，实验版，不晋升默认）
+- Task 1/2/3 已实现并独立审查通过；实现提交 32907e4、4da858f、baa86e8。新增模型直接选择主班和普通替班，不是整表排序；固定 4 名宿管，243 布局 52 个学习位置。跨设施原子组合／全目录泛化不在此检查点支持范围。
+- 实际训练：4 个独立训练家族，208 个决策样本，60 epochs / 12,480 更新，45.5 秒 CPU 训练，交叉熵 5.139665 → 3.535926。数据按家族与规模预先切分，验证／测试各 4 家族，没有根据测试分数选模型。
+- 实际评估：12 次教师仿真和 24 次生成仿真共 36 次不同调用；32 行比较复用其中 8 行教师结果。均完成 24h 预热＋72h 统计，0 超时、0 物理校验违规、0 启发式补全。不能据此声称真实游戏或任意策略无疲劳。
+- 独立测试均值：训练模型 54,779.17；未训练模型 48,191.67；随机合法方案 46,725.00；单体启发式教师 69,795.83。本组训练模型优于未训练／随机，但仍低于教师，不能宣称优于现有完整自动排班。
+- 保存 models/neural-roster-v1 的模型封装、来源清单、评估摘要与合成输入；独立推理输出的 workspace 和动作 trace 与已通过模拟的留出结果完全相同。原始训练数据、完整报告和精确执行 bundle 保存在 artifacts/neural/experiment/practical243-final，不夹入源码。
+- v2 封装通过显式元数据迁移保存原训练来源，验证 all-src 推理合同逐项一致；修正推理来源校验、Windows 路径键与同步训练取消问题。原报告和权重未重写，没有把旧实验标为新脚本运行。
+- 验证：数值模块 18 项、解码模块 21 项、实验纯逻辑 3 项、原生 CLI／进程检查 7 项通过；完整类型检查和独立 Vite 构建通过（保留既有大 chunk 警告）。新旧模块审查及全分支独立审查通过。
+- 完整 Vitest 首次运行 1777.80 秒：4753 项通过、1 项失败、1 项跳过；另有 2 个原生 node:test 文件被 Vitest 错收集导致 suite 错误。原生文件随后改为 *.node-test.mjs，实际 discovery 361 文件、不再收集原生脚本；专项复测另记录，不冒充重跑整套。
+- 唯一业务断言失败为既有 goldenScenarios 的原始 CRLF 哈希：未修改的 89070dc 独立归档复现完全相同失败；原 fixture 与主线字节相同，LF 哈希正确，转换 CRLF 后即匹配原 raw 期望。保留原测试与输入，不放宽断言。证据 artifacts/neural/baseline/golden-original-main.log、golden-line-ending-proof.json。
+- 交付目标仅新专项分支及实验模型；不合并 main/test、不访问或安装到用户电脑。远端保存状态在实际确认后补记。
+
+---
+
 # 2026-10-26 替班检查唤醒时钟修复（源码与本机安装已交付）
 
 - 目标：修复合法252排班在预热约16.01小时因替班心情检查将外层唤醒写回过去而触发SIMULATION_SAME_TIME_ACTION。保留任务对象、原截止时间、用户排班/干员库/安装及浏览器配置；不关闭中止保护、不扩大积分预算、不改变床位或心情策略。
