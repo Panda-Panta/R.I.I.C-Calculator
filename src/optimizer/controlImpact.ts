@@ -21,7 +21,13 @@ export interface ControlImpactDelta {
  daily:ControlDailyValue;rooms:{roomId:string;efficiencyPoints:number}[]
  baseMoraleReductionPerHour:number;powerBonusPercent:number
 }
-export interface ControlImpactOptions {timeContext?:TimeContext}
+export interface ControlImpactOptions {
+ timeContext?:TimeContext
+ /** Price only these outputs; global presence and support still use the entire config.
+  * Returned daily totals, charging totals and completeness cover only the selected outputs.
+  */
+ selectedRoomIds?:readonly string[]
+}
 export interface ControlImpactAnalysis {
  baseline:ControlProjection
  members:{operatorId:string;operatorName:string;without:ControlProjection;delta:ControlImpactDelta}[]
@@ -68,13 +74,15 @@ function specialCapture(special:SpecialOrder,level:number):SpecialCapture {
 }
 export function projectControlOutput(config:AppConfig,options:ControlImpactOptions={}):ControlProjection {
  validateControl(config,config.controlOperatorIds)
+ const selected=options.selectedRoomIds?new Set(options.selectedRoomIds):undefined
+ if(selected)for(const id of selected)if(!config.rooms.some(room=>room.id===id))throw new Error(`未知投影设施：${id}`)
  const present=new Set([...config.controlOperatorIds,...otherOccupants(config)])
  const active=new Set([...present].filter(id=>!config.zeroMoraleOperatorIds.includes(id)&&(config.operatorMorale[id]??24)>0))
  const morale=new Map([...present].map(id=>[id,config.zeroMoraleOperatorIds.includes(id)?0:config.operatorMorale[id]??24]))
  const context=buildRiicGlobalContext(config,active,morale)
  const diagnostics:string[]=[]
  for(const id of present)if(!OPERATOR_MAP.has(id))diagnostics.push(`未知在场干员：${id}`)
- const rooms:ControlRoomProjection[]=config.rooms.map(room=>{
+ const rooms:ControlRoomProjection[]=config.rooms.filter(room=>!selected||selected.has(room.id)).map(room=>{
   const result=evaluateOperators(room,config,active,morale,context,options.timeContext)
   const daily=zero(),issues=result.unquantifiedSkills.map(s=>`${room.id}：未量化 ${s}`)
   const efficiency=result.efficiencyPercent/100

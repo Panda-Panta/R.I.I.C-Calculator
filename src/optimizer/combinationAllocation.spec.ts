@@ -6,14 +6,15 @@ import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 import { generateMolecularCandidates } from './molecularSynthesis'
 import { productionTeamTheory } from './productionSingletons'
 import { shiftSnapshot } from './combinationModel'
-import { allocateCombinationSkeleton, normalizeProductionShifts, regroupCombination } from './combinationAllocation'
+import { allocateCombinationSkeleton, completeShiftScore, normalizeProductionShifts, regroupCombination } from './combinationAllocation'
 import { buildCombinationPool } from './combinationEvaluation'
 import { applySmartDormitoryPolicy } from '../scheduler/smartDormitoryPolicy'
 import mixedEntries from './fixtures/mixed-level-inventory.json'
 import { validatePhysicalRoster } from './rosterDraft'
+import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { validateMowerRosterRules } from '../domain/mowerRosterRules'
 import { exportMowerJson } from '../workbench/compat/mowerJson'
-import type { CombinationVariant } from './combinationModel'
+import type { CombinationPool, CombinationVariant } from './combinationModel'
 
 afterEach(() => yieldToRunner(5))
 function layout(type: 'manufacture' | 'trading', level: number) {
@@ -34,6 +35,73 @@ function layout(type: 'manufacture' | 'trading', level: number) {
   return base
 }
 const entries = (names: string[]) => fullCatalogIdleInventory().filter(o => [...names, '雷蛇', '格雷伊', '杜林'].some(name => id(name) === o.operator))
+
+describe('warmup exhaustion whole-combination admission', () => {
+  const variant = (names: string[]): CombinationVariant => ({ id: 'warmup-admission', definitionId: 'warmup-admission', name: 'whole team',
+    coreOperatorIds: names.map(id), optionalOperatorIds: [], policy: {},
+    placements: names.map((name, slotIndex) => ({ roomId: 'room_1_1', slotIndex, operatorId: id(name), role: 'main' })) })
+  const pool = (team: CombinationVariant): CombinationPool => ({ values: [{ variant: team, status: 'evaluated', perCapita: 1, totalGain: 1,
+    productionCount: team.placements.length, supportCount: 0, diagnostics: [] }], diagnostics: [], enumeratedCount: 1 })
+  it('rejects the whole backup core while allowing the same core in main, with explicit actual inventory', () => {
+    const base = layout('manufacture', 2), team = variant(['阿罗玛', '槐琥'])
+    const inventory = compileOperatorInventory(entries(['阿罗玛', '槐琥', '梅尔', '调香师']))
+    const options = { requireWarmupExhaustion: true, warmupInventory: inventory }
+    const main = allocateCombinationSkeleton(base, pool(team), 0, options)
+    expect(main.variants).toHaveLength(1)
+    expect(main.variants[0]!.placements.every(p => p.role === 'main')).toBe(true)
+    expect(regroupCombination(base, inventory, team, 'main', options)).not.toBeNull()
+    base.mainPlan.facilities.room_1_1.slots.forEach((slot, i) => { slot.occupant = { kind: 'operator', operatorId: id(['梅尔', '调香师'][i]!) } })
+    const before = structuredClone(base)
+    expect(allocateCombinationSkeleton(base, pool(team), 0).variants[0]!.placements.every(p => p.role === 'backup')).toBe(true)
+    const blocked = allocateCombinationSkeleton(base, pool(team), 0, options)
+    expect(blocked.variants).toEqual([])
+    expect(blocked.workspace).toEqual(base)
+    expect(regroupCombination(base, inventory, team, 'backup', options)).toBeNull()
+    expect(base).toEqual(before)
+    expect(() => allocateCombinationSkeleton(base, pool(team), 0, { requireWarmupExhaustion: true })).toThrow('warmupInventory')
+  })
+  it.each(['low-stage', 'other-facility'] as const)('permits complete backup allocation with %s skills', kind => {
+    const base = layout(kind === 'other-facility' ? 'trading' : 'manufacture', 1)
+    base.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('梅尔') }
+    const name = kind === 'other-facility' ? '芬' : '阿罗玛', owned = entries([name, '梅尔'])
+    if (kind === 'low-stage') Object.assign(owned.find(o => o.operator === id(name))!, { elitePhase: 0, level: 1 })
+    const inventory = compileOperatorInventory(owned), options = { requireWarmupExhaustion: true, warmupInventory: inventory }
+    expect(allocateCombinationSkeleton(base, pool(variant([name])), 0, options).variants[0]!.placements[0]!.role).toBe('backup')
+    expect(regroupCombination(base, inventory, variant([name]), 'backup', options)).not.toBeNull()
+  })
+  it('rejects a warmup main displaced into the incoming worker’s physical backup source', () => {
+    const base = createDefaultWorkspace(), main = base.mainPlan.facilities.room_1_1.slots[0]!, source = base.mainPlan.facilities.room_1_2.slots[0]!
+    main.occupant = { kind: 'operator', operatorId: id('阿罗玛') }
+    source.occupant = { kind: 'operator', operatorId: id('斑点') }; source.replacements = [id('苍苔')]
+    const inventory = compileOperatorInventory(entries(['阿罗玛', '斑点', '苍苔'])), team = variant(['苍苔']), before = structuredClone(base)
+    expect(regroupCombination(base, inventory, team, 'main')).not.toBeNull()
+    expect(regroupCombination(base, inventory, team, 'main', { requireWarmupExhaustion: true })).toBeNull()
+    expect(base).toEqual(before)
+  })
+  it.each(['per-capita', 'hourly-output'] as const)('blocks a whole %s shift swap that would demote a warmup main', comparison => {
+    const base = layout('manufacture', 3), names = ['阿罗玛', '白面鸮', '调香师'], backups = ['苍苔', '砾', '斑点']
+    base.mainPlan.facilities.room_1_1.slots.forEach((slot, i) => {
+      slot.occupant = { kind: 'operator', operatorId: id(names[i]!) }; slot.replacements = [id(backups[i]!)]; slot.groupId = 'warmup-group'
+    })
+    const inventory = compileOperatorInventory(entries([...names, ...backups])), legacy = structuredClone(base), before = structuredClone(base)
+    normalizeProductionShifts(legacy, inventory, {}, comparison)
+    expect(legacy.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('苍苔') })
+    expect(normalizeProductionShifts(base, inventory, { requireWarmupExhaustion: true }, comparison).join('')).toContain('暖机')
+    expect(base).toEqual(before)
+  })
+  it('keeps a locked existing warmup backup untouched for entry-point diagnostics', () => {
+    const base = layout('manufacture', 2), room = base.mainPlan.facilities.room_1_1
+    room.slots[0]!.occupant = { kind: 'operator', operatorId: id('梅尔') }; room.slots[0]!.replacements = [id('阿罗玛')]
+    room.slots[1]!.occupant = { kind: 'operator', operatorId: id('调香师') }; room.slots[0]!.groupId = 'locked-user-group'
+    const inventory = compileOperatorInventory(entries(['梅尔', '阿罗玛', '调香师', '槐琥'])), before = structuredClone(base)
+    const options = { requireWarmupExhaustion: true, warmupInventory: inventory,
+      lockedPositions: new Set(['room_1_1:0']), lockedOperators: new Set([id('阿罗玛')]) }
+    const result = allocateCombinationSkeleton(base, pool(variant(['阿罗玛', '槐琥'])), 0, options)
+    expect(result.workspace).toEqual(before)
+    expect(regroupCombination(base, inventory, variant(['阿罗玛', '槐琥']), 'main', options)).toBeNull()
+    expect(base).toEqual(before)
+  })
+})
 
 describe('combination-first main and backup allocation', () => {
   it('finds the physical source rather than a Fiammetta refresh reference', () => {
@@ -122,16 +190,27 @@ describe('combination-first main and backup allocation', () => {
     expect(productionTeamTheory(ws, inventory, 'room_1_1')).toBe(before)
   })
 
-  it('audits final production ordering after all finishing and presence changes', async () => {
+  it('scores the finished legal roster without forcing higher per-capita relief teams into main', async () => {
     await yieldToRunner(5)
     const inventory = compileOperatorInventory(mixedEntries)
-    const candidate = generateMolecularCandidates(createDefaultWorkspace(), mixedEntries, inventory, { branchCount: 1 })[0]!
+    const input = createDefaultWorkspace(), before = structuredClone(input)
+    const candidate = generateMolecularCandidates(input, mixedEntries, inventory, { branchCount: 1 })[0]!
     expect(candidate).toBeDefined()
+    const completed = structuredClone(candidate.workspace)
+    // The accepted objective is simulated daily production. Static snapshots
+    // describe the completed input; per-capita ordering must not replace it.
+    expect(candidate.staticScore).toBe(completeShiftScore(candidate.workspace, inventory))
+    expect(validatePhysicalRoster(candidate.workspace)).toEqual([])
+    expect(recoveryGroupCapacityIssues(candidate.workspace)).toEqual([])
+    let higherReliefTeams = 0
     for (const room of Object.values(candidate.workspace.mainPlan.facilities).filter(r => r.level > 0 && ['manufacture', 'trading'].includes(r.type))) {
       const main = productionTeamTheory(candidate.workspace, inventory, room.roomId)!
       const backup = productionTeamTheory(shiftSnapshot(candidate.workspace, 'backup', room.roomId), inventory, room.roomId)!
-      if (main + 1e-9 < backup) expect(candidate.diagnostics.join('；')).toContain(`${room.roomId} 替班人均较高`)
+      if (main + 1e-9 < backup) higherReliefTeams++
     }
+    expect(higherReliefTeams).toBeGreaterThan(0)
+    expect(candidate.workspace).toEqual(completed)
+    expect(input).toEqual(before)
   }, 30000)
   it('builds the new Monster Hunter pair before singleton staffing consumes either core', async () => {
     await yieldToRunner(5)

@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 786 个索引文件，其中应用 TypeScript/Vue/CSS 文件 270 个，业务测试文件 354 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 811 个索引文件，其中应用 TypeScript/Vue/CSS 文件 279 个，业务测试文件 368 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -131,6 +131,7 @@ docs/
 ├── UPDATE_v1.1.1.md
 ├── UPDATE_v1.1.2.md
 ├── actual-level-roster-fallback.md
+├── automatic-roster-search.md
 └── 用户说明书.md
 ```
 
@@ -148,6 +149,7 @@ scripts/
 │   ├── generate.py
 │   └── sources.json
 ├── audit-riic-data.mjs
+├── benchmark-auto-roster.mjs
 ├── benchmark-cpu.mjs
 ├── benchmark-neighborhood.mjs
 ├── check_skills.mjs
@@ -335,9 +337,13 @@ src/
 │   ├── automaticCombinationPreferences.spec.ts
 │   ├── automaticCombinationPreferences.ts
 │   ├── automaticPepeMain.spec.ts
+│   ├── automaticRosterCandidates.spec.ts
+│   ├── automaticRosterCandidates.ts
 │   ├── backupNeighborhood.spec.ts
 │   ├── backupNeighborhood.ts
 │   ├── backupSnapshot.ts
+│   ├── candidateExecutionOrder.spec.ts
+│   ├── candidateExecutionOrder.ts
 │   ├── candidateSimulation.ts
 │   ├── candidateSimulationCache.spec.ts
 │   ├── candidateSimulationCache.ts
@@ -354,17 +360,25 @@ src/
 │   ├── combinationEnumeration.ts
 │   ├── combinationEvaluation.spec.ts
 │   ├── combinationEvaluation.ts
+│   ├── combinationEvaluationReuse.spec.ts
 │   ├── combinationIntegrity.spec.ts
 │   ├── combinationIntegrity.ts
 │   ├── combinationMembership.spec.ts
 │   ├── combinationModel.ts
 │   ├── combinationSelection.spec.ts
 │   ├── compositeObjective.spec.ts
+│   ├── computedManufacturingRoster.spec.ts
+│   ├── computedManufacturingRoster.ts
 │   ├── configureRunOrder.ts
 │   ├── controlImpact.spec.ts
 │   ├── controlImpact.ts
 │   ├── controlNeighborhood.spec.ts
 │   ├── controlNeighborhood.ts
+│   ├── controlSelectedProjection.spec.ts
+│   ├── crewAssignmentKernel.spec.ts
+│   ├── crewAssignmentKernel.ts
+│   ├── crewAssignmentSearch.spec.ts
+│   ├── crewAssignmentSearch.ts
 │   ├── dailyTarget.spec.ts
 │   ├── dailyTarget.ts
 │   ├── dormKeepers.ts
@@ -372,6 +386,8 @@ src/
 │   ├── fixedDuty.spec.ts
 │   ├── fixedDuty.ts
 │   ├── generatedRecoveryPolicy.ts
+│   ├── generatedWarmupPolicy.spec.ts
+│   ├── generatedWarmupPolicy.ts
 │   ├── globalPerCapitaReplacement.spec.ts
 │   ├── globalPerCapitaReplacement.ts
 │   ├── incomeComparison.spec.ts
@@ -382,7 +398,14 @@ src/
 │   ├── inventorySearch.spec.ts
 │   ├── mainPlanOnly.spec.ts
 │   ├── mainPlanOnly.ts
+│   ├── manufacturingCrewDomain.spec.ts
+│   ├── manufacturingCrewDomain.ts
+│   ├── manufacturingCrewFeasibility.spec.ts
+│   ├── manufacturingCrewFeasibility.ts
+│   ├── manufacturingCrewValuation.spec.ts
+│   ├── manufacturingCrewValuation.ts
 │   ├── mixedLevelInventory.spec.ts
+│   ├── molecularCandidateCoverage.spec.ts
 │   ├── molecularSynthesis.spec.ts
 │   ├── molecularSynthesis.ts
 │   ├── mowerLearnedCandidates.spec.ts
@@ -420,8 +443,10 @@ src/
 │   ├── smartRoster.ts
 │   ├── smartRosterBranches.spec.ts
 │   ├── smartRosterParallel.spec.ts
+│   ├── smartRosterWarmup.spec.ts
 │   ├── smartRosterWorker.ts
 │   ├── staffingQuality.ts
+│   ├── warmupPolicyApplicability.spec.ts
 │   ├── weightedAutomaticSearch.spec.ts
 │   └── weightedRunOrder.spec.ts
 ├── rules/

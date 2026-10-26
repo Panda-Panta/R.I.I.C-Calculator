@@ -16,10 +16,11 @@ import { buildSingletonFallback } from './singletonFallback'
 import { applySingletonWorkPolicy } from './productionSingletons'
 import { availableCoreVariants, facilityCapacity, type CombinationPool, type CombinationVariant } from './combinationModel'
 import { buildCombinationPool } from './combinationEvaluation'
-import { allocateCombinationSkeleton, appliedMainCombinations, completeShiftScore, hasCompleteRestrictedProduction, normalizeProductionShifts, refineCombinationAllocation } from './combinationAllocation'
+import { allocateCombinationSkeleton, appliedMainCombinations, completeShiftScores, hasCompleteRestrictedProduction } from './combinationAllocation'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
 import { compareProductionEfficiency } from './productionEfficiencyPriority'
+import { applyGeneratedWarmupPolicy } from './generatedWarmupPolicy'
 
 export interface MolecularCandidate {
   id: string
@@ -34,6 +35,7 @@ export interface MolecularCandidate {
 export interface SynthesisOptions {
   seed?: number
   branchCount?: number
+  requireWarmupExhaustion?: boolean
   simulationWarmupHours?: number
   simulationSampleHours?: number
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
@@ -92,7 +94,7 @@ function finishSkeleton(source: RosterWorkspace, entries: readonly OwnedOperator
     const best = rankStaffingCandidates(ws, inventory, { roomId: room.roomId, slotIndex }, candidates(room.roomId), 'main')[0]
     if (!best) return null
     slot.occupant = { kind: 'operator', operatorId: best }
-    applySingletonWorkPolicy(ws, room.roomId, slotIndex)
+    if (!options.requireWarmupExhaustion) applySingletonWorkPolicy(ws, room.roomId, slotIndex)
   }
   const missingBackups = () => Object.values(ws.mainPlan.facilities).filter(r => r.level > 0 && r.type !== 'dormitory')
     .flatMap(room => room.slots.flatMap((slot, slotIndex) => {
@@ -101,7 +103,9 @@ function finishSkeleton(source: RosterWorkspace, entries: readonly OwnedOperator
         slot.replacements.some(ref => isOrdinaryReplacementCandidate(ref, room.type))) return []
       return [{ roomId: room.roomId, slotIndex, operatorId: resolveId(slot.occupant.operatorId) }]
     }))
-  const completeBackups = () => !assignBackups(ws, inventory, missingBackups(), { excludedOperatorIds: [...options.lockedOperators ?? []] }).missingReplacementIds.length
+  const completeBackups = () => !assignBackups(ws, inventory, missingBackups(), {
+    excludedOperatorIds: [...options.lockedOperators ?? []], requireWarmupExhaustion: options.requireWarmupExhaustion,
+  }).missingReplacementIds.length
   if (!completeBackups()) return null
   // Auxiliary stations consume only resources left after both productive shifts.
   for (const room of Object.values(ws.mainPlan.facilities)) {
@@ -114,7 +118,9 @@ function finishSkeleton(source: RosterWorkspace, entries: readonly OwnedOperator
       if (!best) continue
       const before = structuredClone(slot)
       slot.occupant = { kind: 'operator', operatorId: best }
-      const assigned = assignBackups(ws, inventory, [{ roomId: room.roomId, slotIndex, operatorId: best }], { excludedOperatorIds: [...options.lockedOperators ?? []] })
+      const assigned = assignBackups(ws, inventory, [{ roomId: room.roomId, slotIndex, operatorId: best }], {
+        excludedOperatorIds: [...options.lockedOperators ?? []], requireWarmupExhaustion: options.requireWarmupExhaustion,
+      })
       if (assigned.missingReplacementIds.length) Object.assign(slot, before)
     }
   }
@@ -133,7 +139,60 @@ function finishSkeleton(source: RosterWorkspace, entries: readonly OwnedOperator
     validatePhysicalRoster(ws).length || recoveryGroupCapacityIssues(ws).length) return null
   return ws
 }
-/** Enumerate first, allocate both shifts, then recombine the completed rosters. */
+export interface MolecularRankingFeatures {
+  order: number
+  mainScore: number
+  meanScore: number
+  structure: ReadonlySet<string>
+}
+
+/** Keep both output views and different physical teams: neither static view predicts duty cycles. */
+export function selectMolecularShortlist<T extends MolecularRankingFeatures>(starts: readonly T[], count: number, anchor?: T): T[] {
+  const byMain = (a: T, b: T) => b.mainScore - a.mainScore || b.meanScore - a.meanScore || a.order - b.order
+  const byMean = (a: T, b: T) => b.meanScore - a.meanScore || b.mainScore - a.mainScore || a.order - b.order
+  const main = [...starts].sort(byMain), mean = [...starts].sort(byMean)
+  const selected: T[] = anchor && starts.includes(anchor) && count > 0 ? [anchor] : []
+  const seen = new Set(selected)
+  const contenders = new Set([...main.slice(0, count * 2), ...mean.slice(0, count * 2)])
+  const distance = (a: T, b: T) => {
+    let common = 0
+    for (const feature of a.structure) if (b.structure.has(feature)) common++
+    return 1 - common / Math.max(1, a.structure.size + b.structure.size - common)
+  }
+  let turn = 0
+  while (selected.length < count && seen.size < starts.length) {
+    let next: T | undefined
+    if (turn % 3 === 2 && selected.length) {
+      let greatest = -1
+      // Mean-score order gives deterministic, output-aware ties for equal novelty.
+      for (const candidate of mean) {
+        if (seen.has(candidate) || !contenders.has(candidate)) continue
+        const novelty = Math.min(...selected.map(other => distance(candidate, other)))
+        if (novelty > greatest) { greatest = novelty; next = candidate }
+      }
+    }
+    next ??= (turn % 3 === 0 ? main : mean).find(candidate => !seen.has(candidate))
+    if (!next) break
+    selected.push(next); seen.add(next); turn++
+  }
+  return selected
+}
+
+function molecularStructure(ws: RosterWorkspace): Set<string> {
+  const structure = new Set<string>(), groups = new Map<string, string[]>()
+  for (const room of Object.values(ws.mainPlan.facilities)) for (const [index, slot] of room.slots.entries()) {
+    if (slot.occupant.kind === 'operator') structure.add(`${room.roomId}:main:${resolveId(slot.occupant.operatorId)}`)
+    for (const ref of slot.replacements) structure.add(`${room.roomId}:backup:${resolveId(ref)}`)
+    if (slot.groupId) {
+      const members = groups.get(slot.groupId) ?? []
+      members.push(`${room.roomId}:${index}`); groups.set(slot.groupId, members)
+    }
+  }
+  for (const group of groups.values()) if (group.length > 1) structure.add(`group:${group.sort().join(',')}`)
+  return structure
+}
+
+/** Score broad family starts, then staff a small, diverse set before full simulation. */
 export function generateMolecularCandidates(base: RosterWorkspace, entries: readonly OwnedOperatorInput[], inventory: OperatorInventory, options: SynthesisOptions = {}): MolecularCandidate[] {
   base = mainPlanOnly(base)
   if (!inventory.valid || !inventory.operators.length) return []
@@ -143,51 +202,72 @@ export function generateMolecularCandidates(base: RosterWorkspace, entries: read
     room.slots.length = cap
   }
   const pool = buildCombinationPool(base, inventory, options.lockedPositions)
-  const allocationOptions = { ...options, enforceRecoveryCapacity: true }
-  const count = Math.max(1, options.branchCount ?? 8)
+  const allocationOptions = { ...options, enforceRecoveryCapacity: true,
+    warmupInventory: options.requireWarmupExhaustion ? inventory : undefined }
+  const count = Math.max(1, Math.min(20, Math.floor(options.branchCount ?? 6)))
   const candidates: MolecularCandidate[] = [], seen = new Set<string>(), skeletons = new Set<string>()
   const families = [...new Set(pool.values.filter(v => v.status === 'evaluated').map(v => v.variant.definitionId))]
   const seeds: Array<Array<CombinationVariant | undefined>> = [[undefined], ...families.map(id => combinationAllocationAlternatives(base, pool, id))]
+  type Start = MolecularRankingFeatures & { workspace: RosterWorkspace; alternatives: Array<CombinationVariant | undefined> }
+  const starts: Start[] = []
   for (const [branch, alternatives] of seeds.entries()) {
-    if (candidates.length >= count) break
-    for (const preferred of alternatives) {
-      const allocation = allocateCombinationSkeleton(base, pool, branch, allocationOptions, preferred)
-      const fingerprint = JSON.stringify(allocation.workspace.mainPlan)
+    if (!alternatives.length) continue
+    const allocation = allocateCombinationSkeleton(base, pool, branch, allocationOptions, alternatives[0])
+    const fingerprint = JSON.stringify(allocation.workspace)
+    if (skeletons.has(fingerprint)) continue
+    skeletons.add(fingerprint)
+    const scores = completeShiftScores(allocation.workspace, inventory)
+    if (!scores) continue
+    starts.push({ order: branch, workspace: allocation.workspace, alternatives: alternatives.slice(1),
+      mainScore: scores.main, meanScore: scores.mean, structure: molecularStructure(allocation.workspace) })
+  }
+  let attempts = 0
+  const complete = (source: RosterWorkspace, branch: number): boolean => {
+    attempts++
+    const ws = finishSkeleton(source, entries, inventory, options)
+    if (!ws) return false
+    if (options.requireWarmupExhaustion && !applyGeneratedWarmupPolicy(ws, inventory).valid) return false
+    // Identical actors can still have different shared rest groups or policies.
+    // Deduplicate only the full input that the simulation will receive.
+    const fp = JSON.stringify(ws)
+    if (seen.has(fp)) return false
+    const scores = completeShiftScores(ws, inventory)
+    if (!scores) return false
+    seen.add(fp)
+    const appliedAtoms = appliedMainCombinations(ws, pool)
+    candidates.push({ id: branch < 0 ? 'singleton_fallback' : `branch_${branch + 1}`, name: `组合候选 ${branch + 1}: ${appliedAtoms.map(key => ATOMIC_UNITS.find(a => a.id === key)?.name ?? key).join(' + ')}`,
+      workspace: ws, appliedAtoms, staticScore: scores.mean, simScore: null,
+      diagnostics: [...pool.diagnostics],
+      confPolicy: { exhaustRequire: ws.mainPlan.conf.exhaust_require, restInFull: ws.mainPlan.conf.rest_in_full, workaholic: ws.mainPlan.conf.workaholic,
+        restingPriorityHigh: ws.mainPlan.conf.ope_resting_priority, restingPriorityLow: ws.mainPlan.conf.resting_priority } })
+    return true
+  }
+  const attemptLimit = count + 2
+  const shortlist = selectMolecularShortlist(starts, Math.min(starts.length, attemptLimit), starts.find(start => start.order === 0))
+  for (const start of shortlist) {
+    if (candidates.length >= count || attempts >= attemptLimit) break
+    if (complete(start.workspace, start.order)) continue
+    // A different production footprint can rescue a selected family whose
+    // highest-ranked footprint consumes too many staff or recovery beds.
+    for (const preferred of start.alternatives) {
+      if (attempts >= attemptLimit) break
+      const allocation = allocateCombinationSkeleton(base, pool, start.order, allocationOptions, preferred)
+      const fingerprint = JSON.stringify(allocation.workspace)
       if (skeletons.has(fingerprint)) continue
       skeletons.add(fingerprint)
-      const completed = finishSkeleton(allocation.workspace, entries, inventory, options)
-      if (!completed) continue
-      const refined = refineCombinationAllocation(completed, inventory, pool, allocationOptions)
-      const ws = finishSkeleton(refined.workspace, entries, inventory, options)
-      if (!ws) continue
-      const ordering = normalizeProductionShifts(ws, inventory, options)
-      if (!configureRunOrder(ws, inventory) || validatePhysicalRoster(ws).length) continue
-      // Group labels alone do not create another physical staffing branch.
-      const fp = JSON.stringify(Object.values(ws.mainPlan.facilities).map(room => [room.roomId,
-        room.slots.map(slot => [slot.occupant.kind === 'operator' ? resolveId(slot.occupant.operatorId) : '', slot.replacements.map(resolveId)])]))
-      if (seen.has(fp)) continue
-      seen.add(fp)
-      const appliedAtoms = appliedMainCombinations(ws, pool)
-      candidates.push({ id: `branch_${branch + 1}`, name: `组合候选 ${branch + 1}: ${appliedAtoms.map(key => ATOMIC_UNITS.find(a => a.id === key)?.name ?? key).join(' + ')}`,
-        workspace: ws, appliedAtoms, staticScore: completeShiftScore(ws, inventory) ?? 0, simScore: null,
-        diagnostics: [`已汇总并评估 ${pool.enumeratedCount} 个组合变体；主替再组合验证 ${refined.evaluated} 次`, ...pool.diagnostics,
-          ...refined.diagnostics.filter(d => !d.includes('替班人均较高')), ...ordering],
-        confPolicy: { exhaustRequire: ws.mainPlan.conf.exhaust_require, restInFull: ws.mainPlan.conf.rest_in_full, workaholic: ws.mainPlan.conf.workaholic,
-          restingPriorityHigh: ws.mainPlan.conf.ope_resting_priority, restingPriorityLow: ws.mainPlan.conf.resting_priority } })
-      break
+      if (complete(allocation.workspace, start.order)) break
     }
   }
   if (!candidates.length) {
-    const fallback = buildSingletonFallback(base, inventory, options.lockedPositions ?? new Set())
-    if (fallback) {
-      const refined = refineCombinationAllocation(fallback, inventory, pool, allocationOptions)
-      const ws = finishSkeleton(refined.workspace, entries, inventory, options)
-      const ordering = ws ? normalizeProductionShifts(ws, inventory, options) : []
-      if (ws && configureRunOrder(ws, inventory) && !validatePhysicalRoster(ws).length) candidates.push({ id: 'singleton_fallback', name: '实际技能补位及再组合排班', workspace: ws,
-        appliedAtoms: appliedMainCombinations(ws, pool), staticScore: completeShiftScore(ws, inventory) ?? 0, simScore: null,
-        diagnostics: [...pool.diagnostics, ...refined.diagnostics.filter(d => !d.includes('替班人均较高')), ...ordering], confPolicy: {} })
-    }
+    // The singleton rescue is independent of the count + 2 skeleton attempts.
+    // It adds at most one construction attempt and still returns at most count rosters.
+    const fallback = buildSingletonFallback(base, inventory, options.lockedPositions ?? new Set(), {
+      requireWarmupExhaustion: options.requireWarmupExhaustion,
+    })
+    if (fallback) complete(fallback, -1)
   }
+  for (const candidate of candidates) candidate.diagnostics.unshift(
+    `已评估 ${pool.enumeratedCount} 个组合变体，比较 ${starts.length} 个主替骨架，尝试完成 ${attempts} 案（骨架预算 ${attemptLimit}，全部失败时另试1案散件兜底）；按主班产出、主替均分和结构差异筛选，最终收益由完整模拟比较`)
   return candidates
 }
 /** Dynamic verification of every distinct physical branch; incomplete is unknown. */
@@ -211,12 +291,12 @@ export function evaluateMolecularCandidates(candidates: MolecularCandidate[], en
       if (response.error) candidate.diagnostics.push(response.error)
       candidate.diagnostics.push(...(report?.diagnostics.map(d => `[${d.code}] ${d.message}`) ?? []))
     }
-    if (candidate.simScore !== null && (!best || (compareWorkspacePreference(candidate.workspace, best.workspace) ||
-      compareProductionEfficiency(candidate.workspace, best.workspace, inventory) || candidate.simScore - best.simScore!) > 0)) {
+    if (candidate.simScore !== null && (!best || (candidate.simScore - best.simScore! ||
+      compareWorkspacePreference(candidate.workspace, best.workspace) || compareProductionEfficiency(candidate.workspace, best.workspace, inventory)) > 0)) {
       best = candidate; bestScore = candidate.simScore
     }
     options.onProgress?.(idx + 1, candidates.length, bestScore)
   }
   return candidates.sort((a, b) => Number(b.simScore !== null) - Number(a.simScore !== null) ||
-    compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiency(b.workspace, a.workspace, inventory) || (b.simScore ?? -Infinity) - (a.simScore ?? -Infinity))
+    (b.simScore ?? -Infinity) - (a.simScore ?? -Infinity) || compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiency(b.workspace, a.workspace, inventory))
 }

@@ -11,6 +11,7 @@ import { ATOMIC_UNITS, type AtomicUnitConfPolicy } from './riicAtomicUnits'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
 import { preservesFormedCombinations } from './combinationIntegrity'
+import { isWarmupOperatorInFacility } from './generatedWarmupPolicy'
 
 export interface AllocationLocks {
   lockedPositions?: ReadonlySet<string>; lockedOperators?: ReadonlySet<string>
@@ -18,6 +19,10 @@ export interface AllocationLocks {
   enforceRecoveryCapacity?: boolean
   /** Existing cores remain in their main/relief seats; only gap fillers can move. */
   protectedCombinationOperators?: ReadonlySet<string>
+  /** Low-priority backups cannot use the scheduler's main-worker exhaustion policy. */
+  requireWarmupExhaustion?: boolean
+  /** Actual unlocked skills for allocation, which otherwise has no inventory parameter. */
+  warmupInventory?: OperatorInventory
 }
 export interface CombinationAllocation { workspace: RosterWorkspace; variants: CombinationVariant[] }
 const key = (p: Pick<CombinationPlacement, 'roomId' | 'slotIndex'>) => `${p.roomId}:${p.slotIndex}`
@@ -82,6 +87,7 @@ function remapFree(ws: RosterWorkspace, original: CombinationVariant, role: Rost
     if (locks.lockedOperators?.has(p.operatorId) && (!existing || existing.roomId !== p.roomId || existing.role !== actualRole)) return null
     if (existing && (existing.roomId !== p.roomId || existing.role !== actualRole)) return null
     if (actualRole === 'backup' && (!isOrdinaryReplacementCandidate(p.operatorId, room.type) ||
+      locks.requireWarmupExhaustion && isWarmupOperatorInFacility(p.operatorId, room.type, locks.warmupInventory!) ||
       original.policy.workaholic?.some(ref => id(ref) === p.operatorId))) return null
     const index = existing?.slotIndex ?? room.slots.findIndex((slot, index) => {
       if (locks.lockedPositions?.has(`${room.roomId}:${index}`) || placements.some(a => a.roomId === room.roomId && a.slotIndex === index && a.role === actualRole)) return false
@@ -115,6 +121,7 @@ export function hasCompleteRestrictedProduction(base: RosterWorkspace, variant: 
 
 /** First branch follows measured ranking; later branches explore complete alternative cores. */
 export function allocateCombinationSkeleton(base: RosterWorkspace, pool: CombinationPool, branch: number, locks: AllocationLocks = {}, preferredVariant?: CombinationVariant): CombinationAllocation {
+  if (locks.requireWarmupExhaustion && !locks.warmupInventory) throw new Error('暖机耗尽策略需要实际干员库存 warmupInventory')
   let workspace = structuredClone(base)
   const variants: CombinationVariant[] = []
   const usable = pool.values.filter(v => v.status === 'evaluated' && hasCompleteRestrictedProduction(base, v.variant))
@@ -135,17 +142,22 @@ export function allocateCombinationSkeleton(base: RosterWorkspace, pool: Combina
   return { workspace, variants }
 }
 
-/** Score both complete shift snapshots, including the opportunity cost of support stations. */
-export function completeShiftScore(ws: RosterWorkspace, inventory: OperatorInventory): number | undefined {
-  let sum = 0
+/** The two static snapshots are search features, not an estimate of work/rest occupancy. */
+export function completeShiftScores(ws: RosterWorkspace, inventory: OperatorInventory): { main: number; backup: number; mean: number } | undefined {
+  const scores: number[] = []
   for (const role of ['main', 'backup'] as const) {
     const config = projectRosterConfig(shiftSnapshot(ws, role))
     config.operatorRecords = inventoryOperatorRecords(inventory)
     const value = projectControlOutput(config)
     if (!value.complete || !Number.isFinite(value.daily.score)) return undefined
-    sum += value.daily.score
+    scores.push(value.daily.score)
   }
-  return sum / 2
+  return { main: scores[0]!, backup: scores[1]!, mean: (scores[0]! + scores[1]!) / 2 }
+}
+
+/** Score both complete shift snapshots, including the opportunity cost of support stations. */
+export function completeShiftScore(ws: RosterWorkspace, inventory: OperatorInventory): number | undefined {
+  return completeShiftScores(ws, inventory)?.mean
 }
 
 function actor(ws: RosterWorkspace, p: CombinationPlacement): string | undefined {
@@ -158,9 +170,10 @@ function put(ws: RosterWorkspace, p: CombinationPlacement, operator: string | un
   if (p.role === 'main') slot.occupant = operator ? { kind: 'operator', operatorId: id(operator) } : { kind: room.type === 'dormitory' ? 'free' : 'empty' }
   else slot.replacements = [...slot.replacements.filter(ref => !isOrdinaryReplacementCandidate(ref, room.type)), ...(operator ? [id(operator)] : [])]
 }
-function canMove(ws: RosterWorkspace, inventory: OperatorInventory, operator: string, p: CombinationPlacement, fromType?: string): boolean {
+function canMove(ws: RosterWorkspace, inventory: OperatorInventory, operator: string, p: CombinationPlacement, fromType?: string, locks: AllocationLocks = {}): boolean {
   const room = ws.mainPlan.facilities[p.roomId]
   return (p.role !== 'backup' || isOrdinaryReplacementCandidate(operator, room.type)) &&
+    (!locks.requireWarmupExhaustion || p.role !== 'backup' || room.type === 'dormitory' || !isWarmupOperatorInFacility(operator, room.type, inventory)) &&
     (room.type === fromType || room.type === 'dormitory' || Boolean(inventory.operators.find(o => o.charId === id(operator))?.skills.some(s => s.roomType === skillTypes[room.type])))
 }
 
@@ -168,6 +181,7 @@ function canMove(ws: RosterWorkspace, inventory: OperatorInventory, operator: st
 export function regroupCombination(ws: RosterWorkspace, inventory: OperatorInventory, original: CombinationVariant, role: RosterRole, locks: AllocationLocks = {}): RosterWorkspace | null {
   const draft = structuredClone(ws)
   const desired = original.placements.map(p => ({ ...p, role: draft.mainPlan.facilities[p.roomId].type === 'dormitory' ? 'main' as const : role }))
+  if (locks.requireWarmupExhaustion && desired.some(p => p.role === 'backup' && isWarmupOperatorInFacility(p.operatorId, draft.mainPlan.facilities[p.roomId].type, inventory))) return null
   if (desired.some(p => actor(ws, p) !== p.operatorId && (locks.lockedPositions?.has(key(p)) || locks.lockedOperators?.has(p.operatorId)))) return null
   const permanent = new Set(draft.mainPlan.conf.workaholic.map(id))
   for (const target of desired) {
@@ -180,7 +194,7 @@ export function regroupCombination(ws: RosterWorkspace, inventory: OperatorInven
       if (physicalBackupOperatorIds(room, slot).includes(target.operatorId)) source = { roomId: room.roomId, slotIndex, role: 'backup', operatorId: target.operatorId }
     })
     if (source && (locks.lockedPositions?.has(key(source)) || permanent.has(target.operatorId) ||
-      locks.protectedCombinationOperators?.has(target.operatorId) || outgoing && !canMove(draft, inventory, outgoing, source, draft.mainPlan.facilities[target.roomId].type))) return null
+      locks.protectedCombinationOperators?.has(target.operatorId) || outgoing && !canMove(draft, inventory, outgoing, source, draft.mainPlan.facilities[target.roomId].type, locks))) return null
     // A reserved special order operator cannot become an ordinary production member.
     if (target.role === 'backup' && !isOrdinaryReplacementCandidate(target.operatorId, draft.mainPlan.facilities[target.roomId].type)) return null
     if (source) put(draft, source, outgoing)
@@ -222,7 +236,7 @@ function swapProductionShift(ws: RosterWorkspace, inventory: OperatorInventory, 
   for (const p of positions) {
     const a = actor(draft, p), b = actor(draft, { ...p, role: 'backup' })
     if (a && draft.mainPlan.conf.workaholic.some(ref => id(ref) === id(a))) continue
-    if (!a || !b || !canMove(draft, inventory, a, { ...p, role: 'backup' }, draft.mainPlan.facilities[p.roomId].type)) return { reason: '主替人数或常驻人员约束阻止整组互换' }
+    if (!a || !b || !canMove(draft, inventory, a, { ...p, role: 'backup' }, draft.mainPlan.facilities[p.roomId].type, locks)) return { reason: locks.requireWarmupExhaustion ? '主替人数、常驻或暖机耗尽策略约束阻止整组互换' : '主替人数或常驻人员约束阻止整组互换' }
     put(draft, p, b); put(draft, { ...p, role: 'backup' }, a); swapped.set(id(a), id(b))
   }
   for (const dorm of Object.values(draft.mainPlan.facilities).filter(r => r.type === 'dormitory')) for (const slot of dorm.slots) {
@@ -291,10 +305,10 @@ export function normalizeProductionShifts(ws: RosterWorkspace, inventory: Operat
       for (const p of positions) {
         const a = actor(draft, p), b = actor(draft, { ...p, role: 'backup' })
         if (a && draft.mainPlan.conf.workaholic.some(ref => id(ref) === id(a))) continue
-        if (!a || !b || !canMove(draft, inventory, a, { ...p, role: 'backup' }, draft.mainPlan.facilities[p.roomId].type)) { valid = false; break }
+        if (!a || !b || !canMove(draft, inventory, a, { ...p, role: 'backup' }, draft.mainPlan.facilities[p.roomId].type, locks)) { valid = false; break }
         put(draft, p, b); put(draft, { ...p, role: 'backup' }, a); swapped.set(id(a), id(b))
       }
-      if (!valid) { reasons.set(room.roomId, '主替人数或常驻人员约束阻止整组互换'); continue }
+      if (!valid) { reasons.set(room.roomId, locks.requireWarmupExhaustion ? '主替人数、常驻或暖机耗尽策略约束阻止整组互换' : '主替人数或常驻人员约束阻止整组互换'); continue }
       // Fiammetta's special targets refer to active primary workers, not their
       // newly departed relief counterparts. Update before simulation or rollback.
       for (const dorm of Object.values(draft.mainPlan.facilities).filter(r => r.type === 'dormitory')) for (const slot of dorm.slots) {

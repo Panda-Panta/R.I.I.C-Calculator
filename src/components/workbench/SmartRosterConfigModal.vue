@@ -13,76 +13,28 @@
   >
     <div class="roster-modal-body" data-test="smart-roster-modal-body">
       <div class="modal-intro">
-        <p class="intro-title">⚡ 智能排班多阶段流程参数</p>
+        <p class="intro-title">⚡ 智能排班设置</p>
         <p class="intro-desc">
-          系统将结合您持有的干员库，保留当前建筑与已配置在岗人员，通过三阶段算法自动组队与动态仿真寻优。您可以在此调整各阶段的计算深度与采样规模。
+          先生成合法初始排班，再通过约束分配计算优化。保留当前建筑、锁定人员和用户已有完整组合，以完整仿真的日均加权产出确认结果。
         </p>
       </div>
 
-      <!-- Phase 1: Static Layout Exploration -->
+      <!-- Phase 1: Constraint allocation -->
       <ProductionWeightsEditor :model-value="normalizeProductionWeights(form.productionWeights)" @update:model-value="form.productionWeights = $event" @validity-change="weightsValid = $event" />
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
-          <span class="phase-badge phase-1">阶段 1</span> 主班组合与跨站初筛
+          <span class="phase-badge phase-1">阶段 1</span> 约束计算优化
         </legend>
-        <div class="field-row">
-          <div class="field-item">
-            <label for="trials-input">
-              <span>有效分支数</span>
-              <small class="field-tip">最多生成 10 套方案；组合不足时使用实际练度散件</small>
-            </label>
-            <input
-              id="trials-input"
-              :value="10"
-              disabled
-              type="number"
-              min="1"
-              max="10"
-              class="mower-num-input"
-              data-test="trials-input"
-            />
-          </div>
-          <div class="field-item">
-            <label for="max-evals-input">
-              <span>单轮评估上限 (Evaluations)</span>
-              <small class="field-tip">每轮搜索最大访问状态 (500–10000)</small>
-            </label>
-            <input
-              id="max-evals-input"
-              v-model.number="form.maxStaticEvals"
-              type="number"
-              min="500"
-              max="10000"
-              step="500"
-              class="mower-num-input"
-              data-test="max-evals-input"
-            />
-          </div>
-        </div>
+        <p class="stage-description" data-test="constraint-description">从一份初始排班出发，按实际练度、人员与工位约束，联合计算完整队伍及主替分配。</p>
       </fieldset>
 
       <!-- Phase 2: Dynamic Simulation Verification -->
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
-          <span class="phase-badge phase-2">阶段 2</span> 全动态心情与产出仿真
+          <span class="phase-badge phase-2">阶段 2</span> 完整仿真确认
         </legend>
-        <div class="field-row">
-          <div class="field-item">
-            <label for="topk-input">
-              <span>进入仿真的分支数</span>
-              <small class="field-tip">全部有效方案进入模拟，不足 10 套也可继续</small>
-            </label>
-            <input
-              id="topk-input"
-              :value="10"
-              disabled
-              type="number"
-              min="1"
-              max="16"
-              class="mower-num-input"
-              data-test="topk-input"
-            />
-          </div>
+        <p class="stage-description" data-test="verification-description">默认最多两份完整仿真：比较初始表与计算改进表，按日均加权产出保留较优结果。</p>
+        <div class="field-row single-field">
           <div class="field-item">
             <label for="sample-hours-input">
               <span>仿真采样时长 (小时)</span>
@@ -102,10 +54,10 @@
         </div>
       </fieldset>
 
-      <!-- Phase 3: Neighborhood Deep Search -->
+      <!-- Optional additional comparison -->
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
-          <span class="phase-badge phase-3">阶段 3</span> 邻域深度微调
+          <span class="phase-badge phase-3">可选</span> 额外深度比较
         </legend>
         <div class="checkbox-row">
           <label class="checkbox-label" for="enable-deep-search">
@@ -117,8 +69,8 @@
               data-test="enable-deep-search"
             />
             <span class="checkbox-text">
-              <strong>启用第三阶段深度微调搜索</strong>
-              <small class="checkbox-hint">对仿真最优方案的替补与单工位进行局部遍历改进（推荐开启）</small>
+              <strong>追加局部搜索与仿真</strong>
+              <small class="checkbox-hint">默认流程已完成计算与仿真确认；开启额外比较会增加计算时间</small>
             </span>
           </label>
         </div>
@@ -133,7 +85,7 @@
           <div class="field-item">
             <label for="drone-target-select">
               <span>无人机加速目标</span>
-              <small class="field-tip">选择本次仿真与微调使用的具体设施</small>
+              <small class="field-tip">选择本次仿真使用的具体设施</small>
             </label>
             <select
               id="drone-target-select"
@@ -148,7 +100,7 @@
           <div class="field-item">
             <label for="seed-input">
               <span>随机种子 (Seed)</span>
-              <small class="field-tip">-1 代表随机种子，输入数值可复现</small>
+              <small class="field-tip">-1 代表随机种子，固定数值可复现仿真随机过程</small>
             </label>
             <input
               id="seed-input"
@@ -207,12 +159,12 @@ export type { SmartRosterConfig } from '../../workbench/settings'
 export const STORAGE_KEY_SMART_ROSTER = 'arcinc-smart-roster-options-v1'
 
 export const DEFAULT_CONFIG: SmartRosterConfig = {
-  trials: 10,
+  trials: 1,
   maxStaticEvals: 3000,
-  simulationTopK: 10,
+  simulationTopK: 2,
   simulationSampleHours: 72,
   simulationWarmupHours: 24,
-  enableDeepSearch: true,
+  enableDeepSearch: false,
   droneTarget: 'gold',
   seed: -1,
 }
@@ -254,6 +206,11 @@ const isOpen = ref(false)
 const weightsValid = ref(true)
 const selectedRoom = ref('none')
 const facilities = computed(() => props.workspace ? droneFacilities(props.workspace) : [])
+// Retain legacy saved fields for compatibility; they do not control generation.
+function legacyCount(value: unknown, fallback: number): number {
+  const count = Number(value)
+  return Number.isSafeInteger(count) && count > 0 ? count : fallback
+}
 function restoreRoom() {
   selectedRoom.value = form.value.droneTarget === 'none' ? 'none' :
     facilities.value.find(f => f.roomId === form.value.droneRoomId)?.roomId ??
@@ -268,9 +225,9 @@ const loadPersistedConfig = (): SmartRosterConfig => {
       const parsed = JSON.parse(raw)
       return {
         productionWeights: normalizeProductionWeights(props.initialProductionWeights ?? parsed.productionWeights),
-        trials: 10,
+        trials: legacyCount(parsed.trials, DEFAULT_CONFIG.trials),
         maxStaticEvals: Math.max(500, Math.min(10000, Number(parsed.maxStaticEvals) || DEFAULT_CONFIG.maxStaticEvals)),
-        simulationTopK: 10,
+        simulationTopK: legacyCount(parsed.simulationTopK, DEFAULT_CONFIG.simulationTopK),
         simulationSampleHours: Math.max(24, Math.min(168, Number(parsed.simulationSampleHours) || DEFAULT_CONFIG.simulationSampleHours)),
         simulationWarmupHours: Math.max(6, Math.min(48, Number(parsed.simulationWarmupHours) || DEFAULT_CONFIG.simulationWarmupHours)),
         enableDeepSearch: parsed.enableDeepSearch !== undefined ? Boolean(parsed.enableDeepSearch) : DEFAULT_CONFIG.enableDeepSearch,
@@ -336,9 +293,9 @@ const handleConfirm = () => {
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
     productionWeights: normalizeProductionWeights(form.value.productionWeights),
-    trials: 10,
+    trials: legacyCount(form.value.trials, DEFAULT_CONFIG.trials),
     maxStaticEvals: Math.max(500, Math.min(10000, Math.floor(form.value.maxStaticEvals) || 500)),
-    simulationTopK: 10,
+    simulationTopK: legacyCount(form.value.simulationTopK, DEFAULT_CONFIG.simulationTopK),
     simulationSampleHours: Math.max(24, Math.min(168, Math.floor(form.value.simulationSampleHours) || 24)),
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
     enableDeepSearch: Boolean(form.value.enableDeepSearch),
@@ -389,6 +346,13 @@ const handleConfirm = () => {
   font-size: 12px;
   line-height: 1.5;
   color: #94a3b8;
+}
+
+.stage-description {
+  margin: 4px 0 10px;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .config-fieldset {
@@ -446,6 +410,10 @@ const handleConfirm = () => {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 4px;
+}
+
+.single-field {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 500px) {

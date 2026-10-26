@@ -130,12 +130,11 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       seed: (config?.seed !== undefined && config.seed >= 0)
         ? config.seed
         : (simSettings.value.seed < 0 ? (isVitest ? 42 : Math.floor(Math.random() * 0xffffffff)) : simSettings.value.seed),
-      branchCount: isVitest ? 1 : 10,
-      maxStaticEvals: config?.maxStaticEvals ?? (isVitest ? 500 : 3000),
+      branchCount: 1,
 
       simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),
       simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
-      enableDeepSearch: config?.enableDeepSearch ?? !isVitest,
+      enableDeepSearch: config?.enableDeepSearch ?? false,
       droneTarget: config?.droneTarget ?? 'none',
       droneRoomId: config?.droneRoomId || undefined,
     }
@@ -146,7 +145,20 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
         // Finish the persisted name sync before publishing this workspace's report.
         store.workspace.mainPlan.name = store.workspace.name
         const scoreStr = report.score !== null ? `（加权预测：${report.score.toFixed(1)} 分/日）` : ''
-        replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并完成空位组队与动态仿真验证${scoreStr}。`
+        const calculation = report.phases.calculation
+        let optimizationNote = ''
+        if (calculation?.status === 'limited') {
+          const budgetReached = !calculation.libraryComplete || calculation.valuation?.stopReason === 'timeLimit' ||
+            calculation.valuation?.stopReason === 'workLimit' || calculation.assignment && calculation.assignment.termination !== 'complete'
+          optimizationNote = `${budgetReached ? '已到计算预算' : '分配计算受当前支持范围限制'}，采用完整仿真验证后的较优方案。`
+        } else if (calculation?.status === 'invalid') {
+          optimizationNote = runOptions.enableDeepSearch
+            ? '分配优化未完成，已采用完整仿真验证的方案。'
+            : '分配优化未完成，已验证并保留初始方案。'
+        } else if (calculation?.status === 'unsupported') {
+          optimizationNote = '当前配置未进入制造组优化。'
+        }
+        replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班${scoreStr}。${optimizationNote}`
         simSettings.value.droneTarget = runOptions.droneTarget
         simSettings.value.droneRoomId = runOptions.droneRoomId
         simSettings.value.droneTradingRoomId = runOptions.droneTarget === 'trading' ? runOptions.droneRoomId : ''
