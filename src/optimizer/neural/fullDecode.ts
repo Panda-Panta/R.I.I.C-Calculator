@@ -1,4 +1,4 @@
-import { initialFullState, legalFullActions, nextDecision, type FullScenario, type FullState, type FullDecision, type FullAction, type FullConstructionOrder } from './fullActionSpace';
+import { initialFullState, legalFullActions, nextDecision, type FullScenario, type FullState, type FullDecision, type FullAction, type FullConstructionOrder, type FullPolicyMode } from './fullActionSpace';
 import { applyFullAction, finalizeFullState, type FullFinalResult } from './fullTransitions';
 export interface FullScorerContext {
     scenario: FullScenario;
@@ -18,6 +18,7 @@ export interface FullDecodeResult extends FullFinalResult {
     /** Backward-compatible total completed scorer-driven actions, including forced actions. */
     modelActions: number;
     constructionOrder: FullConstructionOrder;
+    policyMode: FullPolicyMode;
     forcedActions: number;
     modelChoiceActions: number;
     frozenSlots: number;
@@ -65,7 +66,7 @@ export function decodeFullRoster(s: FullScenario, scorer: FullScorer): FullDecod
     }
     const forcedActions = trace.filter(step => step.actions.length === 1).length;
     return {
-        ...finalizeFullState(s, state), trace, modelActions: trace.length, constructionOrder: s.constructionOrder,
+        ...finalizeFullState(s, state), trace, modelActions: trace.length, constructionOrder: s.constructionOrder, policyMode: s.policyMode,
         forcedActions, modelChoiceActions: trace.length - forcedActions, frozenSlots: s.lockedSlots.length
     };
 }

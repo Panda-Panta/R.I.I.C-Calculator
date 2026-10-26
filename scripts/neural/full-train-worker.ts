@@ -3,40 +3,47 @@ import { readFileSync, existsSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizeProductionWeights } from '../../src/domain/productionWeights';
 import { compileOperatorInventory } from '../../src/domain/operatorInventory';
-import { createFullScenario, initialFullState, nextDecision, legalFullActions } from '../../src/optimizer/neural/fullActionSpace';
+import { createFullScenario, initialFullState, nextDecision, legalFullActions, type FullPolicyMode } from '../../src/optimizer/neural/fullActionSpace';
 import { applyFullAction, finalizeFullState } from '../../src/optimizer/neural/fullTransitions';
 import { replayFullTeacher, fullSemanticWorkspace } from '../../src/optimizer/neural/fullTeacherTraces';
 import { decodeFullRoster } from '../../src/optimizer/neural/fullDecode';
 import { encodeFullDecision, FULL_FEATURE_MANIFEST, FULL_FEATURE_MANIFEST_HASH } from '../../src/optimizer/neural/fullFeatures';
 import { createFullPolicy, createFullPolicyScorer, serializeFullPolicy, deserializeFullPolicy } from '../../src/optimizer/neural/fullPolicy';
+import {migrateLegacyFullPolicy} from '../../src/optimizer/neural/fullPolicyMigration';
+import {FEATURE_MIGRATION_CONTRACT,FEATURE_MIGRATION_ID,ALIGNED_SOURCE_TRANSITION,verifyFeatureMigrationBytes,verifyFeatureMigrationImplementation,verifyFeatureMigrationPopulation} from './full-training/feature-migration-contract.mjs';
 import { trainFullPolicy, type FullPolicySample } from '../../src/optimizer/neural/fullTraining';
 import { fullPlacementMetrics } from './full-training/placement-metrics';
 import { simulateCandidate } from '../../src/optimizer/candidateSimulation';
 import { qualifyEnvelope, digest, atomic, advanceCursor, saveCheckpoint, loadCheckpoint } from './full-training/state.mjs';
 import { compactMolecularTeacher } from './full-training/auxiliary-traces';
 import { verifyInitialization } from './full-training/lineage.mjs';
+import { isLatestPolicyMode, verifyLatestPolicyTransition } from './full-training/source-compatibility.mjs';
+import { verifyProducerReplayRecord, verifyPreparedPolicyDataset } from './full-training/policy-replay-contract.mjs';
+import {FULL_UNION_KIND,verifyFullTrainingUnion,fullUnionDatasetContract} from './full-training/full-union-contract.mjs';
 import { referenceManifestContract } from './full-baseline/reference-protocol.mjs';
 import { auditTradingExclusions } from './full-baseline/semantic-audit.mjs';
 const read = (p: string) => JSON.parse(readFileSync(p, 'utf8'));
-export function scenarioFromInput(input: any, constructionOrder: 'legacy-v1' | 'staffing-first-v1' = 'legacy-v1') {
+export function scenarioFromInput(input: any, constructionOrder: 'legacy-v1' | 'staffing-first-v1' = 'legacy-v1', policyMode: FullPolicyMode = 'legacy-unconstrained-v1') {
     if (!['legacy-v1', 'staffing-first-v1'].includes(constructionOrder))
         throw Error('Unknown construction order');
+    if (policyMode !== 'legacy-unconstrained-v1' && !isLatestPolicyMode(policyMode)) throw Error('Unknown policy mode');
+    if (isLatestPolicyMode(policyMode) && constructionOrder !== 'staffing-first-v1') throw Error('Latest policy mode requires staffing-first construction');
     const workspace = structuredClone(input.workspace);
     // Optimizer resolves explicit options over the input; conditioning must match, never use output context.
     workspace.productionWeights = normalizeProductionWeights(input.options.productionWeights ?? workspace.productionWeights);
-    return createFullScenario(workspace, compileOperatorInventory(input.entries), { constructionOrder, simulationConditioning: { schedulerAssumptions: { restingThreshold: .65, operationDurationHours: 0 }, droneTarget: input.options.droneTarget, droneRoomId: input.options.droneRoomId, warmupHours: input.options.simulationWarmupHours, sampleHours: input.options.simulationSampleHours, maxStepHours: input.simulationDefaults?.maxStepHours ?? .25, seed: input.options.seed } });
+    return createFullScenario(workspace, compileOperatorInventory(input.entries), { constructionOrder, policyMode, simulationConditioning: { schedulerAssumptions: { restingThreshold: .65, operationDurationHours: 0 }, droneTarget: input.options.droneTarget, droneRoomId: input.options.droneRoomId, warmupHours: input.options.simulationWarmupHours, sampleHours: input.options.simulationSampleHours, maxStepHours: input.simulationDefaults?.maxStepHours ?? .25, seed: input.options.seed } });
 }
-export function compactTeacher(input: any, outcome: any, purpose: string, constructionOrder: 'legacy-v1' | 'staffing-first-v1' = 'legacy-v1') {
+export function compactTeacher(input: any, outcome: any, purpose: string, constructionOrder: 'legacy-v1' | 'staffing-first-v1' = 'legacy-v1', policyMode: FullPolicyMode = 'legacy-unconstrained-v1') {
     const qualification = qualifyEnvelope(input, outcome, purpose);
     if (!qualification.qualified)
         return { record: null, audit: qualification };
-    const target = outcome.result.result.workspace, exclusions = auditTradingExclusions(target), scenario = scenarioFromInput(input, constructionOrder), replay = replayFullTeacher(scenario, target);
+    const target = outcome.result.result.workspace, exclusions = auditTradingExclusions(target), scenario = scenarioFromInput(input, constructionOrder, policyMode), replay = replayFullTeacher(scenario, target);
     const reasons = [...qualification.reasons, ...(!exclusions.imitationPolicyCompatible ? ['TRADING_POLICY_CONFLICT'] : []), ...(!scenario.valid ? ['INVALID_INPUT_SCENARIO'] : []), ...(!replay.exactReplay ? ['NOT_EXACT_REPLAY'] : []), ...(!replay.complete ? ['INVALID_TEACHER_SEMANTICS'] : [])];
-    return { audit: { ...qualification, qualified: !reasons.length, reasons, exclusions, diagnostics: replay.diagnostics, exactReplay: replay.exactReplay, complete: replay.complete }, record: reasons.length ? null : { familyId: input.familyId, originalSplit: input.split, input, constructionOrder, actionIds: replay.trace.map(t => t.action.id), teacherSemanticHash: digest(fullSemanticWorkspace(scenario, target)), teacherScore: qualification.score, referenceProtocol: qualification.referenceProtocol, degradedBaseline: qualification.degradedBaseline, teacherRecordHash: digest(outcome), sourceKind: 'full-optimizer', fullOptimizerTeacher: true, baselineEligible: true } };
+    return { audit: { ...qualification, qualified: !reasons.length, reasons, exclusions, diagnostics: replay.diagnostics, exactReplay: replay.exactReplay, complete: replay.complete }, record: reasons.length ? null : { familyId: input.familyId, originalSplit: input.split, input, constructionOrder, policyMode, actionIds: replay.trace.map(t => t.action.id), teacherSemanticHash: digest(fullSemanticWorkspace(scenario, target)), teacherScore: qualification.score, referenceProtocol: qualification.referenceProtocol, degradedBaseline: qualification.degradedBaseline, teacherRecordHash: digest(outcome), sourceKind: 'full-optimizer', fullOptimizerTeacher: true, baselineEligible: true } };
 }
 /** Rebuild only this family's prefix; do not persist repeated sparse matrices. */
 export function regenerateChunk(record: any, start: number, count: number) {
-    const scenario = scenarioFromInput(record.input, record.constructionOrder ?? 'legacy-v1');
+    const scenario = scenarioFromInput(record.input, record.constructionOrder ?? 'legacy-v1', record.policyMode ?? 'legacy-unconstrained-v1');
     let state = initialFullState(scenario);
     const samples: FullPolicySample[] = [];
     for (let i = 0; i < Math.min(record.actionIds.length, start + count); i++) {
@@ -54,9 +61,18 @@ export function regenerateChunk(record: any, start: number, count: number) {
     }
     return samples;
 }
-function prepare(job: any) {
+export function prepare(job: any) {
     const sources = read(join(job.directory, 'source-records.json')), records: any[] = [], audits: any[] = [];
-    const teacherKind = job.teacherKind ?? 'full-optimizer';
+    const fullUnion=sources.kind===FULL_UNION_KIND;
+    if(fullUnion){verifyFullTrainingUnion(sources);if(job.purpose!=='train')throw Error('Independent union is TRAIN only');}
+    const teacherKind = job.teacherKind ?? 'full-optimizer', policyMode = job.policyMode ?? 'legacy-unconstrained-v1';
+    if (isLatestPolicyMode(policyMode) && (!sources.sourceCompatibility?.producerReplayProofRequired || (!fullUnion&&!sources.producerReplay))) throw Error('Latest policy requires independent producer replay proof');
+    if (sources.sourceCompatibility?.producerReplayProofRequired && !isLatestPolicyMode(policyMode)) throw Error('Producer replay transition requires latest policy mode');
+    if (isLatestPolicyMode(policyMode)) {
+        verifyLatestPolicyTransition(policyMode, sources.sourceCompatibility?.policy);
+        if (job.sourceTransition !== sources.sourceCompatibility.policy) throw Error('Preparation source-transition binding mismatch');
+        if(job.sourceTransition===ALIGNED_SOURCE_TRANSITION&&job.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Preparation requires explicit feature migration contract');
+    }
     if (sources.sourceCompatibility?.legacyProofRequired && job.constructionOrder !== 'staffing-first-v1')
         throw Error('Replay-preserving transition requires staffing-first learning protocol');
     if (sources.teacherKind !== teacherKind)
@@ -65,7 +81,14 @@ function prepare(job: any) {
         throw Error('Auxiliary target cannot be used outside TRAIN');
     for (const source of sources.records) {
         try {
-            const result = teacherKind === 'molecular-simulated' ? compactMolecularTeacher(source.input, source.outcome, { purpose: 'training', allowedTeacherKinds: [teacherKind], allowedInputProfiles: [job.inputProfile ?? 'actual-mixture-v1'], constructionOrder: job.constructionOrder ?? 'legacy-v1', manifest: source.sourceManifest ?? sources.teacherManifest, manifestHash: source.sourceManifestHash ?? sources.teacherManifestHash }) : compactTeacher(source.input, source.outcome, job.purpose, job.constructionOrder ?? 'legacy-v1');
+            const result = teacherKind === 'molecular-simulated' ? compactMolecularTeacher(source.input, source.outcome, { purpose: 'training', allowedTeacherKinds: [teacherKind], allowedInputProfiles: [job.inputProfile ?? 'actual-mixture-v1'], constructionOrder: job.constructionOrder ?? 'legacy-v1', manifest: source.sourceManifest ?? sources.teacherManifest, manifestHash: source.sourceManifestHash ?? sources.teacherManifestHash }) : compactTeacher(source.input, source.outcome, job.purpose, job.constructionOrder ?? 'legacy-v1', policyMode);
+            if (sources.sourceCompatibility?.producerReplayProofRequired && result.record) {
+                const member=fullUnion?sources.members[source.sourceMemberIndex]:null;
+                const proof = verifyProducerReplayRecord(member?member.sources.producerReplay:sources.producerReplay, source.input, source.outcome, result.record);
+                result.record.producerReplay = proof;
+                result.audit.producerReplay = proof;
+                if(member){result.record.sourceMemberIndex=source.sourceMemberIndex;result.record.sourceManifestHash=member.sources.teacherManifestHash;}
+            }
             audits.push({ familyId: source.input.familyId, ...result.audit });
             if (result.record)
                 records.push(result.record);
@@ -74,7 +97,8 @@ function prepare(job: any) {
             audits.push({ familyId: source.input?.familyId, qualified: false, reasons: ['EXTRACTION_ERROR'], error: String(e) });
         }
     }
-    const referenceContract = teacherKind === 'full-optimizer' ? referenceManifestContract(sources.teacherManifest, records.map(r => r.input)) : null;
+    const referenceContract = teacherKind === 'full-optimizer'&&!fullUnion ? referenceManifestContract(sources.teacherManifest, records.map(r => r.input)) : null;
+    const referenceContracts=fullUnion?sources.members.map((member:any,index:number)=>referenceManifestContract(member.sources.teacherManifest,records.filter(r=>r.sourceMemberIndex===index).map(r=>r.input))):null;
     if (sources.referenceContract && digest(sources.referenceContract) !== digest(referenceManifestContract(sources.teacherManifest, sources.records.map((r: any) => r.input)))) throw Error('Full reference source contract mismatch');
     const referenceProtocols = teacherKind === 'full-optimizer' ? [...new Map(records.map(r => [digest(r.referenceProtocol), r.referenceProtocol])).values()] : [];
     if (referenceProtocols.length > 1) throw Error('Mixed full reference protocol populations require separate datasets');
@@ -89,8 +113,9 @@ function prepare(job: any) {
             throw Error('Duplicate canonical inventory family');
         inventories.add(canonicalInventory);
     }
-    const dataset = { schemaVersion: 4, dataVersion: sources.teacherManifest.dataVersion ?? 'historical-full-v2', referenceContract, referenceProtocols, inputProfile: job.inputProfile ?? 'actual-mixture-v1', constructionOrder: job.constructionOrder ?? 'legacy-v1', purpose: job.purpose, teacherKinds: [teacherKind], baselineEligible: teacherKind === 'full-optimizer', scope: teacherKind === 'molecular-simulated' ? 'AUXILIARY MOLECULAR-SIMULATED TRAINING ONLY; NOT FULL OPTIMIZER BASELINE/PARITY/RELEASE' : job.purpose === 'dev-overfit' ? 'EXPOSED DEVELOPMENT OVERFIT ONLY; NOT RELEASE OR PROMOTED TRAINING' : 'training only; no release claims', sourceRecordsHash: digest(sources), featureManifestHash: FULL_FEATURE_MANIFEST_HASH, records };
+    const dataset = { schemaVersion: fullUnion||sources.sourceCompatibility?.featureMigration ? 6 : 5, ...(sources.sourceCompatibility?.featureMigration?{featureMigration:sources.sourceCompatibility.featureMigration}:{}), ...(fullUnion?{sourceUnion:fullUnionDatasetContract(sources),referenceContracts}:{}), policyMode, ...(sources.producerReplay ? { producerReplayProofHash: digest(sources.producerReplay) } : {}), dataVersion: fullUnion?'latest-math-v3':sources.teacherManifest.dataVersion ?? 'historical-full-v2', referenceContract, referenceProtocols, inputProfile: job.inputProfile ?? 'actual-mixture-v1', constructionOrder: job.constructionOrder ?? 'legacy-v1', purpose: job.purpose, teacherKinds: [teacherKind], baselineEligible: teacherKind === 'full-optimizer', scope: teacherKind === 'molecular-simulated' ? 'AUXILIARY MOLECULAR-SIMULATED TRAINING ONLY; NOT FULL OPTIMIZER BASELINE/PARITY/RELEASE' : job.purpose === 'dev-overfit' ? 'EXPOSED DEVELOPMENT OVERFIT ONLY; NOT RELEASE OR PROMOTED TRAINING' : 'training only; no release claims', sourceRecordsHash: digest(sources), featureManifestHash: FULL_FEATURE_MANIFEST_HASH, records };
     atomic(join(job.directory, 'qualification.json'), { teacherKind, baselineEligible: teacherKind === 'full-optimizer', attempted: sources.records.length, qualified: records.length, cohortAccounting: sources.cohortAccounting ?? null, audits, pending: sources.pending });
+    verifyPreparedPolicyDataset(dataset, sources, job);
     atomic(join(job.directory, 'dataset.json'), dataset);
     atomic(join(job.directory, 'feature-manifest.json'), FULL_FEATURE_MANIFEST);
     return { status: records.length ? 'dataset-ready' : 'waiting-qualified-teacher', datasetHash: digest(dataset), qualified: records.length, rejected: audits.filter(a => !a.qualified).length, pending: sources.pending };
@@ -98,7 +123,7 @@ function prepare(job: any) {
 function evaluateDecode(dataset: any, model: any, directory: string, cursor: any, shouldCancel: () => boolean = () => false) {
     const scorer = createFullPolicyScorer(model), reports = [];
     for (const record of dataset.records) {
-        const scenario = scenarioFromInput(record.input, record.constructionOrder ?? 'legacy-v1'), start = performance.now(), result = decodeFullRoster(scenario, context => {
+        const scenario = scenarioFromInput(record.input, record.constructionOrder ?? 'legacy-v1', record.policyMode ?? 'legacy-unconstrained-v1'), start = performance.now(), result = decodeFullRoster(scenario, context => {
             if (shouldCancel())
                 throw Error('DECODE_BUDGET_CANCELLED');
             return scorer(encodeFullDecision(context));
@@ -109,7 +134,7 @@ function evaluateDecode(dataset: any, model: any, directory: string, cursor: any
         while (prefix < ids.length && ids[prefix] === record.actionIds[prefix])
             prefix++;
         const placementCounts = fullPlacementMetrics(scenario, result);
-        const report = { familyId: record.familyId, complete: result.complete, exactTeacherSemantics: result.complete && digest(fullSemanticWorkspace(scenario, result.workspace)) === record.teacherSemanticHash, matchingPrefixActions: prefix, firstDivergence: prefix === record.actionIds.length && prefix === ids.length ? null : { index: prefix, decision: result.trace[prefix]?.decision ?? null, expectedActionId: record.actionIds[prefix] ?? null, chosenActionId: ids[prefix] ?? null }, teacherActions: record.actionIds.length, decodedActions: ids.length, diagnostics: result.diagnostics, generationElapsedMs: performance.now() - start, modelActions: result.modelActions, forcedActions: result.forcedActions, modelChoiceActions: result.modelChoiceActions, constructionOrder: result.constructionOrder, ...placementCounts, frozenInputSlots: result.frozenSlots, score: null, scoreStatus: 'not-simulated', workspace: result.workspace };
+        const report = { familyId: record.familyId, complete: result.complete, exactTeacherSemantics: result.complete && digest(fullSemanticWorkspace(scenario, result.workspace)) === record.teacherSemanticHash, matchingPrefixActions: prefix, firstDivergence: prefix === record.actionIds.length && prefix === ids.length ? null : { index: prefix, decision: result.trace[prefix]?.decision ?? null, expectedActionId: record.actionIds[prefix] ?? null, chosenActionId: ids[prefix] ?? null }, teacherActions: record.actionIds.length, decodedActions: ids.length, diagnostics: result.diagnostics, generationElapsedMs: performance.now() - start, modelActions: result.modelActions, forcedActions: result.forcedActions, modelChoiceActions: result.modelChoiceActions, constructionOrder: result.constructionOrder, policyMode: result.policyMode, ...placementCounts, frozenInputSlots: result.frozenSlots, score: null, scoreStatus: 'not-simulated', workspace: result.workspace };
         reports.push(report);
     }
     const gateModel = serializeFullPolicy(model);
@@ -120,7 +145,15 @@ function evaluateDecode(dataset: any, model: any, directory: string, cursor: any
     atomic(join(directory, 'decode-latest.json'), report);
     return { ...report, reports: reports.map(({ workspace, ...r }) => r) };
 }
-function initialModel(job: any) {
+export function featureMigrationReceipt(job:any,bytes:Uint8Array,migrated:Uint8Array){
+    const lineage=read(join(job.directory,'lineage.json')),legacyManifest=read(join(job.directory,'parent-feature-manifest.json')),manifest=read(join(job.directory,'manifest.json'));
+    verifyInitialization(lineage,job.binding);
+    if(digest(legacyManifest)!==FEATURE_MIGRATION_CONTRACT.oldManifestSha256||digest(read(join(job.directory,'feature-manifest.json')))!==FEATURE_MIGRATION_CONTRACT.newManifestSha256)throw Error('Feature migration full manifest commitment mismatch');
+    verifyFeatureMigrationImplementation(manifest.provenance);
+    if(manifest.provenance.sourceHash!==job.binding.sourceHash||manifest.provenance.bundleHash!==job.binding.bundleHash)throw Error('Feature migration implementation binding mismatch');
+    return {...verifyFeatureMigrationBytes(bytes,migrated),population:verifyFeatureMigrationPopulation(read(join(job.directory,'parent-dataset.json')),read(join(job.directory,'dataset.json')),lineage),lineageHash:job.binding.lineageHash,parentFeatureManifestHash:digest(legacyManifest),featureManifestHash:digest(read(join(job.directory,'feature-manifest.json'))),sourceHash:job.binding.sourceHash,bundleHash:job.binding.bundleHash};
+}
+export function initialModel(job: any) {
     if (!job.binding.lineageHash)
         return createFullPolicy({ hiddenSize: job.binding.hiddenSize, seed: job.binding.seed });
     const lineage = read(join(job.directory, 'lineage.json'));
@@ -130,6 +163,19 @@ function initialModel(job: any) {
     const bytes = readFileSync(join(job.directory, 'initial-model.bin'));
     if (digest(bytes) !== lineage.initialModelHash)
         throw Error('Fork parameter snapshot mismatch');
+    if(lineage.spec.mode==='feature-migration'){
+        const legacyManifest=read(join(job.directory,'parent-feature-manifest.json'));
+        if(digest(legacyManifest)!==FEATURE_MIGRATION_CONTRACT.oldManifestSha256||digest(read(join(job.directory,'feature-manifest.json')))!==FEATURE_MIGRATION_CONTRACT.newManifestSha256)throw Error('Feature migration full manifest commitment mismatch');
+        const model=migrateLegacyFullPolicy(bytes,legacyManifest),migrated=serializeFullPolicy(model);
+        if(model.hiddenSize!==job.binding.hiddenSize||model.metadata.seed!==job.binding.seed||model.metadata.trainingUpdates!==lineage.parent.cursor.updates||(model.metadata.optimizerVersion??'sgd-v1')!==job.binding.optimizer)throw Error('Feature migration numerical metadata mismatch');
+        const receipt=featureMigrationReceipt(job,bytes,migrated);
+        const receiptPath=join(job.directory,'feature-migration.json'),modelPath=join(job.directory,'migrated-initial-model.bin');
+        if(existsSync(receiptPath)&&digest(read(receiptPath))!==digest(receipt))throw Error('Existing feature migration receipt changed');
+        if(existsSync(modelPath)&&digest(readFileSync(modelPath))!==receipt.newModelHash)throw Error('Existing migrated parameter snapshot changed');
+        if(!existsSync(modelPath))writeFileSync(modelPath,migrated,{flag:'wx',mode:0o600});
+        if(!existsSync(receiptPath))atomic(receiptPath,receipt);
+        return model;
+    }
     const model = deserializeFullPolicy(bytes);
     if (model.hiddenSize !== job.binding.hiddenSize || model.metadata.seed !== job.binding.seed || model.metadata.trainingUpdates !== lineage.parent.cursor.updates)
         throw Error('Fork model dimensions/seed/cumulative updates mismatch');
@@ -145,10 +191,19 @@ export function trainPreparedDataset(job: any) {
         throw Error('Dataset input-profile binding mismatch');
     if ((dataset.constructionOrder ?? 'legacy-v1') !== (job.binding.constructionOrder ?? 'legacy-v1') || dataset.records.some((r: any) => (r.constructionOrder ?? 'legacy-v1') !== (dataset.constructionOrder ?? 'legacy-v1')))
         throw Error('Dataset construction-order binding mismatch');
+    if ((dataset.policyMode ?? 'legacy-unconstrained-v1') !== (job.binding.policyMode ?? 'legacy-unconstrained-v1') || dataset.records.some((r: any) => (r.policyMode ?? 'legacy-unconstrained-v1') !== (dataset.policyMode ?? 'legacy-unconstrained-v1'))) throw Error('Dataset policy-mode binding mismatch');
     if (digest(dataset) !== job.binding.datasetHash || dataset.featureManifestHash !== FULL_FEATURE_MANIFEST_HASH)
         throw Error('Dataset/feature manifest mismatch');
+    if (isLatestPolicyMode(dataset.policyMode)) verifyPreparedPolicyDataset(dataset, read(join(directory, 'source-records.json')), job.binding);
     const checkpoint = loadCheckpoint(directory, job.binding);
     let model = checkpoint ? deserializeFullPolicy(checkpoint.bytes) : initialModel(job), cursor = checkpoint?.state.cursor ?? { epoch: 0, family: 0, action: 0, updates: model.metadata.trainingUpdates };
+    let initializationProofHash:string|null=null;
+    if(job.binding.featureMigration){
+        if(job.binding.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Unknown numerical feature migration');
+        const receipt=read(join(directory,'feature-migration.json')),expected=featureMigrationReceipt(job,readFileSync(join(directory,'initial-model.bin')),readFileSync(join(directory,'migrated-initial-model.bin')));
+        initializationProofHash=digest(expected);
+        if(digest(receipt)!==initializationProofHash||(checkpoint&&checkpoint.state.initializationProofHash!==initializationProofHash))throw Error('Feature migration saved initialization proof mismatch');
+    }
     if (model.metadata.trainingUpdates !== cursor.updates)
         throw Error('Model/outer cursor update mismatch');
     const started = performance.now(), cancel = () => existsSync(join(directory, 'CANCEL')), expired = () => Date.now() >= (job.deadlineUtcMs ?? Infinity) || performance.now() - started >= job.budgetMs, stop = () => cancel() || expired(), lengths = dataset.records.map((r: any) => r.actionIds.length);
@@ -158,7 +213,7 @@ export function trainPreparedDataset(job: any) {
         const serializeStart = performance.now(), bytes = serializeFullPolicy(model), modelHash = digest(bytes);
         phaseTimings.checkpointSerializationMs += performance.now() - serializeStart;
         const pendingEvaluation = cursor.epoch > 0 && cursor.family === 0 && cursor.action === 0 && (gate?.cursor?.updates !== cursor.updates || gate?.modelHash !== modelHash) ? { epoch: cursor.epoch, updates: cursor.updates, modelHash } : null;
-        const state = { binding: job.binding, cursor, status, gate, phaseTimings: { ...phaseTimings }, timingNote: 'Training includes clone/validation/initial+final loss passes; gate includes decode artifact writes; checkpoint timing snapshot excludes its own write', pendingEvaluation, currentModelHash: modelHash, latestLoss, optimizationElapsedMs: (checkpoint?.state.optimizationElapsedMs ?? 0) + performance.now() - started, updatedUtc: new Date().toISOString(), parity: false };
+        const state = { binding: job.binding,...(initializationProofHash?{initializationProofHash}:{}), cursor, status, gate, phaseTimings: { ...phaseTimings }, timingNote: 'Training includes clone/validation/initial+final loss passes; gate includes decode artifact writes; checkpoint timing snapshot excludes its own write', pendingEvaluation, currentModelHash: modelHash, latestLoss, optimizationElapsedMs: (checkpoint?.state.optimizationElapsedMs ?? 0) + performance.now() - started, updatedUtc: new Date().toISOString(), parity: false };
         const writeStart = performance.now();
         saveCheckpoint(directory, bytes, state);
         phaseTimings.checkpointWriteMs += performance.now() - writeStart;

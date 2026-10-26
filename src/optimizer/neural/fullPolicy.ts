@@ -85,6 +85,8 @@ export function fullPolicyForwardUnchecked(m: FullPolicyModel, d: FullEncodedDec
     logits: number[];
     hidden: number[][];
 } {
+    if (!m || m.version !== 2 || m.featureVersion !== FULL_FEATURE_VERSION || m.manifestHash !== FULL_FEATURE_MANIFEST_HASH || m.featureCount !== FULL_FEATURE_COUNT)
+        throw Error('Full policy contract mismatch');
     validateFullDecision(d);
     const base = m.hiddenBias.slice(), n = m.hiddenSize;
     for (const [f, v] of d.common) {

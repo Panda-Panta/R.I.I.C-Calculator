@@ -9,11 +9,15 @@ import { facilityCapacity } from '../../domain/facilities';
 import { MOWER_ROOM_IDS, MOWER_OPERATOR_LIST_FIELDS, type MowerRoomId, type MowerOperatorListField, type RosterWorkspace } from '../../domain/roster';
 import { physicalBackupOperatorIds } from '../combinationModel';
 import { validatePhysicalRoster } from '../rosterDraft';
+import { isOrdinaryReplacementCandidate } from '../../scheduler/scheduleAdapter';
+import { isWarmupOperatorInFacility } from '../generatedWarmupPolicy';
 export interface FullDiagnostic {
     code: string;
     message: string;
 }
 export type FullConstructionOrder = 'legacy-v1' | 'staffing-first-v1';
+/** Opt-in action-domain constraints, not a post-decoding roster repair. */
+export type FullPolicyMode = 'legacy-unconstrained-v1' | 'latest-warmup-exhaustion-v1' | 'latest-warmup-runorder-v2';
 export type FullDecisionKind = 'occupant' | 'resident' | 'group' | 'replacement' | 'bindings' | 'binding-group' | 'binding-replacement' | 'conf-list' | 'ling_xi';
 export interface FullDecision {
     kind: FullDecisionKind;
@@ -40,6 +44,7 @@ export interface FullSimulationConditioning {
 }
 export interface FullScenario {
     constructionOrder: FullConstructionOrder;
+    policyMode: FullPolicyMode;
     simulationConditioning: FullSimulationConditioning;
     version: 'full-v2';
     valid: boolean;
@@ -60,9 +65,11 @@ export interface FullState {
 export function createFullScenario(base: RosterWorkspace, inventory: OperatorInventory, options: {
     lockedSlots?: readonly string[];
     constructionOrder?: FullConstructionOrder;
+    policyMode?: FullPolicyMode;
     simulationConditioning?: Partial<FullSimulationConditioning>;
 } = {}): FullScenario {
     const constructionOrder = options.constructionOrder ?? 'legacy-v1';
+    const policyMode = options.policyMode ?? 'legacy-unconstrained-v1';
     const simulationConditioning: FullSimulationConditioning = structuredClone({
         droneTarget: 'gold', warmupHours: 24, sampleHours: 72, maxStepHours: .25, seed: 42, ...options.simulationConditioning
     });
@@ -81,6 +88,10 @@ export function createFullScenario(base: RosterWorkspace, inventory: OperatorInv
         diagnostics.push({
             code: 'INVALID_CONSTRUCTION_ORDER', message: String(constructionOrder)
         });
+    }
+    if (!['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2'].includes(policyMode)
+        || policyMode !== 'legacy-unconstrained-v1' && constructionOrder !== 'staffing-first-v1') {
+        diagnostics.push({ code: 'INVALID_POLICY_MODE', message: 'Latest warmup constraints require explicit staffing-first-v1 construction' });
     }
     if (!inventory.valid) {
         diagnostics.push({
@@ -140,7 +151,7 @@ export function createFullScenario(base: RosterWorkspace, inventory: OperatorInv
         }
     }
     return {
-        constructionOrder, simulationConditioning, version: 'full-v2', valid: diagnostics.length === 0, workspace, inventory: inv,
+        constructionOrder, policyMode, simulationConditioning, version: 'full-v2', valid: diagnostics.length === 0, workspace, inventory: inv,
         lockedSlots: [...locks], retainedGroupNames: [...retainedGroupNames], diagnostics
     };
 }
@@ -184,7 +195,8 @@ export function initialFullState(s: FullScenario): FullState {
     if (s.constructionOrder === 'staffing-first-v1') {
         const index = decisions.findIndex(d => d.kind === 'conf-list' && d.field === 'workaholic');
         const [workaholic] = decisions.splice(index, 1);
-        const primary = decisions.findIndex(d => d.kind === 'replacement');
+        // Native multigroup warmup eligibility depends on the explicitly chosen permanent policy.
+        const primary = decisions.findIndex(d => d.kind === (s.policyMode !== 'legacy-unconstrained-v1' ? 'bindings' : 'replacement'));
         // If every seat is locked, there is no staffing to close: policy precedes other conf lists.
         decisions.splice(primary >= 0 ? primary : decisions.findIndex(d => d.kind === 'conf-list'), 0, workaholic!);
     }
@@ -285,6 +297,39 @@ function nativePrimaryReferenceAllowed(workspace: RosterWorkspace, decision: Ful
         && [cover.groupId, ...(cover.groupBindings ?? []).map(other => other.groupId)].includes(binding.groupId);
     return sameGroup || candidate !== primary && room.type === 'trading' && isTradeRunOrderOperator(candidate);
 }
+function activeWarmupPositions(workspace: RosterWorkspace) {
+    return Object.values(workspace.mainPlan.facilities).filter(room => room.level > 0)
+        .flatMap(room => room.slots.slice(0, facilityCapacity(room.type, room.level)).map(slot => ({ room, slot })));
+}
+/** The native helper admits warmup relief only via the same-facility, single-group primary exception. */
+function nativeWarmupReferenceAllowed(s: FullScenario, workspace: RosterWorkspace, d: FullDecision, operatorId: string): boolean {
+    const room = workspace.mainPlan.facilities[d.roomId!], slot = room.slots[d.slotIndex!]!;
+    if (room.type === 'dormitory' || !isOrdinaryReplacementCandidate(operatorId, room.type)
+        || !isWarmupOperatorInFacility(operatorId, room.type, s.inventory)) return true;
+    const primary = activeWarmupPositions(workspace).find(position => position.slot.occupant.kind === 'operator' && id(position.slot.occupant.operatorId) === operatorId);
+    if (!primary || primary.room.type !== room.type || primary.slot.groupBindings?.length
+        || workspace.mainPlan.conf.workaholic.some(ref => id(ref) === operatorId)) return false;
+    const group = primary.slot.groupId?.trim(), binding = d.kind === 'binding-replacement' ? slot.groupBindings![d.bindingIndex!]! : slot;
+    return !!group && binding.groupId?.trim() === group && [slot, ...(slot.groupBindings ?? [])]
+        .filter(other => other.replacements.some(ref => id(ref) === operatorId)).every(other => other.groupId?.trim() === group);
+}
+function missingWarmupPolicy(s: FullScenario, workspace: RosterWorkspace, field: 'workaholic' | 'exhaust_require'): boolean {
+    const permanent = new Set(workspace.mainPlan.conf.workaholic.map(id)), exhausted = new Set(workspace.mainPlan.conf.exhaust_require.map(id));
+    return activeWarmupPositions(workspace).some(({ room, slot }) => slot.occupant.kind === 'operator'
+        && isWarmupOperatorInFacility(slot.occupant.operatorId, room.type, s.inventory) && !permanent.has(id(slot.occupant.operatorId))
+        && (field === 'workaholic' ? !!slot.groupBindings?.length : !slot.groupBindings?.length && !exhausted.has(id(slot.occupant.operatorId))));
+}
+/** Pinned native startup reads direct room* runner references, not binding-only alternatives.
+ * This is runtime admission, not a ban on using these operators outside trading.
+ * Occupants are already fixed. The adapter omits trailing empty seats and gaming rooms.
+ */
+function nativeRunOrderReferenceAllowed(workspace: RosterWorkspace, d: FullDecision, operatorId: string): boolean {
+    if (d.kind !== 'replacement' || !d.roomId?.startsWith('room') || !isTradeRunOrderOperator(operatorId) || operatorId === id('U-Official')) return true;
+    const room = workspace.mainPlan.facilities[d.roomId];
+    if (room.level <= 0 || room.type === 'trading' || room.type === 'gaming' || room.type === '') return true;
+    // An unresolved Current is already invalid; a valid locked Current resolves to a primary.
+    return !room.slots.slice(d.slotIndex!).some(slot => slot.occupant.kind !== 'empty');
+}
 /** The same necessary ordinary-cover condition used at terminal validation. */
 export function needsOrdinaryRelief(workspace: RosterWorkspace, roomId: MowerRoomId, slotIndex: number): boolean {
     const room = workspace.mainPlan.facilities[roomId], slot = room?.slots[slotIndex];
@@ -326,7 +371,10 @@ export function legalFullActions(s: FullScenario, state: FullState): FullAction[
         return [action('value', null), ...[...groups].map(g => action('value', g)), action('value', fresh)];
     }
     if (d.kind === 'bindings') {
-        return [...(d.listIndex === undefined ? [action('absent')] : []), action('end'), ...((slot?.groupBindings?.length ?? 0) < s.inventory.operators.length ? [action('binding')] : [])];
+        const unsupportedWarmupGroup = s.policyMode !== 'legacy-unconstrained-v1' && slot?.occupant.kind === 'operator'
+            && isWarmupOperatorInFacility(slot.occupant.operatorId, room!.type, s.inventory)
+            && !state.workspace.mainPlan.conf.workaholic.some(ref => id(ref) === id(slot.occupant.kind === 'operator' ? slot.occupant.operatorId : ''));
+        return [...(d.listIndex === undefined ? [action('absent')] : []), action('end'), ...(!unsupportedWarmupGroup && (slot?.groupBindings?.length ?? 0) < s.inventory.operators.length ? [action('binding')] : [])];
     }
     if (d.kind === 'ling_xi') {
         return [0, 1, 2, 3].map(n => action('value', n));
@@ -334,15 +382,19 @@ export function legalFullActions(s: FullScenario, state: FullState): FullAction[
     const refs = d.kind === 'conf-list' ? state.workspace.mainPlan.conf[d.field!] ?? [] : d.kind === 'replacement' ? slot!.replacements : slot!.groupBindings![d.bindingIndex!]!.replacements;
     const staffingFirst = s.constructionOrder === 'staffing-first-v1';
     const coverRequired = staffingFirst && d.kind === 'replacement' && needsOrdinaryRelief(state.workspace, d.roomId!, d.slotIndex!);
+    const policyRequired = s.policyMode !== 'legacy-unconstrained-v1' && d.kind === 'conf-list'
+        && (d.field === 'workaholic' || d.field === 'exhaust_require') && missingWarmupPolicy(s, state.workspace, d.field);
     const binding = d.kind === 'binding-replacement' ? slot!.groupBindings![d.bindingIndex!] : slot;
     const freeAllowed = room?.type === 'dormitory' && !refs.includes('Free') && (!staffingFirst ||
         slot?.occupant.kind === 'operator' && id(slot.occupant.operatorId) !== id('菲亚梅塔') && !!binding?.groupId);
     return [
-        ...(d.kind === 'conf-list' && d.listIndex === 0 && !Object.prototype.hasOwnProperty.call(s.workspace.mainPlan.conf, d.field!) ? [action('absent')] : []),
-        ...(!coverRequired ? [action('end')] : []),
+        ...(d.kind === 'conf-list' && d.listIndex === 0 && !policyRequired && !Object.prototype.hasOwnProperty.call(s.workspace.mainPlan.conf, d.field!) ? [action('absent')] : []),
+        ...(!coverRequired && !policyRequired ? [action('end')] : []),
         ...(freeAllowed ? [action('free')] : []),
         ...ops.filter(o => !refs.some(r => id(r) === o.charId)
             && (!staffingFirst || d.kind === 'conf-list' || nativePrimaryReferenceAllowed(state.workspace, d, o.charId))
+            && (s.policyMode === 'legacy-unconstrained-v1' || d.kind === 'conf-list' || nativeWarmupReferenceAllowed(s, state.workspace, d, o.charId))
+            && (s.policyMode !== 'latest-warmup-runorder-v2' || nativeRunOrderReferenceAllowed(state.workspace, d, o.charId))
             && (d.kind === 'conf-list' || room?.type === 'dormitory' || !physicalBackupOperatorIds(room!, { replacements: [o.charId] }).length || canReferencePhysical(state.workspace, d, o.charId))).map(o => action('operator', o.charId)),
     ];
 }

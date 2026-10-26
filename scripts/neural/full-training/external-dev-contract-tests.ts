@@ -28,6 +28,9 @@ try {
     const job = { input, outcome, trainingInputs: [], modelPath, modelHash: digest(bytes), archivedTeacherTrace: { constructionOrder: 'legacy-v1', actionIds: original.actionIds, teacherSemanticHash: original.teacherSemanticHash } };
     assert.throws(() => decodeExternalDev({ ...job, archivedTeacherTrace: { ...job.archivedTeacherTrace, actionIds: ['TAMPERED'] } }), /Archived FULL DEV/);
     assert.throws(() => decodeExternalDev({ ...job, archivedTeacherTrace: undefined }), /Missing archived/);
+    assert.throws(() => decodeExternalDev({ ...job, constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-exhaustion-v1' }), /producer replay proof/i);
+    assert.throws(() => decodeExternalDev({ ...job, constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-runorder-v2' }), /producer replay proof/i);
+    assert.throws(() => decodeExternalDev({ ...job, constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-runorder-v2', producerReplayProof: {}, referenceContract: { policy: 'latest-default-to-warmup-policy-v1' } }), /transition/i);
     assert.throws(() => decodeExternalDev({ ...job, trainingInputs: [{ ...input, familyId: 'DIFFERENT-FAMILY' }] }), /canonical inventory overlap/);
     assert.throws(() => decodeExternalDev({ ...job, modelHash: 'bad' }), /snapshot mismatch/);
     const result = decodeExternalDev(job);

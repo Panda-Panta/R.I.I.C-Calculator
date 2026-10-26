@@ -4,12 +4,35 @@ import { compileRosterSchedule } from '../../scheduler/compileRosterSchedule';
 import { physicalBackupOperatorIds } from '../combinationModel';
 import { validatePhysicalRoster } from '../rosterDraft';
 import { recoveryGroupCapacityIssues } from '../recoveryGroupCapacity';
+import { applyGeneratedWarmupPolicy } from '../generatedWarmupPolicy';
+import { compiledScheduleToRuntimeConfig } from '../../scheduler/scheduleAdapter';
+import { createRosterRuntime } from '../../scheduler/rosterRuntime';
+import { getMowerSourceRuntime } from '../../scheduler/mowerSourceRuntime';
+import type { SimulationAssumptions } from '../../scheduler/types';
 import { legalFullActions, nextDecision, canReferencePhysical, needsOrdinaryRelief, type FullScenario, type FullState, type FullAction, type FullDiagnostic } from './fullActionSpace';
 import { MOWER_OPERATOR_LIST_FIELDS, type RosterWorkspace } from '../../domain/roster';
 export interface FullFinalResult {
     complete: boolean;
     workspace: RosterWorkspace;
     diagnostics: FullDiagnostic[];
+}
+/** Latest full-reference runtime admission only. Construct native state on a clone; never repair output.
+ * simulateSchedule enables native ideal-order wakes independently of scheduler-assumption overrides.
+ */
+export function fullNativeRuntimeAdmissionIssues(workspace: RosterWorkspace, assumptions: Partial<SimulationAssumptions> = {}): FullDiagnostic[] {
+    try {
+        const schedule = compileRosterSchedule(structuredClone(workspace), { ...assumptions, idealRunOrderWakeOnly: true });
+        const config = compiledScheduleToRuntimeConfig(schedule);
+        config.mowerAlpha = true;
+        const native = getMowerSourceRuntime(createRosterRuntime(config));
+        const trading = new Set<string>(schedule.rooms.filter(room => room.type === 'trading').map(room => room.roomId));
+        return Object.keys(native.data.runOrderRooms).filter(room => !trading.has(room)).map(room => ({
+            code: 'LATEST_NATIVE_RUNORDER_NONTRADING_ROOM', message: room,
+        }));
+    }
+    catch (error) {
+        return [{ code: 'LATEST_NATIVE_RUNTIME_UNSUPPORTED', message: String(error) }];
+    }
 }
 /** Pure, transactional transition: an illegal action cannot partially mutate a prefix. */
 export function applyFullAction(s: FullScenario, input: FullState, a: FullAction): FullState {
@@ -105,6 +128,12 @@ export function finalizeFullState(s: FullScenario, state: FullState): FullFinalR
         };
     }
     diagnostics.push(...validatePhysicalRoster(workspace), ...recoveryGroupCapacityIssues(workspace), ...compileRosterSchedule(workspace, s.simulationConditioning.schedulerAssumptions ?? {}).diagnostics.filter(d => d.severity === 'error' || d.code === 'UNKNOWN_OPERATOR'));
+    if (s.policyMode !== 'legacy-unconstrained-v1') {
+        const checked = applyGeneratedWarmupPolicy(structuredClone(workspace), s.inventory);
+        if (!checked.valid) issue('LATEST_WARMUP_POLICY_UNSUPPORTED', checked.diagnostics.filter(d => d.severity === 'error').map(d => d.message).join('; '));
+        if (checked.addedExhaustOperatorIds.length) issue('LATEST_WARMUP_POLICY_MISSING', checked.addedExhaustOperatorIds.join(', '));
+    }
+    if (s.policyMode === 'latest-warmup-runorder-v2') diagnostics.push(...fullNativeRuntimeAdmissionIssues(workspace, s.simulationConditioning.schedulerAssumptions));
     const owned = new Set(s.inventory.operators.map(o => o.charId)), reserved = new Set<string>(), permanent = new Set(workspace.mainPlan.conf.workaholic.map(id));
     for (const room of Object.values(workspace.mainPlan.facilities)) {
         if (room.level > 0 && room.type === 'dormitory' && !room.slots.some(p => p.occupant.kind === 'operator')) {

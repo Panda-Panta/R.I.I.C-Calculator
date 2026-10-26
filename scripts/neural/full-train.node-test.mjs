@@ -193,3 +193,22 @@ test('lineage selection is explicit, immutable on resume, and rejects feature mi
     assert.throws(() => verifyInitialization({ ...lineage, initialModelHash: 'changed' }, binding), /lineage mismatch/);
 });
 test('explicit fresh lineage can cross a feature contract without transferring weights', async () => { const { verifyInitialization } = await import('./full-training/lineage.mjs'), { digest } = await import('./full-training/state.mjs'); const lineage = { spec: { mode: 'fresh' }, parent: { featureManifestHash: 'old', modelHash: 'old-model', purpose: 'dev-overfit' }, initialModelHash: null }; assert.doesNotThrow(() => verifyInitialization(lineage, { lineageHash: digest(lineage), featureManifestHash: 'new', purpose: 'dev-overfit' })); });
+
+test('latest policy phase binds explicit mode and independent producer replay without changing old transition meaning',async()=>{
+ const api=await import('./full-train.mjs');assert.equal(typeof api.parseFullTrainingOptions,'function');
+ const args=['--source','fixture','--run','new-phase','--purpose','train','--teacher-kind','full-optimizer','--construction-order','staffing-first-v1','--policy-mode','latest-warmup-exhaustion-v1','--source-transition','latest-default-to-warmup-policy-v1','--producer-replay-run','original-phase'];
+ const options=api.parseFullTrainingOptions(args),config=api.fullTrainingConfig(options);
+ assert.equal(config.policyMode,'latest-warmup-exhaustion-v1');assert.equal(config.producerReplayRun,'original-phase');
+ assert.throws(()=>api.parseFullTrainingOptions(args.slice(0,-2)),/producer replay/i);
+ assert.throws(()=>api.parseFullTrainingOptions(args.map(x=>x==='staffing-first-v1'?'legacy-v1':x)),/staffing/i);
+ assert.throws(()=>api.parseFullTrainingOptions(args.map(x=>x==='full-optimizer'?'molecular-simulated':x)),/full.optimizer/i);
+ assert.throws(()=>api.parseFullTrainingOptions(args.map(x=>x==='latest-default-to-warmup-policy-v1'?'legacy-action-replay-to-staffing-first-v1':x)),/transition|auxiliary/i);
+ assert.equal(api.fullTrainingConfig(api.parseFullTrainingOptions(['--run','legacy-new'])).policyMode,'legacy-unconstrained-v1');
+});
+
+test('runtime v2 mode pairs only with its explicit source transition and frozen producer replay',async()=>{
+ const api=await import('./full-train.mjs'),args=['--run','v2-new','--purpose','train','--construction-order','staffing-first-v1','--policy-mode','latest-warmup-runorder-v2','--source-transition','latest-default-to-warmup-runorder-v2','--producer-replay-run','original'];
+ const config=api.fullTrainingConfig(api.parseFullTrainingOptions(args));assert.equal(config.policyMode,'latest-warmup-runorder-v2');assert.equal(config.sourceTransition,'latest-default-to-warmup-runorder-v2');
+ assert.throws(()=>api.parseFullTrainingOptions(args.map(x=>x==='latest-default-to-warmup-runorder-v2'?'latest-default-to-warmup-policy-v1':x)),/explicit together|pair/);
+});
+test('full TRAIN union names independent original replay sources instead of a synthetic primary producer',async()=>{const{parseFullTrainingOptions,fullTrainingConfig}=await import('./full-train.mjs'),args=['--run','union','--source','explicit-union','--purpose','train','--construction-order','staffing-first-v1','--policy-mode','latest-warmup-runorder-v2','--source-transition','latest-default-to-warmup-runorder-v2','--full-source-union','artifacts/neural/definition.json'];const config=fullTrainingConfig(parseFullTrainingOptions(args));assert.match(config.fullSourceUnion,/\/artifacts\/neural\/definition.json$/);assert.equal(config.producerReplayRun,undefined);assert.throws(()=>parseFullTrainingOptions(args.concat(['--producer-replay-run','ambiguous'])),/union|primary/);assert.throws(()=>parseFullTrainingOptions(args.map(x=>x==='train'?'dev-overfit':x)),/TRAIN/);});

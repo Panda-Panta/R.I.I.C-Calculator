@@ -8,6 +8,8 @@ import { replayFullTeacher, fullSemanticWorkspace } from './fullTeacherTraces';
 import { generateMolecularCandidates } from '../molecularSynthesis';
 import { decodeManufacturingCrewSelection, enumerateManufacturingCrewColumns, prepareManufacturingCrewDomain } from '../manufacturingCrewDomain';
 import { encodeFullDecision, FULL_FEATURE_MANIFEST } from './fullFeatures';
+import { compileRosterSchedule } from '../../scheduler/compileRosterSchedule';
+import { simulateSchedule } from '../../simulator/scheduleSimulation';
 function fixture() {
     const base = createDefaultWorkspace();
     const inv = compileOperatorInventory(fullCatalogIdleInventory());
@@ -319,13 +321,42 @@ function warmupConstructorFixture() {
 }
 
 describe('latest native warmup constructors remain explicitly representable', () => {
-    it('replays native molecular exhaustion as model actions and does not silently add omitted policies', () => {
+    it('replays a native-startup-safe target as explicit v2 actions and rejects an order-read failure instead of repairing it', () => {
+        const { base, entries, inventory } = warmupConstructorFixture();
+        const teacher = generateMolecularCandidates(base, entries, inventory, { requireWarmupExhaustion: true, branchCount: 1, seed: 42, droneTarget: 'none' })[0]!.workspace;
+        const owned = [...entries, fullCatalogIdleInventory().find(entry => entry.operator === id('龙舌兰'))!];
+        const inv = compileOperatorInventory(owned), invalid = structuredClone(teacher);
+        invalid.mainPlan.facilities.room_1_1.slots[0]!.replacements.unshift(id('龙舌兰'));
+        const old = createFullScenario(base, inv, { constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-exhaustion-v1' });
+        const latest = createFullScenario(base, inv, { constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-runorder-v2' });
+        expect(replayFullTeacher(old, invalid).complete).toBe(true);
+        const before = structuredClone(invalid), rejected = replayFullTeacher(latest, invalid), accepted = replayFullTeacher(latest, teacher);
+        expect(rejected.complete).toBe(false);
+        expect(rejected.diagnostics.some(d => d.code === 'TEACHER_ACTION_MASKED' && d.message.includes(id('龙舌兰')))).toBe(true);
+        expect(rejected.samples).toEqual([]);expect(invalid).toEqual(before);
+        expect(accepted.complete && accepted.exactReplay).toBe(true);
+        const locked = replayFullTeacher(createFullScenario(invalid, inv, { constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-runorder-v2' }), invalid);
+        expect(locked.complete).toBe(false);expect(locked.exactReplay).toBe(true);
+        expect(locked.diagnostics.some(d => d.code === 'LATEST_NATIVE_RUNORDER_NONTRADING_ROOM' && d.message === 'room_1_1')).toBe(true);
+        expect(locked.samples).toEqual([]);
+        expect(locked.workspace.mainPlan.facilities.room_1_1.slots[0]).toEqual(invalid.mainPlan.facilities.room_1_1.slots[0]);
+        // Bounded startup only: no long-horizon score, optimizer search or production repair.
+        const startup = (workspace: typeof teacher) => simulateSchedule(compileRosterSchedule(workspace), {
+            schedulingModel: 'mower-alpha', sampleHours: .01, warmupHours: 0, maxStepHours: .01, maxEvents: 100,
+            operatorInventory: owned, production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'none', seed: 42 },
+        });
+        expect(startup(invalid).diagnostics.some(d => d.code === 'mower-startup-order-read-failed')).toBe(true);
+        const safe = startup(accepted.workspace);
+        expect(safe.diagnostics.some(d => d.code === 'MOWER_PENDING_TASK_FAILURE')).toBe(false);
+        expect(safe.success).toBe(true);
+    });
+    it.each(['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2'] as const)('replays native molecular exhaustion as explicit actions without adding omitted policies (%s)', policyMode => {
         const { base, entries, inventory } = warmupConstructorFixture(), before = structuredClone(base);
         const candidates = generateMolecularCandidates(base, entries, inventory, { requireWarmupExhaustion: true, branchCount: 1, seed: 42, droneTarget: 'none' });
         expect(candidates).toHaveLength(1);
         const teacher = candidates[0]!.workspace;
         expect(teacher.mainPlan.conf.exhaust_require).toEqual([id('机械师')]);
-        const scenario = createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1' });
+        const scenario = createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1', policyMode });
         const replay = replayFullTeacher(scenario, teacher);
         expect(replay.diagnostics).toEqual([]);
         expect(replay.complete && replay.exactReplay).toBe(true);
@@ -344,12 +375,16 @@ describe('latest native warmup constructors remain explicitly representable', ()
         const noExhaustion = structuredClone(teacher);
         noExhaustion.mainPlan.conf.exhaust_require = [];
         const omitted = replayFullTeacher(scenario, noExhaustion);
-        expect(omitted.complete && omitted.exactReplay).toBe(true);
+        expect(omitted.complete && omitted.exactReplay).toBe(policyMode === 'legacy-unconstrained-v1');
+        if (policyMode !== 'legacy-unconstrained-v1') {
+            expect(omitted.diagnostics.some(d => d.code === 'TEACHER_ACTION_MASKED' && d.message.includes('exhaust_require'))).toBe(true);
+            expect(omitted.samples).toEqual([]);
+        }
         expect(omitted.workspace.mainPlan.conf.exhaust_require).toEqual([]);
         expect(base).toEqual(before);
     });
 
-    it('exactly replays a warmup primary introduced by the manufacturing column decoder', () => {
+    it.each(['legacy-unconstrained-v1', 'latest-warmup-exhaustion-v1', 'latest-warmup-runorder-v2'] as const)('exactly replays a warmup primary introduced by the manufacturing column decoder (%s)', policyMode => {
         const { base, inventory } = warmupConstructorFixture();
         base.mainPlan.facilities.room_1_1.level = 1;
         base.mainPlan.facilities.room_1_1.slots.length = 1;
@@ -367,8 +402,24 @@ describe('latest native warmup constructors remain explicitly representable', ()
         const decoded = decodeManufacturingCrewSelection(domain, selected);
         expect(decoded.valid).toBe(true);
         expect(decoded.workspace.mainPlan.conf.exhaust_require).toEqual([id('机械师')]);
-        const replay = replayFullTeacher(createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1' }), decoded.workspace);
+        const replay = replayFullTeacher(createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1', policyMode }), decoded.workspace);
         expect(replay.diagnostics).toEqual([]);
         expect(replay.complete && replay.exactReplay).toBe(true);
+    });
+    it('replays dynamic warmup bindings only after the explicit permanent policy without hiding either choice', () => {
+        const { base, entries, inventory } = warmupConstructorFixture();
+        const teacher = generateMolecularCandidates(base, entries, inventory, { requireWarmupExhaustion: true, branchCount: 1, seed: 42, droneTarget: 'none' })[0]!.workspace;
+        const slot = teacher.mainPlan.facilities.room_1_1.slots.find(p => p.occupant.kind === 'operator' && id(p.occupant.operatorId) === id('机械师'))!;
+        slot.groupBindings = [{ groupId: 'second', replacements: [] }];
+        teacher.mainPlan.conf.workaholic.push(id('机械师'));
+        const scenario = createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1', policyMode: 'latest-warmup-exhaustion-v1' });
+        const result = replayFullTeacher(scenario, teacher);
+        expect(result.diagnostics).toEqual([]);
+        expect(result.complete && result.exactReplay).toBe(true);
+        expect(result.trace.findIndex(t => t.decision.field === 'workaholic')).toBeLessThan(result.trace.findIndex(t => t.action.kind === 'binding'));
+        expect(result.trace.some(t => t.decision.kind === 'binding-replacement')).toBe(true);
+        expect(result.policyMode).toBe('latest-warmup-exhaustion-v1');
+        expect(result.modelActions).toBe(result.trace.length);
+        expect(result.modelChoiceActions + result.forcedActions).toBe(result.modelActions);
     });
 });

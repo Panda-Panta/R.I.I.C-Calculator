@@ -16,6 +16,7 @@ import { normalizeProductionWeights } from '../../domain/productionWeights';
 import { compiledScheduleToRuntimeConfig } from '../../scheduler/scheduleAdapter';
 import { createRosterRuntime } from '../../scheduler/rosterRuntime';
 import { getMowerSourceRuntime } from '../../scheduler/mowerSourceRuntime';
+import { fullNativeRuntimeAdmissionIssues } from './fullTransitions';
 /** Browser-safe mirror, cross-checked against the teacher protocol module in tests. */
 export const FULL_LATEST_REFERENCE_PROTOCOL = Object.freeze({
     id: 'latest-default-two-stage-v1', revision: 1, construction: 'one-initial-plus-computed-manufacturing',
@@ -29,7 +30,7 @@ export interface FullParityReferenceBinding {
     producerBundleHash: string;
 }
 export type FullParityObjective = { version: 'legacy-componentwise-v1' }
-    | ({ version: 'latest-default-lexicographic-v2' } & FullParityReferenceBinding);
+    | ({ version: 'latest-default-lexicographic-v2' | 'latest-default-runtime-lexicographic-v3' } & FullParityReferenceBinding);
 /** Hashes are external commitments, not authenticated by this pure evaluator. */
 export interface FullParityContract {
     scenarioHash: string;
@@ -309,8 +310,8 @@ function summarize(rows: FullParityPairReport[]): FullParitySummary {
 export function evaluateFullParity(manifest: FullParityManifest, attempts: readonly FullParityAttempt[]): FullParityReport {
     const issues: string[] = [], expected = new Map<string, FullParityCase>(), seenFamilies = new Map<string, string>(), inventoryOwners = new Map<string, string>();
     const objectiveVersion = manifest.objective?.version ?? 'legacy-componentwise-v1';
-    if (!['legacy-componentwise-v1', 'latest-default-lexicographic-v2'].includes(objectiveVersion)) issues.push('UNKNOWN_PARITY_OBJECTIVE');
-    const latestObjective = manifest.objective?.version === 'latest-default-lexicographic-v2' ? manifest.objective : undefined;
+    if (!['legacy-componentwise-v1', 'latest-default-lexicographic-v2', 'latest-default-runtime-lexicographic-v3'].includes(objectiveVersion)) issues.push('UNKNOWN_PARITY_OBJECTIVE');
+    const latestObjective = manifest.objective?.version === 'latest-default-lexicographic-v2' || manifest.objective?.version === 'latest-default-runtime-lexicographic-v3' ? manifest.objective : undefined;
     const latest = latestObjective !== undefined;
     const referenceBinding: FullParityReferenceBinding | null = latestObjective ? {
         referenceProtocol: latestObjective.referenceProtocol, producerSourceHash: latestObjective.producerSourceHash,
@@ -411,6 +412,7 @@ export function evaluateFullParity(manifest: FullParityManifest, attempts: reado
                     try {
                         local.push(...workspaceIssues(a.inputWorkspace, run.workspace, a.entries).map(s => `${role}_${s}`));
                         if (latest) local.push(...latestWorkspaceIssues(a.inputWorkspace, run.workspace, a.entries, run.contract.weights).map(s => `${role}_${s}`));
+                        if (objectiveVersion === 'latest-default-runtime-lexicographic-v3') local.push(...fullNativeRuntimeAdmissionIssues(run.workspace).map(d => `${role}_${d.code}:${d.message}`));
                     }
                     catch {
                         local.push(`${role}_INVALID_WORKSPACE`);

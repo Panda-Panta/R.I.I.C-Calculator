@@ -12,7 +12,7 @@ import { fullPhysicalReservations } from './fullActionSpace';
 import type { FullScorerContext } from './fullDecode';
 import source from '../../data/riic-gamedata-source-manifest.json';
 // Input policy is independent from the generated prefix; old artifacts are incompatible.
-export const FULL_FEATURE_VERSION = 'full-v2-sparse-catalog-2-input-conf';
+export const FULL_FEATURE_VERSION = 'full-v2-sparse-catalog-3-slot-group-alignment';
 export type SparseVector = [
     number,
     number
@@ -144,11 +144,81 @@ for (const field of MOWER_OPERATOR_LIST_FIELDS) {
         register(`input-conf:${field}:${op}`);
 }
 for (const mode of [0, 1, 2, 3]) register(`input-conf-ling-mode:${mode}`);
+/** Exact prior contract, retained only for explicit zero-row migration. */
+export const LEGACY_FULL_FEATURE_MANIFEST = Object.freeze({
+    version: 'full-v2-sparse-catalog-2-input-conf', operatorIds, buffIds, catalogContentFingerprint: fullFingerprint(OPERATORS), catalogSha256: 'c63e372a237a6c80194360536c4c5673f0db729cab7c77d778878aa54349e930', sourceCommit: source.commit, sourceHashes: Object.freeze(Object.fromEntries(Object.entries(source.sources).map(([k, v]) => [k, v.sha256]))), featureCount: keys.length, featureKeys: Object.freeze(keys.slice())
+});
+const facilitySkillTypes: Readonly<Record<string, string>> = Object.freeze({
+    manufacture: 'MANUFACTURE', trading: 'TRADING', power: 'POWER', central: 'CONTROL',
+    meeting: 'MEETING', factory: 'WORKSHOP', contact: 'HIRE', train: 'TRAINING',
+    dormitory: 'DORMITORY', recycle: 'RECYCLE', gaming: 'GAMING',
+});
+for (const op of operatorIds) register(`align:decision-occupant:${op}`);
+for (const buff of buffIds) register(`align:decision-occupant-skill:${buff}`);
+for (const op of operatorIds) register(`align:group-primary:${op}`);
+for (const buff of buffIds) register(`align:group-primary-skill:${buff}`);
+for (const type of types) register(`align:decision-facility:${type}`);
+for (const product of products) register(`align:decision-product:${product}`);
+for (const buff of buffIds) register(`align:candidate-facility-skill:${buff}`);
 export const FULL_FEATURE_COUNT = keys.length;
 export const FULL_FEATURE_MANIFEST = Object.freeze({
-    version: FULL_FEATURE_VERSION, operatorIds, buffIds, catalogContentFingerprint: fullFingerprint(OPERATORS), catalogSha256: 'c63e372a237a6c80194360536c4c5673f0db729cab7c77d778878aa54349e930', sourceCommit: source.commit, sourceHashes: Object.freeze(Object.fromEntries(Object.entries(source.sources).map(([k, v]) => [k, v.sha256]))), featureCount: FULL_FEATURE_COUNT, featureKeys: Object.freeze(keys)
+    ...LEGACY_FULL_FEATURE_MANIFEST, version: FULL_FEATURE_VERSION, featureCount: FULL_FEATURE_COUNT, featureKeys: Object.freeze(keys),
+    diagnosticAlignment: Object.freeze({ baseFeatureCount: LEGACY_FULL_FEATURE_MANIFEST.featureCount, currentOccupantKinds: Object.freeze(['resident', 'group']), facilityContextKinds: 'all decisions with an actual room',
+        currentOccupant: 'committed current slot primary only', groupMembers: 'distinct committed slot.groupId primary identities only',
+        skillSemantics: 'binary union of actual unlocked skills compatible with each primary own facility; not runtime activation',
+        facilitySkillTypes, facilityTypes: Object.freeze(types), products: Object.freeze(products),
+        candidateSkillSemantics: 'operator candidates actual unlocked skills compatible with current decision facility; preserve old all-skills features', noTeacherLookahead: true })
 });
 export const FULL_FEATURE_MANIFEST_HASH = fullFingerprint(FULL_FEATURE_MANIFEST);
+/** Append-only binary presence features; no runtime activation or teacher lookahead. */
+function appendAlignment(c: FullScorerContext, base: FullEncodedDecision, ops: ReadonlyMap<string, OwnedOperator>): FullEncodedDecision {
+    const d = c.decision;
+    if (!d.roomId) return base;
+    const facilities = c.state.workspace.mainPlan.facilities, room = facilities[d.roomId];
+    if (!room) throw Error('Missing alignment decision room');
+    const common = new Map(base.common), candidates = base.candidates.map(v => new Map(v));
+    const add = (map: Map<number, number>, key: string) => {
+        const index = indices.get(key);
+        if (index === undefined) throw Error(`Unknown alignment feature ${key}`);
+        map.set(index, 1);
+    };
+    const emit = (map: Map<number, number>, op: OwnedOperator | undefined, type: string, identity: string, skill: string) => {
+        if (!op) throw Error('Unowned alignment prefix operator');
+        add(map, identity + op.charId);
+        const compatible = facilitySkillTypes[type];
+        if (!compatible && type !== '') throw Error(`Unsupported alignment facility ${type}`);
+        for (const s of op.skills) if (s.roomType === compatible) add(map, skill + s.buffId);
+    };
+    add(common, `align:decision-facility:${room.type}`);
+    add(common, `align:decision-product:${room.product ?? 'none'}`);
+    if (d.kind === 'resident' || d.kind === 'group') {
+        const slot = room.slots[d.slotIndex!];
+        if (!slot) throw Error('Missing alignment decision slot');
+        if (slot.occupant.kind === 'operator') emit(common, ops.get(id(slot.occupant.operatorId)), room.type, 'align:decision-occupant:', 'align:decision-occupant-skill:');
+    }
+    c.actions.forEach((a, i) => {
+        if (a.kind !== 'operator') return;
+        const op = ops.get(id(String(a.value)));
+        if (!op) throw Error('Unowned alignment candidate operator');
+        for (const s of op.skills) if (s.roomType === facilitySkillTypes[room.type]) add(candidates[i]!, 'align:candidate-facility-skill:' + s.buffId);
+    });
+    if (d.kind === 'group') {
+        const groups = new Map<string, Map<string, { operator: OwnedOperator | undefined; roomType: string }>>();
+        for (const r of Object.values(facilities)) for (const slot of r.slots) {
+            if (slot.groupId == null || slot.occupant.kind !== 'operator') continue;
+            let members = groups.get(slot.groupId);
+            if (!members) { members = new Map(); groups.set(slot.groupId, members); }
+            const op = id(slot.occupant.operatorId);
+            if (!members.has(op)) members.set(op, { operator: ops.get(op), roomType: r.type });
+        }
+        c.actions.forEach((a, i) => {
+            if (a.kind !== 'value' || typeof a.value !== 'string') return;
+            for (const member of groups.get(a.value)?.values() ?? []) emit(candidates[i]!, member.operator, member.roomType, 'align:group-primary:', 'align:group-primary-skill:');
+        });
+    }
+    const finish = (map: Map<number, number>): SparseVector => [...map].sort((a, b) => a[0] - b[0]);
+    return { ...base, common: finish(common), candidates: candidates.map(finish) };
+}
 function builder() {
     const m = new Map<number, number>();
     return {
@@ -417,9 +487,9 @@ export function encodeFullDecision(c: FullScorerContext): FullEncodedDecision {
         }
         return x.finish();
     });
-    return {
+    return appendAlignment(c, {
         version: FULL_FEATURE_VERSION, manifestHash: FULL_FEATURE_MANIFEST_HASH, featureCount: FULL_FEATURE_COUNT, common: b.finish(), candidates
-    };
+    }, ops);
 }
 export function validateFullDecision(d: FullEncodedDecision): void {
     if (!d || d.version !== FULL_FEATURE_VERSION || d.manifestHash !== FULL_FEATURE_MANIFEST_HASH || d.featureCount !== FULL_FEATURE_COUNT)

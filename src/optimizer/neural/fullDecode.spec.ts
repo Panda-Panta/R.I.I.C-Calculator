@@ -3,7 +3,8 @@ import { createDefaultWorkspace } from '../../workbench/defaults';
 import { compileOperatorInventory, fullCatalogIdleInventory } from '../../domain/operatorInventory';
 import { resolveOperatorCharId as id } from '../../domain/operatorIdentifiers';
 import { createFullScenario, initialFullState, legalFullActions, action } from './fullActionSpace';
-import { applyFullAction } from './fullTransitions';
+import { applyFullAction, finalizeFullState, fullNativeRuntimeAdmissionIssues } from './fullTransitions';
+import { applyGeneratedWarmupPolicy, isWarmupOperatorInFacility } from '../generatedWarmupPolicy';
 import { decodeFullRoster } from './fullDecode';
 const scenario = () => createFullScenario(createDefaultWorkspace(), compileOperatorInventory(fullCatalogIdleInventory()));
 describe('full-v2 scorer and scoped reservation contracts', () => {
@@ -319,5 +320,209 @@ describe('staffing-first native reference conflict masks', () => {
                 kind: 'replacement', roomId: 'room_1_1', slotIndex: 0, listIndex: 0
             }];
         expect(p.allowed('龙舌兰')).toBe(false);
+    });
+});
+
+const mode = 'latest-warmup-exhaustion-v1' as const;
+function context(latest = true) {
+    const scenario = createFullScenario(createDefaultWorkspace(), compileOperatorInventory(fullCatalogIdleInventory()), Object.assign({ constructionOrder: 'staffing-first-v1' as const }, latest ? { policyMode: mode } : {}));
+    const state = initialFullState(scenario);
+    state.workspace.mainPlan.facilities.room_1_1.slots[0]! = { occupant: { kind: 'operator', operatorId: id('砾') }, groupId: 'G', replacements: [] };
+    state.decisions = [{ kind: 'replacement', roomId: 'room_1_1', slotIndex: 0, listIndex: 0 }];
+    return { scenario, state };
+}
+const permits = (c: ReturnType<typeof context>, ref: string) => legalFullActions(c.scenario, c.state).some(a => a.id === action('operator', id(ref)).id);
+describe('opt-in latest native warmup policy', () => {
+    it('declares mode and moves explicit workaholic choices before bindings without changing legacy order', () => {
+        const c = context();
+        expect(c.scenario.policyMode).toBe(mode);
+        const decisions = initialFullState(c.scenario).decisions;
+        expect(decisions.findIndex(d => d.field === 'workaholic')).toBeLessThan(decisions.findIndex(d => d.kind === 'bindings'));
+        const old = initialFullState(context(false).scenario).decisions;
+        expect(old.findIndex(d => d.field === 'workaholic')).toBeGreaterThan(old.findIndex(d => d.kind === 'bindings'));
+    });
+    it('rejects policy-mode misuse rather than silently falling back', () => {
+        const input = createDefaultWorkspace(), inv = compileOperatorInventory(fullCatalogIdleInventory());
+        for (const options of [{ policyMode: 'unknown' }, { policyMode: mode, constructionOrder: 'legacy-v1' }])
+            expect(createFullScenario(input, inv, options as any).valid).toBe(false);
+    });
+    it('masks the actual epoch20 Fen ordinary-warmup-relief failure while old staffing keeps its old action domain', () => {
+        expect(permits(context(), '芬')).toBe(false);
+        expect(permits(context(false), '芬')).toBe(true);
+    });
+    it.each(['same-facility-group', 'wrong-facility', 'wrong-group', 'multi-group', 'permanent', 'unbuilt'] as const)('matches native warmup primary-reference exception for %s', kind => {
+        const c = context(), ws = c.state.workspace;
+        const room = kind === 'wrong-facility' ? ws.mainPlan.facilities.room_3_1 : ws.mainPlan.facilities.room_1_2;
+        room.slots[0]! = { occupant: { kind: 'operator', operatorId: id('芬') }, groupId: kind === 'wrong-group' ? 'H' : 'G', replacements: [] };
+        if (kind === 'multi-group')
+            room.slots[0]!.groupBindings = [{ groupId: 'H', replacements: [] }];
+        if (kind === 'permanent')
+            ws.mainPlan.conf.workaholic = ['芬'];
+        if (kind === 'unbuilt')
+            room.level = 0;
+        const native = structuredClone(ws);
+        native.mainPlan.facilities.room_1_1.slots[0]!.replacements = ['芬'];
+        const allowed = applyGeneratedWarmupPolicy(native, c.scenario.inventory).valid;
+        expect(allowed).toBe(kind === 'same-facility-group');
+        expect(permits(c, '芬')).toBe(allowed);
+    });
+    it('preserves Fiammetta reference-only warmup targets', () => {
+        const c = context();
+        c.state.workspace.mainPlan.facilities.dormitory_1.slots[0]! = { occupant: { kind: 'operator', operatorId: id('菲亚梅塔') }, groupId: null, replacements: [] };
+        c.state.decisions = [{ kind: 'replacement', roomId: 'dormitory_1', slotIndex: 0, listIndex: 0 }];
+        expect(permits(c, '芬')).toBe(true);
+    });
+    it('allows multi-group warmup primaries only after an explicit workaholic decision', () => {
+        const c = context();
+        c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('芬') };
+        c.state.decisions = [{ kind: 'bindings', roomId: 'room_1_1', slotIndex: 0 }];
+        expect(legalFullActions(c.scenario, c.state).some(a => a.kind === 'binding')).toBe(false);
+        c.state.workspace.mainPlan.conf.workaholic = ['芬'];
+        expect(legalFullActions(c.scenario, c.state).some(a => a.kind === 'binding')).toBe(true);
+    });
+    it('keeps exhaustion as explicit actions; END is unavailable while a required warmup primary remains', () => {
+        const c = context();
+        c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('芬') };
+        c.state.decisions = [{ kind: 'conf-list', field: 'exhaust_require', listIndex: 0 }];
+        const before = structuredClone(c.state);
+        expect(legalFullActions(c.scenario, c.state).some(a => a.kind === 'end')).toBe(false);
+        expect(applyFullAction(c.scenario, c.state, action('end')).diagnostics.some(d => d.code === 'ILLEGAL_ACTION')).toBe(true);
+        expect(c.state).toEqual(before);
+        const next = applyFullAction(c.scenario, c.state, action('operator', id('芬')));
+        expect(next.workspace.mainPlan.conf.exhaust_require).toEqual([id('芬')]);
+        expect(legalFullActions(c.scenario, next).some(a => a.kind === 'end')).toBe(true);
+    });
+    it('terminal validation rejects missing native warmup policy on a clone instead of repairing the workspace', () => {
+        const c = context();
+        c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('芬') };
+        c.state.done = true;
+        const before = structuredClone(c.state.workspace), result = finalizeFullState(c.scenario, c.state);
+        expect(result.diagnostics.some(d => d.code === 'LATEST_WARMUP_POLICY_MISSING')).toBe(true);
+        expect(result.workspace).toEqual(before);
+    });
+    it('uses unlocked skills in the actual facility, not a global warmup operator blacklist', () => {
+        for (const phase of [0, 2] as const) {
+            const c = context();
+            c.scenario.inventory = compileOperatorInventory([{ operator: '砾', elitePhase: 2, level: 70 }, { operator: '机械师', elitePhase: phase, level: 1 }]);
+            const warmup = isWarmupOperatorInFacility(id('机械师'), 'manufacture', c.scenario.inventory);
+            expect(warmup).toBe(phase === 2);
+            expect(permits(c, '机械师')).toBe(!warmup);
+        }
+    });
+    it('applies the native exception to binding replacements and every existing reference group', () => {
+        const c = context(), ws = c.state.workspace;
+        ws.mainPlan.facilities.room_1_2.slots[0]! = { occupant: { kind: 'operator', operatorId: id('芬') }, groupId: 'G', replacements: [] };
+        const slot = ws.mainPlan.facilities.room_1_1.slots[0]!;
+        slot.groupBindings = [{ groupId: 'G', replacements: [] }];
+        c.state.decisions = [{ kind: 'binding-replacement', roomId: 'room_1_1', slotIndex: 0, bindingIndex: 0, listIndex: 0 }];
+        expect(permits(c, '芬')).toBe(true);
+        slot.groupId = 'H';
+        slot.replacements = ['芬'];
+        expect(permits(c, '芬')).toBe(false);
+    });
+    it('requires explicit permanent coverage for a locked multi-group warmup primary before closing workaholic', () => {
+        const c = context();
+        const slot = c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!;
+        slot.occupant = { kind: 'operator', operatorId: id('芬') };
+        slot.groupBindings = [{ groupId: 'H', replacements: [] }];
+        c.state.decisions = [{ kind: 'conf-list', field: 'workaholic', listIndex: 0 }];
+        expect(legalFullActions(c.scenario, c.state).some(a => a.kind === 'end' || a.kind === 'absent')).toBe(false);
+        const next = applyFullAction(c.scenario, c.state, action('operator', id('芬')));
+        expect(next.workspace.mainPlan.conf.workaholic).toEqual([id('芬')]);
+        expect(legalFullActions(c.scenario, next).some(a => a.kind === 'end')).toBe(true);
+    });
+    it('does not manufacture policy references for empty, inactive, non-warmup or explicit permanent primaries', () => {
+        for (const kind of ['empty', 'inactive', 'non-warmup', 'permanent'] as const) {
+            const c = context(), room = c.state.workspace.mainPlan.facilities.room_1_1, slot = room.slots[0]!;
+            slot.occupant = kind === 'empty' ? { kind: 'empty' } : { kind: 'operator', operatorId: id(kind === 'non-warmup' ? '砾' : '芬') };
+            if (kind === 'inactive')
+                room.level = 0;
+            if (kind === 'permanent')
+                c.state.workspace.mainPlan.conf.workaholic = ['芬'];
+            c.state.decisions = [{ kind: 'conf-list', field: 'exhaust_require', listIndex: 0 }];
+            expect(legalFullActions(c.scenario, c.state).some(a => a.kind === 'end')).toBe(true);
+            expect(c.state.workspace.mainPlan.conf.exhaust_require).toEqual([]);
+        }
+    });
+    it('fails closed for unsupported final warmup relief without changing candidate policies', () => {
+        const c = context();
+        c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.replacements = ['芬'];
+        c.state.done = true;
+        const before = structuredClone(c.state.workspace), result = finalizeFullState(c.scenario, c.state);
+        expect(result.complete).toBe(false);
+        expect(result.diagnostics.some(d => d.code === 'LATEST_WARMUP_POLICY_UNSUPPORTED')).toBe(true);
+        expect(result.workspace).toEqual(before);
+        expect(c.state.workspace).toEqual(before);
+    });
+    it('counts a singleton required permanent-policy choice as forced, not as hidden completion or model choice', () => {
+        const base = createDefaultWorkspace();
+        for (const room of Object.values(base.mainPlan.facilities)) {
+            room.level = 0;
+            room.slots = [];
+        }
+        const room = base.mainPlan.facilities.room_1_1;
+        room.level = 1;
+        room.slots = [{ occupant: { kind: 'operator', operatorId: id('芬') }, groupId: 'G', replacements: [], groupBindings: [{ groupId: 'H', replacements: [] }] }];
+        base.mainPlan.conf.workaholic = ['芬', 'Lancet-2'];
+        const power = base.mainPlan.facilities.room_1_3;
+        power.level = 3;
+        power.slots = [{ occupant: { kind: 'operator', operatorId: id('Lancet-2') }, groupId: null, replacements: [] }];
+        const s = createFullScenario(base, compileOperatorInventory([{ operator: '芬', elitePhase: 1, level: 55 }, { operator: 'Lancet-2', elitePhase: 0, level: 30 }]), { constructionOrder: 'staffing-first-v1', policyMode: mode });
+        const result = decodeFullRoster(s, ({ actions }) => actions.map(a => a.id === action('operator', id('Lancet-2')).id ? 3 : a.kind === 'end' || a.kind === 'absent' ? 2 : 1));
+        expect(result.diagnostics).toEqual([]);
+        expect(result.complete).toBe(true);
+        expect(result.policyMode).toBe(mode);
+        const forced = result.trace.filter(t => t.actions.length === 1);
+        expect(forced).toHaveLength(2);
+        expect(forced[0]!.decision.field).toBe('workaholic');
+        expect(forced[0]!.action).toEqual(action('operator', id('芬')));
+        expect(result.forcedActions).toBe(2);
+        expect(result.modelActions).toBe(result.trace.length);
+        expect(result.modelChoiceActions).toBe(result.trace.length - 2);
+        expect(forced[1]!.action.kind).toBe('end');
+        expect(base.mainPlan.conf.workaholic).toEqual(['芬', 'Lancet-2']);
+    });
+});
+
+function runtimeFixture(mode = 'latest-warmup-runorder-v2') {
+    const s = createFullScenario(createDefaultWorkspace(), compileOperatorInventory(fullCatalogIdleInventory()), { constructionOrder: 'staffing-first-v1', policyMode: mode as any }), state = initialFullState(s);
+    state.workspace.mainPlan.facilities.room_1_1.slots[0]! = { occupant: { kind: 'operator', operatorId: id('砾') }, groupId: null, replacements: [] };
+    state.decisions = [{ kind: 'replacement', roomId: 'room_1_1', slotIndex: 0, listIndex: 0 }];
+    return { s, state };
+}
+const runtimeAllows = (c: ReturnType<typeof runtimeFixture>, name: string) => legalFullActions(c.s, c.state).some(a => a.id === action('operator', id(name)).id);
+describe('explicit latest runtime admission v2', () => {
+    it('recognizes v2 without changing v1', () => { expect(runtimeFixture().s.valid).toBe(true); expect(runtimeFixture('latest-warmup-exhaustion-v1').s.valid).toBe(true); });
+    it.each(['但书', '龙舌兰', '佩佩', '可露希尔'])('masks the native direct nontrade trigger %s only in v2', name => { expect(runtimeAllows(runtimeFixture('latest-warmup-exhaustion-v1'), name)).toBe(true); expect(runtimeAllows(runtimeFixture(), name)).toBe(false); });
+    it('preserves U-Official nontrade exception', () => expect(runtimeAllows(runtimeFixture(), 'U-Official')).toBe(true));
+    it.each(['trading', 'central', 'binding', 'trailing-empty', 'gaming'] as const)('preserves native non-trigger domain %s', kind => {
+        const contexts = [runtimeFixture(), runtimeFixture('latest-warmup-exhaustion-v1')];
+        for (const c of contexts) {
+            const r = c.state.workspace.mainPlan.facilities.room_1_1;
+            if (kind === 'trading')
+                r.type = 'trading';
+            if (kind === 'gaming')
+                r.type = 'gaming';
+            if (kind === 'trailing-empty')
+                r.slots[0]!.occupant = { kind: 'empty' };
+            if (kind === 'central') {
+                c.state.workspace.mainPlan.facilities.central.slots[0] = r.slots[0]!;
+                c.state.decisions[0]!.roomId = 'central';
+            }
+            if (kind === 'binding') {
+                r.slots[0]!.groupBindings = [{ groupId: 'G', replacements: [] }];
+                c.state.decisions = [{ kind: 'binding-replacement', roomId: 'room_1_1', slotIndex: 0, bindingIndex: 0, listIndex: 0 }];
+            }
+        }
+        expect(runtimeAllows(contexts[0]!, '龙舌兰')).toBe(runtimeAllows(contexts[1]!, '龙舌兰'));
+        expect(runtimeAllows(contexts[1]!, '龙舌兰')).toBe(true);
+    });
+    it('clone-native terminal admission rejects preserved bad refs without repairing or honoring inert wake false', () => {
+        const c = runtimeFixture();
+        c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.replacements = ['龙舌兰'];
+        const before = structuredClone(c.state.workspace);
+        const issues = fullNativeRuntimeAdmissionIssues(c.state.workspace, { idealRunOrderWakeOnly: false });
+        expect(issues.some((d) => d.code === 'LATEST_NATIVE_RUNORDER_NONTRADING_ROOM' && d.message === 'room_1_1')).toBe(true);
+        expect(c.state.workspace).toEqual(before);
     });
 });

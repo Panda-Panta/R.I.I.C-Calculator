@@ -259,3 +259,44 @@ function namedCommon(encoded: FullEncodedDecision, prefix: string): [string, num
 function withoutInputConf(encoded: FullEncodedDecision) {
     return { ...encoded, common: encoded.common.filter(([index]) => !FULL_FEATURE_MANIFEST.featureKeys[index]!.startsWith('input-conf')) };
 }
+it('appends the aligned vocabulary without changing the frozen legacy prefix', () => {
+    expect(FULL_FEATURE_MANIFEST.version).toBe('full-v2-sparse-catalog-3-slot-group-alignment');
+    expect(FULL_FEATURE_MANIFEST.featureCount).toBe(56177);
+    expect(FULL_FEATURE_MANIFEST.featureKeys[53006]).toBe(`align:decision-occupant:${FULL_FEATURE_MANIFEST.operatorIds[0]}`);
+    const c = fixture(), op = c.scenario.inventory.operators.find(o => o.skills.some(s => s.roomType === 'MANUFACTURE'))!;
+    c.state.workspace.mainPlan.facilities.room_1_1.type = 'manufacture';
+    c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: op.charId };
+    c.state.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId = 'g';
+    const encoded = encodeFullDecision({ ...c, decision: { ...c.decision, kind: 'group' }, actions: [action('value', 'g'), action('value', 'new')] });
+    const names = (v: [number, number][]) => v.map(([i]) => FULL_FEATURE_MANIFEST.featureKeys[i]);
+    expect(names(encoded.common)).toContain(`align:decision-occupant:${op.charId}`);
+    expect(names(encoded.candidates[0]!)).toContain(`align:group-primary:${op.charId}`);
+    expect(names(encoded.candidates[1]!)).not.toContain(`align:group-primary:${op.charId}`);
+    for (const s of op.skills.filter(s => s.roomType === 'MANUFACTURE')) expect(names(encoded.candidates[0]!)).toContain(`align:group-primary-skill:${s.buffId}`);
+});
+it('uses binary own-facility skill presence and committed primaries, not backups or a new group', () => {
+    const c = fixture(), room = c.state.workspace.mainPlan.facilities.room_1_1;
+    room.type = 'manufacture';
+    const op = c.scenario.inventory.operators.find(o => o.skills.some(s => s.roomType === 'MANUFACTURE'))!;
+    const backup = c.scenario.inventory.operators.find(o => o.charId !== op.charId)!;
+    for (const slot of room.slots.slice(0, 2)) {
+        slot.occupant = { kind: 'operator', operatorId: op.charId }; slot.groupId = 'g';
+        slot.replacements = [backup.charId];
+    }
+    const encoded = encodeFullDecision({ ...c, decision: { ...c.decision, kind: 'group' }, actions: [action('value', 'g'), action('value', 'new')] });
+    const added = encoded.candidates[0]!.filter(([i]) => i >= 53006).map(([i, v]) => [FULL_FEATURE_MANIFEST.featureKeys[i], v]);
+    expect(added).toContainEqual([`align:group-primary:${op.charId}`, 1]);
+    expect(added.some(([key]) => key === `align:group-primary:${backup.charId}`)).toBe(false);
+    expect(added.every(([, value]) => value === 1)).toBe(true);
+    expect(encoded.candidates[1]!.some(([i]) => i >= 53006)).toBe(false);
+    const candidate = encodeFullDecision({ ...c, actions: [action('operator', op.charId)] }).candidates[0]!;
+    for (const skill of op.skills) {
+        expect(candidate.some(([i]) => FULL_FEATURE_MANIFEST.featureKeys[i] === `skill:candidate:${skill.buffId}`)).toBe(true);
+        expect(candidate.some(([i]) => FULL_FEATURE_MANIFEST.featureKeys[i] === `align:candidate-facility-skill:${skill.buffId}`)).toBe(skill.roomType === 'MANUFACTURE');
+    }
+});
+it('freezes exposed alignment facility and product vocabularies', () => {
+    expect(Object.isFrozen(FULL_FEATURE_MANIFEST.diagnosticAlignment.currentOccupantKinds)).toBe(true);
+    expect(Object.isFrozen(FULL_FEATURE_MANIFEST.diagnosticAlignment.facilityTypes)).toBe(true);
+    expect(Object.isFrozen(FULL_FEATURE_MANIFEST.diagnosticAlignment.products)).toBe(true);
+});

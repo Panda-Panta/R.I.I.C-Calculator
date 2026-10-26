@@ -454,3 +454,58 @@ describe('versioned latest-default parity objective', () => {
         expect(evaluateFullParity(manifest, [attempt]).status).toBe('development-pass');
     });
 });
+
+function runtimeParityFixture() {
+    const value = latestFixture();
+    return { ...value, manifest: { ...value.manifest, objective: { ...value.manifest.objective, version: 'latest-default-runtime-lexicographic-v3' as const } } };
+}
+describe('explicit native-runtime parity admission v3', () => {
+    it('preserves the old v2 gate while v3 rejects runtime-unavailable nontrade order rooms without mutation', () => {
+        const { manifest, attempt } = latestFixture();
+        attempt.neural!.workspace!.mainPlan.facilities.room_1_1.slots[0]!.replacements = [id('龙舌兰')];
+        attempt.neural!.result!.simScore = 200;
+        expect(evaluateFullParity(manifest, [attempt]).status).toBe('development-pass');
+        const before = structuredClone(attempt), v3 = { ...manifest, objective: { ...manifest.objective, version: 'latest-default-runtime-lexicographic-v3' as const } };
+        const report = evaluateFullParity(v3, [attempt]);
+        expect(report.status).toBe('fail');
+        expect(report.pairs[0]!.issues).toContain('NEURAL_LATEST_NATIVE_RUNORDER_NONTRADING_ROOM:room_1_1');
+        expect(attempt).toEqual(before);
+    });
+    it.each(['baseline', 'neural'] as const)('checks native runtime admission independently for %s', role => {
+        const { manifest, attempt } = runtimeParityFixture();
+        attempt[role]!.workspace!.mainPlan.facilities.room_1_3.slots[0]!.replacements = [id('但书')];
+        const report = evaluateFullParity(manifest, [attempt]);
+        expect(report.status).toBe('fail');
+        expect(report.pairs[0]!.issues).toContain(`${role.toUpperCase()}_LATEST_NATIVE_RUNORDER_NONTRADING_ROOM:room_1_3`);
+    });
+    it('keeps the native U-Official nontrade exception without waiving existing policies', () => {
+        const { manifest, attempt } = runtimeParityFixture();
+        attempt.neural!.workspace!.mainPlan.facilities.room_1_1.slots[0]!.replacements = [id('U-Official')];
+        expect(evaluateFullParity(manifest, [attempt]).status).toBe('development-pass');
+    });
+    it.each([1, 0, -1])('keeps score-first ordering and exact tie comparators (delta %i)', delta => {
+        const { manifest, attempt } = efficiencyFixture();
+        const v3 = { ...manifest, objective: { ...manifest.objective, version: 'latest-default-runtime-lexicographic-v3' as const } };
+        attempt.neural!.result!.simScore += delta;
+        const report = evaluateFullParity(v3, [attempt]);
+        expect(report.status).toBe(delta > 0 ? 'development-pass' : 'fail');
+        if (delta === 0) expect(report.pairs[0]!.issues).toContain('EFFICIENCY_REGRESSION');
+        if (delta < 0) expect(report.pairs[0]!.issues).toContain('SCORE_REGRESSION');
+    });
+    it.each(['source', 'protocol'] as const)('fails closed for v3 %s commitment mismatch', kind => {
+        const { manifest, attempt } = runtimeParityFixture();
+        if (kind === 'source') attempt.neural!.referenceBinding!.producerSourceHash = 'c'.repeat(64);
+        else (manifest.objective.referenceProtocol as any).revision = 2;
+        const report = evaluateFullParity(manifest, [attempt]);
+        expect(report.status).not.toBe('development-pass');
+        expect(kind === 'source' ? report.pairs[0]!.issues : report.issues).toContain(kind === 'source' ? 'NEURAL_REFERENCE_BINDING_MISMATCH' : 'INVALID_LATEST_REFERENCE_BINDING');
+    });
+    it('retains failed and missing-score rows in the v3 denominator rather than treating them as zero', () => {
+        const { manifest, attempt } = runtimeParityFixture();
+        attempt.neural!.status = 'incomplete';
+        attempt.neural!.result = null;
+        const report = evaluateFullParity(manifest, [attempt]);
+        expect(report.status).toBe('fail');expect(report.overall.attempts).toBe(1);
+        expect(report.pairs[0]!.neuralScore).toBeNull();expect(report.overall.meanDelta).toBeNull();
+    });
+});

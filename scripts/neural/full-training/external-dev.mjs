@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { atomic, digest, inspectCheckpoint, verifyBinding } from './state.mjs';
 import { assertFullBaselineDataset } from './evaluate.mjs';
-import { verifyTeacherSourceCompatibility, STAFFING_SOURCE_TRANSITION } from './source-compatibility.mjs';
+import { verifyTeacherSourceCompatibility, STAFFING_SOURCE_TRANSITION, LATEST_POLICY_TRANSITIONS, isLatestPolicyMode } from './source-compatibility.mjs';
+import { verifyPreparedPolicyDataset } from './policy-replay-contract.mjs';
+import { prepareProducerReplay } from './producer-replay.mjs';
+import {FEATURE_MIGRATION_ID,ALIGNED_SOURCE_TRANSITION} from './feature-migration-contract.mjs';
 import { openBaselineCache } from './baseline-cache.mjs';
 import { runWorker } from './process.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..'), read = p => JSON.parse(readFileSync(p, 'utf8'));
@@ -16,13 +19,17 @@ export function validateExternalSources(training, dev, trainingData, devData) {
     if (dev.config.purpose !== 'dev-overfit' || devData.purpose !== 'dev-overfit' || devData.records.some(r => r.input.split !== 'dev'))
         throw Error('Only exposed FULL DEV is authorized');
     assertFullBaselineDataset(devData, dev);
+    const policyMode = training.config.policyMode ?? 'legacy-unconstrained-v1';
+    if ((trainingData.policyMode ?? 'legacy-unconstrained-v1') !== policyMode || trainingData.records.some(r => (r.policyMode ?? 'legacy-unconstrained-v1') !== policyMode)) throw Error('External TRAIN policy-mode dataset binding mismatch');
     if (trainingData.records.some(r => devData.records.some(d => d.familyId === r.familyId)))
         throw Error('TRAIN/DEV family overlap');
 }
 export function validateExternalTeacherContract(training, sources) {
     const policy = training.config?.sourceTransition ?? 'none';
-    if (policy !== 'none' && (policy !== STAFFING_SOURCE_TRANSITION || training.config?.constructionOrder !== 'staffing-first-v1'))
-        throw Error('Invalid external reference action transition');
+    if(policy===ALIGNED_SOURCE_TRANSITION&&training.config.featureMigration!==FEATURE_MIGRATION_ID)throw Error('External feature migration binding missing');
+    if (policy !== 'none' && (![STAFFING_SOURCE_TRANSITION, ...Object.keys(LATEST_POLICY_TRANSITIONS)].includes(policy) || training.config?.constructionOrder !== 'staffing-first-v1')) throw Error('Invalid external reference action transition');
+    if (Object.hasOwn(LATEST_POLICY_TRANSITIONS, policy) && (training.config?.policyMode !== LATEST_POLICY_TRANSITIONS[policy] || training.config?.teacherKind !== 'full-optimizer')) throw Error('Latest external transition requires bound full-reference policy mode');
+    if (isLatestPolicyMode(training.config?.policyMode) && LATEST_POLICY_TRANSITIONS[policy] !== training.config.policyMode) throw Error('Latest external policy mode requires independent producer replay transition');
     return { ...verifyTeacherSourceCompatibility(sources.teacherManifest.provenance, training.provenance, policy), reference: referenceManifestContract(sources.teacherManifest, (sources.records ?? []).map(r => r.input)) };
 }
 export function verifyExternalTrainCheckpoint(training, trainingData, checkpoint) {
@@ -35,6 +42,7 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
         throw Error('Invalid bounded evaluation options');
     const training = read(join(modelDirectory, 'manifest.json')), dev = read(join(devDirectory, 'manifest.json')), trainingData = read(join(modelDirectory, 'dataset.json')), devData = read(join(devDirectory, 'dataset.json')), sources = read(join(devDirectory, 'source-records.json'));
     validateExternalSources(training, dev, trainingData, devData);
+    if (isLatestPolicyMode(trainingData.policyMode)) verifyPreparedPolicyDataset(trainingData, read(join(modelDirectory, 'source-records.json')), training.config);
     if (read(join(devDirectory, 'preparation.json')).result?.datasetHash !== digest(devData))
         throw Error('DEV prepared dataset commitment mismatch');
     if (sources.teacherManifestHash !== digest(sources.teacherManifest))
@@ -51,11 +59,12 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
     verifyExternalTrainCheckpoint(training, trainingData, checkpoint);
     const directory = join(modelDirectory, 'external-dev-' + name);
     mkdirSync(directory, { mode: 0o700 });
+    const producerReplay = referenceContract.producerReplayProofRequired ? await prepareProducerReplay({ producerDirectory: devDirectory, directory: join(directory, 'producer-replay'), sources, trainingProvenance: training.provenance, sourceTransition: referenceContract.policy, timeoutMs }) : null;
     const modelPath = join(directory, 'model.bin');
     writeFileSync(modelPath, checkpoint.bytes, { mode: 0o600 });
     const require = createRequire(import.meta.url), { build } = require(require.resolve('esbuild', { paths: [require.resolve('vite')] })), sourceHashes = {}, bundle = join(directory, 'decode-worker.mjs');
     await build({ entryPoints: [join(root, 'scripts/neural/full-training/external-dev-worker.ts')], bundle: true, platform: 'node', format: 'esm', target: 'node24', outfile: bundle, logLevel: 'warning', plugins: [{ name: 'pin-evaluation-source', setup(b) { b.onLoad({ filter: /\.(ts|json|mjs)$/ }, args => { const contents = readFileSync(args.path, 'utf8'); sourceHashes[relative(root, args.path)] = digest(contents); return { contents, loader: args.path.endsWith('.json') ? 'json' : args.path.endsWith('.ts') ? 'ts' : 'js' }; }); } }] });
-    for (const key of ['scripts/neural/full-training/external-dev.mjs', 'scripts/neural/full-training/baseline-cache.mjs', 'scripts/neural/full-training/source-compatibility.mjs', 'scripts/neural/full-training/process.mjs', 'scripts/neural/full-training/supervisor.mjs', 'scripts/neural/full-training/evaluate.mjs', 'scripts/neural/full-baseline/reference-protocol.mjs'])
+    for (const key of ['scripts/neural/full-training/external-dev.mjs', 'scripts/neural/full-training/baseline-cache.mjs', 'scripts/neural/full-training/source-compatibility.mjs', 'scripts/neural/full-training/producer-replay.mjs', 'scripts/neural/full-training/process.mjs', 'scripts/neural/full-training/supervisor.mjs', 'scripts/neural/full-training/evaluate.mjs', 'scripts/neural/full-baseline/reference-protocol.mjs'])
         sourceHashes[key] = digest(readFileSync(join(root, key)));
     for (const [key, hash] of Object.entries(sourceHashes))
         if (digest(readFileSync(join(root, key))) !== hash)
@@ -70,7 +79,7 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
             baselineCacheStatus.reason = String(error);
         }
     }
-    const binding = { referenceContract, baselineCacheStatus, modelHash: digest(checkpoint.bytes), cursor: checkpoint.state.cursor, trainingManifestHash: digest(training), trainingDatasetHash: digest(trainingData), devManifestHash: digest(dev), devDatasetHash: digest(devData), devSourceRecordsHash: digest(sources), decodeBundleHash: digest(readFileSync(bundle)), sourceHashes, timeoutMs };
+    const binding = { referenceContract, ...(producerReplay ? { producerReplayProofHash: digest(producerReplay) } : {}), baselineCacheStatus, modelHash: digest(checkpoint.bytes), cursor: checkpoint.state.cursor, trainingManifestHash: digest(training), trainingDatasetHash: digest(trainingData), devManifestHash: digest(dev), devDatasetHash: digest(devData), devSourceRecordsHash: digest(sources), decodeBundleHash: digest(readFileSync(bundle)), sourceHashes, timeoutMs };
     atomic(join(directory, 'manifest.json'), binding);
     const reports = [];
     for (const record of devData.records) {
@@ -80,10 +89,10 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
         const declared = sources.teacherManifest.cases.find(c => c.familyId === record.familyId);
         if (!declared || declared.inputHash !== digest(record.input))
             throw Error('DEV original input manifest mismatch');
-        const job = { referenceContract, archivedTeacherTrace: { constructionOrder: record.constructionOrder ?? 'legacy-v1', actionIds: record.actionIds, teacherSemanticHash: record.teacherSemanticHash }, constructionOrder: training.config.constructionOrder ?? 'legacy-v1', input: record.input, outcome: source.outcome, trainingInputs: trainingData.records.map(r => r.input), modelPath, modelHash: binding.modelHash };
+        const job = { referenceContract, ...(producerReplay ? { producerReplayProof: producerReplay } : {}),...(training.config.featureMigration?{featureMigration:training.config.featureMigration}:{}), policyMode: training.config.policyMode ?? 'legacy-unconstrained-v1', archivedTeacherTrace: { policyMode: record.policyMode ?? 'legacy-unconstrained-v1', constructionOrder: record.constructionOrder ?? 'legacy-v1', actionIds: record.actionIds, teacherSemanticHash: record.teacherSemanticHash }, constructionOrder: training.config.constructionOrder ?? 'legacy-v1', input: record.input, outcome: source.outcome, trainingInputs: trainingData.records.map(r => r.input), modelPath, modelHash: binding.modelHash };
         const decoded = await runWorker(bundle, job, { timeoutMs, stderrPath: join(directory, record.familyId + '-decode.stderr') });
         atomic(join(directory, record.familyId + '-decode.json'), { binding, jobHash: digest(job), outcome: decoded });
-        const report = { familyId: record.familyId, decodeStatus: decoded.status, complete: decoded.result?.complete ?? false, exactTeacherSemantics: decoded.result?.exactTeacherSemantics ?? false, diagnostics: decoded.result?.diagnostics ?? [], pairs: [] };
+        const report = { familyId: record.familyId, decodeStatus: decoded.status, complete: decoded.result?.complete ?? false, exactTeacherSemantics: decoded.result?.exactTeacherSemantics ?? false, policyMode: decoded.result?.policyMode ?? training.config.policyMode ?? 'legacy-unconstrained-v1', diagnostics: decoded.result?.diagnostics ?? [], pairs: [] };
         if (decoded.status !== 'completed') {
             reports.push(report);
             atomic(join(directory, 'summary.json'), { binding, reports, scope: 'EXPOSED FULL DEV TRANSFER ONLY; NOT RELEASE OR PARITY', parity: false });

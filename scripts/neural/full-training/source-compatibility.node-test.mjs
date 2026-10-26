@@ -21,3 +21,17 @@ test('production source collection requires opt-in and persists both source cont
 finally {
     rmSync(dir, { recursive: true, force: true });
 } });
+
+test('latest warmup transition is separately named and requires independent frozen producer replay', () => {
+    const result = verifyTeacherSourceCompatibility(source('src/optimizer/neural/fullActionSpace.ts', 'old'), source('src/optimizer/neural/fullActionSpace.ts', 'new'), 'latest-default-to-warmup-policy-v1');
+    assert.equal(result.legacyProofRequired, false);
+    assert.equal(result.producerReplayProofRequired, true);
+    for (const path of ['src/optimizer/neural/fullFeatures.ts','src/optimizer/neural/fullPolicy.ts','src/optimizer/neural/fullTraining.ts','src/optimizer/smartRoster.ts','scripts/neural/full-baseline/reference-protocol.mjs'])
+        assert.throws(() => verifyTeacherSourceCompatibility(source(path,'old'),source(path,'new'),'latest-default-to-warmup-policy-v1'), /shared source mismatch/);
+});
+
+test('runtime-admissible v2 is a separately named narrow full-reference transition',()=>{
+ const r=verifyTeacherSourceCompatibility(source('src/optimizer/neural/fullTransitions.ts','old'),source('src/optimizer/neural/fullTransitions.ts','new'),'latest-default-to-warmup-runorder-v2');
+ assert.equal(r.producerReplayProofRequired,true);assert.equal(r.legacyProofRequired,false);
+ assert.throws(()=>verifyTeacherSourceCompatibility(source('src/simulator/productionTimeline.ts','old'),source('src/simulator/productionTimeline.ts','new'),'latest-default-to-warmup-runorder-v2'),/shared source mismatch/);
+});

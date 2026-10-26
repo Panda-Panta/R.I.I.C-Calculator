@@ -5,7 +5,10 @@ import { encodeFullDecision } from '../../../src/optimizer/neural/fullFeatures';
 import { deserializeFullPolicy, createFullPolicyScorer } from '../../../src/optimizer/neural/fullPolicy';
 import { fullSemanticWorkspace } from '../../../src/optimizer/neural/fullTeacherTraces';
 import { fullPlacementMetrics } from './placement-metrics';
+import { isLatestPolicyMode, verifyLatestPolicyTransition } from './source-compatibility.mjs';
+import { verifyProducerReplayRecord } from './policy-replay-contract.mjs';
 import { digest } from './state.mjs';
+import {FEATURE_MIGRATION_ID,FEATURE_MIGRATION_CONTRACT,ALIGNED_SOURCE_TRANSITION} from './feature-migration-contract.mjs';
 process.argv.push('--library');
 const { scenarioFromInput, compactTeacher } = await import('../full-train-worker');
 export function decodeExternalDev(job: any) {
@@ -13,18 +16,27 @@ export function decodeExternalDev(job: any) {
         throw Error('External evaluator accepts exposed DEV only');
     if (job.outcome?.result?.degradedBaseline === true)
         throw Error('Degraded output is not a full mathematical reference');
+    const policyMode = job.policyMode ?? 'legacy-unconstrained-v1';
+    if (isLatestPolicyMode(policyMode) && !job.producerReplayProof) throw Error('Missing independent producer replay proof');
+    if (isLatestPolicyMode(policyMode)) verifyLatestPolicyTransition(policyMode, job.referenceContract?.policy);
+    if(job.referenceContract?.policy===ALIGNED_SOURCE_TRANSITION&&(job.featureMigration!==FEATURE_MIGRATION_ID||digest(job.referenceContract.featureMigration)!==digest(FEATURE_MIGRATION_CONTRACT)||job.producerReplayProof?.featureManifestHash!==FEATURE_MIGRATION_CONTRACT.oldHash))throw Error('External decode feature migration commitment mismatch');
     const archived = job.archivedTeacherTrace;
     if (!archived || !Array.isArray(archived.actionIds) || !archived.teacherSemanticHash)
         throw Error('Missing archived FULL DEV trace commitment');
     if (archived) {
-        const original = compactTeacher(job.input, job.outcome, 'dev-overfit', archived.constructionOrder ?? 'legacy-v1');
+        const original = compactTeacher(job.input, job.outcome, 'dev-overfit', archived.constructionOrder ?? 'legacy-v1', archived.policyMode ?? 'legacy-unconstrained-v1');
         if (!original.record || digest(original.record.actionIds) !== digest(archived.actionIds) || original.record.teacherSemanticHash !== archived.teacherSemanticHash)
             throw Error('Archived FULL DEV trace/semantics no longer reproduce exactly');
     }
-    const qualified = compactTeacher(job.input, job.outcome, 'dev-overfit', job.constructionOrder ?? 'legacy-v1');
+    const qualified = compactTeacher(job.input, job.outcome, 'dev-overfit', job.constructionOrder ?? 'legacy-v1', policyMode);
     if (job.referenceContract && digest(job.referenceContract.reference?.referenceProtocol) !== digest(qualified.record?.referenceProtocol)) throw Error('External DEV reference protocol mismatch');
     if (!qualified.record)
         throw Error('Unqualified full DEV teacher: ' + JSON.stringify(qualified.audit));
+    const producerReplay = isLatestPolicyMode(policyMode) ? verifyProducerReplayRecord(job.producerReplayProof, job.input, job.outcome, qualified.record) : null;
+    if (producerReplay) {
+        const original = job.producerReplayProof.records.find((r: any) => r.familyId === job.input.familyId);
+        if (digest(original.actionIds) !== digest(archived.actionIds) || original.teacherSemanticHash !== archived.teacherSemanticHash) throw Error('Independent producer replay disagrees with archived trace');
+    }
     const canonical = (input: any) => digest(scenarioFromInput(input).inventory.operators.map((o: any) => ({ operator: o.charId, phase: o.elitePhase, level: o.level })));
     const devInventory = canonical(job.input);
     if (job.trainingInputs.some((input: any) => input.familyId === job.input.familyId || canonical(input) === devInventory))
@@ -32,9 +44,9 @@ export function decodeExternalDev(job: any) {
     const bytes = readFileSync(job.modelPath);
     if (digest(bytes) !== job.modelHash)
         throw Error('Immutable model snapshot mismatch');
-    const model = deserializeFullPolicy(bytes), score = createFullPolicyScorer(model), scenario = scenarioFromInput(job.input, job.constructionOrder ?? 'legacy-v1'), started = performance.now();
+    const model = deserializeFullPolicy(bytes), score = createFullPolicyScorer(model), scenario = scenarioFromInput(job.input, job.constructionOrder ?? 'legacy-v1', policyMode), started = performance.now();
     const result = decodeFullRoster(scenario, ctx => score(encodeFullDecision(ctx)));
-    return { referenceProtocol: qualified.record.referenceProtocol, familyId: job.input.familyId, modelHash: job.modelHash, complete: result.complete, exactTeacherSemantics: result.complete && digest(fullSemanticWorkspace(scenario, result.workspace)) === qualified.record.teacherSemanticHash, workspace: result.workspace, diagnostics: result.diagnostics, modelActions: result.modelActions, forcedActions: result.forcedActions, modelChoiceActions: result.modelChoiceActions, constructionOrder: result.constructionOrder, frozenInputSlots: result.frozenSlots, ...fullPlacementMetrics(scenario, result), generationElapsedMs: performance.now() - started, qualification: qualified.audit, scope: 'EXPOSED FULL DEV TRANSFER ONLY; NOT RELEASE OR PARITY', parity: false };
+    return { ...(producerReplay ? { producerReplay } : {}), policyMode: result.policyMode, referenceProtocol: qualified.record.referenceProtocol, familyId: job.input.familyId, modelHash: job.modelHash, complete: result.complete, exactTeacherSemantics: result.complete && digest(fullSemanticWorkspace(scenario, result.workspace)) === qualified.record.teacherSemanticHash, workspace: result.workspace, diagnostics: result.diagnostics, modelActions: result.modelActions, forcedActions: result.forcedActions, modelChoiceActions: result.modelChoiceActions, constructionOrder: result.constructionOrder, frozenInputSlots: result.frozenSlots, ...fullPlacementMetrics(scenario, result), generationElapsedMs: performance.now() - started, qualification: qualified.audit, scope: 'EXPOSED FULL DEV TRANSFER ONLY; NOT RELEASE OR PARITY', parity: false };
 }
 if (!process.argv.includes('--external-library')) {
     try {
