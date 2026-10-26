@@ -23,6 +23,25 @@
 - 修改前已归档源码与Git状态，`artifacts/auto-roster-two-stage-20261025/backup/source-head.zip` SHA256 `be5cded29f7aeafbcf9083f2407fd59b64226bb1ee75cd34e43fea671be50f85`；各暖机、domain、UI、入口和文档阶段另有逐项SHA备份。当前任务早期进展原文已保存至 `artifacts/constraint-model/production-validation/final-v2/UPDATE_PLAN.before-final-summary.md`。干员库、用户排班、安装配置、浏览器数据与Tools未覆盖。
 - 进行中：先本地检查点提交，再将89070主线修复合入本工作分支；保留main历史及用户原有两行未提交计划。以同一新仿真器重新运行主线旧优化器和当前优化器正式对照，再做新源码全套测试、类型/生产构建、结构与skill校验、界面验证、本分支最终提交。整合前47文件备份为 `artifacts/constraint-model/main-clock-integration/backup/feature-before-main.zip`，SHA256 `88ae95b86f7f1938a839f344cee3b599bca7a5c607ab1246d72cba0a1f2f4ed0`。未完成项不记作通过；不向main合并、远程推送或Tools安装同步。
 
+# 2026-10-26 替班检查唤醒时钟修复（源码与本机安装已交付）
+
+- 目标：修复合法252排班在预热约16.01小时因替班心情检查将外层唤醒写回过去而触发SIMULATION_SAME_TIME_ACTION。保留任务对象、原截止时间、用户排班/干员库/安装及浏览器配置；不关闭中止保护、不扩大积分预算、不改变床位或心情策略。
+- 基线/隔离：远端main核验为88591d0d8f33c97f90d975f0867a76fa3f7aea4c。原检出有其他会话自动排班改动，使用独立管理worktree和自有codex/mower-replacement-clock-20261026分支；沿用本项目专项分支及普通PR交付。test为其他批次状态，不修改或夹带。源码与私人输入备份及保留文件哈希见artifacts/mower-252-clock-fix-20261026/backup/manifest.json。
+- 分工：主agent统筹计划、集成、真实输入/Worker验证、审查及交付；clock_regression独占src/scheduler/mowerSourceRuntime.spec.ts，先红回归；clock_implementation独占src/scheduler/mowerSourceRuntime.ts，待红测试确认后作最小修复；最终由未编写该实现的agent独立审查。两个工作包并行准备，实施依赖红回归，不争写共享文件。
+- 复用资源：agent-dev-workflow与项目基建skill、DEVELOPMENT_WORKFLOW.md；既有mowerSourceRuntime/ReplacementCheck/RunLifecycle测试、calculationWorker与结果分块协议、scripts/sync-tools.ps1。诊断已在原检出artifacts/mower-252-diagnosis-20261026保存；原JSON不进入公开仓库。
+- 验收：旧代码最小集成回归失败；已到期/过期检查不破坏已建立的外层单调时钟，未来检查仍可提前正常睡眠，原任务截止不改，推进后实际检查执行。覆盖替班失效/恢复、跨房安排、普通与alpha路径、原有暖机/回班和任务生命周期。真实原JSON以新随机种子完成72h预热+168h采样；类型检查、必要全套测试、独立构建、结构/skill校验及实际浏览器Worker验证。只报告模拟与安装证据，不当作真实游戏验证。
+- 交付：固定最终候选、独立审查及验证后普通PR合入自有main，拉取实际主线核对源码树；使用既有脚本先ValidateOnly、备份再同步D:\Tools\R.I.I.C-Calculator，核验管理与保留文件哈希及安装运行。原工作区不切换/重置、不覆盖他人改动。
+- 已完成修复：只在替班检查同步时将已到期任务对应的候选唤醒限制到当前时刻加既有最小clock step，再与原runReturn比较。保留原检查任务对象与时间；到达既有唤醒后不重复后移；未来任务仍按实际截止提前长睡眠。
+- 已完成验证：新增7项行为回归；旧表达式内存对照有5项失败，最终定点4文件104项全通过。独立审查未发现阻塞问题。类型检查、独立Vite构建、结构与22文件/62引用skill校验通过。原JSON新随机源运行完成72h预热+168h采样；实际浏览器导入原文件亦成功完成240h，UI90.55秒、观察168h、报表可导出且控制台无错误。完整回归354个文件通过、1个原有跳过；4712项通过、1项原有跳过、0失败，耗时1641.75秒。修复代码与独立审查、类型检查及构建时字节一致。
+- 证据：本机artifacts/mower-252-clock-fix-20261026保存原输入/源码备份、旧行为失败与最终绿色测试、独立审查、完整仿真报表及浏览器截图；私人原排班和浏览器报表不提交公开仓库。实际PR、合并提交及安装核账见下方最终交付记录。
+## 最终交付记录（2026-10-26）
+
+- 源码：自有[PR29](https://github.com/Panda-Panta/R.I.I.C-Calculator/pull/29)普通合并为2885e6fa748c1619e34f92bfa5da139dc7fca959，已拉取并安全快进本地main。主线整树65e6ff704c6b0a2b644d3fea552463bab0be71b8与最终候选1ccc4bd93b1df32bfba87212773c9543ad847336一致；最后仅补记验收文档。修复源码SHA256为7230f04092115f5a79a79a834410aad865754bf48d82cf6bb39260761646cdfc，测试为a4a712388f726231b6e4697655bee808d5598bc1b7e49a2aafbc835d1df72dba。原任务时刻和中止保护未改变。
+- 完整验收：354个测试文件通过、1个原有跳过；4712项通过、1项原有跳过、0失败。类型检查、独立Vite构建、结构与skill校验、独立定点104项复核通过。JSON reporter将纯跳过文件标为passed，文件通过数按CLI区分，不记作355个实际执行文件。
+- 安装：既有sync-tools.ps1先ValidateOnly后备份更新D:\Tools\R.I.I.C-Calculator。1008项payload逐SHA256一致，1010项manifest含2个保留原生文件；写入1009项含manifest自身，安全删除4个旧管理资源。旧安装1037文件完整备份并复核；28个未覆盖文件（26非管理文件+2个既有原生文件）保持。用户WebView档案403文件、88468294字节逐哈希未变。安装SourceCommit为2885e6f，SourceHadTrackedChanges=false；本段纯文档补记不改变已验证程序，不重复构建或覆盖安装。
+- 真实输入与运行：原252二赤金JSON SHA256 08c179dd8e284c7e09aa48cc7728158496215bce39705d90eac49df55ce8cbbe保持不变。源码、候选浏览器、实际安装dist浏览器三次各用新随机源，均成功完成72h预热+168h采样。安装实测直接读取D:\Tools\R.I.I.C-Calculator\dist，seed=3659976305，elapsedHours=240，observedHours=167.99999999238412，UI123.82秒、控制台无错误；通过界面保存报表和截图。保留正常历史换班等待诊断，不将有限窗口成功解释成所有策略或真实游戏验证；本轮未重新验收原生EXE窗口。
+- 隔离与证据：原自动排班工作分支未切换、未重置或覆盖；22份既有修改文件核对时20份哈希相同，UPDATE_PLAN.md和docs/automatic-roster-search.md在其他进行中的工作期间变化，本任务保留其当前内容。备份与证据保存于本机artifacts/mower-252-clock-fix-20261026：源码ZIP SHA256 be5cded29f7aeafbcf9083f2407fd59b64226bb1ee75cd34e43fea671be50f85，安装全备份见install-final/backup，独立核账见installed-file-verification.json，实际浏览器见installed-browser-proof.json和installed-browser-report.json。私人输入/报表不提交公开仓库。
+- 远端状态：PR29最终Vercel预览检查通过；合并提交2885e6f的[Pages](https://github.com/Panda-Panta/R.I.I.C-Calculator/actions/runs/40285862907)已success，[Release](https://github.com/Panda-Panta/R.I.I.C-Calculator/actions/runs/40285862854)在2026-10-26 07:40 UTC仍为in_progress，未把本地安装成功代记为云端发布完成。
 # 2026-10-25 Mower 全量审查与差异修复（源码及本地安装已交付）
 
 - 当前检查点：已按用户批准的“以原生调度为准，共同错误一并修复”完成已核实差异修正、普通PR合并及Tools安全同步。修复前627/627受控代码阅读覆盖、4705项通过/1原有跳过、类型与构建、候选及安装两次新crypto实际Worker有限窗口、安装与数据保留独立核账均已闭环。保留个人心情、理想跑单等特殊要求及GameData v078；原生默认普通调度来源核至0c321，不声称所有模式、所有输入或真实游戏等价。远端Release的实际进行状态单列，未代写发布成功。
