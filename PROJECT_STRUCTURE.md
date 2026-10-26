@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 810 个索引文件，其中应用 TypeScript/Vue/CSS 文件 277 个，业务测试文件 360 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 896 个索引文件，其中应用 TypeScript/Vue/CSS 文件 294 个，业务测试文件 380 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -131,6 +131,7 @@ docs/
 ├── UPDATE_v1.1.1.md
 ├── UPDATE_v1.1.2.md
 ├── actual-level-roster-fallback.md
+├── automatic-roster-search.md
 └── 用户说明书.md
 ```
 
@@ -141,11 +142,61 @@ scripts/
 ├── fixtures/
 │   └── neighborhood-request.json
 ├── neural/
+│   ├── full-baseline/
+│   │   ├── atomic.mjs
+│   │   ├── cohort.mjs
+│   │   ├── collisions.mjs
+│   │   ├── process.mjs
+│   │   ├── retry.mjs
+│   │   ├── semantic-audit.mjs
+│   │   └── supervisor.mjs
+│   ├── full-training/
+│   │   ├── additional-source.mjs
+│   │   ├── additional-source.node-test.mjs
+│   │   ├── auxiliary-contract-tests.ts
+│   │   ├── auxiliary-evidence.mjs
+│   │   ├── auxiliary-traces.ts
+│   │   ├── auxiliary.node-test.mjs
+│   │   ├── baseline-cache.mjs
+│   │   ├── baseline-cache.node-test.mjs
+│   │   ├── contract-tests.ts
+│   │   ├── evaluate.mjs
+│   │   ├── external-dev-contract-tests.ts
+│   │   ├── external-dev-worker.ts
+│   │   ├── external-dev.mjs
+│   │   ├── external-dev.node-test.mjs
+│   │   ├── lineage.mjs
+│   │   ├── linked-sources.mjs
+│   │   ├── linked-sources.node-test.mjs
+│   │   ├── placement-metrics.ts
+│   │   ├── process.mjs
+│   │   ├── source-compatibility.mjs
+│   │   ├── source-compatibility.node-test.mjs
+│   │   ├── state.mjs
+│   │   └── supervisor.mjs
+│   ├── molecular-training/
+│   │   ├── candidate-checkpoint.mjs
+│   │   ├── enriched-diagnose.mjs
+│   │   ├── enriched-diagnose.ts
+│   │   ├── enriched-input.ts
+│   │   ├── enriched-summary.ts
+│   │   ├── enriched.mjs
+│   │   ├── policy.mjs
+│   │   └── retry.mjs
 │   ├── README.md
 │   ├── experiment.ts
+│   ├── full-baseline-worker.ts
+│   ├── full-baseline.mjs
+│   ├── full-baseline.node-test.mjs
+│   ├── full-train-worker.ts
+│   ├── full-train.mjs
+│   ├── full-train.node-test.mjs
 │   ├── infer.ts
 │   ├── integration.node-test.mjs
 │   ├── migrate-checkpoint.mjs
+│   ├── molecular-teacher-worker.ts
+│   ├── molecular-teachers.mjs
+│   ├── molecular-teachers.node-test.mjs
 │   ├── process.mjs
 │   ├── process.node-test.mjs
 │   ├── provenance.mjs
@@ -160,6 +211,7 @@ scripts/
 │   ├── generate.py
 │   └── sources.json
 ├── audit-riic-data.mjs
+├── benchmark-auto-roster.mjs
 ├── benchmark-cpu.mjs
 ├── benchmark-neighborhood.mjs
 ├── check_skills.mjs
@@ -352,6 +404,20 @@ src/
 │   │   ├── experiment.spec.ts
 │   │   ├── experiment.ts
 │   │   ├── features.ts
+│   │   ├── fullActionSpace.ts
+│   │   ├── fullDecode.spec.ts
+│   │   ├── fullDecode.ts
+│   │   ├── fullFeatures.spec.ts
+│   │   ├── fullFeatures.ts
+│   │   ├── fullParity.spec.ts
+│   │   ├── fullParity.ts
+│   │   ├── fullPolicy.spec.ts
+│   │   ├── fullPolicy.ts
+│   │   ├── fullTeacherTraces.spec.ts
+│   │   ├── fullTeacherTraces.ts
+│   │   ├── fullTraining.spec.ts
+│   │   ├── fullTraining.ts
+│   │   ├── fullTransitions.ts
 │   │   ├── policy.spec.ts
 │   │   ├── policy.ts
 │   │   ├── teacherTraces.spec.ts
@@ -361,9 +427,13 @@ src/
 │   ├── automaticCombinationPreferences.spec.ts
 │   ├── automaticCombinationPreferences.ts
 │   ├── automaticPepeMain.spec.ts
+│   ├── automaticRosterCandidates.spec.ts
+│   ├── automaticRosterCandidates.ts
 │   ├── backupNeighborhood.spec.ts
 │   ├── backupNeighborhood.ts
 │   ├── backupSnapshot.ts
+│   ├── candidateExecutionOrder.spec.ts
+│   ├── candidateExecutionOrder.ts
 │   ├── candidateSimulation.ts
 │   ├── candidateSimulationCache.spec.ts
 │   ├── candidateSimulationCache.ts
@@ -380,17 +450,25 @@ src/
 │   ├── combinationEnumeration.ts
 │   ├── combinationEvaluation.spec.ts
 │   ├── combinationEvaluation.ts
+│   ├── combinationEvaluationReuse.spec.ts
 │   ├── combinationIntegrity.spec.ts
 │   ├── combinationIntegrity.ts
 │   ├── combinationMembership.spec.ts
 │   ├── combinationModel.ts
 │   ├── combinationSelection.spec.ts
 │   ├── compositeObjective.spec.ts
+│   ├── computedManufacturingRoster.spec.ts
+│   ├── computedManufacturingRoster.ts
 │   ├── configureRunOrder.ts
 │   ├── controlImpact.spec.ts
 │   ├── controlImpact.ts
 │   ├── controlNeighborhood.spec.ts
 │   ├── controlNeighborhood.ts
+│   ├── controlSelectedProjection.spec.ts
+│   ├── crewAssignmentKernel.spec.ts
+│   ├── crewAssignmentKernel.ts
+│   ├── crewAssignmentSearch.spec.ts
+│   ├── crewAssignmentSearch.ts
 │   ├── dailyTarget.spec.ts
 │   ├── dailyTarget.ts
 │   ├── dormKeepers.ts
@@ -398,6 +476,8 @@ src/
 │   ├── fixedDuty.spec.ts
 │   ├── fixedDuty.ts
 │   ├── generatedRecoveryPolicy.ts
+│   ├── generatedWarmupPolicy.spec.ts
+│   ├── generatedWarmupPolicy.ts
 │   ├── globalPerCapitaReplacement.spec.ts
 │   ├── globalPerCapitaReplacement.ts
 │   ├── incomeComparison.spec.ts
@@ -408,7 +488,14 @@ src/
 │   ├── inventorySearch.spec.ts
 │   ├── mainPlanOnly.spec.ts
 │   ├── mainPlanOnly.ts
+│   ├── manufacturingCrewDomain.spec.ts
+│   ├── manufacturingCrewDomain.ts
+│   ├── manufacturingCrewFeasibility.spec.ts
+│   ├── manufacturingCrewFeasibility.ts
+│   ├── manufacturingCrewValuation.spec.ts
+│   ├── manufacturingCrewValuation.ts
 │   ├── mixedLevelInventory.spec.ts
+│   ├── molecularCandidateCoverage.spec.ts
 │   ├── molecularSynthesis.spec.ts
 │   ├── molecularSynthesis.ts
 │   ├── mowerLearnedCandidates.spec.ts
@@ -446,8 +533,10 @@ src/
 │   ├── smartRoster.ts
 │   ├── smartRosterBranches.spec.ts
 │   ├── smartRosterParallel.spec.ts
+│   ├── smartRosterWarmup.spec.ts
 │   ├── smartRosterWorker.ts
 │   ├── staffingQuality.ts
+│   ├── warmupPolicyApplicability.spec.ts
 │   ├── weightedAutomaticSearch.spec.ts
 │   └── weightedRunOrder.spec.ts
 ├── rules/

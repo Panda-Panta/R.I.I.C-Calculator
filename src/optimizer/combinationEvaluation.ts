@@ -11,12 +11,19 @@ import { compareVariantPreference } from './automaticCombinationPreferences'
 
 /** Facility base 100% and staffing 1% are excluded from the skill-efficiency comparison. */
 export function evaluateCombinationVariant(base: RosterWorkspace, inventory: OperatorInventory, variant: CombinationVariant, baselineDailyScore?: number): CombinationValue {
+  return evaluateWithRecords(base, inventory, variant, baselineDailyScore)
+}
+
+function evaluateWithRecords(base: RosterWorkspace, inventory: OperatorInventory, variant: CombinationVariant, baselineDailyScore?: number,
+  records?: ReturnType<typeof inventoryOperatorRecords>): CombinationValue {
   const result: CombinationValue = { variant, status: 'infeasible', perCapita: null, totalGain: null, productionCount: 0, supportCount: 0, diagnostics: [] }
   const placed = applyCombinationVariant(base, variant)
   if (!placed) { result.diagnostics.push('组合有占位或人员冲突'); return result }
-  const snapshot = shiftSnapshot(placed, variant.placements.some(p => p.role === 'backup') ? 'backup' : 'main')
+  // Placement already isolates main duty; only relief needs an additional shift snapshot.
+  const snapshot = variant.placements.some(p => p.role === 'backup') ? shiftSnapshot(placed, 'backup') : placed
   const config = projectRosterConfig(snapshot)
-  config.operatorRecords = inventoryOperatorRecords(inventory)
+  records ??= inventoryOperatorRecords(inventory)
+  config.operatorRecords = records
   const targetIds = new Set(variant.placements.filter(p => ['manufacture', 'trading'].includes(snapshot.mainPlan.facilities[p.roomId].type)).map(p => productionRoomId(p.roomId)))
   const targets = config.rooms.filter(r => targetIds.has(r.id))
   result.productionCount = targets.reduce((n, r) => n + r.operatorIds.length, 0)
@@ -38,7 +45,7 @@ export function evaluateCombinationVariant(base: RosterWorkspace, inventory: Ope
   result.perCapita = bonus / result.productionCount
   if (baselineDailyScore === undefined) {
     const original = projectRosterConfig(base)
-    original.operatorRecords = inventoryOperatorRecords(inventory)
+    original.operatorRecords = records
     const reference = projectControlOutput(original)
     if (reference.complete) baselineDailyScore = reference.daily.score
   }
@@ -49,9 +56,11 @@ export function evaluateCombinationVariant(base: RosterWorkspace, inventory: Ope
 export function buildCombinationPool(base: RosterWorkspace, inventory: OperatorInventory, lockedPositions?: ReadonlySet<string>): CombinationPool {
   const variants = enumerateCombinationVariants(base, inventory, lockedPositions)
   const config = projectRosterConfig(base)
-  config.operatorRecords = inventoryOperatorRecords(inventory)
+  // This synchronous pool owns the snapshot; never retain it across inventory changes.
+  const records = inventoryOperatorRecords(inventory)
+  config.operatorRecords = records
   const projection = projectControlOutput(config)
-  const values = variants.map(v => evaluateCombinationVariant(base, inventory, v, projection.complete ? projection.daily.score : undefined))
+  const values = variants.map(v => evaluateWithRecords(base, inventory, v, projection.complete ? projection.daily.score : undefined, records))
   values.sort((a, b) => (a.status === 'evaluated' ? 0 : 1) - (b.status === 'evaluated' ? 0 : 1) ||
     compareVariantPreference(b.variant, a.variant) ||
     (b.perCapita ?? -Infinity) - (a.perCapita ?? -Infinity) || (b.totalGain ?? -Infinity) - (a.totalGain ?? -Infinity) ||

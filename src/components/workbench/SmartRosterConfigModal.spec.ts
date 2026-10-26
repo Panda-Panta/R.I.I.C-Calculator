@@ -52,9 +52,11 @@ describe('SmartRosterConfigModal.vue', () => {
     const wrapper = mountModal({ open: true })
 
     expect(wrapper.find('[data-test="smart-roster-modal-body"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="trials-input"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="max-evals-input"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="topk-input"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="trials-input"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="max-evals-input"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="topk-input"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="constraint-description"]').text()).toContain('一份初始排班')
+    expect(wrapper.get('[data-test="verification-description"]').text()).toContain('默认最多两份完整仿真')
     expect(wrapper.find('[data-test="sample-hours-input"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="enable-deep-search"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="drone-target-select"]').exists()).toBe(true)
@@ -74,22 +76,28 @@ describe('SmartRosterConfigModal.vue', () => {
       initialSeed: 12345,
     })
 
-    const trialsInput = wrapper.find<HTMLInputElement>('[data-test="trials-input"]')
-    expect(Number(trialsInput.element.value)).toBe(DEFAULT_CONFIG.trials)
-
     const droneSelect = wrapper.find<HTMLSelectElement>('[data-test="drone-target-select"]')
     expect(droneSelect.element.value).toBe('room_2_1')
 
     const seedInput = wrapper.find<HTMLInputElement>('[data-test="seed-input"]')
     expect(Number(seedInput.element.value)).toBe(12345)
+    expect(wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(false)
+    expect(wrapper.text()).toContain('约束计算优化')
+    expect(wrapper.text()).toContain('日均加权产出')
+    expect(wrapper.text()).toContain('保留较优结果')
+    expect(wrapper.text()).not.toContain('入选方案上限')
+    expect(wrapper.text()).not.toContain('最多 6 套')
+    expect(wrapper.text()).not.toContain('全局最优')
+    expect(wrapper.text()).not.toContain('推荐开启')
   })
 
   it('emits confirm with modified parameters and persists to localStorage', async () => {
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, JSON.stringify({ ...DEFAULT_CONFIG, trials: 9, simulationTopK: 4, maxStaticEvals: 5000, enableDeepSearch: true }))
     const wrapper = mountModal({ open: true })
 
-    expect(wrapper.find('[data-test="trials-input"]').attributes('disabled')).toBeDefined()
-    await wrapper.find<HTMLInputElement>('[data-test="max-evals-input"]').setValue(5000)
-    expect(wrapper.find('[data-test="topk-input"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-test="trials-input"]').exists()).toBe(false)
+    expect(wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(true)
+    expect(wrapper.find('[data-test="topk-input"]').exists()).toBe(false)
     await wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').setValue(48)
     await wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').setValue(false)
     await wrapper.find<HTMLSelectElement>('[data-test="drone-target-select"]').setValue('room_3_2')
@@ -101,9 +109,9 @@ describe('SmartRosterConfigModal.vue', () => {
     const emittedConfig = wrapper.emitted('confirm')![0]![0] as SmartRosterConfig
     expect(emittedConfig).toEqual({
       productionWeights: { exp: 1, gold: .8, orders: .2, fragments: 0, orundum: 0 },
-      trials: 10,
+      trials: 9,
       maxStaticEvals: 5000,
-      simulationTopK: 10,
+      simulationTopK: 4,
       simulationSampleHours: 48,
       simulationWarmupHours: 24,
       enableDeepSearch: false,
@@ -113,9 +121,28 @@ describe('SmartRosterConfigModal.vue', () => {
     })
 
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER) || '{}')
-    expect(stored.trials).toBe(10)
+    expect(stored.trials).toBe(9)
+    expect(stored.simulationTopK).toBe(4)
     expect(stored.simulationSampleHours).toBe(48)
     expect(stored.enableDeepSearch).toBe(false)
+  })
+
+  it('defaults missing legacy deep-search preference to two stages without rewriting saved settings', () => {
+    const stored = JSON.stringify({ simulationSampleHours: 48, maxStaticEvals: 7000, seed: 17 })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, stored)
+    const wrapper = mountModal()
+    expect(wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(false)
+    expect(wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').element.value).toBe('48')
+    expect(wrapper.find<HTMLInputElement>('[data-test="seed-input"]').element.value).toBe('17')
+    expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(stored)
+  })
+  it('keeps a saved explicit deep comparison when confirming other unchanged preferences', async () => {
+    const saved = { ...DEFAULT_CONFIG, trials: 17, simulationTopK: 11, enableDeepSearch: true, seed: 51 }
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, JSON.stringify(saved))
+    const wrapper = mountModal()
+    expect(wrapper.get<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(true)
+    await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+    expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ trials: 17, simulationTopK: 11, enableDeepSearch: true, seed: 51 })
   })
 
   it('resets form when reset button is clicked', async () => {
@@ -137,12 +164,13 @@ describe('SmartRosterConfigModal.vue', () => {
       initialSeed: -1,
     })
 
-    expect(wrapper.find<HTMLInputElement>('[data-test="trials-input"]').element.value).toBe('10')
+    expect(wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').element.value).toBe('24')
 
     await wrapper.find('[data-test="reset-btn"]').trigger('click')
 
-    expect(wrapper.find<HTMLInputElement>('[data-test="trials-input"]').element.value).toBe(String(DEFAULT_CONFIG.trials))
+    expect(wrapper.find<HTMLInputElement>('[data-test="sample-hours-input"]').element.value).toBe(String(DEFAULT_CONFIG.simulationSampleHours))
     expect(wrapper.find<HTMLInputElement>('[data-test="seed-input"]').element.value).toBe('-1')
+    expect(wrapper.find<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(false)
     expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBeNull()
   })
 

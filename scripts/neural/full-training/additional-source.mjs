@@ -1,0 +1,11 @@
+/** Explicit future auxiliary dataset expansion; independent cohorts are never disguised as retries. */
+import{digest}from'./state.mjs';
+export function mergeAdditionalAuxiliarySource(parent,additional,{sourceName,inputProfile}){
+ if(!/^[\w-]+$/.test(sourceName)||inputProfile!=='TRAIN-enriched-catalog-high-stage-v1')throw Error('Additional cohort requires explicit enriched source/profile authorization');
+ for(const s of[parent,additional])if(s.teacherKind!=='molecular-simulated'||s.purpose!=='train'||s.teacherManifest?.sourceKind!=='molecular-simulated'||s.teacherManifest?.purpose!=='training'||s.teacherManifestHash!==digest(s.teacherManifest))throw Error('Only bound auxiliary TRAIN sources may be expanded');
+ if(additional.teacherManifest.inputProfile!==inputProfile)throw Error('Additional source profile differs from declared authorization');
+ const existing=new Set(parent.records.map(r=>r.input.familyId)),declared=new Set();for(const c of additional.teacherManifest.cases){if(existing.has(c.familyId)||declared.has(c.familyId))throw Error('Independent cohort family collision; cannot silently treat as retry');declared.add(c.familyId);}
+ for(const r of additional.records){const c=additional.teacherManifest.cases.find(c=>c.familyId===r.input.familyId);if(!c||digest(r.input)!==c.inputHash||digest(r.outcome)!==r.resultHash)throw Error('Additional record/input commitment mismatch');}
+ const manifest=additional.teacherManifest,records=additional.records.map(r=>({...r,sourceManifest:manifest,sourceManifestHash:digest(manifest),sourceCompatibility:additional.sourceCompatibility,sourceCohort:sourceName,inputProfile}));
+ return{...parent,schemaVersion:4,records:[...parent.records,...records],pending:[...parent.pending,...additional.pending],additionalSourceManifests:[...(parent.additionalSourceManifests??[]),manifest],additionalSourceCompatibilities:[...(parent.additionalSourceCompatibilities??[]),additional.sourceCompatibility],additionalSourceDescriptors:[...(parent.additionalSourceDescriptors??[]),{sourceName,inputProfile,manifestHash:digest(manifest),declaredFamilies:manifest.cases.length,attempts:additional.records.length,completedAttempts:additional.records.filter(r=>r.outcome.completed===true).length}],scope:'Explicit auxiliary TRAIN cohort expansion; failed/null attempts retained; never a full baseline/parity dataset'};
+}

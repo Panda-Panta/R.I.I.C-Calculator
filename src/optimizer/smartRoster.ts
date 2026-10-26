@@ -10,28 +10,32 @@ import { hasConsumptionSkill } from './fixedDuty'
 import { rosterIncomeSearchSteps, type IncomeSearchResult } from './rosterIncomeSearch'
 import { validatePhysicalRoster } from './rosterDraft'
 import { generateMolecularCandidates } from './molecularSynthesis'
+import { computeManufacturingRoster, type ComputedRosterCalculation } from './computedManufacturingRoster'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
 import { preservesFormedCombinations } from './combinationIntegrity'
 import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
 export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
-import { normalizeProductionShifts } from './combinationAllocation'
+import { candidateExecutionOrder } from './candidateExecutionOrder'
+import { completeShiftScores, normalizeProductionShifts } from './combinationAllocation'
 import type { CalculationReport } from '../domain/types'
 import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
 import { applyGeneratedRecoveryPolicy } from './generatedRecoveryPolicy'
+import { applyGeneratedWarmupPolicy } from './generatedWarmupPolicy'
 import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
-import { compareProductionEfficiency, compareProductionEfficiencyVectors, productionEfficiencyVector } from './productionEfficiencyPriority'
+import { compareProductionEfficiencyVectors, productionEfficiencyVector } from './productionEfficiencyPriority'
 
 export interface SmartRosterOptions {
   seed?: number
+  /** Legacy settings retained for saved configurations. Construction now produces one initial roster. */
   branchCount?: number
-  /** Legacy settings retained for old saved configurations; no longer control branch admission. */
   trials?: number
   maxStaticEvals?: number
   simulationTopK?: number
   simulationWarmupHours?: number
   simulationSampleHours?: number
+  /** Optional extra comparison. The default two-stage result needs no post-simulation search. */
   enableDeepSearch?: boolean
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
@@ -61,7 +65,7 @@ export interface SpecialOperatorSimData {
 export interface SmartRosterCandidate {
   id: string
   workspace: RosterWorkspace
-  staticScore: number
+  staticScore: number | null
   simScore: number | null
   diagnostics: string[]
   specialOperators?: SpecialOperatorSimData[]
@@ -76,6 +80,8 @@ export interface SmartRosterResult {
   /** Completed output of the exact returned roster and generation settings. */
   calculationReport?: CalculationReport
   phases: {
+    /** Bounds describe the declared manufacturing model, never the full simulation objective. */
+    calculation?: ComputedRosterCalculation
     static: {
       candidates: SmartRosterCandidate[]
       bestScore: number | null
@@ -97,12 +103,9 @@ export interface SmartRosterResult {
 }
 
 function workspaceFingerprint(w: RosterWorkspace): string {
-  const rooms = Object.values(w.mainPlan.facilities).map(r => [
-    r.roomId,
-    r.slots.map(s => (s.occupant.kind === 'operator' ? resolveId(s.occupant.operatorId) : '')),
-    r.slots.map(s => s.replacements.map(resolveId)),
-  ])
-  return JSON.stringify(rooms)
+  // Group bindings, recovery policies and slot metadata affect the actual schedule.
+  // Equal occupants alone do not make two simulation inputs interchangeable.
+  return JSON.stringify(w)
 }
 
 export function runSmartRoster(
@@ -128,21 +131,21 @@ export function runSmartRoster(
   return step.value
 }
 
-function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies: readonly number[][], onProgress?: (p: SmartRosterProgress) => void) {
+function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies: readonly number[][], stages: number, onProgress?: (p: SmartRosterProgress) => void) {
   const total = workspaces.length
   let completed = 0, bestScore: number | undefined, bestIndex: number | undefined
   const fractions = new Map<number, number>()
   return { onComplete: (result: CandidateSimulationResult, index: number) => {
     completed++
     fractions.set(index, 1)
-    if (result.completed) {
+    if (result.completed && Number.isFinite(result.simScore)) {
       const preference = bestIndex === undefined ? 1 : compareWorkspacePreference(workspaces[index]!, workspaces[bestIndex]!) ||
         compareProductionEfficiencyVectors(efficiencies[index]!, efficiencies[bestIndex]!)
-      if (preference > 0 || preference === 0 && result.simScore > bestScore!) { bestScore = result.simScore; bestIndex = index }
+      if (bestIndex === undefined || result.simScore > bestScore! || result.simScore === bestScore && preference > 0) { bestScore = result.simScore; bestIndex = index }
     }
     onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/3: 动态拟真进度 ${completed}/${total}（${result.completed ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
+      label: `阶段 2/${stages}: 动态拟真进度 ${completed}/${total}（${result.completed && Number.isFinite(result.simScore) ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
   }, onProgress: (progress: ScheduleSimulationProgress, index: number) => {
     fractions.set(index, progress.elapsedHours / progress.totalHours)
     const warmup = progress.phase === 'warmup'
@@ -150,7 +153,7 @@ function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies
     const duration = warmup ? progress.warmupHours : progress.totalHours - progress.warmupHours
     onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/3: 候选 ${index + 1}/${total} ${warmup ? '预热' : '采样'} ${elapsed.toFixed(1)}/${duration} 小时（已完成 ${completed}/${total}）` })
+      label: `阶段 2/${stages}: 候选 ${index + 1}/${total} ${warmup ? '预热' : '采样'} ${elapsed.toFixed(1)}/${duration} 小时（已完成 ${completed}/${total}）` })
   } }
 }
 
@@ -167,8 +170,15 @@ export async function runSmartRosterParallel(
     const { jobs, onComplete, onProgress: onSimulationProgress } = step.value
     let results: CandidateSimulationResult[]
     try {
-      results = await execute(jobs, onComplete, onSimulationProgress)
-      if (results.length !== jobs.length) throw new Error('候选仿真返回数量不完整')
+      const order = candidateExecutionOrder(jobs)
+      const scheduled = await execute(order.map(index => jobs[index]!),
+        (summary, index) => onComplete(summary, order[index]!),
+        onSimulationProgress ? (progress, index) => onSimulationProgress(progress, order[index]!) : undefined)
+      if (scheduled.length !== jobs.length) throw new Error('候选仿真返回数量不完整')
+      // Execution priority must never change candidate identity, tie-breaking,
+      // cache keys, progress labels or the report attached to the chosen roster.
+      results = new Array(jobs.length)
+      order.forEach((original, dispatched) => { results[original] = scheduled[dispatched]! })
     } catch (error) { step = run.throw(error); continue }
     step = run.next(results)
   }
@@ -197,12 +207,8 @@ function* smartRosterSteps(
   }
 
   const seed = options.seed ?? 42
-  const trials = options.branchCount ?? 10
-  if (!Number.isSafeInteger(trials) || trials < 1 || trials > 20) {
-    result.diagnostics.push({ code: 'INVALID_BRANCH_COUNT', message: '有效分支数必须为 1–20 的整数。' })
-    return result
-  }
-  const enableDeepSearch = options.enableDeepSearch ?? true
+  const enableDeepSearch = options.enableDeepSearch ?? false
+  const stages = enableDeepSearch ? 3 : 2
   const droneTarget = options.droneTarget ?? 'gold'
 
   // 1. Inventory & Base validation
@@ -222,6 +228,14 @@ function* smartRosterSteps(
     result.diagnostics.push(...basePhysicalErrors)
     return result
   }
+
+  const initialWarmupPolicy = applyGeneratedWarmupPolicy(base, inventory)
+  if (!initialWarmupPolicy.valid) {
+    result.diagnostics.push(...initialWarmupPolicy.diagnostics)
+    return result
+  }
+  const prepareWarmupPolicy = (workspace: RosterWorkspace): boolean =>
+    applyGeneratedWarmupPolicy(workspace, inventory).valid
 
   const hasProductionRoom = Object.values(base.mainPlan.facilities).some(
     r => r.type === 'manufacture' || r.type === 'trading'
@@ -245,32 +259,39 @@ function* smartRosterSteps(
   }
 
   // ==========================================
-  // ==========================================
-  // Phase 1: Indivisible Atomic-to-Molecular Synthesis
+  // Phase 1: Construct one feasible roster, then calculate a crew assignment.
   // ==========================================
   onProgress?.({
     phase: 'building',
     phaseProgress: 0,
     currentTrial: 0,
-    totalTrials: trials,
-    label: '阶段 1/3: 汇总可用组合并按实际技能评估效率...',
+    label: `阶段 1/${stages}: 构造合法初始排班并计算完整队伍分配...`,
   })
 
-  const branchCount = trials
-  const molecularBranches = generateMolecularCandidates(base, entries, inventory, {
+  const synthesisOptions = {
     seed,
-    branchCount,
+    branchCount: 1,
     lockedPositions,
     lockedOperators,
     droneTarget,
-  })
+    requireWarmupExhaustion: true,
+    warmupInventory: inventory,
+  }
+  const molecularBranches = generateMolecularCandidates(base, entries, inventory, synthesisOptions)
 
   // Deduplicate candidates by layout fingerprint
   const seenFingerprints = new Set<string>()
   const uniqueCandidates: SmartRosterCandidate[] = []
   for (let bIdx = 0; bIdx < molecularBranches.length; bIdx++) {
-    const branch = molecularBranches[bIdx]!
+    const source = molecularBranches[bIdx]!
+    const branch = { ...source, workspace: structuredClone(source.workspace) }
     if (branch.workspace.compatibility.backupPlans.length) { result.diagnostics.push({ code: 'AUTOMATIC_BACKUP_PLANS_FORBIDDEN', message: '自动生成候选禁止携带副表' }); continue }
+    const warmupPolicy = applyGeneratedWarmupPolicy(branch.workspace, inventory)
+    if (!warmupPolicy.valid) {
+      result.diagnostics.push(...warmupPolicy.diagnostics)
+      continue
+    }
+    applyGeneratedRecoveryPolicy(branch.workspace)
     const fp = workspaceFingerprint(branch.workspace)
     if (seenFingerprints.has(fp)) continue
     seenFingerprints.add(fp)
@@ -285,34 +306,45 @@ function* smartRosterSteps(
 
     onProgress?.({
       phase: 'building',
-      phaseProgress: (bIdx + 1) / molecularBranches.length,
-      currentTrial: bIdx + 1,
-      totalTrials: molecularBranches.length,
-      label: `阶段 2/3: 主替联合分配及再组合 ${bIdx + 1}/${molecularBranches.length} 完成`,
+      phaseProgress: 0.1,
+      label: `阶段 1/${stages}: 初始排班已就绪，正在建立完整队伍与工休模型...`,
     })
+    break
   }
 
   if (uniqueCandidates.length === 0) {
     result.diagnostics.push({ code: 'INSUFFICIENT_STAFF', message: '组合和实际练度散件均无法补齐当前布局的主班与独立替补。请增加持有干员、减少工作工位，或检查锁定人员及替补占用。' })
     return result
   }
-  if (uniqueCandidates.length < branchCount) result.diagnostics.push({code:'FEWER_DISTINCT_BRANCHES',message:`生成 ${uniqueCandidates.length}/${branchCount} 个有效候选，使用全部现有候选继续模拟。`})
+  const initial = uniqueCandidates[0]!
+  const computed = computeManufacturingRoster({ userBase: base, initial: initial.workspace, inventory, lockedPositions, lockedOperators }, {
+    warmupHours: options.simulationWarmupHours ?? 24,
+    sampleHours: options.simulationSampleHours ?? 72,
+    onProgress: label => onProgress?.({ phase: 'building', phaseProgress: 0.5, label: `阶段 1/${stages}: ${label}` }),
+  })
+  result.phases.calculation = computed.calculation
+  result.diagnostics.push(...computed.diagnostics)
+  if (computed.workspace && !seenFingerprints.has(workspaceFingerprint(computed.workspace))) {
+    uniqueCandidates.push({ id: 'computed-assignment', workspace: computed.workspace,
+      staticScore: completeShiftScores(computed.workspace, inventory)?.mean ?? null, simScore: null, diagnostics: [] })
+  }
 
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, weighted production)
-  // Admit the complete distinct, physically valid branch set before simulating every member.
+  // The model is an approximation. F confirms whether its single decision improves the initial roster.
   // ==========================================
   const simCandidates = [...uniqueCandidates]
   onProgress?.({
     phase: 'simulating',
     phaseProgress: 0,
     totalTrials: simCandidates.length,
-    label: `阶段 2/3: 验证全部分配候选（预热与采样，加权产出评分）...`,
+    label: `阶段 2/${stages}: 完整仿真验证初始排班与计算结果，保留日均加权产出较高者...`,
   })
 
   const cache = new CandidateSimulationCache()
   const simulationJob = (workspace: RosterWorkspace): CandidateSimulationJob => {
     // Persist the policy in the candidate itself before caching and verification.
+    if (!prepareWarmupPolicy(workspace)) throw new Error('暖机干员必须具有有效的主班耗尽休息策略')
     applyGeneratedRecoveryPolicy(workspace)
     return {
     workspace,
@@ -342,24 +374,24 @@ function* smartRosterSteps(
   const inputKeys = jobs.map(job => cache.key(job))
   const efficiencies = jobs.map(job => productionEfficiencyVector(job.workspace, inventory))
   const efficiencyById = new Map(simCandidates.map((candidate, index) => [candidate.id, efficiencies[index]!]))
-  const simulationResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, onProgress) }
+  const simulationResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, stages, onProgress) }
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!
     cache.remember(inputKeys[idx]!, summary)
-    candidate.simScore = summary.completed ? summary.simScore : null
-    if (summary.completed) candidate.staticScore = summary.simScore
+    candidate.simScore = summary.completed && Number.isFinite(summary.simScore) ? summary.simScore : null
     candidate.diagnostics.push(...summary.diagnostics)
     if (summary.specialOperators) candidate.specialOperators = summary.specialOperators
   }
 
-  const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed ? [uniqueCandidates[index]!.id] : []))
+  const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed && Number.isFinite(summary.simScore) ? [uniqueCandidates[index]!.id] : []))
   simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
-    compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!) || (b.simScore ?? 0) - (a.simScore ?? 0))
+    (b.simScore ?? 0) - (a.simScore ?? 0) || compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!))
   const bestSimCandidate = simCandidates[0]!
+  const staticScores = uniqueCandidates.flatMap(candidate => candidate.staticScore === null ? [] : [candidate.staticScore])
   result.phases.static = {
-    candidates: simCandidates,
-    bestScore: bestSimCandidate.simScore,
+    candidates: [...uniqueCandidates],
+    bestScore: staticScores.length ? Math.max(...staticScores) : null,
   }
   result.phases.simulation = {
     candidates: simCandidates,
@@ -384,17 +416,22 @@ function* smartRosterSteps(
     .map(message => ({ code: 'COMBINATION_SEARCH_LIMIT', message })))
   result.specialOperators = bestSimCandidate.specialOperators ?? []
 
+  // Only explicit opt-in runs further simulations. Every default candidate is
+  // fully prepared before the parallel batch, so the winner can be returned as-is.
+  if (enableDeepSearch) {
   // First calculate income, then order complete physical shifts by output/hour.
   // A changed workspace must receive its own simulation result before export.
   onProgress?.({ phase: 'searching', phaseProgress: 0.05, label: '阶段 3/3: 首次收益计算后，按每小时产出验证主替排序...' })
   const ordered = structuredClone(finalWorkspace)
-  const ordering = normalizeProductionShifts(ordered, inventory, { lockedPositions, lockedOperators }, 'hourly-output')
+  const ordering = normalizeProductionShifts(ordered, inventory, { lockedPositions, lockedOperators,
+    requireWarmupExhaustion: true, warmupInventory: inventory }, 'hourly-output')
   result.diagnostics.push(...ordering.map(message => ({ code: 'PRODUCTION_SHIFT_CONSTRAINT', message })))
-  if (JSON.stringify(ordered) !== JSON.stringify(finalWorkspace) && preservesFormedCombinations(finalWorkspace, ordered, inventory) && configureRunOrder(ordered, inventory)) {
+  if (JSON.stringify(ordered) !== JSON.stringify(finalWorkspace) && preservesFormedCombinations(finalWorkspace, ordered, inventory) &&
+    configureRunOrder(ordered, inventory) && prepareWarmupPolicy(ordered)) {
     const job = simulationJob(ordered), cached = cache.get(job), verified = cached ?? simulateCandidate(job)
     if (!cached) cache.remember(cache.key(job), verified)
-    if (verified.completed) { finalWorkspace = ordered; finalScore = verified.simScore }
-    else result.diagnostics.push({ code: 'SHIFT_ORDERING_UNVERIFIED', message: '主替排序后的完整模拟未完成，保留首次收益已验证的排班。' })
+    if (verified.completed && verified.simScore > finalScore) { finalWorkspace = ordered; finalScore = verified.simScore }
+    else if (!verified.completed) result.diagnostics.push({ code: 'SHIFT_ORDERING_UNVERIFIED', message: '主替排序后的完整模拟未完成，保留首次收益已验证的排班。' })
   }
 
   // ==========================================
@@ -420,7 +457,7 @@ function* smartRosterSteps(
     maxEvaluations: replacementBudget,
     configureRunOrderCandidates: true,
     evaluator: (candidateWs) => {
-      if (compareWorkspacePreference(candidateWs, finalWorkspace) < 0 || compareProductionEfficiency(candidateWs, finalWorkspace, inventory) < 0 || !preservesFormedCombinations(finalWorkspace, candidateWs, inventory)) return Number.NaN
+      if (!preservesFormedCombinations(finalWorkspace, candidateWs, inventory)) return Number.NaN
       try {
         const job = simulationJob(candidateWs)
         const cached = cache.get(job)
@@ -443,7 +480,7 @@ function* smartRosterSteps(
   }
 
   if (repResult.swappedCount > 0 && repResult.score && repResult.score > finalScore &&
-    compareWorkspacePreference(repResult.workspace, finalWorkspace) >= 0 && compareProductionEfficiency(repResult.workspace, finalWorkspace, inventory) >= 0 && preservesFormedCombinations(finalWorkspace, repResult.workspace, inventory)) {
+    preservesFormedCombinations(finalWorkspace, repResult.workspace, inventory)) {
     finalWorkspace = repResult.workspace
     finalScore = repResult.score
   }
@@ -490,7 +527,7 @@ function* smartRosterSteps(
             label: `阶段 3/3: 邻域微调 ${progress.label} (候选 ${progress.completedCandidates}/${progress.totalCandidates}，场景 ${progress.completedScenarios}/${progress.totalScenarios})`,
           })
         },
-        candidate => compareWorkspacePreference(candidate, finalWorkspace) >= 0 && compareProductionEfficiency(candidate, finalWorkspace, inventory) >= 0 && preservesFormedCombinations(finalWorkspace, candidate, inventory)
+        candidate => preservesFormedCombinations(finalWorkspace, candidate, inventory) && prepareWarmupPolicy(candidate)
       )
 
       if (searchResult.bestCandidateId && searchResult.bestCandidateId !== 'baseline' && searchResult.bestWorkspace) {
@@ -501,12 +538,10 @@ function* smartRosterSteps(
           result: searchResult,
         }
         const candidate = structuredClone(searchResult.bestWorkspace)
-        const ordering = normalizeProductionShifts(candidate, inventory, { lockedPositions, lockedOperators }, 'hourly-output')
-        result.diagnostics.push(...ordering.map(message => ({ code: 'PRODUCTION_SHIFT_CONSTRAINT', message })))
         const job = simulationJob(candidate), cached = cache.get(job)
         const verified = cached ?? simulateCandidate(job)
         if (!cached) cache.remember(cache.key(job), verified)
-        if (verified.completed && verified.simScore > finalScore + 1e-6 && compareWorkspacePreference(candidate, finalWorkspace) >= 0 && compareProductionEfficiency(candidate, finalWorkspace, inventory) >= 0 && preservesFormedCombinations(finalWorkspace, candidate, inventory)) {
+        if (verified.completed && verified.simScore > finalScore + 1e-6 && preservesFormedCombinations(finalWorkspace, candidate, inventory)) {
           finalWorkspace = candidate
           finalScore = verified.simScore
         } else {
@@ -532,6 +567,7 @@ function* smartRosterSteps(
       })
     }
   }
+  }
 
   // The exported roster must be the one whose score was evaluated. Never fill or rewrite
   // dormitories/auxiliary seats after simulation; molecular synthesis already prepares them.
@@ -539,6 +575,13 @@ function* smartRosterSteps(
     result.diagnostics.push({ code: 'AUTOMATIC_BACKUP_PLANS_FORBIDDEN', message: '自动生成结果禁止携带副表' })
     return result
   }
+  const finalWarmupPolicy = applyGeneratedWarmupPolicy(finalWorkspace, inventory)
+  for (const diagnostic of finalWarmupPolicy.diagnostics) {
+    if (!result.diagnostics.some(existing => existing.code === diagnostic.code && existing.message === diagnostic.message)) {
+      result.diagnostics.push(diagnostic)
+    }
+  }
+  if (!finalWarmupPolicy.valid) return result
   const finalErrors = validatePhysicalRoster(finalWorkspace)
   if (finalErrors.length) {
     result.workspace = finalWorkspace

@@ -7,7 +7,7 @@ import {withMowerFreeBeds} from '../test/mowerRosterFixture'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 import { exportMowerJson, importMowerJson } from '../workbench/compat/mowerJson'
 import {selectCombinationCandidates} from './combinationCandidates'
-import {assignBackups,compileCandidateLayout,generateRosterDraft} from './rosterDraft'
+import {assignBackups,compileCandidateLayout,generateRosterDraft,improveBackups} from './rosterDraft'
 import {simulateSchedule} from '../simulator/scheduleSimulation'
 import {compileRosterSchedule} from '../scheduler/compileRosterSchedule'
 import type {OwnedOperatorInput} from '../domain/operatorInventory'
@@ -18,6 +18,52 @@ const owned=(names:string[]):OwnedOperatorInput[]=>names.map(operator=>{
 const allOwned=owned(OPERATORS.map(o=>o.name))
 const candidate=(name:string)=>selectCombinationCandidates(OPERATORS.map(o=>o.name)).available.find(c=>c.id===name)!
 const mains=(ws:ReturnType<typeof createDefaultWorkspace>)=>Object.values(ws.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>s.occupant.kind==='operator'?[id(s.occupant.operatorId)]:[]))
+describe('warmup exhaustion backup admission',()=>{
+ it('keeps legacy gap filling opt-in and chooses an ordinary non-warmup relief worker',()=>{
+  const ws=createDefaultWorkspace(),slot=ws.mainPlan.facilities.room_1_1.slots[0]!
+  slot.occupant={kind:'operator',operatorId:id('砾')}
+  const positions=[{roomId:'room_1_1' as const,slotIndex:0,operatorId:id('砾')}]
+  const inventory=compileOperatorInventory(owned(['砾','阿罗玛']))
+  const legacy=structuredClone(ws)
+  assignBackups(legacy,inventory,positions)
+  expect(legacy.mainPlan.facilities.room_1_1.slots[0]!.replacements).toEqual([id('阿罗玛')])
+  const missing=assignBackups(ws,inventory,positions,{requireWarmupExhaustion:true})
+  expect(slot.replacements).toEqual([])
+  expect(missing.missingReplacementIds).toEqual([id('砾')])
+  assignBackups(ws,compileOperatorInventory(owned(['砾','阿罗玛','调香师'])),positions,{requireWarmupExhaustion:true})
+  expect(slot.replacements).toEqual([id('调香师')])
+ })
+ it.each(['low-stage','other-facility'] as const)('uses actual unlocked skills and facility for %s backup admission',kind=>{
+  const ws=createDefaultWorkspace(),room=ws.mainPlan.facilities.room_1_1
+  const backup=kind==='low-stage'?'阿罗玛':'芬',primary=kind==='low-stage'?'砾':'能天使'
+  if(kind==='other-facility'){room.type='trading';room.product='money'}
+  room.slots[0]!.occupant={kind:'operator',operatorId:id(primary)}
+  const library=owned([primary,backup])
+  if(kind==='low-stage')Object.assign(library.find(o=>o.operator===backup)!,{elitePhase:0,level:1})
+  assignBackups(ws,compileOperatorInventory(library),[{roomId:room.roomId,slotIndex:0,operatorId:id(primary)}],{requireWarmupExhaustion:true})
+  expect(room.slots[0]!.replacements).toEqual([id(backup)])
+ })
+ it('preserves existing excluded backups and dormitory refresh references for entry-point diagnostics',()=>{
+  const ws=createDefaultWorkspace(),slot=ws.mainPlan.facilities.room_1_1.slots[0]!,fiam=ws.mainPlan.facilities.dormitory_4.slots[0]!
+  slot.occupant={kind:'operator',operatorId:id('砾')};slot.replacements=[id('阿罗玛')];slot.groupId='user-group'
+  fiam.occupant={kind:'operator',operatorId:id('菲亚梅塔')};fiam.replacements=[id('阿罗玛')]
+  const before=structuredClone(ws),inventory=compileOperatorInventory(owned(['砾','阿罗玛','菲亚梅塔','调香师']))
+  assignBackups(ws,inventory,[{roomId:'room_1_1',slotIndex:0,operatorId:id('砾')},{roomId:'dormitory_4',slotIndex:0,operatorId:id('菲亚梅塔')}],{requireWarmupExhaustion:true,excludedOperatorIds:[id('阿罗玛')]})
+  improveBackups(ws,inventory,[{roomId:'room_1_1',slotIndex:0},{roomId:'dormitory_4',slotIndex:0}],[id('阿罗玛')],{requireWarmupExhaustion:true})
+  expect(ws).toEqual(before)
+ })
+ it('does not promote a warmup worker during backup improvement',()=>{
+  const ws=createDefaultWorkspace(),slot=ws.mainPlan.facilities.meeting.slots[0]!
+  slot.occupant={kind:'operator',operatorId:id('红')};slot.replacements=[id('安德切尔')]
+  const inventory=compileOperatorInventory(owned(['红','安德切尔','伊内丝']))
+  const legacy=structuredClone(ws)
+  improveBackups(legacy,inventory,[{roomId:'meeting',slotIndex:0}])
+  expect(legacy.mainPlan.facilities.meeting.slots[0]!.replacements).toEqual([id('伊内丝')])
+  improveBackups(ws,inventory,[{roomId:'meeting',slotIndex:0}],[],{requireWarmupExhaustion:true})
+  expect(slot.replacements).toEqual([id('安德切尔')])
+ })
+})
+
 describe('typed candidate layout and roster drafts',()=>{
  it('compiles all 56 contracts without deriving products from candidate IDs or formulas',()=>{
   const all=selectCombinationCandidates(OPERATORS.map(o=>o.name),{includeObserved:false}).available
