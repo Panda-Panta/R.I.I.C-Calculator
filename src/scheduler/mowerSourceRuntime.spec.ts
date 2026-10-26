@@ -6,6 +6,7 @@ import {alphaRestingTier} from './mowerAlphaDorm'
 import {MowerTask,MOWER_TASK_TYPES as T,toMowerMicros} from './mowerTaskQueue'
 import {evaluateBackupExpression} from './backupPlans'
 import {retainMowerFailedTask} from './mowerTaskFailure'
+import {invalidateMowerReplacementChecks} from './mowerReplacementCheck'
 import {completeMowerGroupConfirmation} from './mowerGroupConfirmation'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {compileRosterSchedule} from './compileRosterSchedule'
@@ -354,6 +355,90 @@ it('checks a working ordinary cover at its personal lower limit and replaces onl
  expect(state.diagnostics.some(d=>d.code==='mower-task-exception')).toBe(false)
 })
 
+function workingOrdinaryCoverClockFixture(minimumClockStepMicros=1){
+ const config=fixture();config.mowerAlpha=true;config.idleOperators=['S']
+ config.mowerSourcePlan!.room_1_1![0]!.replacement=['R','S'];config.positions[0]!.candidates=['R','S']
+ config.mowerSourceRules!.restInFull=['A'];config.initialMorale={A:8,R:12,S:24}
+ const state=createRosterRuntime(config),source=getMowerSourceRuntime(state),slowRecovery={workRate:()=>2,recoveryRate:()=>.1}
+ source.initial=false;source.firstInit=false
+ state.occupants.room_1_1_0='R';state.bedOccupants.dormitory_1_4='A'
+ for(const [slot,name] of Object.entries({...state.occupants,...state.bedOccupants})){
+  const op=source.data.operators[name]!
+  op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]??24;op.timeStampMicros=0
+ }
+ source.data.operators.R!.lowerLimit=4;source.data.operators.S!.mood=24;source.data.operators.S!.timeStampMicros=0;source.queue.tasks=[]
+ settleRoster(state,slowRecovery)
+ const check=source.queue.tasks.find(task=>task.replacementCheck)!
+ expect(check.time).toBe(4)
+ state.config.mowerRunLoopClock={minimumClockStepMicros,notificationSleepMicros:1_000_000}
+ return {state,source,slowRecovery,check}
+}
+
+it.each([{lateSeconds:0,step:1},{lateSeconds:6,step:1},{lateSeconds:0,step:7},{lateSeconds:6,step:7}])('executes a due cover check after the existing outer wake without rolling it back or postponing it ($lateSeconds seconds late, $step microseconds)',({lateSeconds,step})=>{
+ const {state,source,slowRecovery,check}=workingOrdinaryCoverClockFixture(step)
+ advanceRoster(state,4+lateSeconds/3600,slowRecovery)
+ const now=toMowerMicros(state.time),deadline=check.timeMicros,wake=now+step
+ source.runReturn={wakeMicros:wake,finishFallback:false}
+ for(let query=0;query<3;query++){
+  expect(nextRosterActionHours(state,slowRecovery)).toBe(step/3_600_000_000)
+  expect(source.runReturn?.wakeMicros).toBe(wake)
+  expect(check.timeMicros).toBe(deadline)
+ }
+ advanceRoster(state,step/3_600_000_000,slowRecovery)
+ settleRoster(state,slowRecovery)
+ expect(state.occupants.room_1_1_0).toBe('S')
+ expect(source.queue.tasks).not.toContain(check)
+ expect(source.data.operators.A!.isResting()).toBe(true)
+ expect(state.morale.A).toBeLessThan(24)
+ expect(state.diagnostics.some(d=>d.code==='mower-task-exception')).toBe(false)
+})
+
+it('rechecks a stale invalidated cover after a completed room operation without replacing it before its lower limit',()=>{
+ const {state,source,slowRecovery,check}=workingOrdinaryCoverClockFixture()
+ advanceRoster(state,1,slowRecovery)
+ invalidateMowerReplacementChecks(getMowerSourceRuntime(state).data,source.queue)
+ const originalTime=check.timeMicros
+ expect(originalTime).toBe(toMowerMicros(1))
+ advanceRoster(state,6/3600,slowRecovery)
+ const now=toMowerMicros(state.time)
+ source.runReturn={wakeMicros:now+1,finishFallback:false}
+ expect(nextRosterActionHours(state,slowRecovery)).toBe(1/3_600_000_000)
+ expect(check.timeMicros).toBe(originalTime)
+ advanceRoster(state,1/3_600_000_000,slowRecovery);settleRoster(state,slowRecovery)
+ expect(source.data.operators.R!.timeStampMicros).toBe(toMowerMicros(state.time))
+ expect(state.occupants.room_1_1_0).toBe('R')
+ expect(source.queue.tasks).toContain(check)
+ expect(check.timeMicros).toBeGreaterThan(toMowerMicros(state.time))
+ expect(check.replacementCheck!.readAfterMicros).toBeUndefined()
+})
+it('wakes an outer sleep at a future cover deadline and actually executes the check at that deadline',()=>{
+ const {state,source,slowRecovery,check}=workingOrdinaryCoverClockFixture(7)
+ advanceRoster(state,1,slowRecovery)
+ source.runReturn={wakeMicros:toMowerMicros(6),finishFallback:false}
+ const deadline=check.timeMicros
+ expect(nextRosterActionHours(state,slowRecovery)).toBe(3)
+ expect(source.runReturn.wakeMicros).toBe(deadline)
+ expect(nextRosterActionHours(state,slowRecovery)).toBe(3)
+ expect(check.timeMicros).toBe(deadline)
+ advanceRoster(state,3,slowRecovery);settleRoster(state,slowRecovery)
+ expect(source.queue.tasks).not.toContain(check)
+ expect(source.queue.tasks.find(task=>task.type===T.SELF_CORRECTION)?.plan).toEqual({room_1_1:['S']})
+ expect(nextRosterActionHours(state,slowRecovery)).toBe(7/3_600_000_000)
+ advanceRoster(state,7/3_600_000_000,slowRecovery);settleRoster(state,slowRecovery)
+ expect(state.occupants.room_1_1_0).toBe('S')
+ expect(source.queue.tasks).not.toContain(check)
+})
+
+it('executes an overdue cover check immediately when no outer return is pending',()=>{
+ const {state,source,slowRecovery,check}=workingOrdinaryCoverClockFixture(7)
+ advanceRoster(state,4+6/3600,slowRecovery)
+ delete source.runReturn
+ expect(nextRosterActionHours(state,slowRecovery)).toBe(0)
+ expect(source.runReturn).toBeUndefined()
+ settleRoster(state,slowRecovery)
+ expect(state.occupants.room_1_1_0).toBe('S')
+ expect(source.queue.tasks).not.toContain(check)
+})
 it('enables fatigue-rate invalidation after initial reads when a configured provider really changes rooms',()=>{
  const config=fixture();config.mowerAlpha=true;config.idleOperators=['S']
  config.mowerSourcePlan!.room_1_1![0]!.replacement=['R','S'];config.positions[0]!.candidates=['R','S']
