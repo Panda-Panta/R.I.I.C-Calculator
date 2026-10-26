@@ -120,10 +120,12 @@ describe('252 Layout Automatic Roster Generation (Trade 2+1, Manufacture 33332, 
     const physErrors = validatePhysicalRoster(outWs)
     expect(physErrors).toEqual([])
 
-    // Verification 3: Tracking recorded all 3 phases
+    // Verification 3: Disabling deep search completes the two-stage path directly.
     expect(trackingEvents.some((e) => e.phase === 'building')).toBe(true)
     expect(trackingEvents.some((e) => e.phase === 'simulating')).toBe(true)
-    expect(trackingEvents.some((e) => e.phase === 'searching')).toBe(true)
+    expect(trackingEvents.some((e) => e.phase === 'searching')).toBe(false)
+    expect(result.phases.search).toBeNull()
+    expect(result.phases.replacement).toBeUndefined()
     expect(trackingEvents.some((e) => e.phase === 'done')).toBe(true)
 
     // Verification 4: Rule 3 Check: Minimalist (至简) strictly forbidden from manufacture under 2 power

@@ -8,11 +8,17 @@ const CURVES: Record<string, readonly [number,number,number]> = {
  'power_rec_spd&addition[000]':[10,1,15], 'power_rec_spd&addition[001]':[15,1,20],
  'meet_spd_hast[000]':[20,2,30],
 }
+const DELAYED_BONUSES: Record<string, readonly [number,number]> = { 'manu_prod_cost_min[001]':[12,10] }
+/** A known productivity increase with continuous work, not a description heuristic. */
+export function isWarmupSkill(buffId:string):boolean {
+ const curve=CURVES[buffId], delayed=DELAYED_BONUSES[buffId]
+ return Boolean(curve&&curve[1]>0&&curve[2]>curve[0] || delayed&&delayed[0]>0&&delayed[1]>0)
+}
 export function temporalSkillBonus(buffId:string, operatorId:string, context?:TimeContext):number|null {
  if (!context) return null
  const value=context.workHoursByOperator.get(operatorId)
  if(value===undefined || !Number.isFinite(value) || value<0) return null
- if(buffId==='manu_prod_cost_min[001]') return value>=12?10:0
+ const delayed=DELAYED_BONUSES[buffId]; if(delayed)return value>=delayed[0]?delayed[1]:0
  const curve=CURVES[buffId]; if(!curve)return null
  const [initial,slope,cap]=curve
  const hours=context.warmupModel==='hourly'?Math.floor(value):value
@@ -21,7 +27,7 @@ export function temporalSkillBonus(buffId:string, operatorId:string, context?:Ti
 export function getTemporalSkillBoundaries(operatorId:string,context:OperatorContext={}):number[] {
  const events=new Set<number>()
  for(const skill of operatorFor(context,operatorId)?.skills??[]) {
-  if(skill.buffId==='manu_prod_cost_min[001]')events.add(12)
+  const delayed=DELAYED_BONUSES[skill.buffId]; if(delayed)events.add(delayed[0])
   const curve=CURVES[skill.buffId]
   if(curve)for(let hour=1;hour<=(curve[2]-curve[0])/curve[1];hour++)events.add(hour)
  }

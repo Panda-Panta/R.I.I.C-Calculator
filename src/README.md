@@ -7,7 +7,7 @@
 | `engine/` | 静态效率、心情和基础收益计算 |
 | `scheduler/` | 排班编译、运行状态、任务队列、策略和排班参与者校验 |
 | `simulator/` | 事件时间线、生产与资源记录、动态仿真，以及仿真报告的计分适配 |
-| `optimizer/` | 候选枚举、组合筛选、方案搜索和比较 |
+| `optimizer/` | 初始排班构造、完整队伍域、条件周期估值、约束分配与完整仿真比较 |
 | `workbench/` | 工作台状态、配置、导入导出、计算桥接与报告展示模型 |
 | `workbench/composables/` | Vue 工作台的持久化、收益计算任务与自动排班任务控制 |
 | `components/workbench/` | 页面、编辑器与弹窗；`WorkbenchShell.vue` 负责界面组装与交互路由 |
@@ -18,6 +18,21 @@
 共享产出计分由 `domain/productionScore.ts` 唯一实现；`simulator/productionScore.ts` 将已完成生产的仿真报告转换为通用计分输入。排班模型位于 `domain/roster.ts`，干员名称、代号和 ID 解析位于 `domain/operatorIdentifiers.ts`。底层模块直接引用这些位置。
 
 `workbench/model.ts`、`optimizer/productionObjective.ts` 以及 Mower JSON 模块的原标识解析导出保留为兼容入口，供既有脚本或集成使用，不重复实现规则。
+
+自动排班由 `optimizer/molecularSynthesis.ts` 构造一份合法初始表，`computedManufacturingRoster.ts` 编排完整队伍域、周期估值、联合指派与事务解码。`smartRoster.ts` 默认只把初始表和至多一个不同的计算结果送入同条件完整仿真，按日均加权产出保留较优方案，并直接返回该方案同次仿真的报告。默认不再调用 `automaticRosterCandidates.ts` 生成 6+2 排班，也不追加后置换人或第三阶段搜索；用户显式开启的额外比较保留。
+
+新计算分为以下职责：
+
+- `manufacturingCrewDomain.ts` 从原始用户表、初始表、实际库和锁集提取受支持制造组，流式枚举完整主替队伍，保留确定座次并事务解码；多绑定、固定外部引用等复杂块保持原样。用户原有核心与固定跨站锚为必留，内部生成的核心可完整弃选。
+- `manufacturingCrewFeasibility.ts` 在估值前按组、房、角色及完整核心标签进行前向可达和反向可完成检查，仅删除已证明不可能组成完整分配的类别；预算中断返回原库，不进行部分剪枝。
+- `manufacturingCrewValuation.ts` 在有限预热和采样窗口内，以实际技能、暖机与休息策略生成条件周期系数。固定外部环境和参考恢复条件是模型假设，不等于完整调度时序；未量化或预算中止明确记录，只有完整系数进入指派。
+- `crewAssignmentKernel.ts` 用动态规划处理组、房、角色和必留核心覆盖；`crewAssignmentSearch.ts` 对重复人员冲突分支，返回可行性、模型上界及预算状态。它们不修改排班、不调用完整仿真，上界与最优性只适用于传入的量化系数模型。
+
+`computedManufacturingRoster.ts` 分别记录队伍库、量化和搜索是否完整。预算中断可以保留当前已量化子域中的可行结果；没有可接受结果时保留初始排班，不能据此宣称完整域最优。最终完整仿真仍负责确认收益。整合主线89070时钟修复后，同输入整体流程已观察到收益提高0.60%、等待减少67.63%、CPU减少79.63%；数学分配在该案例中未增加初始表的F。单次固定输入记录及模型边界见 [自动排班搜索说明](../docs/automatic-roster-search.md)。
+
+`generatedWarmupPolicy.ts` 共用实际设施与已解锁技能的显式暖机判定，在构造、估值和正式仿真前配置主班耗尽策略，拒绝不能表达该策略的普通暖机替班；没有明示数值曲线的裁缝/线索倾向沿用满效率默认，不自动增加耗尽标记。`combinationEvaluation.ts` 的技能档案复用仅在单次同步评分内生效，不跨库存或练度变化缓存。正式模拟器、物理约束和共享产出权重保持独立。
+
+`optimizer/candidateExecutionOrder.ts` 用实际主替初始耗速估计事件密集程度，仅决定并行派发顺序；入口将回调与结果恢复到原候选索引。该估值不筛掉候选、不改变正式模拟输入、不作为收益或最优性上界。
 
 领域、收益引擎和排班模块不依赖 Vue、Pinia、界面或优化器。仿真模块不依赖优化器；专用 Worker 可以调用工作台桥接以接收界面请求。`test/architecture.spec.ts` 检查这些依赖约定，包括类型引用，并确保所有 Vue 组件都有应用入口。
 

@@ -10,6 +10,7 @@ import {admitCombinationCandidates} from './inventoryAdmission'
 import type {CandidateAvailability,CandidateRoom} from './combinationCandidates'
 import {rankStaffingCandidates} from './staffingQuality'
 import { facilityCapacity as capacity } from '../domain/facilities'
+import { isWarmupOperatorInFacility } from './generatedWarmupPolicy'
 
 export const CANDIDATE_FACILITY_TYPES:Record<CandidateRoom,MowerFacilityType>={MANUFACTURE:'manufacture',TRADING:'trading',POWER:'power',CONTROL:'central',DORMITORY:'dormitory',HIRE:'contact',TRAINING:'train',MEETING:'meeting'}
 export interface LayoutAssignment {
@@ -190,7 +191,7 @@ export function generateRosterDraft(base:RosterWorkspace,entries:readonly OwnedO
  return result
 }
 
-export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,added:{roomId:MowerRoomId;slotIndex:number;operatorId:string}[],options:{excludedOperatorIds?:readonly string[]}={}):RosterDraftResult['restResources']{
+export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,added:{roomId:MowerRoomId;slotIndex:number;operatorId:string}[],options:{excludedOperatorIds?:readonly string[];requireWarmupExhaustion?:boolean}={}):RosterDraftResult['restResources']{
  const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
  const excluded=new Set((options.excludedOperatorIds??[]).map(resolveId))
  excluded.forEach(id=>reserved.add(id))
@@ -209,7 +210,7 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const pools=positions.map(p=>{
   const room=draft.mainPlan.facilities[p.roomId]
   // Any ordinary relief worker supplies the recycling staff bonus; a second RECYCLE skill is not required.
-  return rankStaffingCandidates(draft,inventory,p,inventory.operators.filter(o=>!reserved.has(o.charId)&&isOrdinaryReplacementCandidate(o.charId,room.type)&&o.name!=='菲亚梅塔'&&(room.type==='recycle'||o.skills.some(s=>s.roomType===roomTypes.get(room.type)))).map(o=>o.charId),'backup',{completingReliefTeam:true,allowNeutral:room.type==='recycle'})
+  return rankStaffingCandidates(draft,inventory,p,inventory.operators.filter(o=>!reserved.has(o.charId)&&isOrdinaryReplacementCandidate(o.charId,room.type)&&o.name!=='菲亚梅塔'&&(!options.requireWarmupExhaustion||!isWarmupOperatorInFacility(o.charId,room.type,inventory))&&(room.type==='recycle'||o.skills.some(s=>s.roomType===roomTypes.get(room.type)))).map(o=>o.charId),'backup',{completingReliefTeam:true,allowNeutral:room.type==='recycle'})
  })
  // Bipartite augmentation avoids consuming a scarce multi-facility backup greedily.
  const owner=new Map<string,number>()
@@ -227,12 +228,12 @@ export function assignBackups(draft:RosterWorkspace,inventory:OperatorInventory,
  const groupSizes=new Map<string,number>()
  for(const p of ordinaryPositions){const group=draft.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId??`${p.roomId}:${p.slotIndex}`;groupSizes.set(group,(groupSizes.get(group)??0)+1)}
  // Re-evaluate the complete relief teams after matching: a candidate can suppress its new peers.
- improveBackups(draft,inventory,positions,[...excluded])
+ improveBackups(draft,inventory,positions,[...excluded],options)
  return {freeBeds:Object.values(draft.mainPlan.facilities).filter(r=>r.type==='dormitory').reduce((n,r)=>n+r.slots.filter(s=>s.occupant.kind==='free').length,0),minimumFreeBedsForNewGroup:Math.max(0,...groupSizes.values()),missingReplacementIds:ordinaryPositions.flatMap(p=>{const room=draft.mainPlan.facilities[p.roomId];return room.slots[p.slotIndex]!.replacements.some(id=>isOrdinaryReplacementCandidate(id,room.type))?[]:[p.operatorId]})}
 }
 
 /** Coordinate improvement over actual relief teams, preserving special candidates and locked positions. */
-export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory,positions:{roomId:MowerRoomId;slotIndex:number}[],excludedOperatorIds:readonly string[]=[]):void {
+export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory,positions:{roomId:MowerRoomId;slotIndex:number}[],excludedOperatorIds:readonly string[]=[],options:{requireWarmupExhaustion?:boolean}={}):void {
  const excluded=new Set(excludedOperatorIds.map(resolveId))
  const roomTypes=new Map(Object.entries(CANDIDATE_FACILITY_TYPES).map(([game,type])=>[type,game]))
  roomTypes.set('factory','WORKSHOP')
@@ -249,7 +250,7 @@ export function improveBackups(draft:RosterWorkspace,inventory:OperatorInventory
    const current=resolveId(slot.replacements[index]!)
    if(excluded.has(current))continue
    const reserved=new Set(Object.values(draft.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[...(s.occupant.kind==='operator'?[resolveId(s.occupant.operatorId)]:[]),...s.replacements.map(resolveId)])))
-   const pool=inventory.operators.filter(o=>!excluded.has(o.charId)&&!reserved.has(o.charId)&&isOrdinaryReplacementCandidate(o.charId,room.type)&&o.name!=='菲亚梅塔'&&(room.type==='recycle'||o.skills.some(s=>s.roomType===roomTypes.get(room.type))))
+   const pool=inventory.operators.filter(o=>!excluded.has(o.charId)&&!reserved.has(o.charId)&&isOrdinaryReplacementCandidate(o.charId,room.type)&&o.name!=='菲亚梅塔'&&(!options.requireWarmupExhaustion||!isWarmupOperatorInFacility(o.charId,room.type,inventory))&&(room.type==='recycle'||o.skills.some(s=>s.roomType===roomTypes.get(room.type))))
    const best=rankStaffingCandidates(draft,inventory,p,[current,...pool.map(o=>o.charId)],'backup',{allowNeutral:room.type==='recycle'})[0]
    if(best&&best!==current){slot.replacements[index]=best;changed=true}
    else if(!best&&room.type==='trading'){slot.replacements.splice(index,1);changed=true}

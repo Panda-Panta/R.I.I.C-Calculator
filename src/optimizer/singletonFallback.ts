@@ -7,11 +7,13 @@ import { applySingletonWorkPolicy } from './productionSingletons'
 import { validatePhysicalRoster } from './rosterDraft'
 import { rankStaffingCandidates } from './staffingQuality'
 import { ensureBuiltDormKeepers } from './dormKeepers'
+import { isWarmupOperatorInFacility } from './generatedWarmupPolicy'
 
 /** Last resort: jointly match independent mains and relief staff at their actual levels.
  * No atomic bonuses, promoted skills, shared backups or unowned staff are assumed.
  */
-export function buildSingletonFallback(base: RosterWorkspace, inventory: OperatorInventory, locked: Set<string>): RosterWorkspace | null {
+export function buildSingletonFallback(base: RosterWorkspace, inventory: OperatorInventory, locked: Set<string>,
+  options: { requireWarmupExhaustion?: boolean } = {}): RosterWorkspace | null {
   const ws = structuredClone(base)
   if (!ensureBuiltDormKeepers(ws, inventory, locked)) return null
   const reserved = new Set(Object.values(ws.mainPlan.facilities).flatMap(r=>r.slots.flatMap(s=>[
@@ -42,7 +44,9 @@ export function buildSingletonFallback(base: RosterWorkspace, inventory: Operato
       if (slot.occupant.kind === 'empty') positions.push({roomId:room.roomId,slotIndex,backup:false,pool})
       const mainId = slot.occupant.kind === 'operator' ? id(slot.occupant.operatorId) : undefined
       const permanent = mainId !== undefined && ws.mainPlan.conf.workaholic.some(ref=>id(ref)===mainId)
-      if (!permanent && !slot.replacements.some(ref=>isOrdinaryReplacementCandidate(ref,room.type))) positions.push({roomId:room.roomId,slotIndex,backup:true,pool:pool.filter(ref=>isOrdinaryReplacementCandidate(ref,room.type))})
+      if (!permanent && !slot.replacements.some(ref=>isOrdinaryReplacementCandidate(ref,room.type))) positions.push({roomId:room.roomId,slotIndex,backup:true,
+        pool:pool.filter(ref=>isOrdinaryReplacementCandidate(ref,room.type) &&
+          (!options.requireWarmupExhaustion || !isWarmupOperatorInFacility(ref,room.type,inventory)))})
     }
   }
   const owner = new Map<string,number>()

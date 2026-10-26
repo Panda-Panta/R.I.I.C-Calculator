@@ -48,6 +48,32 @@ beforeEach(() => {
 })
 afterEach(() => { wrapper.unmount(); vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
+it('uses two stages for a legacy request without a deep-search choice', () => {
+  const legacy = { ...config }
+  Reflect.deleteProperty(legacy, 'enableDeepSearch')
+  api.handleConfirmSmartRosterConfig(legacy)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options.enableDeepSearch).toBe(false)
+})
+
+it('requests one initial roster independently of legacy candidate counts while preserving explicit simulation settings', () => {
+  const saved = { ...config, trials: 17, simulationTopK: 11, maxStaticEvals: 7000, simulationSampleHours: 72, simulationWarmupHours: 24 }
+  const before = structuredClone(saved)
+  api.handleConfirmSmartRosterConfig(saved)
+  const options = workers[0]!.postMessage.mock.calls[0]![0].options
+  expect(options).toMatchObject({
+    branchCount: 1, seed: 42, simulationSampleHours: 72, simulationWarmupHours: 24, enableDeepSearch: false,
+  })
+  expect(options).not.toHaveProperty('trials')
+  expect(options).not.toHaveProperty('simulationTopK')
+  expect(options).not.toHaveProperty('maxStaticEvals')
+  expect(saved).toEqual(before)
+})
+
+it('preserves an explicit optional deep-search request', () => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableDeepSearch: true })
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options.enableDeepSearch).toBe(true)
+})
+
 it.each(['primary', 'facility', 'policy', 'backup', 'import'] as const)('keeps a newer %s edit when a pending generation returns its older snapshot', kind => {
   api.handleConfirmSmartRosterConfig(config)
   const callback = workers[0]!.onmessage!, original = workers[0]!.postMessage.mock.calls[0]![0].base as RosterWorkspace
@@ -75,6 +101,60 @@ it('accepts its own completed workspace and report after its weight initializati
   expect(session.calculationReport.value).toEqual(report.calculationReport)
   expect(session.isGeneratingRoster.value).toBe(false)
   expect(session.replaceStatusMessage.value).toContain('排班成功')
+})
+
+it.each([
+  { status: 'limited', message: '已到计算预算' },
+  { status: 'invalid', message: '分配优化未完成，已验证并保留初始方案' },
+  { status: 'unsupported', message: '当前配置未进入制造组优化' },
+] as const)('shows the $status allocation outcome without invalidating its verified report', async ({ status, message }) => {
+  api.handleConfirmSmartRosterConfig(config)
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.workspace!.name = `verified ${status}`
+  report.phases.calculation = { status, libraryComplete: status !== 'limited', columnCount: 2, quantifiedColumnCount: 2,
+    initialObjective: 100, frozenComponents: [], elapsedMs: 1, proofScope: 'quantified-manufacturing-model-only' }
+  deliver(workers[0]!.onmessage!, report)
+  await nextTick()
+  expect(store.workspace.name).toBe(`verified ${status}`)
+  expect(session.calculationReport.value).toEqual(report.calculationReport)
+  expect(session.calculationStatus.value).toContain('本次排班验证产出')
+  expect(session.replaceStatusMessage.value).toContain(message)
+  expect(session.replaceStatusMessage.value).toContain('100.0 分/日')
+  expect(session.calculationError.value).toBeNull()
+  expect(session.isGeneratingRoster.value).toBe(false)
+  expect(workers[0]!.terminate).toHaveBeenCalledOnce()
+})
+
+it('does not label a non-budget supported-scope limit as an exhausted budget', async () => {
+  api.handleConfirmSmartRosterConfig(config)
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.phases.calculation = { status: 'limited', libraryComplete: true, columnCount: 3, quantifiedColumnCount: 2,
+    initialObjective: 100, frozenComponents: [], elapsedMs: 1, proofScope: 'quantified-manufacturing-model-only' }
+  deliver(workers[0]!.onmessage!, report)
+  await nextTick()
+  expect(session.replaceStatusMessage.value).toContain('分配计算受当前支持范围限制')
+  expect(session.replaceStatusMessage.value).not.toContain('已到计算预算')
+  expect(session.calculationReport.value).toEqual(report.calculationReport)
+})
+
+it('keeps the normal success wording for a complete allocation', () => {
+  api.handleConfirmSmartRosterConfig(config)
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.phases.calculation = { status: 'complete', libraryComplete: true, columnCount: 2, quantifiedColumnCount: 2,
+    initialObjective: 100, frozenComponents: [], elapsedMs: 1, proofScope: 'quantified-manufacturing-model-only' }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value).toBe('一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班（加权预测：100.0 分/日）。')
+})
+
+it('does not call an optional deep-comparison winner the initial roster after allocation failed', () => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableDeepSearch: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.phases.calculation = { status: 'invalid', libraryComplete: true, columnCount: 2, quantifiedColumnCount: 2,
+    initialObjective: 100, frozenComponents: [], elapsedMs: 1, proofScope: 'quantified-manufacturing-model-only' }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value).toContain('分配优化未完成，已采用完整仿真验证的方案')
+  expect(session.replaceStatusMessage.value).not.toContain('保留初始方案')
+  expect(session.calculationReport.value).toEqual(report.calculationReport)
 })
 
 it('ignores cancelled callbacks after weights change and a new generation starts', () => {
