@@ -83,7 +83,7 @@ test('collector ingestion verifies input/result/shared-source commitments and pr
 test('paired evaluator retains invalid neural cases as null, never scores missing outputs zero', async () => {
     const { evaluateFreeRunning } = await import('./full-training/evaluate.mjs'), { atomic, digest } = await import('./full-training/state.mjs'), dir = mkdtempSync(join(tmpdir(), 'full-evaluate-'));
     try {
-        const bundle = "process.stdin.resume();process.stdin.on('end',()=>process.stdout.write(JSON.stringify({completed:true,score:0,result:{completed:true,simScore:0}})));", input = { options: { seed: 1 } }, outcome = { result: { result: { workspace: { exactTeacher: true } } } }, sources = { records: [{ outcome }] };
+        const bundle = "process.stdin.resume();process.stdin.on('end',()=>process.stdout.write(JSON.stringify({completed:true,score:0,result:{completed:true,simScore:0}})));", input = { familyId: 'fixture', options: { seed: 1, branchCount: 10, enableDeepSearch: true, simulationWarmupHours: 24, simulationSampleHours: 72 } }, outcome = { result: { result: { workspace: { exactTeacher: true } } } }, sources = { records: [{ outcome }] };
         writeFileSync(join(dir, 'worker.mjs'), bundle);
         writeFileSync(join(dir, 'decode-model.bin'), 'fixture-model');
         atomic(join(dir, 'manifest.json'), { provenance: { bundleHash: digest(bundle), sourceHash: 'fixture' } });

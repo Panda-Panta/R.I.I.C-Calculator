@@ -10,6 +10,26 @@ import { facilityCapacity } from '../../domain/facilities';
 import { canReferencePhysical } from './fullActionSpace';
 import { physicalBackupOperatorIds } from '../combinationModel';
 import type { CandidateSimulationResult } from '../candidateSimulation';
+import { applyGeneratedWarmupPolicy } from '../generatedWarmupPolicy';
+import { applyGeneratedRecoveryPolicy } from '../generatedRecoveryPolicy';
+import { normalizeProductionWeights } from '../../domain/productionWeights';
+import { compiledScheduleToRuntimeConfig } from '../../scheduler/scheduleAdapter';
+import { createRosterRuntime } from '../../scheduler/rosterRuntime';
+import { getMowerSourceRuntime } from '../../scheduler/mowerSourceRuntime';
+/** Browser-safe mirror, cross-checked against the teacher protocol module in tests. */
+export const FULL_LATEST_REFERENCE_PROTOCOL = Object.freeze({
+    id: 'latest-default-two-stage-v1', revision: 1, construction: 'one-initial-plus-computed-manufacturing',
+    ranking: 'finite-score-first-preference-efficiency-ties', warmupPolicy: 'generated-warmup-exhaustion-v1',
+    recoveryPolicy: 'generated-recovery-v1', deepSearch: false, modelBudgetPolicy: 'exact-frozen-upstream-defaults',
+    modelProofScope: 'quantified-manufacturing-model-only',
+} as const);
+export interface FullParityReferenceBinding {
+    referenceProtocol: typeof FULL_LATEST_REFERENCE_PROTOCOL;
+    producerSourceHash: string;
+    producerBundleHash: string;
+}
+export type FullParityObjective = { version: 'legacy-componentwise-v1' }
+    | ({ version: 'latest-default-lexicographic-v2' } & FullParityReferenceBinding);
 /** Hashes are external commitments, not authenticated by this pure evaluator. */
 export interface FullParityContract {
     scenarioHash: string;
@@ -43,6 +63,8 @@ export interface FullParityCase {
     contract: FullParityContract;
 }
 export interface FullParityManifest {
+    /** Absence preserves historical componentwise semantics; latest is an explicit new gate. */
+    objective?: FullParityObjective;
     mode: 'development' | 'release';
     scope: string;
     /** Nonstandard sizes require an explicitly named, narrower layout study. */
@@ -78,6 +100,9 @@ export interface FullParityManifest {
     };
 }
 export interface FullParityRun {
+    referenceBinding?: FullParityReferenceBinding;
+    /** Original roster generator provenance, distinct from authoritative rescoring sourceHash. */
+    generationProvenance?: { sourceHash: string; bundleHash: string };
     status: 'completed' | 'failed' | 'timeout' | 'incomplete';
     contract: FullParityContract;
     sourceHash: string;
@@ -132,6 +157,8 @@ export interface FullParitySummary {
     totalRegret: number | null;
 }
 export interface FullParityReport {
+    objectiveVersion: FullParityObjective['version'];
+    referenceBinding: FullParityReferenceBinding | null;
     status: 'release-parity' | 'development-pass' | 'fail' | 'inconclusive';
     scope: string;
     issues: string[];
@@ -159,6 +186,66 @@ function validContract(c: FullParityContract): boolean {
 function available(r: FullParityRun | null): boolean {
     return !!r && r.status === 'completed' && r.result?.completed === true && (!r.result.incomeCase || r.result.incomeCase.eligible === true) && Number.isFinite(r.result.simScore)
         && !!r.workspace && !!r.authoritativeArtifactHash && !!r.rawDaily && Object.values(r.rawDaily).length === 5 && Object.values(r.rawDaily).every(Number.isFinite);
+}
+function validLatestBinding(binding: FullParityReferenceBinding): boolean {
+    return stable(binding.referenceProtocol) === stable(FULL_LATEST_REFERENCE_PROTOCOL)
+        && [binding.producerSourceHash, binding.producerBundleHash].every(hash => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash));
+}
+/** Protocol-specific admissibility, not universal game legality; never repair a scored workspace. */
+function latestWorkspaceIssues(input: RosterWorkspace, output: RosterWorkspace, entries: OwnedOperatorInput[], weights: FullParityContract['weights']): string[] {
+    const issues: string[] = [], inventory = compileOperatorInventory(entries), owned = new Set(inventory.operators.map(op => op.charId));
+    if (stable(normalizeProductionWeights(output.productionWeights)) !== stable(weights)) issues.push('PRODUCTION_WEIGHTS_MISMATCH');
+    for (const field of MOWER_OPERATOR_LIST_FIELDS) {
+        const before = input.mainPlan.conf[field], after = output.mainPlan.conf[field];
+        const canonical = (refs: typeof before) => refs === undefined ? undefined : Array.isArray(refs) && refs.every(ref => typeof ref === 'string') ? refs.map(operatorId) : null;
+        const a = canonical(before), b = canonical(after);
+        // Duplicate/suffixed/unknown references need a richer action domain, not lossy normalization.
+        if ([a, b].some(refs => refs === null || refs && (new Set(refs).size !== refs.length || refs.some(ref => !owned.has(ref))))) {
+            issues.push(`LATEST_UNSUPPORTED_POLICY_REFERENCE:${field}`);
+        }
+        if (a !== undefined && (!b || stable(b.slice(0, a?.length)) !== stable(a))) {
+            issues.push(`INPUT_POLICY_PREFIX_CHANGED:${field}`);
+        }
+    }
+    const otherConf = (ws: RosterWorkspace) => Object.fromEntries(Object.entries(ws.mainPlan.conf).filter(([key]) => !(MOWER_OPERATOR_LIST_FIELDS as readonly string[]).includes(key)));
+    if (stable(otherConf(input)) !== stable(otherConf(output))) issues.push('INPUT_CONF_CHANGED');
+    if (stable(input.compatibility) !== stable(output.compatibility)) issues.push('INPUT_COMPATIBILITY_CHANGED');
+    if (input.schemaVersion !== output.schemaVersion || input.mainPlan.id !== output.mainPlan.id || input.droneCapacity !== output.droneCapacity) issues.push('INPUT_METADATA_CHANGED');
+    for (const room of Object.values(output.mainPlan.facilities)) {
+        room.slots.forEach((slot, index) => {
+            if (stable(input.mainPlan.facilities[room.roomId]?.slots[index]?.metadata) !== stable(slot.metadata)) issues.push('INPUT_SLOT_METADATA_CHANGED');
+            if (room.type === 'trading') {
+                const refs = [...(slot.occupant.kind === 'operator' ? [slot.occupant.operatorId] : []), ...slot.replacements, ...(slot.groupBindings ?? []).flatMap(binding => binding.replacements)];
+                if (refs.some(ref => ['佩佩', 'U-Official'].some(name => operatorId(ref) === operatorId(name)))) issues.push('FORBIDDEN_TRADE_OPERATOR');
+            }
+        });
+    }
+    if (issues.some(issue => issue.startsWith('LATEST_UNSUPPORTED_POLICY_REFERENCE:'))) return [...new Set(issues)];
+    const originalPermanent = new Set(input.mainPlan.conf.workaholic.map(operatorId)), permanent = new Set(output.mainPlan.conf.workaholic.map(operatorId));
+    if ([...input.mainPlan.conf.exhaust_require, ...input.mainPlan.conf.rest_in_full].some(ref => !originalPermanent.has(operatorId(ref)) && permanent.has(operatorId(ref)))) {
+        issues.push('INPUT_REST_POLICY_NEUTRALIZED');
+    }
+    const priorities = [...input.mainPlan.conf.resting_priority, ...input.mainPlan.conf.ope_resting_priority,
+        ...(input.mainPlan.conf.resting_standby ?? []), ...(input.mainPlan.conf.resting_priority_replacement ?? [])].map(operatorId);
+    if (priorities.length) {
+        // Compare the native effective policy on the SAME final roles; do not infer thresholds or simulate.
+        const originalPolicies = structuredClone(output);
+        originalPolicies.mainPlan.conf = structuredClone(input.mainPlan.conf);
+        const operators = (ws: RosterWorkspace) => {
+            const config = compiledScheduleToRuntimeConfig(compileRosterSchedule(ws));
+            config.mowerAlpha = true; // Latest reference executes the alpha scheduler, including ungrouped standby.
+            return getMowerSourceRuntime(createRosterRuntime(config)).data.operators;
+        };
+        const before = operators(originalPolicies), after = operators(output);
+        if (priorities.some(ref => before[ref] && after[ref] && before[ref]!.restingPriority !== after[ref]!.restingPriority)) issues.push('INPUT_REST_PRIORITY_CHANGED');
+        if (priorities.some(ref => before[ref] && after[ref] && !before[ref]!.workaholic && after[ref]!.workaholic)) issues.push('INPUT_REST_POLICY_NEUTRALIZED');
+    }
+    const checked = structuredClone(output), warmup = applyGeneratedWarmupPolicy(checked, inventory);
+    if (!warmup.valid) issues.push('LATEST_WARMUP_POLICY_UNSUPPORTED');
+    if (warmup.addedExhaustOperatorIds.length) issues.push('LATEST_WARMUP_POLICY_MISSING');
+    applyGeneratedRecoveryPolicy(checked);
+    if (stable(checked.mainPlan.conf.rest_in_full.map(operatorId)) !== stable(output.mainPlan.conf.rest_in_full.map(operatorId))) issues.push('LATEST_RECOVERY_POLICY_MISSING');
+    return [...new Set(issues)];
 }
 function workspaceIssues(input: RosterWorkspace, output: RosterWorkspace, entries: OwnedOperatorInput[]): string[] {
     const issues: string[] = [], owned = compileOperatorInventory(entries);
@@ -221,6 +308,15 @@ function summarize(rows: FullParityPairReport[]): FullParitySummary {
 /** No simulation, fallback, optimizer generation, mutation, or score imputation. */
 export function evaluateFullParity(manifest: FullParityManifest, attempts: readonly FullParityAttempt[]): FullParityReport {
     const issues: string[] = [], expected = new Map<string, FullParityCase>(), seenFamilies = new Map<string, string>(), inventoryOwners = new Map<string, string>();
+    const objectiveVersion = manifest.objective?.version ?? 'legacy-componentwise-v1';
+    if (!['legacy-componentwise-v1', 'latest-default-lexicographic-v2'].includes(objectiveVersion)) issues.push('UNKNOWN_PARITY_OBJECTIVE');
+    const latestObjective = manifest.objective?.version === 'latest-default-lexicographic-v2' ? manifest.objective : undefined;
+    const latest = latestObjective !== undefined;
+    const referenceBinding: FullParityReferenceBinding | null = latestObjective ? {
+        referenceProtocol: latestObjective.referenceProtocol, producerSourceHash: latestObjective.producerSourceHash,
+        producerBundleHash: latestObjective.producerBundleHash,
+    } : null;
+    if (referenceBinding && !validLatestBinding(referenceBinding)) issues.push('INVALID_LATEST_REFERENCE_BINDING');
     if (!manifest.scope.trim() || !manifest.checkpointHash)
         issues.push('MISSING_SCOPE_OR_CHECKPOINT');
     for (const [split, families] of Object.entries(manifest.splitFamilies))
@@ -279,6 +375,7 @@ export function evaluateFullParity(manifest: FullParityManifest, attempts: reado
             issues.push('RELEASE_NOT_FROZEN_BEFORE_LABELS');
     }
     const tolerance = manifest.roundoff?.absolute ?? 0;
+    if (latest && tolerance !== 0) issues.push('LATEST_OBJECTIVE_REQUIRES_EXACT_SCORE_COMPARISON');
     if (!Number.isFinite(tolerance) || tolerance < 0 || (tolerance > 0 && (!manifest.roundoff?.proofArtifactHash || !manifest.roundoff.provenance || !manifest.roundoff.frozenBeforeLabels)))
         issues.push('UNPROVEN_ROUNDOFF');
     const counts = new Map<string, number>();
@@ -303,6 +400,9 @@ export function evaluateFullParity(manifest: FullParityManifest, attempts: reado
             local.push('MISSING_PAIR');
         for (const [role, run] of [['BASELINE', b], ['NEURAL', n]] as const)
             if (run) {
+                if (referenceBinding && stable(run.referenceBinding) !== stable(referenceBinding)) local.push(`${role}_REFERENCE_BINDING_MISMATCH`);
+                if (role === 'BASELINE' && referenceBinding && (run.generationProvenance?.sourceHash !== referenceBinding.producerSourceHash
+                    || run.generationProvenance?.bundleHash !== referenceBinding.producerBundleHash)) local.push('BASELINE_GENERATION_PROVENANCE_MISMATCH');
                 if (!c || stable(run.contract) !== stable(c.contract))
                     local.push(`${role}_CONFIG_MISMATCH`);
                 if (!run.sourceHash || !Number.isFinite(run.generationElapsedMs) || run.generationElapsedMs < 0 || run.generationElapsedMs > run.contract.generationWallBudgetMs)
@@ -310,6 +410,7 @@ export function evaluateFullParity(manifest: FullParityManifest, attempts: reado
                 if (run.workspace) {
                     try {
                         local.push(...workspaceIssues(a.inputWorkspace, run.workspace, a.entries).map(s => `${role}_${s}`));
+                        if (latest) local.push(...latestWorkspaceIssues(a.inputWorkspace, run.workspace, a.entries, run.contract.weights).map(s => `${role}_${s}`));
                     }
                     catch {
                         local.push(`${role}_INVALID_WORKSPACE`);
@@ -330,15 +431,15 @@ export function evaluateFullParity(manifest: FullParityManifest, attempts: reado
             try {
                 row.preferenceComparison = compareWorkspacePreference(n!.workspace!, b!.workspace!);
                 row.efficiencyComparison = compareProductionEfficiency(n!.workspace!, b!.workspace!, compileOperatorInventory(a.entries));
-                if (row.preferenceComparison < 0)
+                if (row.preferenceComparison < 0 && (!latest || row.delta === 0))
                     local.push('PREFERENCE_REGRESSION');
-                if (row.efficiencyComparison < 0)
+                if (row.efficiencyComparison < 0 && (!latest || row.delta === 0 && row.preferenceComparison === 0))
                     local.push('EFFICIENCY_REGRESSION');
             }
             catch {
                 local.push('COMPARATOR_ERROR');
             }
-            if (row.delta < -tolerance)
+            if (row.delta < -(latest ? 0 : tolerance))
                 local.push('SCORE_REGRESSION');
         }
         row.status = local.some(s => !['BASELINE_UNAVAILABLE', 'NEURAL_UNAVAILABLE', 'MISSING_PAIR'].includes(s)) || (ba && !na) ? 'fail' : local.length ? 'inconclusive' : 'pass';
@@ -350,6 +451,7 @@ export function evaluateFullParity(manifest: FullParityManifest, attempts: reado
     for (const key of new Set(manifest.expectedCases.map(c => `${c.size}:${c.stratum}`)))
         byStratum[key] = summarize(pairs.filter(r => `${r.size}:${r.stratum}` === key));
     return {
+        objectiveVersion, referenceBinding,
         status: issues.length || overall.failures ? 'fail' : overall.inconclusive ? 'inconclusive' : manifest.mode === 'release' ? 'release-parity' : 'development-pass',
         scope: manifest.scope, issues: [...new Set(issues)], scoreRoundoff: tolerance, pairs, overall, bySize, byStratum,
         limitation: 'Finite declared cohort only; no universal, real-game, or statistical population parity claim. Means use comparable pairs only; every attempt and missing expected pair remains in the denominator. External artifact hashes and freeze attestations must be independently verified.'

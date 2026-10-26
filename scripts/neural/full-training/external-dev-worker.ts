@@ -22,6 +22,7 @@ export function decodeExternalDev(job: any) {
             throw Error('Archived FULL DEV trace/semantics no longer reproduce exactly');
     }
     const qualified = compactTeacher(job.input, job.outcome, 'dev-overfit', job.constructionOrder ?? 'legacy-v1');
+    if (job.referenceContract && digest(job.referenceContract.reference?.referenceProtocol) !== digest(qualified.record?.referenceProtocol)) throw Error('External DEV reference protocol mismatch');
     if (!qualified.record)
         throw Error('Unqualified full DEV teacher: ' + JSON.stringify(qualified.audit));
     const canonical = (input: any) => digest(scenarioFromInput(input).inventory.operators.map((o: any) => ({ operator: o.charId, phase: o.elitePhase, level: o.level })));
@@ -33,7 +34,7 @@ export function decodeExternalDev(job: any) {
         throw Error('Immutable model snapshot mismatch');
     const model = deserializeFullPolicy(bytes), score = createFullPolicyScorer(model), scenario = scenarioFromInput(job.input, job.constructionOrder ?? 'legacy-v1'), started = performance.now();
     const result = decodeFullRoster(scenario, ctx => score(encodeFullDecision(ctx)));
-    return { familyId: job.input.familyId, modelHash: job.modelHash, complete: result.complete, exactTeacherSemantics: result.complete && digest(fullSemanticWorkspace(scenario, result.workspace)) === qualified.record.teacherSemanticHash, workspace: result.workspace, diagnostics: result.diagnostics, modelActions: result.modelActions, forcedActions: result.forcedActions, modelChoiceActions: result.modelChoiceActions, constructionOrder: result.constructionOrder, frozenInputSlots: result.frozenSlots, ...fullPlacementMetrics(scenario, result), generationElapsedMs: performance.now() - started, qualification: qualified.audit, scope: 'EXPOSED FULL DEV TRANSFER ONLY; NOT RELEASE OR PARITY', parity: false };
+    return { referenceProtocol: qualified.record.referenceProtocol, familyId: job.input.familyId, modelHash: job.modelHash, complete: result.complete, exactTeacherSemantics: result.complete && digest(fullSemanticWorkspace(scenario, result.workspace)) === qualified.record.teacherSemanticHash, workspace: result.workspace, diagnostics: result.diagnostics, modelActions: result.modelActions, forcedActions: result.forcedActions, modelChoiceActions: result.modelChoiceActions, constructionOrder: result.constructionOrder, frozenInputSlots: result.frozenSlots, ...fullPlacementMetrics(scenario, result), generationElapsedMs: performance.now() - started, qualification: qualified.audit, scope: 'EXPOSED FULL DEV TRANSFER ONLY; NOT RELEASE OR PARITY', parity: false };
 }
 if (!process.argv.includes('--external-library')) {
     try {

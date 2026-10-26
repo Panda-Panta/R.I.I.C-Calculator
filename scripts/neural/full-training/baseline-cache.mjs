@@ -1,3 +1,4 @@
+import { referenceManifestContract, HISTORICAL_REFERENCE } from '../full-baseline/reference-protocol.mjs';
 /** Optional exact FULL-DEV baseline reuse; never a source of model-generated candidates. */
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -17,7 +18,12 @@ export function simulationAdapterHash(snapshot) {
     // Include evaluate() and the stdin dispatch/output tail, not just job construction.
     return digest(source.slice(start));
 }
-export function verifyBaselineReuse({ artifact, job, cacheManifest, currentManifest, cacheAdapterHash, currentAdapterHash, physicsPaths }) {
+export function verifyBaselineReuse({ artifact, job, cacheManifest, currentManifest, cacheAdapterHash, currentAdapterHash, physicsPaths, referenceContract, cacheReferenceContract }) {
+    if (referenceContract || cacheReferenceContract) {
+        const population = c => c?.reference && ({ referenceProtocol: c.reference.referenceProtocol, producerSourceHash: c.reference.producerSourceHash, producerBundleHash: c.reference.producerBundleHash });
+        if (!population(referenceContract) || !population(cacheReferenceContract) || digest(population(referenceContract)) !== digest(population(cacheReferenceContract))) throw Error('Baseline cache reference population mismatch');
+    }
+    if (referenceContract?.reference?.referenceProtocol?.id !== undefined && referenceContract.reference.referenceProtocol.id !== HISTORICAL_REFERENCE && digest(artifact.binding?.referenceContract ?? null) !== digest(cacheReferenceContract?.reference)) throw Error('Latest baseline artifact reference commitment mismatch');
     if (artifact.binding?.jobHash !== digest(job) || digest(artifact.job) !== digest(job))
         throw Error('Baseline cache job/settings/workspace mismatch');
     if (artifact.binding.bundleHash !== cacheManifest.provenance.bundleHash)
@@ -47,7 +53,7 @@ export async function openBaselineCache(root, cacheDirectory, currentDirectory, 
     const cacheSources = read(join(cacheRun, 'source-records.json'));
     if (digest(cacheSources) !== cacheData.sourceRecordsHash || digest(cacheSources.teacherManifest) !== cacheSources.teacherManifestHash)
         throw Error('Cached FULL reference source commitment mismatch');
-    const cacheReferenceContract = verifyTeacherSourceCompatibility(cacheSources.teacherManifest.provenance, currentManifest.provenance, currentManifest.config?.sourceTransition ?? 'none');
+    const cacheReferenceContract = { ...verifyTeacherSourceCompatibility(cacheSources.teacherManifest.provenance, currentManifest.provenance, currentManifest.config?.sourceTransition ?? 'none'), reference: referenceManifestContract(cacheSources.teacherManifest, cacheData.records.map(r => r.input)) };
     if (digest(readFileSync(join(cacheRun, 'worker.mjs'))) !== cacheManifest.provenance.bundleHash)
         throw Error('Original baseline bundle changed');
     const cacheSnapshot = read(join(cacheRun, 'source-snapshot.json')), currentSnapshot = read(join(currentDirectory, 'source-snapshot.json'));
@@ -66,7 +72,7 @@ export async function openBaselineCache(root, cacheDirectory, currentDirectory, 
             if (!existsSync(path))
                 return { hit: false, reason: 'missing-cache-artifact' };
             try {
-                const artifact = read(path), proof = verifyBaselineReuse({ artifact, job, cacheManifest, currentManifest, cacheAdapterHash, currentAdapterHash, physicsPaths });
+                const artifact = read(path), proof = verifyBaselineReuse({ artifact, job, cacheManifest, currentManifest, cacheAdapterHash, currentAdapterHash, physicsPaths, referenceContract, cacheReferenceContract });
                 return { hit: true, path, artifact, proof: { ...proof, currentReferenceContract: referenceContract, cacheReferenceContract } };
             }
             catch (error) {

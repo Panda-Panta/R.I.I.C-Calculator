@@ -1,3 +1,4 @@
+import { inspectReferenceEnvelope } from '../full-baseline/reference-protocol.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, renameSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -26,9 +27,9 @@ export function qualifyEnvelope(input, outcome, purpose) {
         reasons.push('PHYSICAL_VALIDATION_UNKNOWN_OR_FAILED');
     if (outcome?.score !== envelope?.score || envelope?.score !== teacher?.score)
         reasons.push('SCORE_CONFLICT');
-    if (input?.options?.branchCount !== 10 || input?.options?.enableDeepSearch !== true || input?.options?.simulationWarmupHours !== 24 || input?.options?.simulationSampleHours !== 72)
-        reasons.push('NOT_FULL_DEFAULT_TEACHER');
-    return { qualified: reasons.length === 0, reasons, score: reasons.length ? null : outcome.score, degradedBaseline: envelope?.degradedBaseline ?? null };
+    const reference = inspectReferenceEnvelope(input, envelope);
+    reasons.push(...reference.reasons);
+    return { referenceProtocol: reference.referenceProtocol, qualified: reasons.length === 0, reasons, score: reasons.length ? null : outcome.score, degradedBaseline: envelope?.degradedBaseline ?? null };
 }
 export function verifyBinding(actual, expected) {
     if (digest(actual) !== digest(expected))

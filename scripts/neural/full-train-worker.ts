@@ -15,6 +15,7 @@ import { simulateCandidate } from '../../src/optimizer/candidateSimulation';
 import { qualifyEnvelope, digest, atomic, advanceCursor, saveCheckpoint, loadCheckpoint } from './full-training/state.mjs';
 import { compactMolecularTeacher } from './full-training/auxiliary-traces';
 import { verifyInitialization } from './full-training/lineage.mjs';
+import { referenceManifestContract } from './full-baseline/reference-protocol.mjs';
 import { auditTradingExclusions } from './full-baseline/semantic-audit.mjs';
 const read = (p: string) => JSON.parse(readFileSync(p, 'utf8'));
 export function scenarioFromInput(input: any, constructionOrder: 'legacy-v1' | 'staffing-first-v1' = 'legacy-v1') {
@@ -31,7 +32,7 @@ export function compactTeacher(input: any, outcome: any, purpose: string, constr
         return { record: null, audit: qualification };
     const target = outcome.result.result.workspace, exclusions = auditTradingExclusions(target), scenario = scenarioFromInput(input, constructionOrder), replay = replayFullTeacher(scenario, target);
     const reasons = [...qualification.reasons, ...(!exclusions.imitationPolicyCompatible ? ['TRADING_POLICY_CONFLICT'] : []), ...(!scenario.valid ? ['INVALID_INPUT_SCENARIO'] : []), ...(!replay.exactReplay ? ['NOT_EXACT_REPLAY'] : []), ...(!replay.complete ? ['INVALID_TEACHER_SEMANTICS'] : [])];
-    return { audit: { ...qualification, qualified: !reasons.length, reasons, exclusions, diagnostics: replay.diagnostics, exactReplay: replay.exactReplay, complete: replay.complete }, record: reasons.length ? null : { familyId: input.familyId, originalSplit: input.split, input, constructionOrder, actionIds: replay.trace.map(t => t.action.id), teacherSemanticHash: digest(fullSemanticWorkspace(scenario, target)), teacherScore: qualification.score, degradedBaseline: qualification.degradedBaseline, teacherRecordHash: digest(outcome), sourceKind: 'full-optimizer', fullOptimizerTeacher: true, baselineEligible: true } };
+    return { audit: { ...qualification, qualified: !reasons.length, reasons, exclusions, diagnostics: replay.diagnostics, exactReplay: replay.exactReplay, complete: replay.complete }, record: reasons.length ? null : { familyId: input.familyId, originalSplit: input.split, input, constructionOrder, actionIds: replay.trace.map(t => t.action.id), teacherSemanticHash: digest(fullSemanticWorkspace(scenario, target)), teacherScore: qualification.score, referenceProtocol: qualification.referenceProtocol, degradedBaseline: qualification.degradedBaseline, teacherRecordHash: digest(outcome), sourceKind: 'full-optimizer', fullOptimizerTeacher: true, baselineEligible: true } };
 }
 /** Rebuild only this family's prefix; do not persist repeated sparse matrices. */
 export function regenerateChunk(record: any, start: number, count: number) {
@@ -73,6 +74,10 @@ function prepare(job: any) {
             audits.push({ familyId: source.input?.familyId, qualified: false, reasons: ['EXTRACTION_ERROR'], error: String(e) });
         }
     }
+    const referenceContract = teacherKind === 'full-optimizer' ? referenceManifestContract(sources.teacherManifest, records.map(r => r.input)) : null;
+    if (sources.referenceContract && digest(sources.referenceContract) !== digest(referenceManifestContract(sources.teacherManifest, sources.records.map((r: any) => r.input)))) throw Error('Full reference source contract mismatch');
+    const referenceProtocols = teacherKind === 'full-optimizer' ? [...new Map(records.map(r => [digest(r.referenceProtocol), r.referenceProtocol])).values()] : [];
+    if (referenceProtocols.length > 1) throw Error('Mixed full reference protocol populations require separate datasets');
     records.sort((a, b) => a.familyId < b.familyId ? -1 : a.familyId > b.familyId ? 1 : 0);
     const seen = new Set(), inventories = new Set();
     for (const r of records) {
@@ -84,7 +89,7 @@ function prepare(job: any) {
             throw Error('Duplicate canonical inventory family');
         inventories.add(canonicalInventory);
     }
-    const dataset = { schemaVersion: 3, inputProfile: job.inputProfile ?? 'actual-mixture-v1', constructionOrder: job.constructionOrder ?? 'legacy-v1', purpose: job.purpose, teacherKinds: [teacherKind], baselineEligible: teacherKind === 'full-optimizer', scope: teacherKind === 'molecular-simulated' ? 'AUXILIARY MOLECULAR-SIMULATED TRAINING ONLY; NOT FULL OPTIMIZER BASELINE/PARITY/RELEASE' : job.purpose === 'dev-overfit' ? 'EXPOSED DEVELOPMENT OVERFIT ONLY; NOT RELEASE OR PROMOTED TRAINING' : 'training only; no release claims', sourceRecordsHash: digest(sources), featureManifestHash: FULL_FEATURE_MANIFEST_HASH, records };
+    const dataset = { schemaVersion: 4, dataVersion: sources.teacherManifest.dataVersion ?? 'historical-full-v2', referenceContract, referenceProtocols, inputProfile: job.inputProfile ?? 'actual-mixture-v1', constructionOrder: job.constructionOrder ?? 'legacy-v1', purpose: job.purpose, teacherKinds: [teacherKind], baselineEligible: teacherKind === 'full-optimizer', scope: teacherKind === 'molecular-simulated' ? 'AUXILIARY MOLECULAR-SIMULATED TRAINING ONLY; NOT FULL OPTIMIZER BASELINE/PARITY/RELEASE' : job.purpose === 'dev-overfit' ? 'EXPOSED DEVELOPMENT OVERFIT ONLY; NOT RELEASE OR PROMOTED TRAINING' : 'training only; no release claims', sourceRecordsHash: digest(sources), featureManifestHash: FULL_FEATURE_MANIFEST_HASH, records };
     atomic(join(job.directory, 'qualification.json'), { teacherKind, baselineEligible: teacherKind === 'full-optimizer', attempted: sources.records.length, qualified: records.length, cohortAccounting: sources.cohortAccounting ?? null, audits, pending: sources.pending });
     atomic(join(job.directory, 'dataset.json'), dataset);
     atomic(join(job.directory, 'feature-manifest.json'), FULL_FEATURE_MANIFEST);

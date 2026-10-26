@@ -5,6 +5,9 @@ import { resolveOperatorCharId as id } from '../../domain/operatorIdentifiers';
 import { createFullScenario, initialFullState, legalFullActions, action } from './fullActionSpace';
 import { applyFullAction } from './fullTransitions';
 import { replayFullTeacher, fullSemanticWorkspace } from './fullTeacherTraces';
+import { generateMolecularCandidates } from '../molecularSynthesis';
+import { decodeManufacturingCrewSelection, enumerateManufacturingCrewColumns, prepareManufacturingCrewDomain } from '../manufacturingCrewDomain';
+import { encodeFullDecision, FULL_FEATURE_MANIFEST } from './fullFeatures';
 function fixture() {
     const base = createDefaultWorkspace();
     const inv = compileOperatorInventory(fullCatalogIdleInventory());
@@ -290,5 +293,82 @@ describe('full-v2 factored teacher semantics', () => {
         expect(result.complete).toBe(true);
         expect(result.exactReplay).toBe(true);
         expect(result.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId).toBe('neural_group_0');
+    });
+});
+
+/** Small real constructor fixture: no valuation, full simulation or fabricated score. */
+function warmupConstructorFixture() {
+    const base = createDefaultWorkspace();
+    for (const room of Object.values(base.mainPlan.facilities)) {
+        if (!['room_1_1', 'room_1_3', 'dormitory_1'].includes(room.roomId)) {
+            room.level = 0;
+            room.slots = [];
+        }
+    }
+    const room = base.mainPlan.facilities.room_1_1;
+    room.level = 2;
+    room.product = 'exp';
+    room.slots = Array.from({ length: 2 }, () => ({ occupant: { kind: 'empty' }, groupId: null, replacements: [] }));
+    base.mainPlan.facilities.room_1_3.slots = [{ occupant: { kind: 'operator', operatorId: id('Lancet-2') }, groupId: null, replacements: [] }];
+    base.mainPlan.facilities.dormitory_1.slots = Array.from({ length: 5 }, () => ({ occupant: { kind: 'free' }, groupId: null, replacements: [] }));
+    base.mainPlan.facilities.dormitory_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('杜林') };
+    base.mainPlan.conf.workaholic = [id('Lancet-2')];
+    const names = ['机械师', '酒神', '刻俄柏', '断罪者', '霜叶', 'Lancet-2', '杜林'];
+    const entries = fullCatalogIdleInventory().filter(entry => names.some(name => id(name) === entry.operator));
+    return { base, entries, inventory: compileOperatorInventory(entries) };
+}
+
+describe('latest native warmup constructors remain explicitly representable', () => {
+    it('replays native molecular exhaustion as model actions and does not silently add omitted policies', () => {
+        const { base, entries, inventory } = warmupConstructorFixture(), before = structuredClone(base);
+        const candidates = generateMolecularCandidates(base, entries, inventory, { requireWarmupExhaustion: true, branchCount: 1, seed: 42, droneTarget: 'none' });
+        expect(candidates).toHaveLength(1);
+        const teacher = candidates[0]!.workspace;
+        expect(teacher.mainPlan.conf.exhaust_require).toEqual([id('机械师')]);
+        const scenario = createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1' });
+        const replay = replayFullTeacher(scenario, teacher);
+        expect(replay.diagnostics).toEqual([]);
+        expect(replay.complete && replay.exactReplay).toBe(true);
+        expect(replay.trace.filter(step => step.decision.field === 'exhaust_require').map(step => step.action.id)).toEqual([
+            action('operator', id('机械师')).id, action('end').id,
+        ]);
+        let state = initialFullState(scenario), sawExhaustionFeature = false;
+        for (const step of replay.trace) {
+            const encoded = encodeFullDecision({ scenario, state, decision: step.decision, actions: step.actions });
+            if (state.workspace.mainPlan.conf.exhaust_require.length) {
+                sawExhaustionFeature ||= encoded.common.some(([index]) => FULL_FEATURE_MANIFEST.featureKeys[index] === `conf:exhaust_require:${id('机械师')}`);
+            }
+            state = applyFullAction(scenario, state, step.action);
+        }
+        expect(sawExhaustionFeature).toBe(true);
+        const noExhaustion = structuredClone(teacher);
+        noExhaustion.mainPlan.conf.exhaust_require = [];
+        const omitted = replayFullTeacher(scenario, noExhaustion);
+        expect(omitted.complete && omitted.exactReplay).toBe(true);
+        expect(omitted.workspace.mainPlan.conf.exhaust_require).toEqual([]);
+        expect(base).toEqual(before);
+    });
+
+    it('exactly replays a warmup primary introduced by the manufacturing column decoder', () => {
+        const { base, inventory } = warmupConstructorFixture();
+        base.mainPlan.facilities.room_1_1.level = 1;
+        base.mainPlan.facilities.room_1_1.slots.length = 1;
+        const initial = structuredClone(base);
+        initial.mainPlan.facilities.room_1_1.slots[0] = { occupant: { kind: 'operator', operatorId: id('霜叶') }, groupId: 'crew', replacements: [id('断罪者')] };
+        const prepared = prepareManufacturingCrewDomain({ initial, userBase: base, inventory, lockedPositions: new Set(), lockedOperators: new Set() });
+        expect(prepared.status).toBe('ready');
+        const domain = prepared.domain!;
+        const rows = [...enumerateManufacturingCrewColumns(domain, { maxColumns: 100, maxVisits: 1000 })];
+        const selected = [
+            rows.find(row => row.role === 'main' && row.seatOperatorIds[0] === id('机械师'))!,
+            rows.find(row => row.role === 'backup' && row.seatOperatorIds[0] === id('断罪者'))!,
+        ];
+        expect(selected.every(Boolean)).toBe(true);
+        const decoded = decodeManufacturingCrewSelection(domain, selected);
+        expect(decoded.valid).toBe(true);
+        expect(decoded.workspace.mainPlan.conf.exhaust_require).toEqual([id('机械师')]);
+        const replay = replayFullTeacher(createFullScenario(base, inventory, { constructionOrder: 'staffing-first-v1' }), decoded.workspace);
+        expect(replay.diagnostics).toEqual([]);
+        expect(replay.complete && replay.exactReplay).toBe(true);
     });
 });

@@ -1,3 +1,4 @@
+import { referenceManifestContract } from './full-baseline/reference-protocol.mjs';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +46,7 @@ export function collectSources(sourceDirectory, purpose, trainingProvenance, tea
         const input = read(join(sourceDirectory, c.familyId + '.input.json'));
         if (digest(input) !== c.inputHash)
             throw Error('Teacher input changed: ' + c.familyId);
+        if (teacherKind === 'full-optimizer') referenceManifestContract(manifest, [input]);
         const attempts = checkpoint.cases[c.familyId] ?? [];
         if (!attempts.length)
             pending.push({ familyId: c.familyId, status: 'not-started' });
@@ -71,10 +73,11 @@ export function collectSources(sourceDirectory, purpose, trainingProvenance, tea
             if (n > 1)
                 throw Error('Conflicting completed teacher attempts: ' + r.input.familyId);
         }
-    return { schemaVersion: 2, purpose, teacherKind, sourceCompatibility, teacherManifest: manifest, teacherManifestHash: digest(manifest), records, pending };
+    const referenceContract = teacherKind === 'full-optimizer' ? referenceManifestContract(manifest, records.map(r => r.input)) : null;
+    return { schemaVersion: 3, referenceContract, purpose, teacherKind, sourceCompatibility, teacherManifest: manifest, teacherManifestHash: digest(manifest), records, pending };
 }
 export function sourceContracts(sources) {
-    const contract = (manifest, compatibility) => ({ manifestHash: digest(manifest), producerSourceHash: manifest.provenance.sourceHash, producerBundleHash: manifest.provenance.bundleHash, inputProfile: manifest.inputProfile ?? 'actual-mixture-v1', compatibility });
+    const contract = (manifest, compatibility) => ({ manifestHash: digest(manifest), producerSourceHash: manifest.provenance.sourceHash, producerBundleHash: manifest.provenance.bundleHash, inputProfile: manifest.inputProfile ?? 'actual-mixture-v1', ...(manifest.sourceKind === 'molecular-simulated' ? {} : { reference: referenceManifestContract(manifest) }), compatibility });
     return { primary: contract(sources.teacherManifest, sources.sourceCompatibility), linked: (sources.linkedSourceManifests ?? []).map((m, i) => contract(m, sources.linkedSourceCompatibilities?.[i])) };
 }
 function parse(args) {

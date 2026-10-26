@@ -3,9 +3,11 @@ import { compiledScheduleToRuntimeConfig } from '../../scheduler/scheduleAdapter
 import { expect, it } from 'vitest';
 import { compileOperatorInventory } from '../../domain/operatorInventory';
 import { OPERATORS } from '../../domain/operators';
+import { MOWER_OPERATOR_LIST_FIELDS } from '../../domain/roster';
 import { createDefaultWorkspace } from '../../workbench/defaults';
 import { createFullScenario, initialFullState, action } from './fullActionSpace';
-import { encodeFullDecision, FULL_FEATURE_MANIFEST } from './fullFeatures';
+import { encodeFullDecision, FULL_FEATURE_MANIFEST, validateFullDecision, type FullEncodedDecision } from './fullFeatures';
+import { createFullPolicy, validateFullPolicy } from './fullPolicy';
 function fixture() {
     const scenario = createFullScenario(createDefaultWorkspace(), compileOperatorInventory(OPERATORS.map(o => ({
         operator: o.charId, elitePhase: 0, level: 1
@@ -159,3 +161,101 @@ it('encodes Ling/Xi actions as four exact categories, not only an ordinal scalar
         expect(categories).toEqual([[FULL_FEATURE_MANIFEST.featureKeys.indexOf(`ling-mode-action:${mode}`), 1]]);
     }
 });
+
+// Input policy is a constraint on the generated result, not an already emitted prefix.
+it.each(MOWER_OPERATOR_LIST_FIELDS)('retains immutable %s input after output-prefix reset', field => {
+    const c = fixture();
+    c.scenario.workspace.mainPlan.conf[field] = [];
+    c.state = initialFullState(c.scenario);
+    const context = () => ({ ...c, decision: { kind: 'conf-list' as const, field, listIndex: 0 } });
+    const empty = encodeFullDecision(context()), emptyState = structuredClone(c.state.workspace);
+    c.scenario.workspace.mainPlan.conf[field] = ['刻俄柏'];
+    c.state = initialFullState(c.scenario);
+    const before = JSON.stringify(c), required = encodeFullDecision(context());
+    expect(c.state.workspace).toEqual(emptyState);
+    expect(required.common).not.toEqual(empty.common);
+    expect(namedCommon(required, 'input-conf:')).toContainEqual([`input-conf:${field}:char_2013_cerber`, 1 / 432]);
+    expect(withoutInputConf(required)).toEqual(withoutInputConf(empty));
+    expect(JSON.stringify(c)).toBe(before);
+});
+it('canonicalizes immutable policy aliases without sorting the preserved input order', () => {
+    const c = fixture();
+    c.scenario.workspace.mainPlan.conf.exhaust_require = ['刻俄柏', '机械师'];
+    const named = encodeFullDecision(c);
+    c.scenario.workspace.mainPlan.conf.exhaust_require = ['char_2013_cerber', 'char_4230_mcnist'];
+    expect(encodeFullDecision(c)).toEqual(named);
+    // The native policy parser also accepts whitespace and comma-separated names.
+    (c.scenario.workspace.mainPlan.conf as Record<string, unknown>).exhaust_require = ' 刻俄柏， 机械师 ';
+    expect(encodeFullDecision(c)).toEqual(named);
+    c.scenario.workspace.mainPlan.conf.exhaust_require = ['机械师', '刻俄柏'];
+    const reversed = encodeFullDecision(c);
+    expect(reversed.common).not.toEqual(named.common);
+    expect(namedCommon(reversed, 'input-conf:')).toEqual([
+        ['input-conf:exhaust_require:char_2013_cerber', 2 / 432],
+        ['input-conf:exhaust_require:char_4230_mcnist', 1 / 432],
+    ]);
+});
+it('keeps immutable policy presence distinct from the currently emitted prefix', () => {
+    const c = fixture();
+    delete c.scenario.workspace.mainPlan.conf.resting_standby;
+    c.state.workspace.mainPlan.conf.resting_standby = [];
+    const absent = encodeFullDecision(c);
+    c.scenario.workspace.mainPlan.conf.resting_standby = [];
+    const present = encodeFullDecision(c);
+    expect(present.common).not.toEqual(absent.common);
+    expect(namedCommon(present, 'input-conf-present:')).toContainEqual(['input-conf-present:resting_standby', 1]);
+    expect(withoutInputConf(present)).toEqual(withoutInputConf(absent));
+});
+it('encodes committed policy prefixes independently without applying input policies as output', () => {
+    const c = fixture();
+    c.scenario.workspace.mainPlan.conf.exhaust_require = ['刻俄柏'];
+    c.state = initialFullState(c.scenario);
+    const initial = encodeFullDecision(c);
+    expect(c.state.workspace.mainPlan.conf.exhaust_require).toEqual([]);
+    expect(namedCommon(initial, 'conf:exhaust_require:')).toEqual([]);
+    c.state.workspace.mainPlan.conf.exhaust_require = ['机械师'];
+    const committed = encodeFullDecision(c);
+    expect(namedCommon(committed, 'input-conf')).toEqual(namedCommon(initial, 'input-conf'));
+    expect(namedCommon(committed, 'conf:exhaust_require:')).toEqual([['conf:exhaust_require:char_4230_mcnist', 1 / 432]]);
+    expect(c.state.workspace.mainPlan.conf.exhaust_require).toEqual(['机械师']);
+});
+it('retains immutable Ling/Xi mode when the committed output mode changes', () => {
+    const c = fixture();
+    c.state.workspace.mainPlan.conf.ling_xi = 3;
+    const features = [0, 1, 2, 3].map(mode => {
+        c.scenario.workspace.mainPlan.conf.ling_xi = mode as 0 | 1 | 2 | 3;
+        const encoded = encodeFullDecision(c);
+        expect(namedCommon(encoded, 'input-conf-ling-mode:')).toEqual([[`input-conf-ling-mode:${mode}`, 1]]);
+        return encoded;
+    });
+    expect(new Set(features.map(f => JSON.stringify(f.common))).size).toBe(4);
+    expect(features.map(withoutInputConf)).toEqual(Array(4).fill(withoutInputConf(features[0]!)));
+});
+it('rejects immutable input policy forms that the action grammar cannot represent', () => {
+    for (const [field, value, message] of [
+        ['exhaust_require', ['刻俄柏', 'char_2013_cerber'], /Duplicate input policy operator.*exhaust_require/],
+        ['refresh_trading', ['刻俄柏(room_1_1)'], /Unsupported input policy operator.*refresh_trading/],
+        ['rest_in_full', ['unknown-operator'], /Unsupported input policy operator.*rest_in_full/],
+        ['workaholic', [42], /策略格式错误 workaholic/],
+    ] as const) {
+        const c = fixture();
+        (c.scenario.workspace.mainPlan.conf as Record<string, unknown>)[field] = value;
+        expect(() => encodeFullDecision(c)).toThrow(message);
+    }
+});
+it('rejects obsolete feature artifacts instead of silently migrating them', () => {
+    const encoded = encodeFullDecision(fixture());
+    const legacy = { version: 'full-v2-sparse-catalog-1', manifestHash: 'fae0e8180dc66b6a4234a6da43b0e730', featureCount: 48239 };
+    expect(() => validateFullDecision({ ...encoded, ...legacy } as never)).toThrow(/Feature contract mismatch/);
+    const model = createFullPolicy({ hiddenSize: 1 });
+    expect(() => validateFullPolicy({ ...model, featureVersion: legacy.version, manifestHash: legacy.manifestHash, featureCount: legacy.featureCount })).toThrow(/Full policy contract mismatch/);
+    // Updating only the version cannot opt an old weight/vocabulary contract in.
+    expect(() => validateFullPolicy({ ...model, manifestHash: legacy.manifestHash })).toThrow(/Full policy contract mismatch/);
+});
+function namedCommon(encoded: FullEncodedDecision, prefix: string): [string, number][] {
+    return encoded.common.map(([index, value]) => [FULL_FEATURE_MANIFEST.featureKeys[index]!, value] as [string, number])
+        .filter(([key]) => key.startsWith(prefix));
+}
+function withoutInputConf(encoded: FullEncodedDecision) {
+    return { ...encoded, common: encoded.common.filter(([index]) => !FULL_FEATURE_MANIFEST.featureKeys[index]!.startsWith('input-conf')) };
+}

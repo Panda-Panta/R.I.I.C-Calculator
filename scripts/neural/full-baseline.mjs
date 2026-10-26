@@ -9,6 +9,7 @@ import { inventoryCollisions } from './full-baseline/collisions.mjs';
 import { auditTradingExclusions } from './full-baseline/semantic-audit.mjs';
 import { retryBudget } from './full-baseline/retry.mjs';
 import { validateCohort } from './full-baseline/cohort.mjs';
+import { referenceProtocol, referenceManifestContract, HISTORICAL_REFERENCE, LATEST_DEFAULT_REFERENCE, LATEST_DATA_VERSION } from './full-baseline/reference-protocol.mjs';
 import { publishExclusiveJson } from './full-baseline/atomic.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export function atomic(path, value) { writeFileSync(path + '.tmp', JSON.stringify(value, null, 2), { mode: 0o600 }); renameSync(path + '.tmp', path); }
@@ -17,26 +18,27 @@ export async function freezeBundle(directory) {
   const require = createRequire(import.meta.url), { build } = require(require.resolve('esbuild', { paths: [require.resolve('vite')] }));
   const sources = {}, snapshots = {};
   const bundle = join(directory, 'worker.mjs');
-  await build({ entryPoints: [join(root, 'scripts/neural/full-baseline-worker.ts')], bundle: true, platform: 'node', format: 'esm', target: 'node24', outfile: bundle, logLevel: 'warning', plugins: [{ name: 'freeze-exact-imports', setup(b) { b.onLoad({ filter: /\.(ts|json)$/ }, async args => {
+  await build({ entryPoints: [join(root, 'scripts/neural/full-baseline-worker.ts')], bundle: true, platform: 'node', format: 'esm', target: 'node24', outfile: bundle, logLevel: 'warning', plugins: [{ name: 'freeze-exact-imports', setup(b) { b.onLoad({ filter: /\.(ts|json|mjs)$/ }, async args => {
     const contents = readFileSync(args.path, 'utf8'), key = relative(root, args.path).replaceAll('\\', '/');
     sources[key] = sha256(contents); snapshots[key] = contents;
-    return { contents, loader: args.path.endsWith('.json') ? 'json' : 'ts' };
+    return { contents, loader: args.path.endsWith('.json') ? 'json' : args.path.endsWith('.ts') ? 'ts' : 'js' };
   }); } }] });
+  for (const key of ['scripts/neural/full-baseline.mjs', 'scripts/neural/full-baseline/cohort.mjs', 'scripts/neural/full-baseline/collisions.mjs', 'scripts/neural/full-baseline/process.mjs', 'scripts/neural/full-baseline/supervisor.mjs']) { const contents = readFileSync(join(root, key), 'utf8'); sources[key] = sha256(contents); snapshots[key] = contents; }
   for (const [key, hash] of Object.entries(sources)) if (sha256(readFileSync(join(root, key), 'utf8')) !== hash) throw Error('Imported source changed during bundle: ' + key);
   const sourceHashes = Object.fromEntries(Object.entries(sources).sort(([a],[b]) => a.localeCompare(b)));
   atomic(join(directory, 'source-snapshot.json'), snapshots);
   return { sourceHashes, sourceHash: sha256(sourceHashes), bundleHash: sha256(readFileSync(bundle, 'utf8')), sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim() };
 }
 export async function main(args = process.argv.slice(2)) {
-  if (args.includes('--help')) { console.log('node scripts/neural/full-baseline.mjs [--run pilot-20261027] [--cohort preregistered.json] [--resume] [--retry-reason DIAGNOSIS] [--retry-timeout-ms N] [--timeout-ms 3600000]\nFixed dev pilots: seed 2026102701 / size100, seed2026102702 / size400; concurrency1. Raw teachers private under training_data/neural-full-v2/. Failed attempts never automatically retried.'); return; }
+  if (args.includes('--help')) { console.log('node scripts/neural/full-baseline.mjs [--run latest-default-calibration-20261026] [--reference-protocol latest-default-two-stage-v1|latest-enhanced-deep-v1] [--cohort preregistered.json] [--resume] [--retry-reason DIAGNOSIS] [--retry-timeout-ms N] [--timeout-ms 3600000]\nFresh DEV pilots: seed2026102901 / size100, seed2026102902 / size400; latest-default two-stage/deepfalse (enhanced is explicitly separate); concurrency1. Raw teachers private under training_data/neural-full-v2/. Failed attempts never automatically retried.'); return; }
   const options = {}; let resume = false;
-  for (let i=0;i<args.length;i++) { if (args[i] === '--resume') { resume=true; continue; } if (!['--run','--timeout-ms','--retry-reason','--retry-timeout-ms','--cohort'].includes(args[i]) || !args[i+1]) throw Error('Invalid option ' + args[i]); options[args[i].slice(2)] = args[++i]; }
+  for (let i=0;i<args.length;i++) { if (args[i] === '--resume') { resume=true; continue; } if (!['--run','--timeout-ms','--retry-reason','--retry-timeout-ms','--cohort','--reference-protocol'].includes(args[i]) || !args[i+1]) throw Error('Invalid option ' + args[i]); options[args[i].slice(2)] = args[++i]; }
   const retryTimeoutMs = options['retry-timeout-ms'] === undefined ? undefined : Number(options['retry-timeout-ms']);
   retryBudget(undefined,{defaultTimeoutMs:3600000,retryTimeoutMs,reason:options['retry-reason'],resume});
-  const run = options.run ?? 'pilot-20261027'; if (!/^[a-zA-Z0-9_-]+$/.test(run)) throw Error('Invalid run name');
+  const run = options.run ?? 'latest-default-calibration-20261026'; if (!/^[a-zA-Z0-9_-]+$/.test(run)) throw Error('Invalid run name');
   const cohort = options.cohort ? validateCohort(JSON.parse(readFileSync(resolve(options.cohort),'utf8'))) : null;
   if (cohort && !options.run) throw Error('Explicit cohort requires explicit --run');
-  const config = { run, timeoutMs: Number(options['timeout-ms'] ?? 3600000), concurrency: 1, cases: cohort?.cases ?? [{seed:2026102701,size:100},{seed:2026102702,size:400}], ...(cohort ? {cohort} : {}) };
+  let config = { run, timeoutMs: Number(options['timeout-ms'] ?? 3600000), concurrency: 1, cases: cohort?.cases ?? [{seed:2026102701,size:100},{seed:2026102702,size:400}], ...(cohort ? {cohort} : {}) };
   if (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 100) throw Error('Invalid timeout');
   const data = join(root,'training_data/neural-full-v2',run), reports = join(root,'artifacts/neural/full-baseline',run);
   mkdirSync(dirname(data),{recursive:true,mode:0o700});
@@ -47,16 +49,22 @@ export async function main(args = process.argv.slice(2)) {
   const manifestPath = join(data,'manifest.json'); let manifest;
   if (existsSync(data)) {
     if (!resume || !existsSync(manifestPath)) throw Error('Existing data requires matching --resume');
-    manifest = JSON.parse(readFileSync(manifestPath,'utf8')); validateResume(manifest,config);
+    manifest = JSON.parse(readFileSync(manifestPath,'utf8'));
+    if (manifest.referenceProtocol) { const protocol = referenceProtocol(options['reference-protocol'] ?? LATEST_DEFAULT_REFERENCE); config = { ...config, cases: cohort?.cases ?? [{seed:2026102901,size:100},{seed:2026102902,size:400}], referenceProtocol: protocol, dataVersion: LATEST_DATA_VERSION }; referenceManifestContract(manifest); }
+    else if (options['reference-protocol']) throw Error('Historical resume must keep its original frozen protocol');
+    validateResume(manifest,config);
     if (sha256(readFileSync(join(data,'worker.mjs'),'utf8')) !== manifest.provenance.bundleHash) throw Error('Frozen bundle hash mismatch');
   } else {
+    const protocol = referenceProtocol(options['reference-protocol'] ?? LATEST_DEFAULT_REFERENCE);
+    if (protocol.id === HISTORICAL_REFERENCE) throw Error('New historical-reference runs are forbidden; retain original frozen bundles');
+    config = { ...config, cases: cohort?.cases ?? [{seed:2026102901,size:100},{seed:2026102902,size:400}], referenceProtocol: protocol, dataVersion: LATEST_DATA_VERSION };
     mkdirSync(data,{recursive:true,mode:0o700}); mkdirSync(reports,{recursive:true});
     const provenance = await freezeBundle(data);
-    manifest = { schemaVersion:2, createdUtc:new Date().toISOString(), config, provenance, cohort:cohort ? `${cohort.purpose}; namespace=${cohort.namespace}; not release test` : 'development calibration; exposed; never release test', inputPolicy:'empty full default243; no teacher dorm or auxiliary context', stagePolicy:'actual legal random stage mixture, required proviso same draw', seedDerivation:'inventory LCG32(seed), stage LCG32(seed XOR 0x9e3779b9), optimizer seed XOR 0x85ebca6b', node:process.version, cases:[] };
+    manifest = { schemaVersion:3, sourceKind:'full-optimizer', dataVersion:LATEST_DATA_VERSION, referenceProtocol:protocol, createdUtc:new Date().toISOString(), config, provenance, cohort:cohort ? `${cohort.purpose}; namespace=${cohort.namespace}; not release test` : 'development calibration; exposed; never release test', inputPolicy:'empty full default243; no teacher dorm or auxiliary context', stagePolicy:'actual legal random stage mixture, required proviso same draw', seedDerivation:'inventory LCG32(seed), stage LCG32(seed XOR 0x9e3779b9), optimizer seed XOR 0x85ebca6b', node:process.version, cases:[] };
     for (const c of config.cases) {
-      const input = JSON.parse(execFileSync(process.execPath,[join(data,'worker.mjs'),'--prepare'], {input:JSON.stringify(c),maxBuffer:8*1024*1024,encoding:'utf8'}));
+      const input = JSON.parse(execFileSync(process.execPath,[join(data,'worker.mjs'),'--prepare'], {input:JSON.stringify({...c, referenceProtocolId:protocol.id}),maxBuffer:8*1024*1024,encoding:'utf8'}));
       const inputHash = sha256(input); atomic(join(data,`${input.familyId}.input.json`),input);
-      manifest.cases.push({familyId:input.familyId,inputHash,inventoryHash:input.inventoryHash,...c});
+      manifest.cases.push({familyId:input.familyId,inputHash,inventoryHash:input.inventoryHash,requestOptionsHash:sha256(input.options),...c});
     }
     if (new Set(manifest.cases.map(c=>c.inventoryHash)).size !== manifest.cases.length) throw Error('Duplicate inventory family');
     const collisionAudit = inventoryCollisions(root, manifest.cases.map(c => JSON.parse(readFileSync(join(data,`${c.familyId}.input.json`),'utf8'))), data);
@@ -76,6 +84,7 @@ export async function main(args = process.argv.slice(2)) {
       if(last && !options['retry-reason']) { console.error(JSON.stringify({event:'not-retried',familyId:c.familyId,status:last.status,reason:'requires diagnosed --retry-reason'})); continue; }
       const wallTimeoutMs=retryBudget(last,{defaultTimeoutMs:config.timeoutMs,retryTimeoutMs,reason:options['retry-reason'],resume});
       const input=JSON.parse(readFileSync(join(data,`${c.familyId}.input.json`),'utf8')); if(sha256(input)!==c.inputHash) throw Error('Input hash mismatch');
+      referenceManifestContract(manifest,[input]);
       const prefix=join(data,`${c.familyId}.attempt-${attempts.length+1}`);
       for(const suffix of ['.result.json','.stdout.json','.progress.jsonl','.stdout.json.terminal.json'])if(existsSync(prefix+suffix))throw Error('Refusing existing immutable attempt artifact: '+prefix+suffix);
       const attempt={attempt:attempts.length+1,wallTimeoutMs,status:'running',score:null,inputHash:c.inputHash,bundleHash:manifest.provenance.bundleHash,startedUtc:new Date().toISOString(),retryReason:options['retry-reason']??null}; attempts.push(attempt); atomic(checkpointPath,checkpoint);

@@ -1,5 +1,6 @@
 import { compileRosterSchedule } from '../../scheduler/compileRosterSchedule';
 import { readMowerMoodLimits } from '../../scheduler/mowerMoodLimits';
+import { readMowerOperatorList } from '../../scheduler/mowerBackupConfig';
 import { effectiveMowerDormOrder } from '../../domain/mowerDormOrder';
 import { OPERATORS } from '../../domain/operators';
 import { compileOperatorInventory, type OwnedOperator } from '../../domain/operatorInventory';
@@ -10,7 +11,8 @@ import { physicalBackupOperatorIds } from '../combinationModel';
 import { fullPhysicalReservations } from './fullActionSpace';
 import type { FullScorerContext } from './fullDecode';
 import source from '../../data/riic-gamedata-source-manifest.json';
-export const FULL_FEATURE_VERSION = 'full-v2-sparse-catalog-1';
+// Input policy is independent from the generated prefix; old artifacts are incompatible.
+export const FULL_FEATURE_VERSION = 'full-v2-sparse-catalog-2-input-conf';
 export type SparseVector = [
     number,
     number
@@ -134,6 +136,14 @@ for (const role of ['remaining', 'candidate'])
         register(`skill:${role}:${buff}`);
 // Categorical policy modes: append to preserve every existing vocabulary index.
 for (const mode of [0, 1, 2, 3]) register(`ling-mode-action:${mode}`);
+// Append an immutable-input namespace. Do not reinterpret existing prefix features
+// or migrate old model rows: version/hash validation requires a fresh model.
+for (const field of MOWER_OPERATOR_LIST_FIELDS) {
+    register(`input-conf-present:${field}`);
+    for (const op of operatorIds)
+        register(`input-conf:${field}:${op}`);
+}
+for (const mode of [0, 1, 2, 3]) register(`input-conf-ling-mode:${mode}`);
 export const FULL_FEATURE_COUNT = keys.length;
 export const FULL_FEATURE_MANIFEST = Object.freeze({
     version: FULL_FEATURE_VERSION, operatorIds, buffIds, catalogContentFingerprint: fullFingerprint(OPERATORS), catalogSha256: 'c63e372a237a6c80194360536c4c5673f0db729cab7c77d778878aa54349e930', sourceCommit: source.commit, sourceHashes: Object.freeze(Object.fromEntries(Object.entries(source.sources).map(([k, v]) => [k, v.sha256]))), featureCount: FULL_FEATURE_COUNT, featureKeys: Object.freeze(keys)
@@ -250,6 +260,34 @@ function encodeSchedulerConditioning(c: FullScorerContext, b: ReturnType<typeof 
     // dorm_order_override only merges backup layers. FULL-v2 rejects backup plans,
     // so encoding this unused main-plan flag would invent a false effect.
 }
+/**
+ * Preserve the policy the caller supplied before initialFullState clears generated
+ * lists. This never fills output policy or reads a teacher/completion. Native list
+ * parsing supplies aliases and order; the exact-action domain is unique catalog
+ * operators, not duplicate entries or refresh_trading operator(room) expressions.
+ * Unsupported forms fail explicitly instead of colliding with a different input.
+ * Non-generated mood/dorm/advanced settings already use compiler conditioning.
+ */
+function encodeInputConf(c: FullScorerContext, b: ReturnType<typeof builder>): void {
+    const conf = c.scenario.workspace.mainPlan.conf;
+    for (const field of MOWER_OPERATOR_LIST_FIELDS) {
+        b.add(`input-conf-present:${field}`, Number(Object.prototype.hasOwnProperty.call(conf, field)));
+        const seen = new Set<string>();
+        for (const [index, op] of readMowerOperatorList(field, conf[field]).entries()) {
+            if (!indices.has(`input-conf:${field}:${op}`))
+                throw Error(`Unsupported input policy operator ${field}: ${op}`);
+            if (seen.has(op))
+                throw Error(`Duplicate input policy operator ${field}: ${op}`);
+            seen.add(op);
+            b.add(`input-conf:${field}:${op}`, (index + 1) / operatorIds.length);
+        }
+    }
+    // Match the native adapter's absent/null fallback and numeric coercion.
+    const mode = Number(conf.ling_xi ?? 1);
+    if (![0, 1, 2, 3].includes(mode))
+        throw Error(`Unsupported input policy ling_xi: ${String(conf.ling_xi)}`);
+    b.add(`input-conf-ling-mode:${mode}`);
+}
 /** Only immutable input and committed prefix are read; no trace, future actions or teacher score. */
 export function encodeFullDecision(c: FullScorerContext): FullEncodedDecision {
     const b = builder(), ws = c.state.workspace, d = c.decision, ops = owned(c), reserved = fullPhysicalReservations(ws), groups = new Map<string, number>(), groupMembers = new Map<string, {
@@ -275,6 +313,7 @@ export function encodeFullDecision(c: FullScorerContext): FullEncodedDecision {
     b.add('physical-role', Number(d.kind === 'occupant' || ((d.kind === 'replacement' || d.kind === 'binding-replacement') && room?.type !== 'dormitory')));
     b.add('reference-role', Number(d.kind === 'conf-list' || ((d.kind === 'replacement' || d.kind === 'binding-replacement') && room?.type === 'dormitory')));
     encodeSchedulerConditioning(c, b);
+    encodeInputConf(c, b);
     const sim = c.scenario.simulationConditioning;
     b.add(`drone-target:${sim.droneTarget}`);
     b.add(`drone-room:${sim.droneRoomId?.replace(/^B([123])0([123])$/, 'room_$1_$2') ?? 'none'}`);

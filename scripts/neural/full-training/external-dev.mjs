@@ -1,9 +1,10 @@
+import { referenceManifestContract } from '../full-baseline/reference-protocol.mjs';
 /** Snapshot a TRAIN model, then evaluate on separately qualified exposed FULL DEV families. */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { atomic, digest, inspectCheckpoint } from './state.mjs';
+import { atomic, digest, inspectCheckpoint, verifyBinding } from './state.mjs';
 import { assertFullBaselineDataset } from './evaluate.mjs';
 import { verifyTeacherSourceCompatibility, STAFFING_SOURCE_TRANSITION } from './source-compatibility.mjs';
 import { openBaselineCache } from './baseline-cache.mjs';
@@ -22,7 +23,12 @@ export function validateExternalTeacherContract(training, sources) {
     const policy = training.config?.sourceTransition ?? 'none';
     if (policy !== 'none' && (policy !== STAFFING_SOURCE_TRANSITION || training.config?.constructionOrder !== 'staffing-first-v1'))
         throw Error('Invalid external reference action transition');
-    return verifyTeacherSourceCompatibility(sources.teacherManifest.provenance, training.provenance, policy);
+    return { ...verifyTeacherSourceCompatibility(sources.teacherManifest.provenance, training.provenance, policy), reference: referenceManifestContract(sources.teacherManifest, (sources.records ?? []).map(r => r.input)) };
+}
+export function verifyExternalTrainCheckpoint(training, trainingData, checkpoint) {
+    if (!checkpoint || training.config?.purpose !== 'train') throw Error('External evaluation requires actual TRAIN checkpoint');
+    const binding = { datasetHash: digest(trainingData), sourceHash: training.provenance.sourceHash, bundleHash: training.provenance.bundleHash, featureManifestHash: trainingData.featureManifestHash, ...training.config, ...(training.lineage ? { lineageHash: digest(training.lineage) } : {}) };
+    verifyBinding(checkpoint.state.binding, binding);
 }
 export async function evaluateExternalDev(modelDirectory, devDirectory, name, { timeoutMs = 120000, baselineCacheDirectory = null } = {}) {
     if (!/^[\w-]+$/.test(name) || !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600000)
@@ -42,15 +48,14 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
     if (digest(readFileSync(join(modelDirectory, 'worker.mjs'))) !== training.provenance.bundleHash)
         throw Error('Frozen simulator bundle mismatch');
     const checkpoint = inspectCheckpoint(modelDirectory);
-    if (!checkpoint || checkpoint.state.binding.datasetHash !== digest(trainingData))
-        throw Error('TRAIN checkpoint dataset mismatch');
+    verifyExternalTrainCheckpoint(training, trainingData, checkpoint);
     const directory = join(modelDirectory, 'external-dev-' + name);
     mkdirSync(directory, { mode: 0o700 });
     const modelPath = join(directory, 'model.bin');
     writeFileSync(modelPath, checkpoint.bytes, { mode: 0o600 });
     const require = createRequire(import.meta.url), { build } = require(require.resolve('esbuild', { paths: [require.resolve('vite')] })), sourceHashes = {}, bundle = join(directory, 'decode-worker.mjs');
     await build({ entryPoints: [join(root, 'scripts/neural/full-training/external-dev-worker.ts')], bundle: true, platform: 'node', format: 'esm', target: 'node24', outfile: bundle, logLevel: 'warning', plugins: [{ name: 'pin-evaluation-source', setup(b) { b.onLoad({ filter: /\.(ts|json|mjs)$/ }, args => { const contents = readFileSync(args.path, 'utf8'); sourceHashes[relative(root, args.path)] = digest(contents); return { contents, loader: args.path.endsWith('.json') ? 'json' : args.path.endsWith('.ts') ? 'ts' : 'js' }; }); } }] });
-    for (const key of ['scripts/neural/full-training/external-dev.mjs', 'scripts/neural/full-training/baseline-cache.mjs', 'scripts/neural/full-training/source-compatibility.mjs', 'scripts/neural/full-training/process.mjs', 'scripts/neural/full-training/supervisor.mjs', 'scripts/neural/full-training/evaluate.mjs'])
+    for (const key of ['scripts/neural/full-training/external-dev.mjs', 'scripts/neural/full-training/baseline-cache.mjs', 'scripts/neural/full-training/source-compatibility.mjs', 'scripts/neural/full-training/process.mjs', 'scripts/neural/full-training/supervisor.mjs', 'scripts/neural/full-training/evaluate.mjs', 'scripts/neural/full-baseline/reference-protocol.mjs'])
         sourceHashes[key] = digest(readFileSync(join(root, key)));
     for (const [key, hash] of Object.entries(sourceHashes))
         if (digest(readFileSync(join(root, key))) !== hash)
@@ -75,7 +80,7 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
         const declared = sources.teacherManifest.cases.find(c => c.familyId === record.familyId);
         if (!declared || declared.inputHash !== digest(record.input))
             throw Error('DEV original input manifest mismatch');
-        const job = { archivedTeacherTrace: { constructionOrder: record.constructionOrder ?? 'legacy-v1', actionIds: record.actionIds, teacherSemanticHash: record.teacherSemanticHash }, constructionOrder: training.config.constructionOrder ?? 'legacy-v1', input: record.input, outcome: source.outcome, trainingInputs: trainingData.records.map(r => r.input), modelPath, modelHash: binding.modelHash };
+        const job = { referenceContract, archivedTeacherTrace: { constructionOrder: record.constructionOrder ?? 'legacy-v1', actionIds: record.actionIds, teacherSemanticHash: record.teacherSemanticHash }, constructionOrder: training.config.constructionOrder ?? 'legacy-v1', input: record.input, outcome: source.outcome, trainingInputs: trainingData.records.map(r => r.input), modelPath, modelHash: binding.modelHash };
         const decoded = await runWorker(bundle, job, { timeoutMs, stderrPath: join(directory, record.familyId + '-decode.stderr') });
         atomic(join(directory, record.familyId + '-decode.json'), { binding, jobHash: digest(job), outcome: decoded });
         const report = { familyId: record.familyId, decodeStatus: decoded.status, complete: decoded.result?.complete ?? false, exactTeacherSemantics: decoded.result?.exactTeacherSemantics ?? false, diagnostics: decoded.result?.diagnostics ?? [], pairs: [] };

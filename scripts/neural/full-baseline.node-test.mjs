@@ -33,7 +33,7 @@ test('frozen worker builds deterministic legal actual-stage empty full243 inputs
  const dir=mkdtempSync(join(tmpdir(),'full-baseline-input-'));
  try { const p=await freezeBundle(dir);assert.equal(sha256(readFileSync(join(dir,'worker.mjs'),'utf8')),p.bundleHash);assert.ok(p.sourceHashes['src/optimizer/smartRoster.ts']);
  const prepare=(seed,size,declared={})=>JSON.parse(execFileSync(process.execPath,[join(dir,'worker.mjs'),'--prepare'],{input:JSON.stringify({seed,size,...declared}),encoding:'utf8'}));
- const a=prepare(2026102701,100); assert.deepEqual(a,prepare(2026102701,100));assert.equal(a.entries.length,100);assert.ok(a.requiredProviso);assert.equal(a.options.branchCount,10);assert.equal(a.options.enableDeepSearch,true);assert.equal(a.options.simulationSampleHours,72);
+ const a=prepare(2026102701,100); assert.deepEqual(a,prepare(2026102701,100));assert.equal(a.entries.length,100);assert.ok(a.requiredProviso);assert.equal(a.options.branchCount,undefined);assert.equal(a.options.enableDeepSearch,false);assert.equal(a.referenceProtocol?.id,'latest-default-two-stage-v1');assert.equal(a.dataVersion,'latest-math-v3');assert.equal(a.options.simulationSampleHours,72);
  const counts={};for(const room of Object.values(a.workspace.mainPlan.facilities)){if(room.level>0)counts[room.type]=(counts[room.type]??0)+1;for(const slot of room.slots){assert.equal(slot.occupant.kind,'empty');assert.deepEqual(slot.replacements,[]);assert.equal(slot.groupId,null);}}
  assert.equal(counts.manufacture,4);assert.equal(counts.trading,2);assert.equal(counts.power,3);assert.equal(counts.dormitory,4);
  assert.ok(a.entries.some(e=>e.elitePhase===0));assert.ok(a.entries.some(e=>e.elitePhase===2));assert.equal(new Set(a.entries.map(e=>e.operator)).size,100);
