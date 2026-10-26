@@ -68,7 +68,7 @@ Files: scripts/neural/*, src/optimizer/neural/experiment.ts and tests if shared 
 - 验证：数值模块 18 项、解码模块 21 项、实验纯逻辑 3 项、原生 CLI／进程检查 7 项通过；完整类型检查和独立 Vite 构建通过（保留既有大 chunk 警告）。新旧模块审查及全分支独立审查通过。
 - 完整 Vitest 首次运行 1777.80 秒：4753 项通过、1 项失败、1 项跳过；另有 2 个原生 node:test 文件被 Vitest 错收集导致 suite 错误。原生文件随后改为 *.node-test.mjs，实际 discovery 361 文件、不再收集原生脚本；专项复测另记录，不冒充重跑整套。
 - 唯一业务断言失败为既有 goldenScenarios 的原始 CRLF 哈希：未修改的 89070dc 独立归档复现完全相同失败；原 fixture 与主线字节相同，LF 哈希正确，转换 CRLF 后即匹配原 raw 期望。保留原测试与输入，不放宽断言。证据 artifacts/neural/baseline/golden-original-main.log、golden-line-ending-proof.json。
-- 交付目标仅新专项分支及实验模型；不合并 main/test、不访问或安装到用户电脑。远端保存状态在实际确认后补记。
+- 交付目标仅新专项分支及实验模型；不合并 main/test、不访问或安装到用户电脑。已通过 GitHub 保存专项分支，源码提交 e9f2568ad93381b522e4bc6ddf4df3b1a6e96312；源码树 e3594ddd291c8426196b1001b566c8a25a0e55e4 与已验证本地 1b8083c 完全一致。main 保持 89070dc。此后仅补交付记录，不重新标记模型训练来源。
 
 ---
 
