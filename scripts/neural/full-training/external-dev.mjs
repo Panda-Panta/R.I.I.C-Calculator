@@ -1,3 +1,4 @@
+import {POLICY_FORK_ID,POLICY_FORK_SOURCE_TRANSITION} from './aligned-policy-fork-contract.mjs';
 import {GROUP_COVER_SOURCE_TRANSITION} from './aligned-continuation-contract.mjs';
 import { referenceManifestContract } from '../full-baseline/reference-protocol.mjs';
 /** Snapshot a TRAIN model, then evaluate on separately qualified exposed FULL DEV families. */
@@ -27,16 +28,25 @@ export function validateExternalSources(training, dev, trainingData, devData) {
 }
 export function validateExternalTeacherContract(training, sources) {
     const policy = training.config?.sourceTransition ?? 'none';
-    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION].includes(policy)&&training.config.featureMigration!==FEATURE_MIGRATION_ID)throw Error('External feature migration binding missing');
+    if((policy===POLICY_FORK_SOURCE_TRANSITION)!==Boolean(training.config.policyForkId)|| (training.config.policyForkId&&training.config.policyForkId!==POLICY_FORK_ID))throw Error('External policy fork binding mismatch');
+    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION,POLICY_FORK_SOURCE_TRANSITION].includes(policy)&&training.config.featureMigration!==FEATURE_MIGRATION_ID)throw Error('External feature migration binding missing');
     if (policy !== 'none' && (![STAFFING_SOURCE_TRANSITION, ...Object.keys(LATEST_POLICY_TRANSITIONS)].includes(policy) || training.config?.constructionOrder !== 'staffing-first-v1')) throw Error('Invalid external reference action transition');
     if (Object.hasOwn(LATEST_POLICY_TRANSITIONS, policy) && (training.config?.policyMode !== LATEST_POLICY_TRANSITIONS[policy] || training.config?.teacherKind !== 'full-optimizer')) throw Error('Latest external transition requires bound full-reference policy mode');
     if (isLatestPolicyMode(training.config?.policyMode) && LATEST_POLICY_TRANSITIONS[policy] !== training.config.policyMode) throw Error('Latest external policy mode requires independent producer replay transition');
     return { ...verifyTeacherSourceCompatibility(sources.teacherManifest.provenance, training.provenance, policy), reference: referenceManifestContract(sources.teacherManifest, (sources.records ?? []).map(r => r.input)) };
 }
-export function verifyExternalTrainCheckpoint(training, trainingData, checkpoint) {
+export function verifyExternalTrainCheckpoint(training, trainingData, checkpoint, modelDirectory) {
     if (!checkpoint || training.config?.purpose !== 'train') throw Error('External evaluation requires actual TRAIN checkpoint');
     const binding = { datasetHash: digest(trainingData), sourceHash: training.provenance.sourceHash, bundleHash: training.provenance.bundleHash, featureManifestHash: trainingData.featureManifestHash, ...training.config, ...(training.lineage ? { lineageHash: digest(training.lineage) } : {}) };
     verifyBinding(checkpoint.state.binding, binding);
+    if(training.config.policyForkId){
+        if(training.config.policyForkId!==POLICY_FORK_ID||!modelDirectory)throw Error('Missing explicit external policy fork evidence directory');
+        const receipt=read(join(modelDirectory,'policy-fork.json')),state=checkpoint.state;
+        if(receipt.kind!==POLICY_FORK_ID||state.initializationProofHash!==digest(receipt))throw Error('External policy fork saved initialization proof mismatch');
+        if(state.pendingEvaluation!==null||state.cursor.family!==0||state.cursor.action!==0||state.cursor.updates<receipt.model.trainingUpdates)throw Error('External policy fork checkpoint is not a committed boundary');
+        if(state.cursor.updates===receipt.model.trainingUpdates&&(state.modelHash!==receipt.model.modelHash||state.cursor.epoch!==0))throw Error('External zero-update policy fork binary/cursor mismatch');
+    }
+    return binding;
 }
 export async function evaluateExternalDev(modelDirectory, devDirectory, name, { timeoutMs = 120000, baselineCacheDirectory = null } = {}) {
     if (!/^[\w-]+$/.test(name) || !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600000)
@@ -57,7 +67,12 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
     if (digest(readFileSync(join(modelDirectory, 'worker.mjs'))) !== training.provenance.bundleHash)
         throw Error('Frozen simulator bundle mismatch');
     const checkpoint = inspectCheckpoint(modelDirectory);
-    verifyExternalTrainCheckpoint(training, trainingData, checkpoint);
+    const checkpointBinding=verifyExternalTrainCheckpoint(training, trainingData, checkpoint, modelDirectory);
+    if(training.config.policyForkId){
+        // Authenticate original ancestry + actual current 40-teacher replay before creating any evaluation child.
+        const checked=await runWorker(join(modelDirectory,'worker.mjs'),{mode:'train',verifyPolicyForkCheckpointOnly:true,directory:modelDirectory,binding:checkpointBinding},{timeoutMs});
+        if(checked.status!=='completed'||checked.result?.mode!=='verify-policy-fork-checkpoint'||checked.result.initializationProofHash!==checkpoint.state.initializationProofHash||checked.result.modelHash!==digest(checkpoint.bytes)||digest(checked.result.cursor)!==digest(checkpoint.state.cursor)||checked.result.trainingUpdates!==0||checked.result.simulationExecuted!==false)throw Error('External policy fork reconstruction failed before snapshot: '+checked.status);
+    }
     const directory = join(modelDirectory, 'external-dev-' + name);
     mkdirSync(directory, { mode: 0o700 });
     const producerReplay = referenceContract.producerReplayProofRequired ? await prepareProducerReplay({ producerDirectory: devDirectory, directory: join(directory, 'producer-replay'), sources, trainingProvenance: training.provenance, sourceTransition: referenceContract.policy, timeoutMs }) : null;
@@ -90,7 +105,7 @@ export async function evaluateExternalDev(modelDirectory, devDirectory, name, { 
         const declared = sources.teacherManifest.cases.find(c => c.familyId === record.familyId);
         if (!declared || declared.inputHash !== digest(record.input))
             throw Error('DEV original input manifest mismatch');
-        const job = { referenceContract, ...(producerReplay ? { producerReplayProof: producerReplay } : {}),...(training.config.featureMigration?{featureMigration:training.config.featureMigration}:{}), policyMode: training.config.policyMode ?? 'legacy-unconstrained-v1', archivedTeacherTrace: { policyMode: record.policyMode ?? 'legacy-unconstrained-v1', constructionOrder: record.constructionOrder ?? 'legacy-v1', actionIds: record.actionIds, teacherSemanticHash: record.teacherSemanticHash }, constructionOrder: training.config.constructionOrder ?? 'legacy-v1', input: record.input, outcome: source.outcome, trainingInputs: trainingData.records.map(r => r.input), modelPath, modelHash: binding.modelHash };
+        const job = { referenceContract, ...(producerReplay ? { producerReplayProof: producerReplay } : {}),...(training.config.featureMigration?{featureMigration:training.config.featureMigration}:{}),...(training.config.policyForkId?{policyForkId:training.config.policyForkId}:{}), policyMode: training.config.policyMode ?? 'legacy-unconstrained-v1', archivedTeacherTrace: { policyMode: record.policyMode ?? 'legacy-unconstrained-v1', constructionOrder: record.constructionOrder ?? 'legacy-v1', actionIds: record.actionIds, teacherSemanticHash: record.teacherSemanticHash }, constructionOrder: training.config.constructionOrder ?? 'legacy-v1', input: record.input, outcome: source.outcome, trainingInputs: trainingData.records.map(r => r.input), modelPath, modelHash: binding.modelHash };
         const decoded = await runWorker(bundle, job, { timeoutMs, stderrPath: join(directory, record.familyId + '-decode.stderr') });
         atomic(join(directory, record.familyId + '-decode.json'), { binding, jobHash: digest(job), outcome: decoded });
         const report = { familyId: record.familyId, decodeStatus: decoded.status, complete: decoded.result?.complete ?? false, exactTeacherSemantics: decoded.result?.exactTeacherSemantics ?? false, policyMode: decoded.result?.policyMode ?? training.config.policyMode ?? 'legacy-unconstrained-v1', diagnostics: decoded.result?.diagnostics ?? [], pairs: [] };

@@ -35,6 +35,17 @@ Ordinary resume requires identical source/configuration. Changing the learning r
 using a continuation as a new migration parent, or silently re-zeroing learned rows
 is not supported by this contract and must not be disguised as resume.
 
+A separate, narrow `aligned-policy-curriculum-fork-v1` contract supports the reviewed
+TRAIN24-to-TRAIN40 experiment through exclusive `--policy-fork-from` and
+`--policy-fork-id`. It binds the selected official phase10 model, its continuation
+and original migration ancestry, the exact ordered 24-member prefix and all 16
+new original-producer proofs. Its declared changes are V3 to V4 and learning rate
+.01 to .003; all other numerical and feature settings stay fixed. It preserves
+model bytes and 248,335 inherited updates, resets only the outer curriculum cursor,
+and reconstructs `policy-fork.json` on initialization/resume and before external
+snapshotting. A zero-update stage and disposable tamper checks precede learning.
+This is not generic arbitrary-parent support or admission of a scratch model.
+
 External evaluation authenticates model, dataset, lineage, frozen source, input,
 physics and actual completion. Incomplete or timed-out simulations remain unknown,
 not zero or dropped rows. The exposed DEV result of 2026-10-26 has eight wins and

@@ -1,4 +1,4 @@
-/** Pure report helpers only: no training, decoding, simulation, or roster repair. */
+/** Read-only report helpers: no training, autonomous model decoding, simulation, or roster repair. */
 import { compileOperatorInventory } from '../../../src/domain/operatorInventory';
 import { deserializeFullPolicy } from '../../../src/optimizer/neural/fullPolicy';
 import { FULL_FEATURE_MANIFEST, FULL_FEATURE_MANIFEST_HASH } from '../../../src/optimizer/neural/fullFeatures';
@@ -13,3 +13,5 @@ export function modelMetadata(bytes: Uint8Array) {
     const model = deserializeFullPolicy(bytes);
     return { ...model.metadata, hiddenSize: model.hiddenSize, manifestHash: model.manifestHash };
 }
+
+export { replayPolicyForkTeacher } from './parity-report-teacher-replay';

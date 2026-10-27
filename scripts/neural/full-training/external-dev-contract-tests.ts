@@ -38,6 +38,10 @@ try {
         assert.throws(()=>decodeExternalDev(aligned),/feature migration commitment/);
         assert.throws(()=>decodeExternalDev({...aligned,featureMigration:FEATURE_MIGRATION_ID,archivedTeacherTrace:undefined}),/Missing archived/);
     }
+    const fork={...job,constructionOrder:'staffing-first-v1',policyMode:'latest-native-group-occupants-v4',producerReplayProof:{featureManifestHash:FEATURE_MIGRATION_CONTRACT.oldHash},referenceContract:{policy:'latest-default-to-aligned-group-occupants-v5',featureMigration:FEATURE_MIGRATION_CONTRACT},featureMigration:FEATURE_MIGRATION_ID};
+    assert.throws(()=>decodeExternalDev(fork),/policy fork/);
+    assert.throws(()=>decodeExternalDev({...fork,policyForkId:'wrong'}),/policy fork/);
+    assert.throws(()=>decodeExternalDev({...fork,policyForkId:'aligned-policy-curriculum-fork-v1',archivedTeacherTrace:undefined}),/Missing archived/);
     assert.throws(() => decodeExternalDev({ ...job, trainingInputs: [{ ...input, familyId: 'DIFFERENT-FAMILY' }] }), /canonical inventory overlap/);
     assert.throws(() => decodeExternalDev({ ...job, modelHash: 'bad' }), /snapshot mismatch/);
     const result = decodeExternalDev(job);

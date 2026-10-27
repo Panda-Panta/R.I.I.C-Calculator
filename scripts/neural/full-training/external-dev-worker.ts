@@ -1,3 +1,4 @@
+import {POLICY_FORK_ID,POLICY_FORK_SOURCE_TRANSITION} from './aligned-policy-fork-contract.mjs';
 import {GROUP_COVER_SOURCE_TRANSITION} from './aligned-continuation-contract.mjs';
 /** Read-only FULL DEV inference, never a training update or teacher-assisted decode. */
 import { readFileSync } from 'node:fs';
@@ -18,9 +19,10 @@ export function decodeExternalDev(job: any) {
     if (job.outcome?.result?.degradedBaseline === true)
         throw Error('Degraded output is not a full mathematical reference');
     const policyMode = job.policyMode ?? 'legacy-unconstrained-v1';
+    if((job.referenceContract?.policy===POLICY_FORK_SOURCE_TRANSITION)!==Boolean(job.policyForkId)||(job.policyForkId&&job.policyForkId!==POLICY_FORK_ID))throw Error('External policy fork binding mismatch');
     if (isLatestPolicyMode(policyMode) && !job.producerReplayProof) throw Error('Missing independent producer replay proof');
     if (isLatestPolicyMode(policyMode)) verifyLatestPolicyTransition(policyMode, job.referenceContract?.policy);
-    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION].includes(job.referenceContract?.policy)&&(job.featureMigration!==FEATURE_MIGRATION_ID||digest(job.referenceContract.featureMigration)!==digest(FEATURE_MIGRATION_CONTRACT)||job.producerReplayProof?.featureManifestHash!==FEATURE_MIGRATION_CONTRACT.oldHash))throw Error('External decode feature migration commitment mismatch');
+    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION,POLICY_FORK_SOURCE_TRANSITION].includes(job.referenceContract?.policy)&&(job.featureMigration!==FEATURE_MIGRATION_ID||digest(job.referenceContract.featureMigration)!==digest(FEATURE_MIGRATION_CONTRACT)||job.producerReplayProof?.featureManifestHash!==FEATURE_MIGRATION_CONTRACT.oldHash))throw Error('External decode feature migration commitment mismatch');
     const archived = job.archivedTeacherTrace;
     if (!archived || !Array.isArray(archived.actionIds) || !archived.teacherSemanticHash)
         throw Error('Missing archived FULL DEV trace commitment');

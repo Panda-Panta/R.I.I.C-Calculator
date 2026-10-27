@@ -1,3 +1,4 @@
+import {POLICY_FORK_ID,POLICY_FORK_MODE,POLICY_FORK_SOURCE_TRANSITION,verifyPolicyForkModeBinding,verifyPolicyForkCurrentModel,readPolicyForkParent,buildAlignedPolicyForkReceipt} from './full-training/aligned-policy-fork-contract.mjs';
 import {ALIGNED_CONTINUATION_ID,GROUP_COVER_SOURCE_TRANSITION,buildAlignedContinuationReceipt} from './full-training/aligned-continuation-contract.mjs';
 /** CPU-only full-v2 trainer. Teacher optimizer is deliberately not imported. */
 import { readFileSync, existsSync, writeFileSync, renameSync } from 'node:fs';
@@ -40,7 +41,8 @@ export function compactTeacher(input: any, outcome: any, purpose: string, constr
         return { record: null, audit: qualification };
     const target = outcome.result.result.workspace, exclusions = auditTradingExclusions(target), scenario = scenarioFromInput(input, constructionOrder, policyMode), replay = replayFullTeacher(scenario, target);
     const reasons = [...qualification.reasons, ...(!exclusions.imitationPolicyCompatible ? ['TRADING_POLICY_CONFLICT'] : []), ...(!scenario.valid ? ['INVALID_INPUT_SCENARIO'] : []), ...(!replay.exactReplay ? ['NOT_EXACT_REPLAY'] : []), ...(!replay.complete ? ['INVALID_TEACHER_SEMANTICS'] : [])];
-    return { audit: { ...qualification, qualified: !reasons.length, reasons, exclusions, diagnostics: replay.diagnostics, exactReplay: replay.exactReplay, complete: replay.complete }, record: reasons.length ? null : { familyId: input.familyId, originalSplit: input.split, input, constructionOrder, policyMode, actionIds: replay.trace.map(t => t.action.id), teacherSemanticHash: digest(fullSemanticWorkspace(scenario, target)), teacherScore: qualification.score, referenceProtocol: qualification.referenceProtocol, degradedBaseline: qualification.degradedBaseline, teacherRecordHash: digest(outcome), sourceKind: 'full-optimizer', fullOptimizerTeacher: true, baselineEligible: true } };
+    const teacherActionAccounting=policyMode===POLICY_FORK_MODE?{total:replay.modelActions,forced:replay.forcedActions,modelChoice:replay.modelChoiceActions}:undefined;
+    return { audit: { ...(teacherActionAccounting?{teacherActionAccounting}:{}),...qualification, qualified: !reasons.length, reasons, exclusions, diagnostics: replay.diagnostics, exactReplay: replay.exactReplay, complete: replay.complete }, record: reasons.length ? null : { ...(teacherActionAccounting?{teacherActionAccounting}:{}),familyId: input.familyId, originalSplit: input.split, input, constructionOrder, policyMode, actionIds: replay.trace.map(t => t.action.id), teacherSemanticHash: digest(fullSemanticWorkspace(scenario, target)), teacherScore: qualification.score, referenceProtocol: qualification.referenceProtocol, degradedBaseline: qualification.degradedBaseline, teacherRecordHash: digest(outcome), sourceKind: 'full-optimizer', fullOptimizerTeacher: true, baselineEligible: true } };
 }
 /** Rebuild only this family's prefix; do not persist repeated sparse matrices. */
 export function regenerateChunk(record: any, start: number, count: number) {
@@ -63,6 +65,7 @@ export function regenerateChunk(record: any, start: number, count: number) {
     return samples;
 }
 export function prepare(job: any) {
+    verifyPolicyForkModeBinding(job);
     const sources = read(join(job.directory, 'source-records.json')), records: any[] = [], audits: any[] = [];
     const fullUnion=sources.kind===FULL_UNION_KIND;
     if(fullUnion){verifyFullTrainingUnion(sources);if(job.purpose!=='train')throw Error('Independent union is TRAIN only');}
@@ -72,7 +75,7 @@ export function prepare(job: any) {
     if (isLatestPolicyMode(policyMode)) {
         verifyLatestPolicyTransition(policyMode, sources.sourceCompatibility?.policy);
         if (job.sourceTransition !== sources.sourceCompatibility.policy) throw Error('Preparation source-transition binding mismatch');
-        if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION].includes(job.sourceTransition)&&job.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Preparation requires explicit feature migration contract');
+        if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION,POLICY_FORK_SOURCE_TRANSITION].includes(job.sourceTransition)&&job.featureMigration!==FEATURE_MIGRATION_ID)throw Error('Preparation requires explicit feature migration contract');
     }
     if (sources.sourceCompatibility?.legacyProofRequired && job.constructionOrder !== 'staffing-first-v1')
         throw Error('Replay-preserving transition requires staffing-first learning protocol');
@@ -161,6 +164,30 @@ export function continuationReceipt(job:any,bytes:Uint8Array){
     verifyInitialization(inheritedLineage,{datasetHash:digest(inheritedDataset),sourceHash:inheritedManifest.provenance.sourceHash,bundleHash:inheritedManifest.provenance.bundleHash,featureManifestHash:inheritedDataset.featureManifestHash,...inheritedManifest.config,lineageHash:digest(inheritedLineage)});
     return buildAlignedContinuationReceipt({lineage,manifest:read(join(directory,'manifest.json')),dataset:read(join(directory,'dataset.json')),parentManifest:read(join(directory,'parent-manifest.json')),parentState:read(join(directory,'parent-checkpoint.json')),parentDataset:read(join(directory,'parent-dataset.json')),parentFeatureManifest:read(join(directory,'parent-feature-manifest.json')),featureManifest:read(join(directory,'feature-manifest.json')),initialBytes:bytes,parentBytes:readFileSync(join(directory,'initial-model.bin')),binding:job.binding,inheritedMigration:{manifest:inheritedManifest,lineage:inheritedLineage,dataset:inheritedDataset,sourceSnapshot:read(join(inherited,'source-snapshot.json')),featureManifest:read(join(inherited,'feature-manifest.json')),oldFeatureManifest:read(join(inherited,'parent-feature-manifest.json')),oldDataset:read(join(inherited,'parent-dataset.json')),oldManifest:read(join(inherited,'parent-manifest.json')),oldState:read(join(inherited,'parent-checkpoint.json')),oldBytes:readFileSync(join(inherited,'initial-model.bin')),migratedBytes:readFileSync(join(inherited,'migrated-initial-model.bin')),receipt:read(join(inherited,'feature-migration.json'))}});
 }
+export function replayPolicyForkAccounting(dataset:any,sources:any){
+    if(dataset.policyMode!==POLICY_FORK_MODE||dataset.records.length!==40)throw Error('Actual V4 full40 replay accounting required');
+    return dataset.records.map((record:any)=>{const source=sources.records.find((r:any)=>r.input.familyId===record.familyId&&digest(r.outcome)===record.teacherRecordHash);if(!source||digest(source.input)!==digest(record.input))throw Error('Teacher accounting raw source mismatch');const scenario=scenarioFromInput(record.input,record.constructionOrder,record.policyMode),replay=replayFullTeacher(scenario,source.outcome.result.result.workspace);if(!replay.complete||!replay.exactReplay||digest(replay.trace.map(t=>t.action.id))!==digest(record.actionIds)||digest(fullSemanticWorkspace(scenario,replay.workspace))!==record.teacherSemanticHash)throw Error('Teacher accounting exact replay mismatch');return{familyId:record.familyId,total:replay.modelActions,forced:replay.forcedActions,modelChoice:replay.modelChoiceActions};});
+}
+export function policyForkReceipt(job:any,bytes:Uint8Array){
+    const directory=job.directory,lineage=read(join(directory,'lineage.json'));verifyInitialization(lineage,job.binding);
+    const parent=readPolicyForkParent(directory,lineage),manifest=read(join(directory,'manifest.json')),dataset=read(join(directory,'dataset.json')),sources=read(join(directory,'source-records.json'));
+    verifyPreparedPolicyDataset(parent.dataset,parent.sources,parent.manifest.config);
+    verifyPreparedPolicyDataset(dataset,sources,job.binding);
+    return buildAlignedPolicyForkReceipt({lineage,manifest,dataset,parent,featureManifest:read(join(directory,'feature-manifest.json')),initialBytes:bytes,binding:job.binding,replayAccounting:replayPolicyForkAccounting(dataset,sources),sources});
+}
+/** Read-only pre-snapshot proof: no initialization, decode, checkpoint write or numerical update. */
+export function verifyPolicyForkCheckpoint(job:any){
+    if(job.binding?.policyForkId!==POLICY_FORK_ID)throw Error('Explicit policy fork checkpoint verification required');
+    const directory=job.directory,dataset=read(join(directory,'dataset.json')),sources=read(join(directory,'source-records.json'));
+    verifyPreparedPolicyDataset(dataset,sources,job.binding);
+    const checkpoint=loadCheckpoint(directory,job.binding);if(!checkpoint)throw Error('Missing policy fork checkpoint');
+    const expected=policyForkReceipt(job,readFileSync(join(directory,'initial-model.bin'))),proofHash=digest(expected),model=deserializeFullPolicy(checkpoint.bytes),cursor=checkpoint.state.cursor;
+    if(digest(read(join(directory,'policy-fork.json')))!==proofHash||checkpoint.state.initializationProofHash!==proofHash)throw Error('Policy fork external initialization proof mismatch');
+    verifyPolicyForkCurrentModel(model,cursor,dataset,job.binding);
+    if(checkpoint.state.pendingEvaluation!==null||cursor.family!==0||cursor.action!==0||model.metadata.trainingUpdates!==cursor.updates||cursor.updates<expected.model.trainingUpdates)throw Error('Policy fork external checkpoint boundary/counter mismatch');
+    if(cursor.updates===expected.model.trainingUpdates&&(digest(checkpoint.bytes)!==expected.model.modelHash||cursor.epoch!==0))throw Error('Zero-update policy fork external binary/cursor mismatch');
+    return{mode:'verify-policy-fork-checkpoint',initializationProofHash:proofHash,modelHash:digest(checkpoint.bytes),cursor,trainingUpdates:0,simulationExecuted:false};
+}
 export function initialModel(job: any) {
     if (!job.binding.lineageHash)
         return createFullPolicy({ hiddenSize: job.binding.hiddenSize, seed: job.binding.seed });
@@ -185,6 +212,11 @@ export function initialModel(job: any) {
         return model;
     }
     const model = deserializeFullPolicy(bytes);
+    if(lineage.spec.mode==='aligned-policy-fork'){
+        const receipt=policyForkReceipt(job,bytes),path=join(job.directory,'policy-fork.json');
+        if(existsSync(path)&&digest(read(path))!==digest(receipt))throw Error('Existing policy fork receipt changed');
+        if(!existsSync(path))atomic(path,receipt);
+    }
     if(lineage.spec.mode==='aligned-continuation'){
         const receipt=continuationReceipt(job,bytes),path=join(job.directory,'continuation.json');
         if(existsSync(path)&&digest(read(path))!==digest(receipt))throw Error('Existing continuation receipt changed');
@@ -197,6 +229,7 @@ export function initialModel(job: any) {
     return model;
 }
 export function trainPreparedDataset(job: any) {
+    if(job.verifyPolicyForkCheckpointOnly===true)return verifyPolicyForkCheckpoint(job);
     const directory = job.directory, dataset = read(join(directory, 'dataset.json'));
     if (!dataset.records.length)
         return { status: 'waiting-qualified-teacher', parity: false };
@@ -211,7 +244,14 @@ export function trainPreparedDataset(job: any) {
     const checkpoint = loadCheckpoint(directory, job.binding);
     let model = checkpoint ? deserializeFullPolicy(checkpoint.bytes) : initialModel(job), cursor = checkpoint?.state.cursor ?? { epoch: 0, family: 0, action: 0, updates: model.metadata.trainingUpdates };
     let initializationProofHash:string|null=null;
-    if(job.binding.continuationId){
+    if(job.binding.policyForkId){
+        verifyPolicyForkCurrentModel(model,cursor,dataset,job.binding);
+        if(job.binding.policyForkId!==POLICY_FORK_ID)throw Error('Unknown policy fork');
+        const receipt=read(join(directory,'policy-fork.json')),expected=policyForkReceipt(job,readFileSync(join(directory,'initial-model.bin')));initializationProofHash=digest(expected);
+        if(digest(receipt)!==initializationProofHash||(checkpoint&&checkpoint.state.initializationProofHash!==initializationProofHash))throw Error('Policy fork saved initialization proof mismatch');
+        if(cursor.updates===expected.model.trainingUpdates&&(digest(serializeFullPolicy(model))!==expected.model.modelHash||cursor.epoch!==0||cursor.family!==0||cursor.action!==0))throw Error('Zero-update policy fork changed learned parameters/cursor');
+        if(cursor.updates<expected.model.trainingUpdates)throw Error('Policy fork cumulative updates regressed');
+    }else if(job.binding.continuationId){
         if(job.binding.continuationId!==ALIGNED_CONTINUATION_ID)throw Error('Unknown aligned continuation');
         const receipt=read(join(directory,'continuation.json')),expected=continuationReceipt(job,readFileSync(join(directory,'initial-model.bin')));initializationProofHash=digest(expected);
         if(digest(receipt)!==initializationProofHash||(checkpoint&&checkpoint.state.initializationProofHash!==initializationProofHash))throw Error('Continuation saved initialization proof mismatch');

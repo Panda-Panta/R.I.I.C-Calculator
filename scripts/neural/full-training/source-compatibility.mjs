@@ -1,10 +1,11 @@
+import {POLICY_FORK_MODE,POLICY_FORK_SOURCE_TRANSITION,POLICY_FORK_ACTION_PAIRS} from './aligned-policy-fork-contract.mjs';
 /** Trace transitions retain their four-module allowlist; aligned features use separate exact reviewed source pairs. Physics and update arithmetic remain immutable. */
 import {ALIGNED_SOURCE_TRANSITION,FEATURE_MIGRATION_CONTRACT,verifyFeatureMigrationImplementation,isReviewedFeatureSourceDrift} from './feature-migration-contract.mjs';
 import {GROUP_COVER_SOURCE_TRANSITION,GROUP_COVER_POLICY_MODE,verifyGroupCoverHelperSource} from './aligned-continuation-contract.mjs';
 export const STAFFING_SOURCE_TRANSITION = 'legacy-action-replay-to-staffing-first-v1';
 export const LATEST_POLICY_SOURCE_TRANSITION = 'latest-default-to-warmup-policy-v1';
 export const LATEST_RUNORDER_SOURCE_TRANSITION = 'latest-default-to-warmup-runorder-v2';
-export const LATEST_POLICY_TRANSITIONS = Object.freeze({ [LATEST_POLICY_SOURCE_TRANSITION]: 'latest-warmup-exhaustion-v1', [LATEST_RUNORDER_SOURCE_TRANSITION]: 'latest-warmup-runorder-v2', [ALIGNED_SOURCE_TRANSITION]:'latest-warmup-runorder-v2', [GROUP_COVER_SOURCE_TRANSITION]:GROUP_COVER_POLICY_MODE });
+export const LATEST_POLICY_TRANSITIONS = Object.freeze({ [LATEST_POLICY_SOURCE_TRANSITION]: 'latest-warmup-exhaustion-v1', [LATEST_RUNORDER_SOURCE_TRANSITION]: 'latest-warmup-runorder-v2', [ALIGNED_SOURCE_TRANSITION]:'latest-warmup-runorder-v2', [GROUP_COVER_SOURCE_TRANSITION]:GROUP_COVER_POLICY_MODE,[POLICY_FORK_SOURCE_TRANSITION]:POLICY_FORK_MODE });
 export const isLatestPolicyMode = mode => Object.values(LATEST_POLICY_TRANSITIONS).includes(mode);
 export function verifyLatestPolicyTransition(policyMode, sourceTransition) {
     if (!isLatestPolicyMode(policyMode) || LATEST_POLICY_TRANSITIONS[sourceTransition] !== policyMode) throw Error('Latest policy-mode/source-transition binding mismatch');
@@ -13,9 +14,10 @@ const actionModules = new Set(['src/optimizer/neural/fullActionSpace.ts', 'src/o
 export function verifyTeacherSourceCompatibility(producer, trainer, policy = 'none') {
     if (!['none', STAFFING_SOURCE_TRANSITION, ...Object.keys(LATEST_POLICY_TRANSITIONS)].includes(policy))
         throw Error('Unknown teacher source transition');
-    const aligned=policy===ALIGNED_SOURCE_TRANSITION||policy===GROUP_COVER_SOURCE_TRANSITION;
+    const aligned=policy===ALIGNED_SOURCE_TRANSITION||policy===GROUP_COVER_SOURCE_TRANSITION||policy===POLICY_FORK_SOURCE_TRANSITION;
     if(aligned)verifyFeatureMigrationImplementation(trainer);
-    if(policy===GROUP_COVER_SOURCE_TRANSITION)verifyGroupCoverHelperSource(trainer);
+    if(policy===GROUP_COVER_SOURCE_TRANSITION||policy===POLICY_FORK_SOURCE_TRANSITION)verifyGroupCoverHelperSource(trainer);
+    if(policy===POLICY_FORK_SOURCE_TRANSITION)for(const[path,pair]of Object.entries(POLICY_FORK_ACTION_PAIRS))if(trainer.sourceHashes[path]!==pair.child)throw Error('Unreviewed policy-fork action implementation: '+path);
     const drifts = [];
     for (const [path, producerHash] of Object.entries(producer.sourceHashes)) {
         const trainerHash = trainer.sourceHashes[path];

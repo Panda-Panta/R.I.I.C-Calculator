@@ -1,3 +1,4 @@
+import {verifyPolicyForkModeBinding,POLICY_FORK_SOURCE_TRANSITION} from './aligned-policy-fork-contract.mjs';
 import {GROUP_COVER_SOURCE_TRANSITION} from './aligned-continuation-contract.mjs';
 /** Pure evidence checks shared by replay preparation and numerical workers. */
 import {digest} from './state.mjs';
@@ -19,6 +20,7 @@ export function verifyProducerReplayRecord(proof,input,outcome,reconstructed) {
     return {producerReplayProofHash:digest(proof),producerActionIdsHash:digest(record.actionIds),producerSemanticHash:record.teacherSemanticHash};
 }
 export function verifyPreparedPolicyDataset(dataset,sources,binding) {
+    if(binding)verifyPolicyForkModeBinding(binding);
     if(sources?.kind===FULL_UNION_KIND){
         verifyFullTrainingUnion(sources);
         if(dataset.sourceRecordsHash!==digest(sources)||digest(dataset.sourceUnion)!==digest(fullUnionDatasetContract(sources)))throw Error('Prepared full union source/member contract mismatch');
@@ -35,7 +37,7 @@ export function verifyPreparedPolicyDataset(dataset,sources,binding) {
     if (!proof||dataset.producerReplayProofHash!==digest(proof)||dataset.sourceRecordsHash!==digest(sources)) throw Error('Latest dataset producer replay proof/source commitment mismatch');
     verifyLatestPolicyTransition(policyMode,sources.sourceCompatibility?.policy);
     if(binding&&(binding.policyMode!==policyMode||binding.sourceTransition!==sources.sourceCompatibility?.policy)) throw Error('Latest dataset numerical/job source-transition binding mismatch');
-    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION].includes(sources.sourceCompatibility.policy)){
+    if([ALIGNED_SOURCE_TRANSITION,GROUP_COVER_SOURCE_TRANSITION,POLICY_FORK_SOURCE_TRANSITION].includes(sources.sourceCompatibility.policy)){
         if(digest(sources.sourceCompatibility.featureMigration)!==digest(FEATURE_MIGRATION_CONTRACT)||digest(dataset.featureMigration??null)!==digest(FEATURE_MIGRATION_CONTRACT)||dataset.featureManifestHash!==FEATURE_MIGRATION_CONTRACT.newHash||proof.featureManifestHash!==FEATURE_MIGRATION_CONTRACT.oldHash||(binding&&binding.featureMigration!==FEATURE_MIGRATION_ID))throw Error('Prepared feature migration contract mismatch');
     }else if(dataset.featureMigration||dataset.featureManifestHash!==proof.featureManifestHash)throw Error('Unexpected prepared feature migration');
     const expected=proof.records.map(r=>r.familyId).sort(),actual=dataset.records.map(r=>r.familyId).sort();
