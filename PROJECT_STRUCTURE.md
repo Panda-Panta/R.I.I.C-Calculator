@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 835 个索引文件，其中应用 TypeScript/Vue/CSS 文件 282 个，业务测试文件 375 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 880 个索引文件，其中应用 TypeScript/Vue/CSS 文件 282 个，业务测试文件 375 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -142,12 +142,57 @@ scripts/
 ├── experiments/
 │   └── roster_methods/
 │       ├── methods/
-│       │   └── m01_pool.py
+│       │   ├── m01_pool.py
+│       │   ├── m02_alns.py
+│       │   ├── m03_cpsat.py
+│       │   ├── m04_colgen.py
+│       │   ├── m05_benders.py
+│       │   ├── m06_factor_dp.py
+│       │   ├── m07_bayes.py
+│       │   ├── m08_multifidelity.py
+│       │   ├── m09_ranking.py
+│       │   ├── m10_renewal.py
+│       │   ├── m11_cross_entropy.py
+│       │   ├── m12_annealing.py
+│       │   ├── m13_pareto.py
+│       │   ├── m14_mcts.py
+│       │   ├── m15_gnn_rl.py
+│       │   └── m16_hybrid.py
 │       ├── notes/
-│       │   └── m01_pool.md
+│       │   ├── m01_pool.md
+│       │   ├── m02_alns.md
+│       │   ├── m03_cpsat.md
+│       │   ├── m04_colgen.md
+│       │   ├── m05_benders.md
+│       │   ├── m06_factor_dp.md
+│       │   ├── m07_bayes.md
+│       │   ├── m08_multifidelity.md
+│       │   ├── m09_ranking.md
+│       │   ├── m10_renewal.md
+│       │   ├── m11_cross_entropy.md
+│       │   ├── m12_annealing.md
+│       │   ├── m13_pareto.md
+│       │   ├── m14_mcts.md
+│       │   ├── m15_gnn_rl.md
+│       │   └── m16_hybrid.md
 │       ├── tests/
 │       │   ├── test_common.py
 │       │   ├── test_m01_pool.py
+│       │   ├── test_m02_alns.py
+│       │   ├── test_m03_cpsat.py
+│       │   ├── test_m04_colgen.py
+│       │   ├── test_m05_benders.py
+│       │   ├── test_m06_factor_dp.py
+│       │   ├── test_m07_bayes.py
+│       │   ├── test_m08_multifidelity.py
+│       │   ├── test_m09_ranking.py
+│       │   ├── test_m10_renewal.py
+│       │   ├── test_m11_cross_entropy.py
+│       │   ├── test_m12_annealing.py
+│       │   ├── test_m13_pareto.py
+│       │   ├── test_m14_mcts.py
+│       │   ├── test_m15_gnn_rl.py
+│       │   ├── test_m16_hybrid.py
 │       │   └── test_runner.py
 │       ├── CONTRACT.md
 │       ├── README.md
