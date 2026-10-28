@@ -1,3 +1,5 @@
+import {mowerInitialMorale} from './mowerInitialMorale'
+import {mowerExhaustTaskSignatures,invalidateMowerExhaustTasks} from './mowerExhaustReservations'
 import {readBackupGroups,readBackupMembership,selectBackupPlans} from './backupGroups'
 import {applyMowerMaintenanceRunOrders} from './mowerMaintenanceRunOrders'
 import {mowerPrimaryJoinsRestingGroup,preserveMowerBackupRestingJoins} from './mowerBackupRestingJoin'
@@ -186,7 +188,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
   else delete state.mowerBackupObservationWakeMicros
   const active = plans.map(() => false)
   for (const id of participants) {
-    state.morale[id] ??= base.assumptions.operatorMorale[id] ?? base.assumptions.initialMorale
+    state.morale[id] ??= mowerInitialMorale(id, base.assumptions.operatorMorale[id] ?? base.assumptions.initialMorale)
     ;(state.initialMorale??={})[id] ??= state.morale[id]
   }
   const displaced = new Set<string>()
@@ -234,6 +236,7 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
   }
   const alphaModel:MowerShiftModel={
     count:plans.length,
+    exhaustRoomContext(data){const {compiled}=alphaConfiguration(data.planConditions,data.backupGroup);return Object.fromEntries(Object.entries(compiled.sourceWorkspace.mainPlan.facilities).map(([room,facility])=>[room,[facility.type,facility.product]]))},
     observationNames:[...new Set([...plans,...groups].flatMap(plan=>plan.conditionNames))],
     conditionObservationNames:plans.map(plan=>plan.conditionWaitable&&groups.every(group=>group.observedOperatorDependenciesOnly)?[...new Set([...plan.conditionNames,...groups.flatMap(group=>group.conditionNames)])]:[]),
     explicitTasks:plans.map(plan=>plan.task),
@@ -293,10 +296,12 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
     },
     activate(conditions,task){
       const previous=getMowerSourceRuntime(state).data,oldDrained=state.config.mowerSourceRules?.refreshDrained??[]
+      const pending=getMowerSourceRuntime(state).queue.tasks,exhaust=mowerExhaustTaskSignatures(previous,pending,alphaModel.exhaustRoomContext!(previous))
       activeGroup=task?.backupGroup??activeGroup
       const snapshot=alphaConfiguration(conditions,activeGroup)
       conditions.forEach((value,i)=>{if(value!==active[i])state.events.push({time:state.time,type:'backup-plan',operators:[],backupIndex:i,backupName:plans[i]!.name,active:value,timing:'END'});active[i]=value})
       state.config=snapshot.config;effective=snapshot.compiled;getMowerSourceRuntime(state).data.planConditions=[...active];getMowerSourceRuntime(state).data.backupGroup=activeGroup
+      invalidateMowerExhaustTasks(getMowerSourceRuntime(state).data,getMowerSourceRuntime(state).queue.tasks,exhaust,alphaModel.exhaustRoomContext!(getMowerSourceRuntime(state).data))
       captureMowerBackupRefreshRules(task,previous,getMowerSourceRuntime(state).data,oldDrained,state.config.mowerSourceRules?.refreshDrained??[])
     },
   }

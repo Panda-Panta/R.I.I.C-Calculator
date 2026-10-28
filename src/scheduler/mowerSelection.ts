@@ -36,7 +36,7 @@ export function prepareMowerDormSelection(data:MowerSchedulingData,names:string[
   // Alpha cancels excluded or personally capped recovery targets, not ordinary full-mood names.
   const excluded=data.alpha&&!preserve&&dynamic&&alphaRestingTier(data,op.name)===7
   const full=!data.alpha&&!preserve&&op.mood===op.upperLimit&&!op.room.startsWith('dorm')&&!mowerDormReplacementForSlot(data,op.name,room,index)
-  if(limited||full||excluded){names[index]='Free';if(limited||full)op.depletionRate=0}
+  if(limited||full||excluded){names[index]='Free';if(!data.alpha&&(limited||full))op.depletionRate=0}
  }
  // Native alpha rechecks the complete selected row after cancelling completed targets.
  if(data.alpha&&room.startsWith('dorm'))for(const [index,name] of names.entries()){

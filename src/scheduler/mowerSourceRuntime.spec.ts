@@ -226,6 +226,9 @@ describe('integrated Mower source scheduler',()=>{
   config.initialMorale={A:24,R:24,[fia]:24};config.fiammetta={operatorId:fia,orderedTargets:['A'],fool:true,threshold:1}
   const state=createRosterRuntime(config);settleRoster(state,rates)
   const source=getMowerSourceRuntime(state),candidate=source.data.operators.A!
+  // Start this cached-selection scenario after Fiammetta has recovered from her initial 16.
+  expect(state.morale[fia]).toBe(16)
+  state.morale[fia]=24;source.data.operators[fia]!.mood=24
   expect(candidate.mood).toBe(24);candidate.depletionRate=0;candidate.timeStampMicros=source.data.nowMicros
   state.morale.A=10;source.queue.tasks=[new MowerTask({time:state.time,type:T.FIAMMETTA})]
   settleRoster(state,rates)
@@ -267,6 +270,9 @@ describe('integrated Mower source scheduler',()=>{
   config.initialMorale={A:24,R:24,[fia]:24};config.fiammetta={operatorId:fia,orderedTargets:['A'],fool:true,threshold:21.6}
   const state=createRosterRuntime(config);settleRoster(state,rates)
   const source=getMowerSourceRuntime(state),bed=source.data.getDormByName('R')![1],op=source.data.operators.R!
+  // The restoration is a no-op after the initial recovery, with no extra room read.
+  expect(state.morale[fia]).toBe(16)
+  state.morale[fia]=24;source.data.operators[fia]!.mood=24
   state.time=1;source.data.nowMicros=3_600_000_000;bed.timeMicros=5*3_600_000_000;op.timeStampMicros=0
   const fiaTimestamp=source.data.operators[fia]!.timeStampMicros
   source.queue.tasks=[new MowerTask({time:1,type:T.FIAMMETTA,plan:{dormitory_1:[fia,'K2','K3','K4','R']}})]
@@ -282,6 +288,9 @@ describe('integrated Mower source scheduler',()=>{
   config.idleOperators=['X'];config.initialMorale={A:24,R:24,X:24,[fia]:24}
   config.fiammetta={operatorId:fia,orderedTargets:['A'],fool:false,threshold:21.6}
   const state=createRosterRuntime(config),source=getMowerSourceRuntime(state);source.initial=false
+  // Retained full-to-full attempts occur after recovery; first registration still starts at 16.
+  expect(state.morale[fia]).toBe(16)
+  state.morale[fia]=24
   for(const [slot,name] of Object.entries(state.occupants)){const op=source.data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]!;op.timeStampMicros=0}
   source.queue.tasks=[new MowerTask({type:T.FIAMMETTA,...(named?{plan:{room_1_1:['Current'],dormitory_1:['A',fia]},metadata:'A'}:{})})]
   const before={...state.occupants}
