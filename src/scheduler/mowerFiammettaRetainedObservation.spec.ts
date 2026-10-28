@@ -14,6 +14,10 @@ describe('retained full-to-full Fiammetta requests admit only new observations',
   config.idleOperators=['X'];config.initialMorale={A:24,R:24,X:24,[fia]:24}
   config.fiammetta={operatorId:fia,orderedTargets:['A'],fool:false,threshold:21.6}
   const state=createRosterRuntime(config),source=getMowerSourceRuntime(state);source.initial=false
+  expect(state.morale[fia]).toBe(16)
+  // This fixture starts after recovery; initial morale remains the common sixteen-point input.
+  state.morale[fia]=24
+  expect(state.initialMorale![fia]).toBe(16)
   for(const [slot,name] of Object.entries(state.occupants)){const op=source.data.operators[name]!;op.currentRoom=slot.slice(0,slot.lastIndexOf('_'));op.currentIndex=Number(slot.slice(slot.lastIndexOf('_')+1));op.mood=state.morale[name]!;op.timeStampMicros=0}
   source.queue.tasks=[new MowerTask({type:T.FIAMMETTA,...(named?{plan:{room_1_1:['Current'],dormitory_1:['A',fia]},metadata:'A'}:{})})]
   const before={...state.occupants}
