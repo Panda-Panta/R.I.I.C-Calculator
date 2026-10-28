@@ -4,14 +4,14 @@
 - 目标与边界：用同一完整RIIC仿真日均加权产出F比较方法；固定基线main a7bc9bc77db80d00f0615bfb419a6baf0d46da4e。仅交付本地实验分支和可重放证据，不自动合并main/test、推送或安装Tools；不改业务源码、用户干员库、排班、配置及浏览器数据。
 - 备份：artifacts/roster-method-validation-20261028/backup/ 保存原未提交计划、补丁和源码ZIP。ZIP SHA256 e30efd061eb8ebacdbedec7ba5a775691983cbcc96a6a20b72ae6411e3f9a3b2；本任务以下原计划后缀持续与备份逐字节一致，原用户改动不纳入实验提交。
 - 文件与分工：scripts/experiments/roster_methods/ 的common、runner、native适配、原模型对照、汇总和文档由主agent整合；每名subagent独占一个methods模块、对应test和notes，禁止递归派工/共用路径改写。真实算法机制与独立小域oracle均有测试；纯toy仅作算法核证据。
-- 15方法：多解池、ALNS、CP-SAT、列生成、逻辑Benders、因子图DP、贝叶斯优化、多保真减半、OCBA、工休周期/床位诊断、交叉熵、退火、NSGA-II、MCTS、GNN/RL。额外组合真实调用G池＋ALNS＋CP-SAT，统一总预算，不是三个算法各花一份预算。
+- 15方法：多解池、ALNS、CP-SAT、列生成、逻辑Benders、因子图DP、贝叶斯优化、多保真减半、OCBA、工休周期/床位诊断、交叉熵、退火、NSGA-II、MCTS、GNN/RL。额外组合真实调用G冠军初始化＋ALNS＋CP-SAT，统一总预算，不是三个算法各花一份预算。
 - 分支：汇总 codex/roster-methods-20261028；独立 codex/roster-{01-pool,02-alns,03-cpsat,04-colgen,05-benders,06-factor-dp,07-bayes,08-multifidelity,09-ranking,10-renewal-queue,11-cross-entropy,12-annealing,13-pareto,14-mcts,15-gnn-rl}-20261028；辅助 codex/roster-hybrid-20261028。主agent串行装配本地提交，保留各方法独立源码与所需依赖，main/test引用不变。
 - 工作区：managed worktree最初Git受Windows权限限制，实际实验源码与证据在D盘授权工程执行；C盘worktree保留冻结Node依赖供重放。独立Python venv与所有证据位于本任务artifacts，不安装全局依赖。
 - 已完成验证：冻结核测试JUnit 322条（含subtests）失败/错误0；最终toy 45单元全部evaluated。原生15方法×4场景×16/48/128预算共180单元全部evaluated、源指纹不变。独立oracle覆盖6/4/6/96候选×4seed，共448/448有效full；16档59/60、48及128档60/60选定有限最高值。高预算覆盖属于有限审计，不冒称启发式理论保证。
 - 原模型直接对照：两组完整支持制造场景打平；贸易＋经验场景旧模型unsupported并保留13100，新方法13433.33；联合旧模型28700，新29033.33，增333.33约1.1614%。双向最小替换证实全部联合差异来自旧模型冻结的经验站，不证明其支持域内求解错误或G/F排序反转。相对initial的9.28%不得冒称相对旧数学模型。
 - 组合结论：4场景×4预算×5策略80单元全部同有限最高；简单实验G冠军合计2次full已达峰，混合额外CP/邻域没有新增产出。实验G不是原产品数学模型。688逻辑查询为匹配源缓存重放，新增物理仿真0；没有检验任意15方法排列组合。
 - 迭代修复：初始解保护、UNKNOWN与缺测、全预算计账、JSON有限证据、验证seed重叠及机制真实性均经过共同审查；保留历史失败记录。学习策略/候选池、G最优/F有限最高、静态构造/动态排班及计算器/游戏证据分别标记。
-- 当前交付步骤：精确提交装配、每分支实际归档后的核测试/原生重放、结构索引与用户工作保留核验。最终提交与结果见artifacts/roster-method-validation-20261028/branch-assembly/branches.json及branch-replay/summary.json，完成后更新本段状态。
+- 当前交付步骤：精确提交装配、每分支实际归档后的核测试/原生重放、结构索引与用户工作保留核验。最终提交与结果见artifacts/roster-method-validation-20261028/branch-assembly/branches.json及branch-replay-final/summary.json，完成后更新本段状态。
 - 结果入口：scripts/experiments/roster_methods/RESULTS.md；完整本机报告 artifacts/roster-method-validation-20261028/REPORT.md，包含原始对照、归因、三预算、四seed、混合与理论来源入口。真实游戏、任意库存全局最优和未测试的动态场景不在本轮证据内。
 
 # 2026-10-28 PR #22 最小范围集成修复（实现与必要检查通过，待交付）
