@@ -27,12 +27,13 @@ import { compareWorkspacePreference } from './automaticCombinationPreferences'
 import { compareProductionEfficiencyVectors, productionEfficiencyVector } from './productionEfficiencyPriority'
 import { generateProductionShiftAlternatives } from './jointBackupMainAlternatives'
 import { generateContextualCrewCandidates } from './jointBackupCrewSeeds'
+import { selectHighOutputMainCandidates } from './mainRosterSelection'
 import { jointBackupSearchSteps, type JointBackupSearchResult } from './jointBackupSearch'
 import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
 
 export interface SmartRosterOptions {
   seed?: number
-  /** Legacy settings retained for saved configurations. Construction now produces one initial roster. */
+  /** Legacy settings retained for saved configurations. Default construction has its own bounded shortlist. */
   branchCount?: number
   trials?: number
   maxStaticEvals?: number
@@ -86,6 +87,7 @@ export interface SmartRosterResult {
   /** Completed output of the exact returned roster and generation settings. */
   calculationReport?: CalculationReport
   phases: {
+    primarySelection?: { scores: { id: string; primaryHourlyScore: number | null }[]; selectedIds: string[] }
     /** Bounds describe the declared manufacturing model, never the full simulation objective. */
     calculation?: ComputedRosterCalculation
     static: {
@@ -266,18 +268,18 @@ function* smartRosterSteps(
   }
 
   // ==========================================
-  // Phase 1: Construct one feasible roster, then calculate a crew assignment.
+  // Phase 1: Build legal whole-roster alternatives and prioritize actual primary output.
   // ==========================================
   onProgress?.({
     phase: 'building',
     phaseProgress: 0,
     currentTrial: 0,
-    label: `阶段 1/${stages}: 构造合法初始排班并计算完整队伍分配...`,
+    label: `阶段 1/${stages}: 构造合法主班候选并核对完整组合与全局联动...`,
   })
 
   const synthesisOptions = {
     seed,
-    branchCount: options.enableBackupGeneration === true ? 3 : 1,
+    branchCount: enableDeepSearch && options.enableBackupGeneration !== true ? 1 : 3,
     lockedPositions,
     lockedOperators,
     droneTarget,
@@ -314,9 +316,9 @@ function* smartRosterSteps(
     onProgress?.({
       phase: 'building',
       phaseProgress: 0.1,
-      label: `阶段 1/${stages}: 初始排班已就绪，正在建立完整队伍与工休模型...`,
+      label: `阶段 1/${stages}: 合法排班已就绪，正在比较实际主班产出...`,
     })
-    if (options.enableBackupGeneration !== true || uniqueCandidates.length >= 3) break
+    if (uniqueCandidates.length >= synthesisOptions.branchCount) break
   }
 
   if (uniqueCandidates.length === 0) {
@@ -324,6 +326,10 @@ function* smartRosterSteps(
     return result
   }
   const initial = uniqueCandidates[0]!
+  const primaryScores = new Map<string, number>()
+  // The large cycle-column model is an explicitly requested extension. The
+  // default first spends its verification budget on strong complete primaries.
+  if (enableDeepSearch || options.enableBackupGeneration === true) {
   const computed = computeManufacturingRoster({ userBase: base, initial: initial.workspace, inventory, lockedPositions, lockedOperators }, {
     warmupHours: options.simulationWarmupHours ?? 24,
     sampleHours: options.simulationSampleHours ?? 72,
@@ -334,6 +340,7 @@ function* smartRosterSteps(
   if (computed.workspace && !seenFingerprints.has(workspaceFingerprint(computed.workspace))) {
     uniqueCandidates.push({ id: 'computed-assignment', workspace: computed.workspace,
       staticScore: completeShiftScores(computed.workspace, inventory)?.mean ?? null, simScore: null, diagnostics: [] })
+  }
   }
 
   if (options.enableBackupGeneration === true) {
@@ -355,18 +362,32 @@ function* smartRosterSteps(
       if (selected.length >= 4) break
     }
     uniqueCandidates.splice(0, uniqueCandidates.length, ...selected)
+  } else if (!enableDeepSearch) {
+    const crews = generateContextualCrewCandidates(uniqueCandidates, inventory, { lockedPositions, lockedOperators, maxCandidates: 2 })
+    result.diagnostics.push(...crews.diagnostics)
+    for (const candidate of crews.candidates) {
+      const fingerprint = workspaceFingerprint(candidate.workspace)
+      if (seenFingerprints.has(fingerprint)) continue
+      seenFingerprints.add(fingerprint)
+      uniqueCandidates.push({ ...candidate, staticScore: null, simScore: null, diagnostics: [] })
+    }
+    const selected = selectHighOutputMainCandidates(uniqueCandidates, inventory, { anchorId: initial.id, maxCandidates: 2 })
+    result.diagnostics.push(...selected.diagnostics)
+    result.phases.primarySelection = { scores: selected.scores, selectedIds: selected.candidates.map(candidate => candidate.id) }
+    for (const candidate of selected.scores) if (candidate.primaryHourlyScore !== null) primaryScores.set(candidate.id, candidate.primaryHourlyScore)
+    uniqueCandidates.splice(0, uniqueCandidates.length, ...selected.candidates)
   }
 
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, weighted production)
-  // The model is an approximation. F confirms whether its single decision improves the initial roster.
+  // Primary output ranks proposals; only completed F chooses the returned roster.
   // ==========================================
   const simCandidates = [...uniqueCandidates]
   onProgress?.({
     phase: 'simulating',
     phaseProgress: 0,
     totalTrials: simCandidates.length,
-    label: `阶段 2/${stages}: 完整仿真验证初始排班与计算结果，保留日均加权产出较高者...`,
+    label: `阶段 2/${stages}: 完整仿真验证高效主班与安全备选，保留日均加权产出较高者...`,
   })
 
   const cache = new CandidateSimulationCache()
@@ -415,7 +436,9 @@ function* smartRosterSteps(
 
   const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed && Number.isFinite(summary.simScore) ? [uniqueCandidates[index]!.id] : []))
   simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
-    (b.simScore ?? 0) - (a.simScore ?? 0) || compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!))
+    (b.simScore ?? 0) - (a.simScore ?? 0) ||
+    ((primaryScores.get(b.id) ?? -Infinity) - (primaryScores.get(a.id) ?? -Infinity)) ||
+    compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!))
   const bestSimCandidate = simCandidates[0]!
   const staticScores = uniqueCandidates.flatMap(candidate => candidate.staticScore === null ? [] : [candidate.staticScore])
   result.phases.static = {

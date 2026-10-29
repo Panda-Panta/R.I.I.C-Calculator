@@ -15,17 +15,17 @@
       <div class="modal-intro">
         <p class="intro-title">⚡ 智能排班设置</p>
         <p class="intro-desc">
-          先生成合法初始排班，再通过约束分配计算优化。保留当前建筑、锁定人员和用户已有完整组合，以完整仿真的日均加权产出确认结果。
+          按实际练度与全局在岗联动筛选高效主班，保留合法初始排班，再以完整仿真的日均加权产出确认结果。保留当前建筑、锁定人员和用户已有完整组合。
         </p>
       </div>
 
-      <!-- Phase 1: Constraint allocation -->
+      <!-- Phase 1: High-output primary candidates -->
       <ProductionWeightsEditor :model-value="normalizeProductionWeights(form.productionWeights)" @update:model-value="form.productionWeights = $event" @validity-change="weightsValid = $event" />
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
-          <span class="phase-badge phase-1">阶段 1</span> 约束计算优化
+          <span class="phase-badge phase-1">阶段 1</span> 主班候选筛选
         </legend>
-        <p class="stage-description" data-test="constraint-description">从一份初始排班出发，按实际练度、人员与工位约束，联合计算完整队伍及主替分配。</p>
+        <p class="stage-description" data-test="constraint-description">按实际练度、完整组合与全局在岗联动比较主班产出，保留高效方案和安全初始表。主班效率用于筛选，长期收益仍需完整仿真确认。</p>
       </fieldset>
 
       <!-- Phase 2: Dynamic Simulation Verification -->
@@ -33,7 +33,7 @@
         <legend class="fieldset-legend">
           <span class="phase-badge phase-2">阶段 2</span> 完整仿真确认
         </legend>
-        <p class="stage-description" data-test="verification-description">默认最多两份完整仿真：比较初始表与计算改进表，按日均加权产出保留较优结果。</p>
+        <p class="stage-description" data-test="verification-description">默认最多两份完整仿真：比较高效主班方案与初始表，按日均加权产出保留较优结果。</p>
         <div class="field-row single-field">
           <div class="field-item">
             <label for="sample-hours-input">
@@ -69,8 +69,8 @@
               data-test="enable-deep-search"
             />
             <span class="checkbox-text">
-              <strong>追加局部搜索与仿真</strong>
-              <small class="checkbox-hint">默认流程已完成计算与仿真确认；开启额外比较会增加计算时间</small>
+              <strong>追加队伍优化、局部搜索与仿真</strong>
+              <small class="checkbox-hint" data-test="deep-search-description">进一步计算队伍分配并验证局部调整，会增加等待时间。</small>
             </span>
           </label>
         </div>

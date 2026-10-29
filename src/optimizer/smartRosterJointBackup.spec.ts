@@ -71,13 +71,16 @@ describe('smart roster joint backup opt-in', () => {
     expect(fixture.generator).not.toHaveBeenCalled()
   })
 
-  it('includes contextual whole-crew seeds only in the experimental candidate batch', () => {
+  it('uses pure contextual crew seeds without implicitly enabling conditional backups', () => {
     const fixture = prepare(100), seed = { id: 'contextual-crew', workspace: { ...structuredClone(fixture.other), name: 'contextual-crew' } }
     const proposer = vi.spyOn(crewSeeds, 'generateContextualCrewCandidates').mockReturnValue({ candidates: [seed], diagnostics: [] })
-    runSmartRoster(fixture.base, fixture.owned, { seed: 42 })
-    expect(proposer).not.toHaveBeenCalled()
-    const result = runSmartRoster(fixture.base, fixture.owned, { seed: 42, enableBackupGeneration: true })
+    const ordinary = runSmartRoster(fixture.base, fixture.owned, { seed: 42 })
     expect(proposer).toHaveBeenCalledOnce()
+    expect(ordinary.phases.primarySelection!.scores.some(candidate => candidate.id === seed.id)).toBe(true)
+    expect(ordinary.workspace?.compatibility.backupPlans).toEqual([])
+    expect(fixture.generator).not.toHaveBeenCalled()
+    const result = runSmartRoster(fixture.base, fixture.owned, { seed: 42, enableBackupGeneration: true })
+    expect(proposer).toHaveBeenCalledTimes(2)
     expect(fixture.generator.mock.calls[0]![0].some(candidate => candidate.id === seed.id)).toBe(true)
     expect(result.phases.simulation!.candidates.length).toBeLessThanOrEqual(4)
   })
