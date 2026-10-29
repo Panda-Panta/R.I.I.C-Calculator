@@ -25,6 +25,10 @@ import { applyGeneratedWarmupPolicy } from './generatedWarmupPolicy'
 import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
 import { compareProductionEfficiencyVectors, productionEfficiencyVector } from './productionEfficiencyPriority'
+import { generateProductionShiftAlternatives } from './jointBackupMainAlternatives'
+import { generateContextualCrewCandidates } from './jointBackupCrewSeeds'
+import { jointBackupSearchSteps, type JointBackupSearchResult } from './jointBackupSearch'
+import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
 
 export interface SmartRosterOptions {
   seed?: number
@@ -37,6 +41,8 @@ export interface SmartRosterOptions {
   simulationSampleHours?: number
   /** Optional extra comparison. The default two-stage result needs no post-simulation search. */
   enableDeepSearch?: boolean
+  /** Compare bounded jointly generated main/conditional-backup configurations. */
+  enableBackupGeneration?: boolean
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
   productionWeights?: ProductionWeights
@@ -99,6 +105,7 @@ export interface SmartRosterResult {
       swappedCount: number
       logs: string[]
     }
+    jointBackup?: Pick<JointBackupSearchResult, 'generatedCandidates' | 'evaluatedCandidates' | 'selectedCandidateId' | 'improved' | 'candidates'> & { gain: number }
   }
 }
 
@@ -270,7 +277,7 @@ function* smartRosterSteps(
 
   const synthesisOptions = {
     seed,
-    branchCount: 1,
+    branchCount: options.enableBackupGeneration === true ? 3 : 1,
     lockedPositions,
     lockedOperators,
     droneTarget,
@@ -309,7 +316,7 @@ function* smartRosterSteps(
       phaseProgress: 0.1,
       label: `阶段 1/${stages}: 初始排班已就绪，正在建立完整队伍与工休模型...`,
     })
-    break
+    if (options.enableBackupGeneration !== true || uniqueCandidates.length >= 3) break
   }
 
   if (uniqueCandidates.length === 0) {
@@ -329,6 +336,27 @@ function* smartRosterSteps(
       staticScore: completeShiftScores(computed.workspace, inventory)?.mean ?? null, simScore: null, diagnostics: [] })
   }
 
+  if (options.enableBackupGeneration === true) {
+    const crews = generateContextualCrewCandidates(uniqueCandidates, inventory, { lockedPositions, lockedOperators, maxCandidates: 2 })
+    result.diagnostics.push(...crews.diagnostics)
+    const alternatives = generateProductionShiftAlternatives([...crews.candidates, ...uniqueCandidates], inventory, { lockedPositions, lockedOperators, maxCandidates: 2 })
+    result.diagnostics.push(...alternatives.diagnostics)
+    const calculated = uniqueCandidates.find(candidate => candidate.id === 'computed-assignment')
+    const ordered: SmartRosterCandidate[] = [initial, ...(calculated ? [calculated] : []),
+      ...crews.candidates.map(candidate => ({ ...candidate, staticScore: completeShiftScores(candidate.workspace, inventory)?.mean ?? null,
+        simScore: null, diagnostics: [] })),
+      ...alternatives.candidates.map(candidate => ({ ...candidate, staticScore: completeShiftScores(candidate.workspace, inventory)?.mean ?? null,
+        simScore: null, diagnostics: [] })), ...uniqueCandidates]
+    const selected: SmartRosterCandidate[] = [], fingerprints = new Set<string>()
+    for (const candidate of ordered) {
+      const fingerprint = workspaceFingerprint(candidate.workspace)
+      if (fingerprints.has(fingerprint)) continue
+      fingerprints.add(fingerprint); selected.push(candidate)
+      if (selected.length >= 4) break
+    }
+    uniqueCandidates.splice(0, uniqueCandidates.length, ...selected)
+  }
+
   // ==========================================
   // Phase 2: Dynamic Simulation Verification (1+3 Days, weighted production)
   // The model is an approximation. F confirms whether its single decision improves the initial roster.
@@ -342,12 +370,13 @@ function* smartRosterSteps(
   })
 
   const cache = new CandidateSimulationCache()
-  const simulationJob = (workspace: RosterWorkspace): CandidateSimulationJob => {
+  const simulationJob = (workspace: RosterWorkspace, generatedBackup?: GeneratedBackupDescriptor): CandidateSimulationJob => {
     // Persist the policy in the candidate itself before caching and verification.
     if (!prepareWarmupPolicy(workspace)) throw new Error('暖机干员必须具有有效的主班耗尽休息策略')
     applyGeneratedRecoveryPolicy(workspace)
     return {
     workspace,
+    ...(generatedBackup ? { generatedBackup } : {}),
     options: {
       warmupHours: options.simulationWarmupHours ?? 24,
       sampleHours: options.simulationSampleHours ?? 72,
@@ -569,9 +598,26 @@ function* smartRosterSteps(
   }
   }
 
+  let finalGeneratedBackup: GeneratedBackupDescriptor | undefined
+  if (options.enableBackupGeneration === true) {
+    const plainScore = finalScore
+    const joint = yield* jointBackupSearchSteps({
+      primaryCandidates: [{ id: 'verified-plain', workspace: finalWorkspace }, ...uniqueCandidates],
+      entries, inventory, baseline: { workspace: finalWorkspace, score: finalScore },
+      lockedPositions, lockedOperators, cache, makeJob: simulationJob, maxCandidates: 4,
+      onProgress: (completed, total, bestScore) => onProgress?.({ phase: 'searching', phaseProgress: completed / Math.max(1, total),
+        currentTrial: completed, totalTrials: total, bestScore, label: `条件副表联合比较：已完成 ${completed}/${total}，保留完整仿真产出较高的配置…` }),
+    })
+    finalWorkspace = joint.workspace; finalScore = joint.score; finalGeneratedBackup = joint.generatedBackup
+    result.phases.jointBackup = { generatedCandidates: joint.generatedCandidates, evaluatedCandidates: joint.evaluatedCandidates,
+      selectedCandidateId: joint.selectedCandidateId, improved: joint.improved, candidates: joint.candidates, gain: finalScore - plainScore }
+    result.diagnostics.push(...joint.diagnostics)
+    if (joint.improved) result.diagnostics.push({ code: 'GENERATED_BACKUP_SELECTED', message: `联合比较保留了带一张条件副表的排班；同种子完整仿真日均加权产出增加 ${(finalScore - plainScore).toFixed(2)}。` })
+  }
+
   // The exported roster must be the one whose score was evaluated. Never fill or rewrite
   // dormitories/auxiliary seats after simulation; molecular synthesis already prepares them.
-  if (finalWorkspace.compatibility.backupPlans.length) {
+  if (finalWorkspace.compatibility.backupPlans.length && !finalGeneratedBackup) {
     result.diagnostics.push({ code: 'AUTOMATIC_BACKUP_PLANS_FORBIDDEN', message: '自动生成结果禁止携带副表' })
     return result
   }
@@ -588,8 +634,13 @@ function* smartRosterSteps(
     result.diagnostics.push(...finalErrors)
     return result
   }
-  const finalJob = simulationJob(finalWorkspace)
+  const finalJob = simulationJob(finalWorkspace, finalGeneratedBackup)
   const cachedFinal = cache.get(finalJob)
+  if (finalGeneratedBackup && !cachedFinal?.completed) {
+    result.workspace = finalWorkspace
+    result.diagnostics.push({ code: 'GENERATED_BACKUP_RESULT_UNVERIFIED', message: '最终条件副表配置与已完成的演算输入不一致，未采用该结果。' })
+    return result
+  }
   if (cachedFinal?.completed) {
     finalScore = cachedFinal.simScore
     result.specialOperators = cachedFinal.specialOperators ?? []

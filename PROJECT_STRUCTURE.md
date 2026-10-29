@@ -38,7 +38,7 @@
 
 ## 纳入范围
 
-共 821 个索引文件，其中应用 TypeScript/Vue/CSS 文件 282 个，业务测试文件 375 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 837 个索引文件，其中应用 TypeScript/Vue/CSS 文件 289 个，业务测试文件 384 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -344,6 +344,7 @@ src/
 │   ├── backupSnapshot.ts
 │   ├── candidateExecutionOrder.spec.ts
 │   ├── candidateExecutionOrder.ts
+│   ├── candidateSimulation.spec.ts
 │   ├── candidateSimulation.ts
 │   ├── candidateSimulationCache.spec.ts
 │   ├── candidateSimulationCache.ts
@@ -385,6 +386,10 @@ src/
 │   ├── finalCombinationIntegrity.spec.ts
 │   ├── fixedDuty.spec.ts
 │   ├── fixedDuty.ts
+│   ├── generatedBackupAdmission.spec.ts
+│   ├── generatedBackupAdmission.ts
+│   ├── generatedBackupTypes.spec.ts
+│   ├── generatedBackupTypes.ts
 │   ├── generatedRecoveryPolicy.ts
 │   ├── generatedWarmupPolicy.spec.ts
 │   ├── generatedWarmupPolicy.ts
@@ -396,6 +401,16 @@ src/
 │   ├── inventoryAdmission.ts
 │   ├── inventoryFallback.spec.ts
 │   ├── inventorySearch.spec.ts
+│   ├── jointBackupCrewSeeds.spec.ts
+│   ├── jointBackupCrewSeeds.ts
+│   ├── jointBackupGenerator.spec.ts
+│   ├── jointBackupGenerator.ts
+│   ├── jointBackupMainAlternatives.spec.ts
+│   ├── jointBackupMainAlternatives.ts
+│   ├── jointBackupObservers.spec.ts
+│   ├── jointBackupObservers.ts
+│   ├── jointBackupSearch.spec.ts
+│   ├── jointBackupSearch.ts
 │   ├── mainPlanOnly.spec.ts
 │   ├── mainPlanOnly.ts
 │   ├── manufacturingCrewDomain.spec.ts
@@ -442,6 +457,7 @@ src/
 │   ├── smartRoster.spec.ts
 │   ├── smartRoster.ts
 │   ├── smartRosterBranches.spec.ts
+│   ├── smartRosterJointBackup.spec.ts
 │   ├── smartRosterParallel.spec.ts
 │   ├── smartRosterWarmup.spec.ts
 │   ├── smartRosterWorker.ts

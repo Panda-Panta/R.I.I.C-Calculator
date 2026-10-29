@@ -76,6 +76,27 @@
         </div>
       </fieldset>
 
+      <fieldset class="config-fieldset">
+        <legend class="fieldset-legend">
+          <span class="phase-badge phase-3">可选</span> 联合主副表比较
+        </legend>
+        <div class="checkbox-row">
+          <label class="checkbox-label" for="enable-backup-generation">
+            <input
+              id="enable-backup-generation"
+              v-model="form.enableBackupGeneration"
+              type="checkbox"
+              class="mower-checkbox"
+              data-test="enable-backup-generation"
+            />
+            <span class="checkbox-text">
+              <strong>联合生成条件副表（实验）</strong>
+              <small class="checkbox-hint" data-test="backup-generation-description">比较主表方案与附带条件副表的方案；可能增加等待时间，产出未必更高。</small>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
       <!-- Common Settings: Drone & Seed -->
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
@@ -165,6 +186,7 @@ export const DEFAULT_CONFIG: SmartRosterConfig = {
   simulationSampleHours: 72,
   simulationWarmupHours: 24,
   enableDeepSearch: false,
+  enableBackupGeneration: false,
   droneTarget: 'gold',
   seed: -1,
 }
@@ -231,6 +253,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
         simulationSampleHours: Math.max(24, Math.min(168, Number(parsed.simulationSampleHours) || DEFAULT_CONFIG.simulationSampleHours)),
         simulationWarmupHours: Math.max(6, Math.min(48, Number(parsed.simulationWarmupHours) || DEFAULT_CONFIG.simulationWarmupHours)),
         enableDeepSearch: parsed.enableDeepSearch !== undefined ? Boolean(parsed.enableDeepSearch) : DEFAULT_CONFIG.enableDeepSearch,
+        enableBackupGeneration: parsed.enableBackupGeneration === true,
         droneTarget: ['gold', 'exp', 'trading', 'none'].includes(parsed.droneTarget) ? parsed.droneTarget : props.initialDroneTarget,
         droneRoomId: typeof parsed.droneRoomId === 'string' ? parsed.droneRoomId : '',
         seed: Number.isInteger(parsed.seed) ? parsed.seed : props.initialSeed,
@@ -299,6 +322,7 @@ const handleConfirm = () => {
     simulationSampleHours: Math.max(24, Math.min(168, Math.floor(form.value.simulationSampleHours) || 24)),
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
     enableDeepSearch: Boolean(form.value.enableDeepSearch),
+    enableBackupGeneration: form.value.enableBackupGeneration === true,
     droneTarget: facilities.value.find(f => f.roomId === selectedRoom.value)?.target ?? 'none',
     droneRoomId: selectedRoom.value === 'none' ? '' : selectedRoom.value,
     seed: Number.isInteger(form.value.seed) ? form.value.seed : -1,

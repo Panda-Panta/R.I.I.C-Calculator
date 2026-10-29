@@ -59,6 +59,7 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.get('[data-test="verification-description"]').text()).toContain('默认最多两份完整仿真')
     expect(wrapper.find('[data-test="sample-hours-input"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="enable-deep-search"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="enable-backup-generation"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="drone-target-select"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="seed-input"]').exists()).toBe(true)
   })
@@ -115,6 +116,7 @@ describe('SmartRosterConfigModal.vue', () => {
       simulationSampleHours: 48,
       simulationWarmupHours: 24,
       enableDeepSearch: false,
+      enableBackupGeneration: false,
       droneTarget: 'trading',
       droneRoomId: 'room_3_2',
       seed: 99999,
@@ -143,6 +145,58 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.get<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(true)
     await wrapper.get('[data-test="confirm-btn"]').trigger('click')
     expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ trials: 17, simulationTopK: 11, enableDeepSearch: true, seed: 51 })
+  })
+
+  it('offers conditional backup comparison as an independent experiment defaulting off', () => {
+    const wrapper = mountModal()
+    try {
+      expect(DEFAULT_CONFIG.enableBackupGeneration).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('[data-test="enable-backup-generation"]').element.checked).toBe(false)
+      const description = wrapper.get('[data-test="backup-generation-description"]').text()
+      expect(wrapper.text()).toContain('联合生成条件副表（实验）')
+      expect(description).toContain('主表')
+      expect(description).toContain('条件副表')
+      expect(description).toContain('增加等待')
+      expect(description).toContain('未必更高')
+      expect(description).not.toMatch(/ALNS|贝叶斯|GP|查询预算|候选预算/)
+    } finally { wrapper.unmount() }
+  })
+
+  it.each([
+    ['missing', undefined, false], ['true', true, true], ['false', false, false],
+    ['string false', 'false', false], ['string true', 'true', false],
+    ['number', 1, false], ['null', null, false], ['object', {}, false],
+  ])('strictly restores the %s backup-generation preference without rewriting storage', async (_label, value, enabled) => {
+    const raw = JSON.stringify({ simulationSampleHours: 48, seed: 17, enableBackupGeneration: value })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, raw)
+    const wrapper = mountModal()
+    try {
+      expect(wrapper.get<HTMLInputElement>('[data-test="enable-backup-generation"]').element.checked).toBe(enabled)
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(raw)
+      await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+      expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ enableBackupGeneration: enabled })
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)!)).toMatchObject({ enableBackupGeneration: enabled })
+    } finally { wrapper.unmount() }
+  })
+
+  it('persists both optional comparisons and resets backup generation to off', async () => {
+    const wrapper = mountModal()
+    try {
+      await wrapper.get('[data-test="enable-deep-search"]').setValue(true)
+      await wrapper.get('[data-test="enable-backup-generation"]').setValue(true)
+      await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+      expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ enableDeepSearch: true, enableBackupGeneration: true })
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)!)).toMatchObject({ enableDeepSearch: true, enableBackupGeneration: true })
+    } finally { wrapper.unmount() }
+    const restored = mountModal()
+    try {
+      expect(restored.get<HTMLInputElement>('[data-test="enable-backup-generation"]').element.checked).toBe(true)
+      expect(restored.get<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(true)
+      await restored.get('[data-test="reset-btn"]').trigger('click')
+      expect(restored.get<HTMLInputElement>('[data-test="enable-backup-generation"]').element.checked).toBe(false)
+      expect(restored.get<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(false)
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBeNull()
+    } finally { restored.unmount() }
   })
 
   it('resets form when reset button is clicked', async () => {

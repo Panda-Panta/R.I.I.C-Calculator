@@ -56,4 +56,26 @@ describe('request-local simulation cache', () => {
     expect(cache.get(input)).toBeUndefined()
     expect(cache.get(job())?.simScore).toBe(123)
   })
+  it('separates explicit generated admission from the same unmarked workspace and descriptor variants', () => {
+    const cache = new CandidateSimulationCache(), input = job()
+    input.generatedBackup = { version: 'joint-production-v1', trigger: {
+      activeWhen: 'all-present', observers: [{ operatorId: '阿米娅', roomId: 'central' }],
+    } }
+    input.workspace.compatibility.backupPlans = [{ trigger: 'canonical', plan: {} }]
+    cache.remember(cache.key(input), result())
+    expect(cache.get(structuredClone(input))?.simScore).toBe(123)
+    const unmarked = structuredClone(input); delete unmarked.generatedBackup
+    expect(cache.get(unmarked)).toBeUndefined()
+    const changed = structuredClone(input); changed.generatedBackup!.trigger.activeWhen = 'not-all-present'
+    expect(cache.get(changed)).toBeUndefined()
+    const positiveMood = structuredClone(input); positiveMood.generatedBackup!.trigger.observers[0]!.requirePositiveMood = true
+    expect(cache.get(positiveMood)).toBeUndefined()
+    const trigger = structuredClone(input); (trigger.workspace.compatibility.backupPlans[0] as any).trigger = 'other'
+    expect(cache.get(trigger)).toBeUndefined()
+    cache.remember(cache.key(unmarked), result())
+    const invalidMarker = structuredClone(unmarked); (invalidMarker as any).generatedBackup = null
+    expect(cache.get(invalidMarker)).toBeUndefined()
+    const reordered = { generatedBackup: input.generatedBackup, assumptions: input.assumptions, options: input.options, workspace: input.workspace }
+    expect(cache.get(reordered)?.simScore).toBe(123)
+  })
 })

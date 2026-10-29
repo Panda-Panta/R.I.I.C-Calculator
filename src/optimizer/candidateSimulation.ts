@@ -7,6 +7,8 @@ import type { CalculationReport } from '../domain/types'
 import { simulationReportToCalculationReport } from '../workbench/calculationBridge'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
+import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
+import { validateGeneratedBackupCandidate } from './generatedBackupAdmission'
 
 export interface CandidateSimulationJob {
   workspace: Parameters<typeof runScheduleSimulationBridge>[0]
@@ -14,6 +16,8 @@ export interface CandidateSimulationJob {
   assumptions: Parameters<typeof runScheduleSimulationBridge>[2]
   /** Four-scenario income search needs the integrity evidence as well as the score. */
   incomeComparison?: boolean
+  /** Explicit admission to the bounded generated main/backup family, not a user setting. */
+  generatedBackup?: GeneratedBackupDescriptor
 }
 
 // Candidate ranking needs a summary, not the full event/production trace.
@@ -47,13 +51,39 @@ export function simulateCandidate(job: CandidateSimulationJob): CandidateSimulat
 }
 
 export function simulateCandidateWithProgress(job: CandidateSimulationJob, onProgress?: (progress: ScheduleSimulationProgress) => void): CandidateSimulationResult {
-  if (!job.incomeComparison && job.workspace.compatibility.backupPlans.length) return { completed: false, simScore: 0, diagnostics: ['AUTOMATIC_BACKUP_PLANS_FORBIDDEN'] }
-  if (!job.incomeComparison) {
+  if (job.generatedBackup !== undefined) {
+    const admission = validateGeneratedBackupCandidate(job)
+    if (!admission.valid) return { completed: false, simScore: 0, diagnostics: admission.diagnostics }
+  } else if (!job.incomeComparison && job.workspace.compatibility.backupPlans.length) return { completed: false, simScore: 0, diagnostics: ['AUTOMATIC_BACKUP_PLANS_FORBIDDEN'] }
+  if (!job.incomeComparison && job.generatedBackup === undefined) {
     const issues = recoveryGroupCapacityIssues(job.workspace)
     if (issues.length) return { completed: false, simScore: 0, diagnostics: issues.map(d => `[${d.code}] ${d.message}`) }
   }
   const response = runScheduleSimulationBridge(job.workspace, job.options, job.assumptions, onProgress)
   const report = response.report
+  if (job.generatedBackup !== undefined) {
+    if (!report) return { completed: false, simScore: 0, diagnostics: [response.error ?? '模拟未返回报告'] }
+    const incomeCase = summarizeIncome(report)
+    if (!report.production?.sample.completed || !incomeCase.output || !Number.isFinite(incomeCase.output.daily.total)) {
+      incomeCase.issues.push('生成副表候选缺少完整的有限采样产出')
+      incomeCase.eligible = false
+    }
+    // Legacy imported income comparisons retain their diagnostic policy. New
+    // generated rules must execute, rather than silently surviving a condition error.
+    for (const issue of report.diagnostics.filter(issue => issue.code === 'MOWER_BACKUP_CONDITION_ERROR')) {
+      incomeCase.issues.push(`[${issue.code}] ${issue.message}`)
+      incomeCase.eligible = false
+    }
+    return { completed: incomeCase.eligible, simScore: incomeCase.output?.daily.total ?? 0,
+      diagnostics: incomeCase.issues, incomeCase,
+      ...(incomeCase.eligible ? { calculationReport: simulationReportToCalculationReport(job.workspace, report) } : {}),
+      specialOperators: report.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
+        operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
+        workRestRatio: op.workRestRatio, workHours: op.workHours, restHours: op.restHours,
+        exhaustedHours: op.exhaustedHours, finalMorale: op.finalMorale,
+      })),
+    }
+  }
   if (job.incomeComparison) {
     if (!report) throw new Error(response.error ?? '模拟未返回报告')
     // Preserve failed/incomplete evidence for compareIncome; never replace it with a zero label.
