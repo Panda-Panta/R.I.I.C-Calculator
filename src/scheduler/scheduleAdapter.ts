@@ -22,6 +22,11 @@ export function isOrdinaryReplacementCandidate(operatorId: string, roomType: str
   return !isShiftRunOperator(operatorId) && (roomType !== 'trading' || !isTradeRunOrderOperator(operatorId))
 }
 
+/** Ungrouped passive auxiliaries stay in place under the existing runtime policy. */
+export function isPassiveAuxiliarySlot(roomId: string, groupId: string | null | undefined): boolean {
+  return (roomId === 'factory' || roomId === 'train') && !groupId
+}
+
 /**
  * Pure function adapter converting a CompiledSchedule to a RuntimeConfig.
  *
@@ -73,7 +78,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
       const restToFull = Boolean(schedule.policies.rest_in_full?.includes(primary))
       const restingPriority = schedule.policies.resting_priority?.includes(primary) ? 'low' : 'high'
 
-      const isAuxiliary = (room.roomId === 'factory' || room.roomId === 'train') && !slot.groupId
+      const isAuxiliary = isPassiveAuxiliarySlot(room.roomId, slot.groupId)
       const position: RuntimePosition = {
         id: `${room.roomId}_${slot.slotIndex}`,
         roomId: room.roomId,

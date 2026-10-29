@@ -96,10 +96,18 @@ export function mowerReplacementCheckSnapshot(data:MowerSchedulingData,queue:Mow
 /** Preserve original task identity/deadline until relevant measured facts change. */
 export function syncMowerReplacementChecks(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerReplacementCheckOptions={}):void {
  if(!data.alpha||options.initialMoodReadPending)return
- const concrete=new Set(queue.tasks.filter(task=>!task.replacementCheck&&(task===options.currentTask||task.timeMicros<=data.nowMicros)).flatMap(task=>Object.entries(task.plan).flatMap(([room,row])=>row.flatMap((name,index)=>name!=='Current'&&name!==data.currentOperator(room,index)?.name?[alphaPosition(room,index)]:[]))))
+ // Discovery does not move operators. Match currentOperator's first actor at a
+ // coordinate, rather than currentRoom's deliberately last-write room view.
+ const occupants=new Map<string,Map<number,MowerOperatorState>>()
+ for(const op of Object.values(data.operators)){
+  const room=op.currentRoom,index=op.currentIndex
+  let row=occupants.get(room);if(!row){row=new Map();occupants.set(room,row)}
+  if(!row.has(index))row.set(index,op)
+ }
+ const concrete=new Set(queue.tasks.filter(task=>!task.replacementCheck&&(task===options.currentTask||task.timeMicros<=data.nowMicros)).flatMap(task=>Object.entries(task.plan).flatMap(([room,row])=>row.flatMap((name,index)=>name!=='Current'&&name!==occupants.get(room)?.get(index)?.name?[alphaPosition(room,index)]:[]))))
  const targets=new Map<string,MowerReplacementCheckTarget>()
  if(!options.emergencyFrozen)for(const [room,row] of Object.entries(data.plan))row.forEach((owner,index)=>{
-  const cover=data.currentOperator(room,index)?.name;if(!cover)return
+  const cover=occupants.get(room)?.get(index)?.name;if(!cover)return
   const target={room,index,owner,cover};if(applies(data,target))targets.set(key(target),target)
  })
  const existing=new Set<string>(),remove=new Set<MowerTask>()

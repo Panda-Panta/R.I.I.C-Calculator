@@ -83,11 +83,20 @@ export function planMowerPreferredReplacementRestore(data:MowerSchedulingData,pr
 /** A cover/bed conflict connects all group peers and all owners sharing any candidate. */
 export function mowerReplacementDependencyNames(data:MowerSchedulingData,seeds:Iterable<string>):Set<string>{
  const names=new Set(seeds);let changed=true
+ // This closure changes only names; rebuild membership on every call after live group changes.
+ const membersByGroup=new Map<string,string[]>()
+ for(const op of Object.values(data.operators)){
+  const groups=op.multiGroup?new Set(op.groupBindings.map(binding=>binding.group)):[op.group]
+  for(const group of groups){
+   const members=membersByGroup.get(group)
+   if(members)members.push(op.name);else membersByGroup.set(group,[op.name])
+  }
+ }
  while(changed){
   changed=false
   const add=(name:string)=>{if(name&&!names.has(name)){names.add(name);changed=true}}
   for(const op of Object.values(data.operators)){
-   const covers=replacements(data,op),peers=op.group?data.shiftGroupMembers(op.group):[]
+   const covers=replacements(data,op),peers=op.group?(membersByGroup.get(op.group)??[]):[]
    if(names.has(op.name)||covers.some(name=>names.has(name))||peers.some(name=>names.has(name))){add(op.name);covers.filter(name=>name!=='Free').forEach(add);peers.forEach(add)}
   }
  }

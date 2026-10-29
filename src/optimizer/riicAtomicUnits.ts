@@ -44,6 +44,8 @@ export interface AtomicUnit {
   externalRequirements?: ExternalCountRequirement[]
   /** Optional actual-presence plans, not ownership/admission thresholds. */
   presenceBoosts?: { whenMember?: string; pool: string[]; maximumUsefulCount: number }[]
+  /** Keep this unit's factory/train presence placements outside its productive recovery group. */
+  stationaryAuxiliaryPresence?: boolean
   confPolicy?: AtomicUnitConfPolicy
   adaptToPowerCount?: (powerCount: number, product?: 'gold' | 'exp') => {
     coreMembers: AtomicMember[]
@@ -317,7 +319,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     ],
   },
 
-  // 13. 鸿雪4杜林体系 (2贸易核心+4杜林强制)
+  // 13. 鸿雪杜林体系：实际基建内存在即可，辅助进驻不必随贸易核心恢复。
   {
     id: 'pozemka_durin',
     name: '鸿雪4杜林体系',
@@ -334,6 +336,7 @@ export const ATOMIC_UNITS: readonly AtomicUnit[] = [
     presenceBoosts: [
       { maximumUsefulCount: 4, pool: ['杜林', '桃金娘', '褐果', '至简'] },
     ],
+    stationaryAuxiliaryPresence: true,
   },
 
   // 14. 企鹅物流 (2人核心，排除空)
