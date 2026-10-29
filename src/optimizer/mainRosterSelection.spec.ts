@@ -43,6 +43,16 @@ function linkedScene() {
 }
 
 describe('selecting high-output primary rosters', () => {
+  it('defers a non-improving main when explicitly budgeting for successful-anchor fast return', () => {
+    const scene = linkedScene(), pool = [scene.candidates[1]!, scene.candidates[0]!]
+    const result = selectHighOutputMainCandidates(pool, scene.inventory, { deferNonImproving: true })
+    expect(result.candidates.map(candidate => candidate.id)).toEqual(['linked'])
+    expect(result.deferredCandidate).toBe(scene.candidates[0])
+    const stronger = selectHighOutputMainCandidates(scene.candidates, scene.inventory, { deferNonImproving: true })
+    expect(stronger.candidates.map(candidate => candidate.id)).toEqual(['linked', 'safe'])
+    expect(stronger.deferredCandidate).toBeUndefined()
+  })
+
   it('uses actual global primary support to select a stronger main and retain the safe anchor', () => {
     const scene = linkedScene(), before = JSON.stringify(scene.candidates)
     const result = selectHighOutputMainCandidates(scene.candidates, scene.inventory)

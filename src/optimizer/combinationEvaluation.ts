@@ -54,10 +54,10 @@ function evaluateWithRecords(base: RosterWorkspace, inventory: OperatorInventory
 }
 
 export function buildCombinationPool(base: RosterWorkspace, inventory: OperatorInventory, lockedPositions?: ReadonlySet<string>): CombinationPool {
-  const variants = enumerateCombinationVariants(base, inventory, lockedPositions)
-  const config = projectRosterConfig(base)
   // This synchronous pool owns the snapshot; never retain it across inventory changes.
   const records = inventoryOperatorRecords(inventory)
+  const variants = enumerateCombinationVariants(base, inventory, lockedPositions, undefined, records)
+  const config = projectRosterConfig(base)
   config.operatorRecords = records
   const projection = projectControlOutput(config)
   const values = variants.map(v => evaluateWithRecords(base, inventory, v, projection.complete ? projection.daily.score : undefined, records))

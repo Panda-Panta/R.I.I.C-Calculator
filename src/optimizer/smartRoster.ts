@@ -140,9 +140,9 @@ export function runSmartRoster(
   return step.value
 }
 
-function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies: readonly number[][], stages: number, onProgress?: (p: SmartRosterProgress) => void) {
-  const total = workspaces.length
-  let completed = 0, bestScore: number | undefined, bestIndex: number | undefined
+function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies: readonly number[][], stages: number, onProgress?: (p: SmartRosterProgress) => void,
+  offset = 0, total = workspaces.length) {
+  let completed = offset, bestScore: number | undefined, bestIndex: number | undefined
   const fractions = new Map<number, number>()
   return { onComplete: (result: CandidateSimulationResult, index: number) => {
     completed++
@@ -152,7 +152,7 @@ function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies
         compareProductionEfficiencyVectors(efficiencies[index]!, efficiencies[bestIndex]!)
       if (bestIndex === undefined || result.simScore > bestScore! || result.simScore === bestScore && preference > 0) { bestScore = result.simScore; bestIndex = index }
     }
-    onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
+    onProgress?.({ phase: 'simulating', phaseProgress: (offset + [...fractions.values()].reduce((a, b) => a + b, 0)) / total,
       currentTrial: completed, totalTrials: total, bestScore,
       label: `阶段 2/${stages}: 动态拟真进度 ${completed}/${total}（${result.completed && Number.isFinite(result.simScore) ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
   }, onProgress: (progress: ScheduleSimulationProgress, index: number) => {
@@ -160,9 +160,9 @@ function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies
     const warmup = progress.phase === 'warmup'
     const elapsed = warmup ? progress.elapsedHours : progress.elapsedHours - progress.warmupHours
     const duration = warmup ? progress.warmupHours : progress.totalHours - progress.warmupHours
-    onProgress?.({ phase: 'simulating', phaseProgress: [...fractions.values()].reduce((a, b) => a + b, 0) / total,
+    onProgress?.({ phase: 'simulating', phaseProgress: (offset + [...fractions.values()].reduce((a, b) => a + b, 0)) / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/${stages}: 候选 ${index + 1}/${total} ${warmup ? '预热' : '采样'} ${elapsed.toFixed(1)}/${duration} 小时（已完成 ${completed}/${total}）` })
+      label: `阶段 2/${stages}: 候选 ${index + 1 + offset}/${total} ${warmup ? '预热' : '采样'} ${elapsed.toFixed(1)}/${duration} 小时（已完成 ${completed}/${total}）` })
   } }
 }
 
@@ -327,6 +327,7 @@ function* smartRosterSteps(
   }
   const initial = uniqueCandidates[0]!
   const primaryScores = new Map<string, number>()
+  let deferredPrimaryCandidate: SmartRosterCandidate | undefined
   // The large cycle-column model is an explicitly requested extension. The
   // default first spends its verification budget on strong complete primaries.
   if (enableDeepSearch || options.enableBackupGeneration === true) {
@@ -371,7 +372,8 @@ function* smartRosterSteps(
       seenFingerprints.add(fingerprint)
       uniqueCandidates.push({ ...candidate, staticScore: null, simScore: null, diagnostics: [] })
     }
-    const selected = selectHighOutputMainCandidates(uniqueCandidates, inventory, { anchorId: initial.id, maxCandidates: 2 })
+    const selected = selectHighOutputMainCandidates(uniqueCandidates, inventory, { anchorId: initial.id, maxCandidates: 2, deferNonImproving: true })
+    deferredPrimaryCandidate = selected.deferredCandidate
     result.diagnostics.push(...selected.diagnostics)
     result.phases.primarySelection = { scores: selected.scores, selectedIds: selected.candidates.map(candidate => candidate.id) }
     for (const candidate of selected.scores) if (candidate.primaryHourlyScore !== null) primaryScores.set(candidate.id, candidate.primaryHourlyScore)
@@ -386,7 +388,7 @@ function* smartRosterSteps(
   onProgress?.({
     phase: 'simulating',
     phaseProgress: 0,
-    totalTrials: simCandidates.length,
+    totalTrials: simCandidates.length + Number(Boolean(deferredPrimaryCandidate)),
     label: `阶段 2/${stages}: 完整仿真验证高效主班与安全备选，保留日均加权产出较高者...`,
   })
 
@@ -423,8 +425,18 @@ function* smartRosterSteps(
   // a report of the original input into a report of the modified workspace.
   const inputKeys = jobs.map(job => cache.key(job))
   const efficiencies = jobs.map(job => productionEfficiencyVector(job.workspace, inventory))
+  const initialResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, stages, onProgress,
+    0, jobs.length + Number(Boolean(deferredPrimaryCandidate))) }
+  const simulationResults = [...initialResults]
+  if (deferredPrimaryCandidate && !simulationResults.some(summary => summary.completed && Number.isFinite(summary.simScore))) {
+    const fallback = deferredPrimaryCandidate, job = simulationJob(fallback.workspace)
+    const inputKey = cache.key(job), efficiency = productionEfficiencyVector(job.workspace, inventory)
+    const fallbackResults = yield { jobs: [job], ...simulationProgress([job.workspace], [efficiency], stages, onProgress, 1, 2) }
+    simCandidates.push(fallback); uniqueCandidates.push(fallback)
+    jobs.push(job); inputKeys.push(inputKey); efficiencies.push(efficiency); simulationResults.push(...fallbackResults)
+    result.phases.primarySelection?.selectedIds.push(fallback.id)
+  }
   const efficiencyById = new Map(simCandidates.map((candidate, index) => [candidate.id, efficiencies[index]!]))
-  const simulationResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, stages, onProgress) }
   for (let idx = 0; idx < simCandidates.length; idx++) {
     const candidate = simCandidates[idx]!
     const summary = simulationResults[idx]!

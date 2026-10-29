@@ -5,6 +5,7 @@ import { runSmartRoster } from './smartRoster'
 import * as synthesis from './molecularSynthesis'
 import * as computation from './computedManufacturingRoster'
 import { runScheduleSimulationBridge } from '../workbench/scheduleSimulationBridge'
+import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 
 const fakeBridge = vi.hoisted(() => {
   const complete = (_workspace: unknown, options: unknown) => ({ report: {
@@ -34,7 +35,7 @@ function construction(workspace: RosterWorkspace, name = 'initial') {
 }
 beforeEach(() => {
   fakeBridge.run.mockReset().mockImplementation(fakeBridge.complete)
-  vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(() => [construction(fixture('砾')), construction(fixture('芬'), 'alternative')])
+  vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(() => [construction(fixture('芬')), construction(fixture('砾'), 'alternative')])
   vi.spyOn(computation, 'computeManufacturingRoster').mockImplementation(() => ({
     workspace: fixture('芬'), diagnostics: [], calculation: { status: 'complete', libraryComplete: true,
       columnCount: 2, quantifiedColumnCount: 2, initialObjective: 10, frozenComponents: [], elapsedMs: 0,
@@ -66,10 +67,16 @@ describe('bounded complete primary selection before formal verification', () => 
   })
 
   it('does not rank an incomplete initial report even if its partial production is very high', () => {
-    const complete = vi.mocked(runScheduleSimulationBridge).getMockImplementation()!(createDefaultWorkspace(), {})
-    vi.mocked(runScheduleSimulationBridge).mockReturnValueOnce({ ...complete, report: { ...complete.report!, success: false,
-      observedHours: 13, production: { ...complete.report!.production!, sample: { ...complete.report!.production!.sample,
-        completed: { exp: 1e9, gold: 1e9, orderLmd: 1e9 } } } } })
+    const completeBridge = vi.mocked(runScheduleSimulationBridge).getMockImplementation()!
+    const complete = completeBridge(createDefaultWorkspace(), {})
+    vi.mocked(runScheduleSimulationBridge).mockImplementation((workspace, options) => {
+      const occupant = workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
+      return occupant.kind === 'operator' && id(occupant.operatorId) === id('芬')
+        ? { ...complete, report: { ...complete.report!, success: false,
+          observedHours: 13, production: { ...complete.report!.production!, sample: { ...complete.report!.production!.sample,
+            completed: { exp: 1e9, gold: 1e9, orderLmd: 1e9 } } } } }
+        : completeBridge(workspace, options)
+    })
     const result = runSmartRoster(fixture(), owned, { seed: 20260919, enableDeepSearch: false })
     expect(result.status).toBe('draft')
     expect(result.phases.simulation!.candidates.find(candidate => candidate.id === 'initial')!.simScore).toBeNull()

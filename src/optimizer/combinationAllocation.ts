@@ -2,7 +2,7 @@ import type { OperatorInventory } from '../domain/operatorInventory'
 import { inventoryOperatorRecords } from '../domain/operatorContext'
 import type { RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
-import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isPassiveAuxiliarySlot } from '../scheduler/scheduleAdapter'
 import { projectRosterConfig } from './rosterProjection'
 import { projectControlOutput } from './controlImpact'
 import { productionTeamTheory, productionWorkspaceHourlyScore } from './productionSingletons'
@@ -23,6 +23,8 @@ export interface AllocationLocks {
   requireWarmupExhaustion?: boolean
   /** Actual unlocked skills for allocation, which otherwise has no inventory parameter. */
   warmupInventory?: OperatorInventory
+  /** Automatic backup proposals must not turn passive auxiliary primaries into a recovery unit. */
+  preservePassiveAuxiliaryPrimary?: boolean
 }
 export interface CombinationAllocation { workspace: RosterWorkspace; variants: CombinationVariant[] }
 const key = (p: Pick<CombinationPlacement, 'roomId' | 'slotIndex'>) => `${p.roomId}:${p.slotIndex}`
@@ -54,6 +56,8 @@ function groupVariant(ws: RosterWorkspace, variant: CombinationVariant, locks: A
   // Existing user groups stay on their slots and retain their configured semantics.
   const positions = variant.placements.filter(p => ws.mainPlan.facilities[p.roomId].type !== 'dormitory' && !permanent.has(p.operatorId) &&
     !isStationaryPresence(ws, variant, p))
+  if (locks.preservePassiveAuxiliaryPrimary && variant.definitionId !== 'singleton' && positions.some(p =>
+    p.role === 'backup' && isPassiveAuxiliarySlot(p.roomId, ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId))) return false
   const frozen = (roomId: CombinationPlacement['roomId'], slotIndex: number) => {
     const slot = ws.mainPlan.facilities[roomId].slots[slotIndex]!
     return locks.lockedPositions?.has(`${roomId}:${slotIndex}`) ||
@@ -100,6 +104,7 @@ function remapFree(ws: RosterWorkspace, original: CombinationVariant, role: Rost
       if (locks.lockedPositions?.has(`${room.roomId}:${index}`) || placements.some(a => a.roomId === room.roomId && a.slotIndex === index && a.role === actualRole)) return false
       if (actualRole === 'main') return ['empty', 'free'].includes(slot.occupant.kind) && !slot.replacements.length
       return !slot.replacements.length && slot.occupant.kind !== 'current' &&
+        !(locks.preservePassiveAuxiliaryPrimary && original.definitionId !== 'singleton' && isPassiveAuxiliarySlot(room.roomId, slot.groupId)) &&
         !(slot.occupant.kind === 'operator' && ws.mainPlan.conf.workaholic.some(ref => id(ref) === id(slot.occupant.kind === 'operator' ? slot.occupant.operatorId : '')))
     })
     if (index < 0 || locks.lockedPositions?.has(`${room.roomId}:${index}`) && !existing) return null

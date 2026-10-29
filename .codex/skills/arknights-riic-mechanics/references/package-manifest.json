@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "algorithm": "SHA-256",
-  "packageSha256": "b5d8bdcd35b81f4bcb2c60fb01bc65ec89f1690052d8ef77f6513995bd6ee355",
+  "packageSha256": "4f276be690a37e6937dcd2b0f3d96b37600e2fabfffb21ec37d64fc2ec6628ea",
   "files": [
     {
       "path": "SKILL.md",
@@ -50,8 +50,8 @@
     },
     {
       "path": "references/links.md",
-      "bytes": 16800,
-      "sha256": "be3e3f0c64dc9554fe1ccecfd27907864fb663795cb9fe7a9982f282bb71c5f2"
+      "bytes": 17312,
+      "sha256": "2d47434cd0891a4e04cf6535ad13578dcda614de56db920dcca231c27fd0fd8f"
     },
     {
       "path": "references/logistics-update-manifest.json",
@@ -85,8 +85,8 @@
     },
     {
       "path": "references/simulation.md",
-      "bytes": 64081,
-      "sha256": "29c98214a35789eb745a6464539f7d5aa1885510b43305773b28215ba2cda794"
+      "bytes": 65090,
+      "sha256": "ef00c1cdcce0c4837b484b4e9cb5ffe7bf282b98f954b8c61d559ca7e736c6c0"
     },
     {
       "path": "references/taxonomy.md",

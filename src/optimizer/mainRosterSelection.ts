@@ -8,8 +8,8 @@ import { productionWorkspaceHourlyScore } from './productionSingletons'
  */
 export function selectHighOutputMainCandidates<T extends { id: string; workspace: RosterWorkspace }>(
   candidates: readonly T[], inventory: OperatorInventory,
-  options: { anchorId?: string; maxCandidates?: number } = {},
-): { candidates: T[]; scores: { id: string; primaryHourlyScore: number | null }[]; diagnostics: { code: string; message: string }[] } {
+  options: { anchorId?: string; maxCandidates?: number; deferNonImproving?: boolean } = {},
+): { candidates: T[]; deferredCandidate?: T; scores: { id: string; primaryHourlyScore: number | null }[]; diagnostics: { code: string; message: string }[] } {
   const diagnostics: { code: string; message: string }[] = []
   const requested = options.maxCandidates ?? 2
   if (!Number.isInteger(requested) || requested < 0) return { candidates: [], scores: [], diagnostics: [{ code: 'MAIN_SELECTION_INVALID_LIMIT', message: '主班候选上限须为非负有限整数。' }] }
@@ -50,5 +50,10 @@ export function selectHighOutputMainCandidates<T extends { id: string; workspace
   if (!ranked.length) diagnostics.push({ code: 'MAIN_SELECTION_NO_QUANTIFIED_MAIN', message: '没有已量化的主班排序，保留安全候选交由完整仿真验证。' })
   const second = !ranked.length ? undefined : best !== anchor ? anchor
     : ranked.find(row => row.candidate !== best)?.candidate ?? candidates.find(candidate => candidate !== best)
+  // This is an explicit evaluation-budget choice, not an F dominance proof.
+  // A non-improving proposal remains available if the strongest anchor fails F.
+  if (options.deferNonImproving && best === anchor && limit > 1 && second) {
+    return { candidates: [best], deferredCandidate: second, scores, diagnostics }
+  }
   return { candidates: [best, ...(second ? [second] : [])].slice(0, limit), scores, diagnostics }
 }

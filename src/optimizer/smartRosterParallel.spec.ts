@@ -18,8 +18,9 @@ import { getMowerSourceRuntime } from '../scheduler/mowerSourceRuntime'
 import { planMowerMetadata } from '../scheduler/mowerMetadata'
 import { MowerTaskQueue, MOWER_TASK_TYPES as T, toMowerMicros } from '../scheduler/mowerTaskQueue'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
-import { productionTeamHourlyOutput } from './productionSingletons'
+import { productionTeamHourlyOutput, productionWorkspaceHourlyScore } from './productionSingletons'
 import { compileOperatorInventory, fullCatalogIdleInventory } from '../domain/operatorInventory'
+import { compareWorkspacePreference } from './automaticCombinationPreferences'
 
 function computedResult(workspace: RosterWorkspace | null = null): ComputedManufacturingRosterResult {
   return { workspace: workspace ? structuredClone(workspace) : null, diagnostics: [], calculation: {
@@ -32,7 +33,7 @@ function computedResult(workspace: RosterWorkspace | null = null): ComputedManuf
 beforeEach(() => { vi.spyOn(computation, 'computeManufacturingRoster').mockImplementation(() => computedResult()) })
 afterEach(() => vi.restoreAllMocks())
 
-function mockInitialAndComputed(initial = candidates()[0]!, calculated = candidates()[1]!) {
+function mockInitialAndComputed(initial = candidates()[1]!, calculated = candidates()[0]!) {
   vi.mocked(computation.computeManufacturingRoster).mockImplementation(() => computedResult(calculated.workspace))
   return vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation((_base, _entries, _inventory, buildOptions) =>
     buildOptions?.branchCount === 1 ? [structuredClone(initial)] : [structuredClone(initial), structuredClone(calculated)])
@@ -199,20 +200,22 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(directSimulation).not.toHaveBeenCalled()
     expect(progress.some(p => p.phase === 'searching' || p.label.includes('/3'))).toBe(false)
   })
-  it('keeps identical staffing with different recovery policies as distinct simulation candidates', async () => {
+  it('keeps recovery-policy variants distinct during ranking while deferring their equal-primary F', async () => {
     const first = candidates()[0]!, second = structuredClone(first)
     second.id = 'different-policy'
     second.workspace.mainPlan.conf.rest_in_full = ['砾']
     mockInitialAndComputed(first, second)
     const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => {
-      expect(jobs).toHaveLength(2)
+      expect(jobs).toHaveLength(1)
       return jobs.map((_job, index) => {
         const summary = { completed: true, simScore: 100 + index, diagnostics: [] }
         done(summary, index); return summary
       })
     })
-    expect(result.score).toBe(101)
-    expect(result.workspace!.mainPlan.conf.rest_in_full).toEqual(['砾'])
+    expect(result.score).toBe(100)
+    expect(result.phases.primarySelection?.scores.map(candidate => candidate.id)).toEqual(['branch-0', 'different-policy'])
+    expect(result.phases.primarySelection?.selectedIds).toEqual(['branch-0'])
+    expect(result.workspace!.mainPlan.conf.rest_in_full).toEqual([])
   })
   it('excludes non-finite completed scores rather than selecting an unrankable result', async () => {
     mockInitialAndComputed()
@@ -230,8 +233,13 @@ describe('parallel smart roster preserves serial semantics', () => {
     supported.workspace.mainPlan.facilities.contact.slots[0]!.occupant = { kind: 'operator', operatorId: id('絮雨') }
     supported.workspace.mainPlan.conf.workaholic = ['迷迭香', '絮雨', '黑键'].map(id)
     supported.workspace.mainPlan.facilities.room_3_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('黑键') }
+    supported.workspace.mainPlan.facilities.room_1_2.slots[0]!.occupant = { kind: 'operator', operatorId: id('砾') }
+    supported.workspace.mainPlan.conf.workaholic.push(id('砾'))
     mockInitialAndComputed(ordinary, supported)
     const scenarioEntries = fullCatalogIdleInventory().filter(entry => ['芬', '砾', '迷迭香', '絮雨', '黑键'].some(name => entry.operator === id(name)))
+    const scenarioInventory = compileOperatorInventory(scenarioEntries)
+    expect(productionWorkspaceHourlyScore(supported.workspace, scenarioInventory)!).toBeGreaterThan(productionWorkspaceHourlyScore(ordinary.workspace, scenarioInventory)!)
+    expect(compareWorkspacePreference(supported.workspace, ordinary.workspace)).toBeGreaterThan(0)
     vi.spyOn(replacement, 'runGlobalPerCapitaReplacement')
     const progress: SmartRosterProgress[] = []
     const result = await runSmartRosterParallel(baseWorkspace(), scenarioEntries, options, async (jobs, done) => {

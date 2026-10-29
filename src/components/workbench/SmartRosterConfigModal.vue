@@ -33,7 +33,7 @@
         <legend class="fieldset-legend">
           <span class="phase-badge phase-2">阶段 2</span> 完整仿真确认
         </legend>
-        <p class="stage-description" data-test="verification-description">默认最多两份完整仿真：比较高效主班方案与初始表，按日均加权产出保留较优结果。</p>
+        <p class="stage-description" data-test="verification-description">默认最多两份完整仿真：有更高主班效率候选时，比较高效主班方案与初始表，按日均加权产出保留较优结果；没有改善时先验证初始表，成功即返回，未完成再验证后备方案。</p>
         <div class="field-row single-field">
           <div class="field-item">
             <label for="sample-hours-input">

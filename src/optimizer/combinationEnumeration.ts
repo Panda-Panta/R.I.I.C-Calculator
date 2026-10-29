@@ -1,11 +1,12 @@
 import type { OperatorInventory } from '../domain/operatorInventory'
+import type { inventoryOperatorRecords } from '../domain/operatorContext'
 import type { MowerFacility, MowerRoomId, RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId as resolveId } from '../domain/operatorIdentifiers'
 import { ATOMIC_UNITS, type AtomicMember, type AtomicUnit } from './riicAtomicUnits'
 import { availableCoreVariants, availableOptionalMembers, facilityCapacity, physicalBackupOperatorIds, type CombinationPlacement, type CombinationVariant } from './combinationModel'
 import { isProductionSingletonCandidate } from './productionSingletons'
 import { isShiftRunOperator } from '../scheduler/scheduleAdapter'
-import { PENDANT_AUXILIARY_FACILITIES } from '../domain/facilities'
+import { createPresencePlacementPlanner, type PresencePlacementStats } from './presencePlacementPlanner'
 
 function subsets<T>(items: readonly T[], maximum = items.length): T[][] {
   const result: T[][] = [[]]
@@ -37,12 +38,11 @@ function matches(member: AtomicMember, room: MowerFacility): boolean {
 }
 
 /** Enumerate logical optional subsets and legal footprints before globally reserving anyone. */
-export function enumerateCombinationVariants(base: RosterWorkspace, inventory: OperatorInventory, lockedPositions?: ReadonlySet<string>): CombinationVariant[] {
+export function enumerateCombinationVariants(base: RosterWorkspace, inventory: OperatorInventory, lockedPositions?: ReadonlySet<string>, presenceStats?: PresencePlacementStats,
+  records?: ReturnType<typeof inventoryOperatorRecords>): CombinationVariant[] {
   if (!inventory.valid) return []
   const rooms = Object.values(base.mainPlan.facilities)
-  const presenceRoomTypes: readonly string[] = [...PENDANT_AUXILIARY_FACILITIES, 'dormitory']
-  const presenceRooms = rooms.filter(room => presenceRoomTypes.includes(room.type) && room.level > 0)
-    .sort((a, b) => presenceRoomTypes.indexOf(a.type) - presenceRoomTypes.indexOf(b.type) || a.roomId.localeCompare(b.roomId))
+  const presencePlans = createPresencePlacementPlanner(base, inventory, lockedPositions, presenceStats, records)
   const powerCount = rooms.filter(r => r.type === 'power' && r.level > 0).length
   const owned = new Set(inventory.operators.map(o => o.name))
   const stationed = new Set(rooms.flatMap(r => r.slots.flatMap(s => s.occupant.kind === 'operator' ? [resolveId(s.occupant.operatorId)] : [])))
@@ -89,33 +89,16 @@ export function enumerateCombinationVariants(base: RosterWorkspace, inventory: O
             const usedRooms = new Map<string, MowerRoomId>()
             const occupiedPositions = new Set<string>()
             const placePresence = () => {
-              const start = placed.length
-              for (const name of presence) {
-                // Presence is a real station, never an extraWorkplace/ownership-only credit.
-                let found = false
-                for (const room of presenceRooms) {
-                  const capacity = facilityCapacity(room.type, room.level)
-                  const index = room.slots.findIndex((slot, i) => i < capacity &&
-                    !occupiedPositions.has(`${room.roomId}:${i}`) && !lockedPositions?.has(`${room.roomId}:${i}`) &&
-                    (slot.occupant.kind === 'empty' || slot.occupant.kind === 'free') && !slot.replacements.length)
-                  if (index < 0) continue
-                  placed.push({ roomId: room.roomId, slotIndex: index, operatorId: resolveId(name), role: 'main' })
-                  occupiedPositions.add(`${room.roomId}:${index}`)
-                  found = true
-                  break
-                }
-                if (!found) {
-                  while (placed.length > start) { const p = placed.pop()!; occupiedPositions.delete(`${p.roomId}:${p.slotIndex}`) }
-                  return
+              // Real physical placements, bounded to the baseline and recovery alternatives.
+              for (const support of presencePlans(presence.map(resolveId), occupiedPositions, placed)) {
+                const placements = [...placed, ...support]
+                const id = `${atom.id}:${placements.map(p => `${p.roomId}.${p.slotIndex}=${p.operatorId}`).sort().join('|')}`
+                if (!seen.has(id)) {
+                  seen.add(id)
+                  values.push({ id, definitionId: atom.id, name: atom.name, coreOperatorIds: core.map(m => resolveId(m.name)),
+                    optionalOperatorIds: [...enhanced.map(m => resolveId(m.name)), ...presence.map(resolveId)], placements, policy: available.confPolicy ?? {} })
                 }
               }
-              const id = `${atom.id}:${placed.map(p => `${p.roomId}.${p.slotIndex}=${p.operatorId}`).sort().join('|')}`
-              if (!seen.has(id)) {
-                seen.add(id)
-                values.push({ id, definitionId: atom.id, name: atom.name, coreOperatorIds: core.map(m => resolveId(m.name)),
-                  optionalOperatorIds: [...enhanced.map(m => resolveId(m.name)), ...presence.map(resolveId)], placements: placed.map(p => ({ ...p })), policy: available.confPolicy ?? {} })
-              }
-              while (placed.length > start) { const p = placed.pop()!; occupiedPositions.delete(`${p.roomId}:${p.slotIndex}`) }
             }
             const search = (groupIndex: number) => {
               if (groupIndex === assignments.length) { placePresence(); return }

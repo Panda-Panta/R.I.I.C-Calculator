@@ -47,6 +47,58 @@ function prepare() {
 }
 
 describe('fast high-output primary selection', () => {
+  it('returns a completed strongest anchor after one F without eagerly evaluating a non-improving main', () => {
+    const fixture = prepare()
+    fixture.build.mockReturnValue([fixture.proposals[1]!, fixture.proposals[0]!])
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42 })
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(120)
+    expect(result.phases.primarySelection!.selectedIds).toEqual(['strong'])
+    expect(result.phases.simulation!.candidates.map(candidate => candidate.id)).toEqual(['strong'])
+    expect(fixture.evaluate).toHaveBeenCalledTimes(1)
+  })
+
+  it('verifies the deferred main only after the strongest anchor fails, preserving parallel identities and the two-F budget', async () => {
+    const fixture = prepare()
+    fixture.build.mockReturnValue([fixture.proposals[1]!, fixture.proposals[0]!])
+    fixture.evaluate.mockImplementation(job => {
+      const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
+      return occupant.kind === 'operator' && occupant.operatorId === id('砾')
+        ? { completed: false, simScore: 1e9, diagnostics: ['anchor did not complete'] }
+        : { completed: true, simScore: 100, diagnostics: [] }
+    })
+    const batches: string[][] = [], progress: number[] = []
+    const result = await runSmartRosterParallel(fixture.base, fixture.entries, { seed: 42 }, async (jobs, done) => {
+      batches.push(jobs.map(job => {
+        const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
+        return occupant.kind === 'operator' ? occupant.operatorId : ''
+      }))
+      const summaries = jobs.map(job => simulation.simulateCandidate(job))
+      summaries.forEach((summary, index) => done(summary, index))
+      return summaries
+    }, state => { if (state.phase === 'simulating') progress.push(state.phaseProgress) })
+    expect(batches).toEqual([[id('砾')], [id('芬')]])
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(100)
+    expect(result.phases.simulation!.candidates[0]!.id).toBe('anchor')
+    expect(result.phases.primarySelection!.selectedIds).toEqual(['strong', 'anchor'])
+    expect(fixture.evaluate).toHaveBeenCalledTimes(2)
+    expect(progress.every((value, index) => index === 0 || value >= progress[index - 1]!)).toBe(true)
+  })
+
+  it.each(['incomplete', 'non-finite'] as const)('stops after two unsuccessful F results when the strongest anchor is %s', failure => {
+    const fixture = prepare()
+    fixture.build.mockReturnValue([fixture.proposals[1]!, fixture.proposals[0]!])
+    fixture.evaluate.mockImplementation(() => failure === 'incomplete'
+      ? { completed: false, simScore: 1e9, diagnostics: ['incomplete'] }
+      : { completed: true, simScore: Infinity, diagnostics: ['non-finite'] })
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42 })
+    expect(result.status).toBe('blocked')
+    expect(result.score).toBeNull()
+    expect(fixture.evaluate).toHaveBeenCalledTimes(2)
+    expect(result.phases.primarySelection!.selectedIds).toEqual(['strong', 'anchor'])
+  })
+
   it('skips unconditional mathematical expansion and verifies strong primary plus anchor within two F', () => {
     const fixture = prepare(), before = JSON.stringify(fixture.base)
     const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42, branchCount: 99, simulationTopK: 99 })
