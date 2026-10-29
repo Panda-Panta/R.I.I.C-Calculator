@@ -2,7 +2,7 @@ import type { OperatorInventory } from '../domain/operatorInventory'
 import { inventoryOperatorRecords } from '../domain/operatorContext'
 import type { RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
-import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isPassiveAuxiliarySlot } from '../scheduler/scheduleAdapter'
 import { projectRosterConfig } from './rosterProjection'
 import { projectControlOutput } from './controlImpact'
 import { productionTeamTheory, productionWorkspaceHourlyScore } from './productionSingletons'
@@ -23,6 +23,8 @@ export interface AllocationLocks {
   requireWarmupExhaustion?: boolean
   /** Actual unlocked skills for allocation, which otherwise has no inventory parameter. */
   warmupInventory?: OperatorInventory
+  /** Automatic backup proposals must not turn passive auxiliary primaries into a recovery unit. */
+  preservePassiveAuxiliaryPrimary?: boolean
 }
 export interface CombinationAllocation { workspace: RosterWorkspace; variants: CombinationVariant[] }
 const key = (p: Pick<CombinationPlacement, 'roomId' | 'slotIndex'>) => `${p.roomId}:${p.slotIndex}`
@@ -41,12 +43,21 @@ export function applyCombinationPolicy(ws: RosterWorkspace, policy: AtomicUnitCo
   }
 }
 
+function isStationaryPresence(ws: RosterWorkspace, variant: CombinationVariant, placement: CombinationPlacement): boolean {
+  const atom = ATOMIC_UNITS.find(unit => unit.id === variant.definitionId)
+  return Boolean(atom?.stationaryAuxiliaryPresence && ['factory', 'train'].includes(ws.mainPlan.facilities[placement.roomId].type) &&
+    atom.presenceBoosts?.some(boost => boost.pool.some(name => id(name) === placement.operatorId)))
+}
+
 function groupVariant(ws: RosterWorkspace, variant: CombinationVariant, locks: AllocationLocks): boolean {
   // A relief combination may fill gaps in one shift unit, never join existing units.
   const permanent = new Set([...ws.mainPlan.conf.workaholic, ...(variant.policy.workaholic ?? [])].map(id))
   // Permanent support keeps its station without acquiring an ordinary rest group.
   // Existing user groups stay on their slots and retain their configured semantics.
-  const positions = variant.placements.filter(p => ws.mainPlan.facilities[p.roomId].type !== 'dormitory' && !permanent.has(p.operatorId))
+  const positions = variant.placements.filter(p => ws.mainPlan.facilities[p.roomId].type !== 'dormitory' && !permanent.has(p.operatorId) &&
+    !isStationaryPresence(ws, variant, p))
+  if (locks.preservePassiveAuxiliaryPrimary && variant.definitionId !== 'singleton' && positions.some(p =>
+    p.role === 'backup' && isPassiveAuxiliarySlot(p.roomId, ws.mainPlan.facilities[p.roomId].slots[p.slotIndex]!.groupId))) return false
   const frozen = (roomId: CombinationPlacement['roomId'], slotIndex: number) => {
     const slot = ws.mainPlan.facilities[roomId].slots[slotIndex]!
     return locks.lockedPositions?.has(`${roomId}:${slotIndex}`) ||
@@ -82,7 +93,7 @@ function remapFree(ws: RosterWorkspace, original: CombinationVariant, role: Rost
   const placements: CombinationPlacement[] = []
   for (const p of original.placements) {
     const room = ws.mainPlan.facilities[p.roomId]
-    const actualRole = room.type === 'dormitory' ? 'main' : role
+    const actualRole = room.type === 'dormitory' || isStationaryPresence(ws, original, p) ? 'main' : role
     const existing = occupied.get(p.operatorId)
     if (locks.lockedOperators?.has(p.operatorId) && (!existing || existing.roomId !== p.roomId || existing.role !== actualRole)) return null
     if (existing && (existing.roomId !== p.roomId || existing.role !== actualRole)) return null
@@ -93,6 +104,7 @@ function remapFree(ws: RosterWorkspace, original: CombinationVariant, role: Rost
       if (locks.lockedPositions?.has(`${room.roomId}:${index}`) || placements.some(a => a.roomId === room.roomId && a.slotIndex === index && a.role === actualRole)) return false
       if (actualRole === 'main') return ['empty', 'free'].includes(slot.occupant.kind) && !slot.replacements.length
       return !slot.replacements.length && slot.occupant.kind !== 'current' &&
+        !(locks.preservePassiveAuxiliaryPrimary && original.definitionId !== 'singleton' && isPassiveAuxiliarySlot(room.roomId, slot.groupId)) &&
         !(slot.occupant.kind === 'operator' && ws.mainPlan.conf.workaholic.some(ref => id(ref) === id(slot.occupant.kind === 'operator' ? slot.occupant.operatorId : '')))
     })
     if (index < 0 || locks.lockedPositions?.has(`${room.roomId}:${index}`) && !existing) return null
@@ -180,7 +192,7 @@ function canMove(ws: RosterWorkspace, inventory: OperatorInventory, operator: st
 /** Recombine already allocated actors transactionally; outgoing actors take their vacated seats. */
 export function regroupCombination(ws: RosterWorkspace, inventory: OperatorInventory, original: CombinationVariant, role: RosterRole, locks: AllocationLocks = {}): RosterWorkspace | null {
   const draft = structuredClone(ws)
-  const desired = original.placements.map(p => ({ ...p, role: draft.mainPlan.facilities[p.roomId].type === 'dormitory' ? 'main' as const : role }))
+  const desired = original.placements.map(p => ({ ...p, role: draft.mainPlan.facilities[p.roomId].type === 'dormitory' || isStationaryPresence(draft, original, p) ? 'main' as const : role }))
   if (locks.requireWarmupExhaustion && desired.some(p => p.role === 'backup' && isWarmupOperatorInFacility(p.operatorId, draft.mainPlan.facilities[p.roomId].type, inventory))) return null
   if (desired.some(p => actor(ws, p) !== p.operatorId && (locks.lockedPositions?.has(key(p)) || locks.lockedOperators?.has(p.operatorId)))) return null
   const permanent = new Set(draft.mainPlan.conf.workaholic.map(id))

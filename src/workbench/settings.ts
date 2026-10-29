@@ -38,6 +38,8 @@ export interface SmartRosterConfig {
   simulationSampleHours: number
   simulationWarmupHours: number
   enableDeepSearch: boolean
+  /** Missing legacy preferences leave conditional backup generation disabled. */
+  enableBackupGeneration?: boolean
   droneTarget: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
   seed: number

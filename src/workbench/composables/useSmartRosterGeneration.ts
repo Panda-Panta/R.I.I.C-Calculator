@@ -135,6 +135,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),
       simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
       enableDeepSearch: config?.enableDeepSearch ?? false,
+      enableBackupGeneration: config?.enableBackupGeneration === true,
       droneTarget: config?.droneTarget ?? 'none',
       droneRoomId: config?.droneRoomId || undefined,
     }
@@ -152,7 +153,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
             calculation.valuation?.stopReason === 'workLimit' || calculation.assignment && calculation.assignment.termination !== 'complete'
           optimizationNote = `${budgetReached ? '已到计算预算' : '分配计算受当前支持范围限制'}，采用完整仿真验证后的较优方案。`
         } else if (calculation?.status === 'invalid') {
-          optimizationNote = runOptions.enableDeepSearch
+          optimizationNote = runOptions.enableDeepSearch || runOptions.enableBackupGeneration
             ? '分配优化未完成，已采用完整仿真验证的方案。'
             : '分配优化未完成，已验证并保留初始方案。'
         } else if (calculation?.status === 'unsupported') {

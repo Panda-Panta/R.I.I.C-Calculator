@@ -63,9 +63,8 @@ describe('automatic warmup policy reaches the evaluated and returned roster', ()
     })
     expect(result.status, JSON.stringify(result.diagnostics)).toBe('draft')
     expect(build.mock.calls[0]![3]).toMatchObject({ requireWarmupExhaustion: true })
-    expect(build.mock.calls[0]![3]).toMatchObject({ branchCount: 1 })
-    expect(computation.computeManufacturingRoster).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(computation.computeManufacturingRoster).mock.calls[0]![0].initial.mainPlan.conf.exhaust_require).toContain(id('机械师'))
+    expect(build.mock.calls[0]![3]).toMatchObject({ branchCount: 3 })
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
     expect(result.workspace).toEqual(simulated)
     expect(result.score).toBe(12345)
     expect(result.phases.search).toBeNull()
@@ -106,7 +105,7 @@ describe('automatic warmup policy reaches the evaluated and returned roster', ()
 
   it('adds the policy for a locked warmup primary while preserving its assignment', async () => {
     const { workspace } = fixture(), before = structuredClone(workspace)
-    vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(base => [candidate(structuredClone(base))])
+    const build = vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(base => [candidate(structuredClone(base))])
     const result = await runSmartRosterParallel(workspace, entries, options, async (jobs, done) => {
       expect(jobs).toHaveLength(1)
       const summary = { completed: true, simScore: 1, diagnostics: [] }; done(summary, 0); return [summary]
@@ -114,9 +113,11 @@ describe('automatic warmup policy reaches the evaluated and returned roster', ()
     expect(result.status, JSON.stringify(result.diagnostics)).toBe('draft')
     expect(result.workspace!.mainPlan.conf.exhaust_require).toContain(id('机械师'))
     expect(result.workspace!.mainPlan.facilities.room_1_1.slots).toEqual(before.mainPlan.facilities.room_1_1.slots)
-    const calculationInput = vi.mocked(computation.computeManufacturingRoster).mock.calls[0]![0]
-    expect(calculationInput.lockedPositions.has('room_1_1:0')).toBe(true)
-    expect(calculationInput.lockedOperators.has(id('机械师'))).toBe(true)
+    const constructionOptions = build.mock.calls[0]![3]!
+    expect(constructionOptions.lockedPositions!.has('room_1_1:0')).toBe(true)
+    expect(constructionOptions.lockedOperators!.has(id('机械师'))).toBe(true)
+    expect(build.mock.calls[0]![0].mainPlan.conf.exhaust_require).toContain(id('机械师'))
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
     expect(workspace).toEqual(before)
   })
 

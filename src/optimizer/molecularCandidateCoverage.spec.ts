@@ -8,10 +8,30 @@ import { evaluateMolecularCandidates, generateMolecularCandidates, selectMolecul
 import { validatePhysicalRoster } from './rosterDraft'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import * as allocation from './combinationAllocation'
+import { ATOMIC_UNITS } from './riicAtomicUnits'
+import { inventoryOperatorRecords } from '../domain/operatorContext'
+import { isAoeDormKeeper, isSingleDormKeeper } from '../scheduler/smartDormitoryPolicy'
 
 afterEach(() => vi.restoreAllMocks())
 
 describe('automatic candidate coverage and completed production ranking', () => {
+  it('finishes a real recovery-presence start instead of leaving every dorm alternative unvisited', async ({ annotate }) => {
+    await annotate('真实完整构造；恢复型存在支援可留宿舍，原辅助布置仍在候选域，0F')
+    const base = createDefaultWorkspace(), entries = fullCatalogIdleInventory(), inventory = compileOperatorInventory(entries)
+    const before = structuredClone(base), records = inventoryOperatorRecords(inventory)
+    const presenceIds = new Set(ATOMIC_UNITS.flatMap(atom => atom.presenceBoosts?.flatMap(boost => boost.pool.map(id)) ?? []))
+    const candidates = generateMolecularCandidates(base, entries, inventory, { branchCount: 3, requireWarmupExhaustion: true })
+    expect(candidates.length).toBeGreaterThan(0)
+    expect(candidates.length).toBeLessThanOrEqual(3)
+    const residents = Object.values(candidates[0]!.workspace.mainPlan.facilities).filter(room => room.type === 'dormitory' && room.level > 0)
+      .flatMap(room => room.slots.flatMap(slot => slot.occupant.kind === 'operator' ? [id(slot.occupant.operatorId)] : []))
+    expect(residents.some(operator => presenceIds.has(operator) && records[operator] &&
+      (isAoeDormKeeper(records[operator]!) || isSingleDormKeeper(records[operator]!)))).toBe(true)
+    expect(candidates.every(candidate => validatePhysicalRoster(candidate.workspace).length === 0 &&
+      recoveryGroupCapacityIssues(candidate.workspace).length === 0)).toBe(true)
+    expect(base).toEqual(before)
+  }, 30000)
+
   it('retains primary-output and balanced-output leaders alongside a structurally different team', () => {
     const anchor = { order: 0, mainScore: 70, meanScore: 70, structure: new Set(['shared']) }
     const primary = { order: 9, mainScore: 150, meanScore: 60, structure: new Set(['shared', 'primary']) }

@@ -18,8 +18,9 @@ import { getMowerSourceRuntime } from '../scheduler/mowerSourceRuntime'
 import { planMowerMetadata } from '../scheduler/mowerMetadata'
 import { MowerTaskQueue, MOWER_TASK_TYPES as T, toMowerMicros } from '../scheduler/mowerTaskQueue'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
-import { productionTeamHourlyOutput } from './productionSingletons'
+import { productionTeamHourlyOutput, productionWorkspaceHourlyScore } from './productionSingletons'
 import { compileOperatorInventory, fullCatalogIdleInventory } from '../domain/operatorInventory'
+import { compareWorkspacePreference } from './automaticCombinationPreferences'
 
 function computedResult(workspace: RosterWorkspace | null = null): ComputedManufacturingRosterResult {
   return { workspace: workspace ? structuredClone(workspace) : null, diagnostics: [], calculation: {
@@ -32,9 +33,10 @@ function computedResult(workspace: RosterWorkspace | null = null): ComputedManuf
 beforeEach(() => { vi.spyOn(computation, 'computeManufacturingRoster').mockImplementation(() => computedResult()) })
 afterEach(() => vi.restoreAllMocks())
 
-function mockInitialAndComputed(initial = candidates()[0]!, calculated = candidates()[1]!) {
+function mockInitialAndComputed(initial = candidates()[1]!, calculated = candidates()[0]!) {
   vi.mocked(computation.computeManufacturingRoster).mockImplementation(() => computedResult(calculated.workspace))
-  return vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation(() => [structuredClone(initial)])
+  return vi.spyOn(synthesis, 'generateMolecularCandidates').mockImplementation((_base, _entries, _inventory, buildOptions) =>
+    buildOptions?.branchCount === 1 ? [structuredClone(initial)] : [structuredClone(initial), structuredClone(calculated)])
 }
 
 it('chooses the highest completed daily output even when another candidate has higher production per capita', async () => {
@@ -64,8 +66,9 @@ it('chooses the highest completed daily output even when another candidate has h
     workspace: ws, score: opts!.baselineScore, swappedCount: 0, logs: [],
   }))
   const progress: SmartRosterProgress[] = []
-  const result = await runSmartRosterParallel(base, owned, options, async (jobs, done) => jobs.map((_job, i) => {
-    const summary = { completed: true, simScore: i ? 100 : 10000, diagnostics: [] }; done(summary, i); return summary
+  const result = await runSmartRosterParallel(base, owned, options, async (jobs, done) => jobs.map((job, i) => {
+    const main = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
+    const summary = { completed: true, simScore: main.kind === 'operator' && main.operatorId === id('苍苔') ? 10000 : 100, diagnostics: [] }; done(summary, i); return summary
   }), p => progress.push(p))
   expect(result.status, JSON.stringify(result.diagnostics)).toBe('draft')
   expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('苍苔') })
@@ -76,7 +79,7 @@ it('chooses the highest completed daily output even when another candidate has h
   expect(progress.some(p => p.phase === 'searching')).toBe(false)
 })
 
-it.each([true, false])('compares initial and computed main/backup assignments by completed income, computed wins %s', async computedWins => {
+it.each([true, false])('compares complete primary/relief proposals by completed income, stronger primary wins %s', async computedWins => {
   const base = createDefaultWorkspace()
   for (const room of Object.values(base.mainPlan.facilities)) {
     if (!['room_1_1', 'room_1_3', 'dormitory_1'].includes(room.roomId)) { room.level = 0; room.slots = [] }
@@ -93,11 +96,12 @@ it.each([true, false])('compares initial and computed main/backup assignments by
   const owned = [{ operator: '斑点', elitePhase: 0, level: 1 }, { operator: '砾', elitePhase: 1, level: 60 },
     { operator: 'Lancet-2', elitePhase: 0, level: 30 }, { operator: '杜林', elitePhase: 0, level: 30 }]
   const inventory = compileOperatorInventory(owned)
-  vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([{ id: 'ordering', name: 'ordering', workspace,
-    diagnostics: [], appliedAtoms: [], staticScore: 0, simScore: null, confPolicy: {} }])
   const calculated = structuredClone(workspace), calculatedSlot = calculated.mainPlan.facilities.room_1_1.slots[0]!
   calculatedSlot.occupant = { kind: 'operator', operatorId: id('砾') }; calculatedSlot.replacements = [id('斑点')]
-  vi.mocked(computation.computeManufacturingRoster).mockImplementation(() => computedResult(calculated))
+  vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([workspace, calculated].map((proposal, index) => ({
+    id: index ? 'stronger-primary' : 'ordering', name: 'ordering', workspace: proposal,
+    diagnostics: [], appliedAtoms: [], staticScore: 0, simScore: null, confPolicy: {},
+  })))
   vi.spyOn(replacement, 'runGlobalPerCapitaReplacement').mockImplementation((ws, _inventory, opts) => ({
     workspace: ws, score: opts!.baselineScore, swappedCount: 0, logs: [],
   }))
@@ -105,7 +109,9 @@ it.each([true, false])('compares initial and computed main/backup assignments by
   const runOptions = { ...options, branchCount: 1, simulationSampleHours: 4, droneTarget: 'none' as const }
   const result = await runSmartRosterParallel(base, owned, runOptions, async (jobs, done) => {
     expect(jobs).toHaveLength(2)
-    expect(jobs[0]!.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('斑点') })
+    expect(jobs.map(job => job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant)).toEqual(expect.arrayContaining([
+      { kind: 'operator', operatorId: id('斑点') }, { kind: 'operator', operatorId: id('砾') },
+    ]))
     return jobs.map((job, i) => {
       const main = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
       const summary = { completed: true, simScore: main.kind === 'operator' && main.operatorId === id('砾') ? 200 : computedWins ? 100 : 300, diagnostics: [] }
@@ -117,6 +123,7 @@ it.each([true, false])('compares initial and computed main/backup assignments by
   if (computedWins) expect(productionTeamHourlyOutput(result.workspace!, inventory, 'room_1_1')!).toBeGreaterThan(productionTeamHourlyOutput(workspace, inventory, 'room_1_1')!)
   expect(verify).not.toHaveBeenCalled()
   expect(replacement.runGlobalPerCapitaReplacement).not.toHaveBeenCalled()
+  expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
   expect(result.phases.simulation!.bestScore).toBe(computedWins ? 200 : 300)
   expect(result.score).toBe(computedWins ? 200 : 300)
   expect(workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('斑点') })
@@ -162,7 +169,7 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(result.score).toBe(42)
     expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: '砾' })
     expect(result.specialOperators).toEqual(winnerData)
-    expect(result.phases.simulation!.candidates.map(candidate => [candidate.id, candidate.simScore])).toEqual([['branch-0', 42], ['computed-assignment', 20]])
+    expect(result.phases.simulation!.candidates.map(candidate => [candidate.id, candidate.simScore])).toEqual([['branch-0', 42], ['branch-1', 20]])
     expect(progress.some(value => value.label.includes('候选 2/2 预热 1.0/24 小时'))).toBe(true)
     expect(progress.filter(value => value.phase === 'simulating' && value.bestScore !== undefined).map(value => value.bestScore)).toEqual([42, 42])
     expect(direct).not.toHaveBeenCalled()
@@ -187,26 +194,28 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(result.phases.replacement).toBeUndefined()
     expect(batches).toBe(1)
     expect(construct).toHaveBeenCalledTimes(1)
-    expect(construct.mock.calls[0]![3]).toMatchObject({ branchCount: 1 })
-    expect(computation.computeManufacturingRoster).toHaveBeenCalledTimes(1)
+    expect(construct.mock.calls[0]![3]).toMatchObject({ branchCount: 3 })
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
     expect(replacementSpy).not.toHaveBeenCalled()
     expect(directSimulation).not.toHaveBeenCalled()
     expect(progress.some(p => p.phase === 'searching' || p.label.includes('/3'))).toBe(false)
   })
-  it('keeps identical staffing with different recovery policies as distinct simulation candidates', async () => {
+  it('keeps recovery-policy variants distinct during ranking while deferring their equal-primary F', async () => {
     const first = candidates()[0]!, second = structuredClone(first)
     second.id = 'different-policy'
     second.workspace.mainPlan.conf.rest_in_full = ['砾']
     mockInitialAndComputed(first, second)
     const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => {
-      expect(jobs).toHaveLength(2)
+      expect(jobs).toHaveLength(1)
       return jobs.map((_job, index) => {
         const summary = { completed: true, simScore: 100 + index, diagnostics: [] }
         done(summary, index); return summary
       })
     })
-    expect(result.score).toBe(101)
-    expect(result.workspace!.mainPlan.conf.rest_in_full).toEqual(['砾'])
+    expect(result.score).toBe(100)
+    expect(result.phases.primarySelection?.scores.map(candidate => candidate.id)).toEqual(['branch-0', 'different-policy'])
+    expect(result.phases.primarySelection?.selectedIds).toEqual(['branch-0'])
+    expect(result.workspace!.mainPlan.conf.rest_in_full).toEqual([])
   })
   it('excludes non-finite completed scores rather than selecting an unrankable result', async () => {
     mockInitialAndComputed()
@@ -218,24 +227,36 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(result.score).toBe(50)
     expect(result.phases.simulation!.candidates.find(candidate => candidate.id === 'branch-0')!.simScore).toBeNull()
   })
-  it.each([true, false])('ranks initial completed income ahead of perception preferences, computed Blackkey plan completed %s', async blackkeyCompleted => {
+  it.each([true, false])('ranks completed income ahead of perception preferences, alternative Blackkey plan completed %s', async blackkeyCompleted => {
     const supported = candidates()[0]!, ordinary = candidates()[1]!
     supported.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('迷迭香') }
     supported.workspace.mainPlan.facilities.contact.slots[0]!.occupant = { kind: 'operator', operatorId: id('絮雨') }
     supported.workspace.mainPlan.conf.workaholic = ['迷迭香', '絮雨', '黑键'].map(id)
     supported.workspace.mainPlan.facilities.room_3_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('黑键') }
+    supported.workspace.mainPlan.facilities.room_1_2.slots[0]!.occupant = { kind: 'operator', operatorId: id('砾') }
+    supported.workspace.mainPlan.conf.workaholic.push(id('砾'))
     mockInitialAndComputed(ordinary, supported)
+    const scenarioEntries = fullCatalogIdleInventory().filter(entry => ['芬', '砾', '迷迭香', '絮雨', '黑键'].some(name => entry.operator === id(name)))
+    const scenarioInventory = compileOperatorInventory(scenarioEntries)
+    expect(productionWorkspaceHourlyScore(supported.workspace, scenarioInventory)!).toBeGreaterThan(productionWorkspaceHourlyScore(ordinary.workspace, scenarioInventory)!)
+    expect(compareWorkspacePreference(supported.workspace, ordinary.workspace)).toBeGreaterThan(0)
     vi.spyOn(replacement, 'runGlobalPerCapitaReplacement')
     const progress: SmartRosterProgress[] = []
-    const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => jobs.map((_job, i) => {
-      const result = { completed: i === 0 || blackkeyCompleted, simScore: i ? 10 : 1000, diagnostics: [] }
-      done(result, i); return result
-    }), p => progress.push(p))
+    const result = await runSmartRosterParallel(baseWorkspace(), scenarioEntries, options, async (jobs, done) => {
+      expect(jobs).toHaveLength(2)
+      return jobs.map((job, i) => {
+        const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
+        const ordinaryPlan = occupant.kind === 'operator' && id(occupant.operatorId) === id('芬')
+        const result = { completed: ordinaryPlan || blackkeyCompleted, simScore: ordinaryPlan ? 1000 : 10, diagnostics: [] }
+        done(result, i); return result
+      })
+    }, p => progress.push(p))
     expect(result.status).toBe('draft')
     expect(result.score).toBe(1000)
     const simulations = progress.filter(p => p.phase === 'simulating')
     expect(simulations[simulations.length - 1]!.bestScore).toBe(result.score)
     expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: '芬' })
+    expect(result.phases.simulation!.candidates.find(candidate => candidate.id === supported.id)!.simScore).toBe(blackkeyCompleted ? 10 : null)
     expect(replacement.runGlobalPerCapitaReplacement).not.toHaveBeenCalled()
   })
 
@@ -329,14 +350,11 @@ describe('parallel smart roster preserves serial semantics', () => {
       const initial = candidates()[0]!
       return [{ ...initial, workspace: { ...initial.workspace, productionWeights: source.productionWeights } }]
     })
-    vi.mocked(computation.computeManufacturingRoster).mockImplementation(input => {
-      expect(input.initial.productionWeights).toEqual(weights)
-      return computedResult({ ...candidates()[1]!.workspace, productionWeights: input.initial.productionWeights })
-    })
     const result = runSmartRoster(base, entries, options)
     expect(result.status).toBe('draft')
     expect(result.score).toBe(0)
     expect(result.diagnostics.some(d => d.code === 'SIMULATION_EVALUATION_FAILED')).toBe(false)
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
   })
   it('preserves the fully verified second-stage result when a deep-search worker fails', async () => {
     mockInitialAndComputed()
@@ -365,6 +383,8 @@ describe('parallel smart roster preserves serial semantics', () => {
       return results
     }, p => progress.push(p))
     expect(batches).toEqual([4])
+    expect(computation.computeManufacturingRoster).toHaveBeenCalledTimes(2)
+    expect(serial.phases.calculation).toMatchObject({ status: 'complete', proofScope: 'quantified-manufacturing-model-only' })
     expect(parallel).toEqual(serial)
     expect(parallel.phases.search?.result?.baseline.cases).toHaveLength(4)
     expect(progress.filter(p => p.phase === 'simulating').map(p => p.phaseProgress)).toEqual([0, 0.5, 1])
@@ -432,11 +452,6 @@ describe('parallel smart roster preserves serial semantics', () => {
       expect(source.compatibility.backupPlans).toEqual([])
       return candidates().slice(0, 1)
     })
-    vi.mocked(computation.computeManufacturingRoster).mockImplementation(input => {
-      expect(input.userBase.compatibility.backupPlans).toEqual([])
-      expect(input.initial.compatibility.backupPlans).toEqual([])
-      return computedResult(candidates()[1]!.workspace)
-    })
     const serial=runSmartRoster(base,entries,options)
     const parallel=await runSmartRosterParallel(base,entries,options,async jobs=>{
       jobs.forEach(job=>expect(job.workspace.compatibility.backupPlans).toEqual([]))
@@ -446,6 +461,7 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(parallel.status).toBe('draft')
     expect(serial.workspace!.compatibility.backupPlans).toEqual([])
     expect(parallel.workspace!.compatibility.backupPlans).toEqual([])
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
     expect(base).toEqual(original)
   })
   it('never dispatches an empty candidate set', async () => {
@@ -457,24 +473,26 @@ describe('parallel smart roster preserves serial semantics', () => {
     expect(executor).not.toHaveBeenCalled()
     expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
   })
-  it('verifies only the initial roster when calculation has no new workspace, ignoring legacy branch count', async () => {
+  it('verifies the single available primary without mathematical expansion, ignoring legacy branch count', async () => {
     const construct = vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue(candidates().slice(0, 1))
     const executor = vi.fn(async jobs => jobs.map(simulateCandidate))
     const result = await runSmartRosterParallel(baseWorkspace(), entries, { ...options, branchCount: 99 }, executor)
     expect(result.status).toBe('draft')
     expect(executor.mock.calls[0]![0]).toHaveLength(1)
-    expect(construct.mock.calls[0]![3]).toMatchObject({ branchCount: 1 })
-    expect(result.phases.calculation?.status).toBe('unsupported')
+    expect(construct.mock.calls[0]![3]).toMatchObject({ branchCount: 3 })
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
+    expect(result.phases.calculation).toBeUndefined()
     expect(result.diagnostics.some(d => d.code === 'FEWER_DISTINCT_BRANCHES')).toBe(false)
   })
-  it('reuses the single initial input if calculation returns the same complete workspace', async () => {
-    vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue(candidates().slice(0, 1))
-    vi.mocked(computation.computeManufacturingRoster).mockImplementation(input => computedResult(structuredClone(input.initial)))
+  it('verifies duplicate constructed inputs once without hidden mathematical work', async () => {
+    const first = candidates()[0]!
+    vi.spyOn(synthesis, 'generateMolecularCandidates').mockReturnValue([first, { ...structuredClone(first), id: 'same-input' }])
     const executor = vi.fn(async jobs => jobs.map(simulateCandidate))
     const result = await runSmartRosterParallel(baseWorkspace(), entries, options, executor)
     expect(result.status).toBe('draft')
     expect(executor.mock.calls[0]![0]).toHaveLength(1)
     expect(result.phases.simulation?.candidates).toHaveLength(1)
+    expect(computation.computeManufacturingRoster).not.toHaveBeenCalled()
   })
   it('rejects a missing result instead of ranking a partial batch', async () => {
     mockInitialAndComputed()

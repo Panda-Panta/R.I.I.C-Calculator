@@ -12,6 +12,8 @@ import { createDefaultConfig } from '../../domain/defaults'
 import { calculate } from '../../engine/calculate'
 import type { RosterWorkspace } from '../../domain/roster'
 import type { SmartRosterResult } from '../../optimizer/smartRoster'
+import { EDITION } from '../../domain/edition'
+import { exportMowerJson } from '../compat/mowerJson'
 
 const workers: PendingWorker[] = []
 class PendingWorker {
@@ -26,6 +28,7 @@ let wrapper: VueWrapper
 let api: ReturnType<typeof useSmartRosterGeneration>
 let session: ReturnType<typeof createWorkbenchSession>
 let store: ReturnType<typeof useRosterWorkbenchStore>
+let calculationApi: ReturnType<typeof useWorkbenchCalculation>
 const config = { seed: 42, trials: 10, maxStaticEvals: 500, simulationTopK: 10,
   simulationSampleHours: 24, simulationWarmupHours: 6, enableDeepSearch: false, droneTarget: 'none' as const }
 function completed(workspace: RosterWorkspace): SmartRosterResult {
@@ -41,7 +44,7 @@ beforeEach(() => {
   session.operatorInventory.value = { enabled: true, valid: true, entries: [{ operator: '芬', elitePhase: 1, level: 55 }] }
   wrapper = mount(defineComponent({ setup() {
     api = useSmartRosterGeneration(store, session)
-    useWorkbenchCalculation(store, session, computed(() => ({ isValid: true, criticalErrors: [], warnings: [], issues: [], power: { generation: 810, consumption: 810, margin: 0, sufficient: true } })))
+    calculationApi = useWorkbenchCalculation(store, session, computed(() => ({ isValid: true, criticalErrors: [], warnings: [], issues: [], power: { generation: 810, consumption: 810, margin: 0, sufficient: true } })))
     useWorkbenchPersistence(store, session)
     return () => h('div')
   } }))
@@ -72,6 +75,50 @@ it('requests one initial roster independently of legacy candidate counts while p
 it('preserves an explicit optional deep-search request', () => {
   api.handleConfirmSmartRosterConfig({ ...config, enableDeepSearch: true })
   expect(workers[0]!.postMessage.mock.calls[0]![0].options.enableDeepSearch).toBe(true)
+})
+
+it('defaults legacy requests to no conditional backup generation', () => {
+  api.handleConfirmSmartRosterConfig(config)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options.enableBackupGeneration).toBe(false)
+})
+
+it.each([false, 'false', 'true', 1, null, {}])('does not opt into backup generation for non-true preference %j', value => {
+  const incoming = { ...config }
+  Reflect.set(incoming, 'enableBackupGeneration', value)
+  api.handleConfirmSmartRosterConfig(incoming)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options.enableBackupGeneration).toBe(false)
+})
+
+it('forwards both optional comparisons without mutating their config', () => {
+  const incoming = { ...config, enableDeepSearch: true, enableBackupGeneration: true }
+  const original = structuredClone(incoming)
+  api.handleConfirmSmartRosterConfig(incoming)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options).toMatchObject({ enableDeepSearch: true, enableBackupGeneration: true })
+  expect(incoming).toEqual(original)
+})
+
+it('retains a returned backup with its same-run report, persisted draft and income-worker input', async () => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableBackupGeneration: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  const backup = { name: '条件副表', trigger: 'True', plan: { room_1_1: { plans: [{ agent: '芬', group: '', replacement: ['香草'] }] } } }
+  report.workspace!.name = 'generated main and backup'
+  report.workspace!.compatibility.backupPlans = [backup]
+  report.workspace!.compatibility.importedHasBackupPlans = true
+  const exportedBefore = JSON.parse(exportMowerJson(report.workspace!)).backup_plans
+  deliver(workers[0]!.onmessage!, report)
+  await nextTick()
+  session.activeTab.value = 'logs'
+  await nextTick()
+  expect(store.workspace.compatibility.backupPlans).toEqual([backup])
+  expect(session.calculationReport.value).toBe(report.calculationReport)
+  expect(session.calculationStatus.value).toContain('本次排班验证产出')
+  const saved = JSON.parse(localStorage.getItem(`arc-income-calculator-workspace-v8-${EDITION.storageNamespace}`)!)
+  expect(saved.compatibility.backupPlans).toEqual([backup])
+  expect(JSON.parse(localStorage.getItem(`arc-income-calculator-report-v1-${EDITION.storageNamespace}`)!)).toEqual(report.calculationReport)
+  expect(JSON.parse(exportMowerJson(store.workspace)).backup_plans).toEqual(exportedBefore)
+  calculationApi.handleConfirmCalculation({ droneTarget: 'none', droneTradingRoomId: '', useOperatorInventory: true })
+  expect(workers[1]!.postMessage.mock.calls[0]![0].workspace.compatibility.backupPlans).toEqual([backup])
+  expect(store.workspace.compatibility.backupPlans).toEqual([backup])
 })
 
 it.each(['primary', 'facility', 'policy', 'backup', 'import'] as const)('keeps a newer %s edit when a pending generation returns its older snapshot', kind => {
@@ -155,6 +202,17 @@ it('does not call an optional deep-comparison winner the initial roster after al
   expect(session.replaceStatusMessage.value).toContain('分配优化未完成，已采用完整仿真验证的方案')
   expect(session.replaceStatusMessage.value).not.toContain('保留初始方案')
   expect(session.calculationReport.value).toEqual(report.calculationReport)
+})
+
+it('does not call a joint backup comparison winner the initial roster after allocation failed', () => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableBackupGeneration: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.phases.calculation = { status: 'invalid', libraryComplete: true, columnCount: 2, quantifiedColumnCount: 2,
+    initialObjective: 100, frozenComponents: [], elapsedMs: 1, proofScope: 'quantified-manufacturing-model-only' }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value).toContain('分配优化未完成，已采用完整仿真验证的方案')
+  expect(session.replaceStatusMessage.value).not.toContain('保留初始方案')
+  expect(session.calculationReport.value).toBe(report.calculationReport)
 })
 
 it('ignores cancelled callbacks after weights change and a new generation starts', () => {

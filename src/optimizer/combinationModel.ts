@@ -2,7 +2,7 @@ import type { OperatorInventory } from '../domain/operatorInventory'
 import type { MowerFacility, MowerRoomId, MowerSlot, RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId as resolveId } from '../domain/operatorIdentifiers'
 import type { AtomicMember, AtomicUnit, AtomicUnitConfPolicy } from './riicAtomicUnits'
-import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
+import { isOrdinaryReplacementCandidate, isPassiveAuxiliarySlot } from '../scheduler/scheduleAdapter'
 import { facilityCapacity } from '../domain/facilities'
 export { facilityCapacity } from '../domain/facilities'
 
@@ -66,6 +66,7 @@ export function shiftSnapshot(workspace: RosterWorkspace, role: RosterRole, room
   for (const room of Object.values(result.mainPlan.facilities)) {
     if (room.type === 'dormitory') continue
     room.slots.forEach(slot => {
+      if (isPassiveAuxiliarySlot(room.roomId, slot.groupId)) return
       if (roomId && room.roomId !== roomId && (!slot.groupId || !groups.has(slot.groupId))) return
       if (slot.occupant.kind !== 'operator' && !slot.replacements.length) return
       if (result.mainPlan.conf.workaholic.some(id => resolveId(id) === resolveId(slot.occupant.kind === 'operator' ? slot.occupant.operatorId : ''))) return

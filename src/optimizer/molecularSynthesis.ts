@@ -1,5 +1,5 @@
 import { mainPlanOnly } from './mainPlanOnly'
-import { ensureBuiltDormKeepers } from './dormKeepers'
+import { ensureBuiltDormKeepers, preserveExistingDormKeepers } from './dormKeepers'
 import { configureRunOrder } from './configureRunOrder'
 import type { MowerRoomId, RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId as resolveId } from '../domain/operatorIdentifiers'
@@ -21,6 +21,7 @@ import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
 import { compareProductionEfficiency } from './productionEfficiencyPriority'
 import { applyGeneratedWarmupPolicy } from './generatedWarmupPolicy'
+import { hasDormitoryRecoveryPresence } from './presencePlacementPlanner'
 
 export interface MolecularCandidate {
   id: string
@@ -196,18 +197,27 @@ function molecularStructure(ws: RosterWorkspace): Set<string> {
 export function generateMolecularCandidates(base: RosterWorkspace, entries: readonly OwnedOperatorInput[], inventory: OperatorInventory, options: SynthesisOptions = {}): MolecularCandidate[] {
   base = mainPlanOnly(base)
   if (!inventory.valid || !inventory.operators.length) return []
+  preserveExistingDormKeepers(base, inventory, options.lockedPositions)
   for (const room of Object.values(base.mainPlan.facilities)) {
     const cap = facilityCapacity(room.type, room.level)
     while (room.slots.length < cap) room.slots.push({ occupant: { kind: 'empty' }, groupId: null, replacements: [] })
     room.slots.length = cap
   }
   const pool = buildCombinationPool(base, inventory, options.lockedPositions)
-  const allocationOptions = { ...options, enforceRecoveryCapacity: true,
+  const allocationOptions = { ...options, enforceRecoveryCapacity: true, preservePassiveAuxiliaryPrimary: true,
     warmupInventory: options.requireWarmupExhaustion ? inventory : undefined }
   const count = Math.max(1, Math.min(20, Math.floor(options.branchCount ?? 6)))
   const candidates: MolecularCandidate[] = [], seen = new Set<string>(), skeletons = new Set<string>()
   const families = [...new Set(pool.values.filter(v => v.status === 'evaluated').map(v => v.variant.definitionId))]
-  const seeds: Array<Array<CombinationVariant | undefined>> = [[undefined], ...families.map(id => combinationAllocationAlternatives(base, pool, id))]
+  // Existing stationary-presence systems can keep real recovery providers in
+  // dorms. Finish one such footprint before the free construction, rather than
+  // leaving every recovery alternative behind a successful auxiliary footprint.
+  // This is a construction preference; only the later full F measures its value.
+  const recoveryPresence = pool.values.find(value => value.status === 'evaluated' &&
+    ATOMIC_UNITS.some(unit => unit.id === value.variant.definitionId && unit.stationaryAuxiliaryPresence) &&
+    hasDormitoryRecoveryPresence(base, inventory, value.variant))?.variant
+  const seeds: Array<Array<CombinationVariant | undefined>> = [recoveryPresence ? [recoveryPresence] : [undefined],
+    ...(recoveryPresence ? [[undefined]] : []), ...families.map(id => combinationAllocationAlternatives(base, pool, id))]
   type Start = MolecularRankingFeatures & { workspace: RosterWorkspace; alternatives: Array<CombinationVariant | undefined> }
   const starts: Start[] = []
   for (const [branch, alternatives] of seeds.entries()) {
