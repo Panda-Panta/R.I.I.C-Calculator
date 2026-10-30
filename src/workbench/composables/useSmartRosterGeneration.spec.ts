@@ -36,6 +36,7 @@ function completed(workspace: RosterWorkspace): SmartRosterResult {
     phases: { static: { candidates: [], bestScore: 100 }, simulation: null, search: null } }
 }
 const deliver = (callback: NonNullable<PendingWorker['onmessage']>, report: SmartRosterResult) => callback({ data: { type: 'complete', report } } as MessageEvent)
+const deliverIncumbent = (callback: NonNullable<PendingWorker['onmessage']>, report: SmartRosterResult) => callback({ data: { type: 'incumbent', report } } as MessageEvent)
 
 beforeEach(() => {
   workers.length = 0; localStorage.clear()
@@ -80,6 +81,106 @@ it('preserves an explicit optional deep-search request', () => {
 it('defaults legacy requests to no conditional backup generation', () => {
   api.handleConfirmSmartRosterConfig(config)
   expect(workers[0]!.postMessage.mock.calls[0]![0].options.enableBackupGeneration).toBe(false)
+})
+
+it('defaults legacy requests to fast generation without freely combining presets or extra optimization', () => {
+  api.handleConfirmSmartRosterConfig(config)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options).toMatchObject({
+    enableMainOptimization: false, allowFreeCombinations: false, optimizationMaxSimulations: 3, optimizationTimeBudgetMs: 30000,
+  })
+})
+
+it('forwards explicit main optimization and free-combination budgets without changing the config', () => {
+  const incoming = { ...config, enableMainOptimization: true, allowFreeCombinations: true, optimizationMaxSimulations: 5, optimizationTimeBudgetMs: 90000 }
+  const original = structuredClone(incoming)
+  api.handleConfirmSmartRosterConfig(incoming)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options).toMatchObject({
+    enableMainOptimization: true, allowFreeCombinations: true, optimizationMaxSimulations: 5, optimizationTimeBudgetMs: 90000,
+  })
+  expect(incoming).toEqual(original)
+})
+
+it('bounds extra simulation work and requires true for either main optimization option', () => {
+  const incoming = { ...config, optimizationMaxSimulations: 100, optimizationTimeBudgetMs: 1000000 }
+  Reflect.set(incoming, 'enableMainOptimization', 'true')
+  Reflect.set(incoming, 'allowFreeCombinations', 'true')
+  api.handleConfirmSmartRosterConfig(incoming)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options).toMatchObject({
+    enableMainOptimization: false, allowFreeCombinations: false, optimizationMaxSimulations: 8, optimizationTimeBudgetMs: 300000,
+  })
+})
+
+it('keeps confirmed snapshots private until manual stop, then adopts the best roster and its same-run report', async () => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+  const worker = workers[0]!, callback = worker.onmessage!
+  const original = JSON.stringify(store.workspace)
+  const report = completed(worker.postMessage.mock.calls[0]![0].base)
+  report.workspace!.name = 'confirmed best'
+  deliverIncumbent(callback, report)
+  expect(JSON.stringify(store.workspace)).toBe(original)
+  expect(session.calculationReport.value).toBeNull()
+  expect(session.isGeneratingRoster.value).toBe(true)
+  expect(api.hasVerifiedIncumbent.value).toBe(true)
+  expect(worker.terminate).not.toHaveBeenCalled()
+  const worse = structuredClone(report)
+  worse.workspace!.name = 'worse confirmed'
+  worse.score = 90
+  deliverIncumbent(callback, worse)
+  api.handleAbortAutoGenerate()
+  await nextTick()
+  expect(store.workspace.name).toBe('confirmed best')
+  expect(session.calculationReport.value).toBe(report.calculationReport)
+  expect(session.calculationStatus.value).toContain('本次排班验证产出')
+  expect(session.replaceStatusMessage.value).toContain('结束优化')
+  expect(session.replaceStatusMessage.value).toContain('保留')
+  expect(session.isGeneratingRoster.value).toBe(false)
+  expect(api.hasVerifiedIncumbent.value).toBe(false)
+  expect(worker.terminate).toHaveBeenCalledOnce()
+  const stale = structuredClone(report)
+  stale.workspace!.name = 'late complete'
+  deliver(callback, stale)
+  deliverIncumbent(callback, stale)
+  expect(store.workspace.name).toBe('confirmed best')
+})
+
+it.each(['blocked', 'workspace', 'score', 'report', 'summary', 'report score'] as const)('does not retain an unknown or incomplete incumbent: %s', kind => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+  const worker = workers[0]!, callback = worker.onmessage!
+  const original = JSON.stringify(store.workspace)
+  const report = completed(worker.postMessage.mock.calls[0]![0].base)
+  if (kind === 'blocked') report.status = 'blocked'
+  else if (kind === 'workspace') report.workspace = null
+  else if (kind === 'score') report.score = Number.NaN
+  else if (kind === 'report') delete report.calculationReport
+  else if (kind === 'summary') report.calculationReport!.summary = null
+  else report.calculationReport!.summary!.totalScore82 = Number.NaN
+  deliverIncumbent(callback, report)
+  expect(api.hasVerifiedIncumbent.value).toBe(false)
+  api.handleAbortAutoGenerate()
+  expect(JSON.stringify(store.workspace)).toBe(original)
+  expect(session.calculationReport.value).toBeNull()
+  expect(session.replaceStatusMessage.value).toBe('已中止自动排班计算。')
+})
+
+it.each(['weights', 'edit', 'unmount'] as const)('discards a confirmed incumbent after %s cancellation and ignores all late results', kind => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+  const worker = workers[0]!, callback = worker.onmessage!
+  const stale = completed(worker.postMessage.mock.calls[0]![0].base)
+  stale.workspace!.name = 'stale confirmed'
+  deliverIncumbent(callback, stale)
+  expect(api.hasVerifiedIncumbent.value).toBe(true)
+  if (kind === 'weights') session.simSettings.value.productionWeights = { exp: 3, gold: .8, orders: .2, fragments: 0, orundum: 0 }
+  else if (kind === 'edit') store.updateFacility('room_1_1', { product: 'exp' })
+  else wrapper.unmount()
+  const current = JSON.stringify(store.workspace)
+  expect(api.hasVerifiedIncumbent.value).toBe(false)
+  api.handleAbortAutoGenerate()
+  deliverIncumbent(callback, stale)
+  deliver(callback, stale)
+  expect(JSON.stringify(store.workspace)).toBe(current)
+  expect(session.calculationReport.value).toBeNull()
+  expect(session.isGeneratingRoster.value).toBe(false)
+  expect(worker.terminate).toHaveBeenCalledOnce()
 })
 
 it.each([false, 'false', 'true', 1, null, {}])('does not opt into backup generation for non-true preference %j', value => {
@@ -191,6 +292,41 @@ it('keeps the normal success wording for a complete allocation', () => {
     initialObjective: 100, frozenComponents: [], elapsedMs: 1, proofScope: 'quantified-manufacturing-model-only' }
   deliver(workers[0]!.onmessage!, report)
   expect(session.replaceStatusMessage.value).toBe('一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班（加权预测：100.0 分/日）。')
+})
+
+it.each([
+  { improved: true, qualityRepaired: false, gain: 12.34, message: '本次持续优化额外提高 12.3 分/日' },
+  { improved: false, qualityRepaired: true, gain: -20, message: '采用工休完整性合格的方案' },
+  { improved: true, qualityRepaired: true, gain: 20, message: '采用工休完整性合格的方案' },
+  { improved: false, qualityRepaired: false, gain: 0, message: '额外比较未发现更高产出' },
+])('describes the continuous optimization outcome accurately: $message', ({ improved, qualityRepaired, gain, message }) => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.phases.mainOptimization = { generatedCandidates: 4, evaluatedCandidates: 3, cacheHits: 0, acceptedCandidates: 2,
+    improved, qualityRepaired, gain, termination: 'simulation-budget', candidates: [] }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value).toContain(message)
+  if (qualityRepaired) expect(session.replaceStatusMessage.value).not.toContain('额外提高')
+  expect(session.calculationReport.value).toBe(report.calculationReport)
+  expect(session.replaceStatusMessage.value).not.toMatch(/generatedCandidates|cacheHits|候选预算|ALNS|F仿真/)
+})
+
+it.each([
+  { code: 'MAIN_OPTIMIZATION_NO_QUALIFIED_RESULT', message: '预算内未找到满足新增工休收益质量门槛的方案，保留快速入口结果及其原有诊断。', hasSummary: true },
+  { code: 'MAIN_OPTIMIZATION_FAILED', message: '持续优化未完成，保留最近已完成排班及其同次报告：测试中断', hasSummary: false },
+])('prioritizes the original $code diagnostic instead of claiming continuous optimization succeeded', ({ code, message, hasSummary }) => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.diagnostics.push({ code, message })
+  if (hasSummary) report.phases.mainOptimization = { generatedCandidates: 4, evaluatedCandidates: 3, cacheHits: 0, acceptedCandidates: 0,
+    improved: false, qualityRepaired: false, gain: 0, termination: 'simulation-budget', candidates: [] }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value).toContain(message)
+  expect(session.replaceStatusMessage.value?.startsWith(message)).toBe(true)
+  expect(session.replaceStatusMessage.value).not.toContain('排班成功')
+  expect(session.replaceStatusMessage.value).not.toContain('未发现更高产出')
+  expect(session.replaceStatusMessage.value).not.toContain('工休完整性合格')
+  expect(session.calculationReport.value).toBe(report.calculationReport)
 })
 
 it('does not call an optional deep-comparison winner the initial roster after allocation failed', () => {

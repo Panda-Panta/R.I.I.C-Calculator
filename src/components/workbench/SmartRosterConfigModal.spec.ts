@@ -128,6 +128,10 @@ describe('SmartRosterConfigModal.vue', () => {
       simulationWarmupHours: 24,
       enableDeepSearch: false,
       enableBackupGeneration: false,
+      enableMainOptimization: false,
+      allowFreeCombinations: false,
+      optimizationMaxSimulations: 3,
+      optimizationTimeBudgetMs: 30000,
       droneTarget: 'trading',
       droneRoomId: 'room_3_2',
       seed: 99999,
@@ -156,6 +160,57 @@ describe('SmartRosterConfigModal.vue', () => {
     expect(wrapper.get<HTMLInputElement>('[data-test="enable-deep-search"]').element.checked).toBe(true)
     await wrapper.get('[data-test="confirm-btn"]').trigger('click')
     expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ trials: 17, simulationTopK: 11, enableDeepSearch: true, seed: 51 })
+  })
+
+  it('leaves legacy preferences unchanged while defaulting continuous main optimization and free combinations off', () => {
+    const saved = JSON.stringify({ simulationSampleHours: 48, seed: 17, enableDeepSearch: true })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, saved)
+    const wrapper = mountModal()
+    try {
+      expect(wrapper.get<HTMLInputElement>('[data-test="enable-main-optimization"]').element.checked).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('[data-test="allow-free-combinations"]').element.checked).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]').element.value).toBe('3')
+      expect(wrapper.get<HTMLInputElement>('[data-test="optimization-time-budget-seconds"]').element.value).toBe('30')
+      expect(wrapper.get('[data-test="free-combinations-description"]').text()).toContain('内部预设组合')
+      expect(wrapper.get('[data-test="free-combinations-description"]').text()).toContain('已配置工位与人员继续锁定')
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(saved)
+    } finally { wrapper.unmount() }
+  })
+
+  it('persists explicit main optimization, free combinations and bounded extra simulation budgets, then resets them', async () => {
+    const wrapper = mountModal()
+    try {
+      await wrapper.get('[data-test="enable-main-optimization"]').setValue(true)
+      await wrapper.get('[data-test="allow-free-combinations"]').setValue(true)
+      await wrapper.get('[data-test="optimization-max-simulations"]').setValue(99)
+      await wrapper.get('[data-test="optimization-time-budget-seconds"]').setValue(999)
+      await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+      const expected = { enableMainOptimization: true, allowFreeCombinations: true, optimizationMaxSimulations: 8, optimizationTimeBudgetMs: 300000 }
+      expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject(expected)
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)!)).toMatchObject(expected)
+    } finally { wrapper.unmount() }
+    const restored = mountModal()
+    try {
+      expect(restored.get<HTMLInputElement>('[data-test="enable-main-optimization"]').element.checked).toBe(true)
+      expect(restored.get<HTMLInputElement>('[data-test="allow-free-combinations"]').element.checked).toBe(true)
+      expect(restored.get<HTMLInputElement>('[data-test="optimization-time-budget-seconds"]').element.value).toBe('300')
+      await restored.get('[data-test="reset-btn"]').trigger('click')
+      expect(restored.get<HTMLInputElement>('[data-test="enable-main-optimization"]').element.checked).toBe(false)
+      expect(restored.get<HTMLInputElement>('[data-test="allow-free-combinations"]').element.checked).toBe(false)
+      expect(restored.get<HTMLInputElement>('[data-test="optimization-max-simulations"]').element.value).toBe('3')
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBeNull()
+    } finally { restored.unmount() }
+  })
+
+  it.each(['true', 'false', 1, null, {}])('requires explicit true to restore either main optimization option: %j', value => {
+    const saved = JSON.stringify({ enableMainOptimization: value, allowFreeCombinations: value })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, saved)
+    const wrapper = mountModal()
+    try {
+      expect(wrapper.get<HTMLInputElement>('[data-test="enable-main-optimization"]').element.checked).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('[data-test="allow-free-combinations"]').element.checked).toBe(false)
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(saved)
+    } finally { wrapper.unmount() }
   })
 
   it('offers conditional backup comparison as an independent experiment defaulting off', () => {

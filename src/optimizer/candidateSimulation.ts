@@ -9,6 +9,7 @@ import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import type { ScheduleSimulationProgress } from '../simulator/scheduleSimulation'
 import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
 import { validateGeneratedBackupCandidate } from './generatedBackupAdmission'
+import { evaluateMainRosterDuty, type MainRosterDutyQuality } from './mainRosterDutyEvaluation'
 
 export interface CandidateSimulationJob {
   workspace: Parameters<typeof runScheduleSimulationBridge>[0]
@@ -30,6 +31,9 @@ export interface CandidateSimulationResult {
   incomeCase?: IncomeCase
   /** Compact display report of this same completed run; no timeline/segment payload. */
   calculationReport?: CalculationReport
+  /** Same-run integrity/duty evidence. Main optimization requires eligible=true;
+   * legacy completed retains its existing execution/comparison semantics. */
+  quality?: MainRosterDutyQuality
 }
 
 export interface CandidateSimulationBatch {
@@ -61,9 +65,16 @@ export function simulateCandidateWithProgress(job: CandidateSimulationJob, onPro
   }
   const response = runScheduleSimulationBridge(job.workspace, job.options, job.assumptions, onProgress)
   const report = response.report
+  const duty = report ? evaluateMainRosterDuty(report, job.workspace, {
+    sampleHours: job.options?.sampleHours ?? 336, warmupHours: job.options?.warmupHours ?? 0,
+  }) : undefined
+  const quality: MainRosterDutyQuality | undefined = duty ? {
+    eligible: duty.eligible, strict: duty.strict, ordinaryExhaustedHours: duty.ordinaryExhaustedHours,
+    pendingDeferrals: duty.pendingDeferrals, issues: duty.issues,
+  } : undefined
   if (job.generatedBackup !== undefined) {
     if (!report) return { completed: false, simScore: 0, diagnostics: [response.error ?? '模拟未返回报告'] }
-    const incomeCase = summarizeIncome(report)
+    const incomeCase = duty?.incomeCase ?? summarizeIncome(report)
     if (!report.production?.sample.completed || !incomeCase.output || !Number.isFinite(incomeCase.output.daily.total)) {
       incomeCase.issues.push('生成副表候选缺少完整的有限采样产出')
       incomeCase.eligible = false
@@ -76,6 +87,7 @@ export function simulateCandidateWithProgress(job: CandidateSimulationJob, onPro
     }
     return { completed: incomeCase.eligible, simScore: incomeCase.output?.daily.total ?? 0,
       diagnostics: incomeCase.issues, incomeCase,
+      quality,
       ...(incomeCase.eligible ? { calculationReport: simulationReportToCalculationReport(job.workspace, report) } : {}),
       specialOperators: report.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({
         operatorId: op.operatorId, operatorName: op.operatorName, workFraction: op.workFraction,
@@ -87,21 +99,22 @@ export function simulateCandidateWithProgress(job: CandidateSimulationJob, onPro
   if (job.incomeComparison) {
     if (!report) throw new Error(response.error ?? '模拟未返回报告')
     // Preserve failed/incomplete evidence for compareIncome; never replace it with a zero label.
-    const incomeCase = summarizeIncome(report)
+    const incomeCase = duty?.incomeCase ?? summarizeIncome(report)
     return { completed: incomeCase.eligible, simScore: incomeCase.output?.daily.total ?? 0,
-      diagnostics: incomeCase.issues, incomeCase }
+      diagnostics: incomeCase.issues, incomeCase, quality }
   }
   if (!report?.success || !report.production?.success) {
     return { completed: false, simScore: 0, diagnostics: [
       ...(response.error ? [response.error] : []),
       ...(report?.diagnostics.map(d => `[${d.code}] ${d.message}`) ?? []),
-    ] }
+    ], ...(quality ? { quality } : {}) }
   }
   return {
     completed: report.production.sample.completed && report.observedHours > 0,
     simScore: report.production.sample.completed && report.observedHours > 0
-      ? scoreSimulationProduction(report).total : 0,
+      ? duty?.incomeCase?.output?.daily.total ?? scoreSimulationProduction(report).total : 0,
     diagnostics: [],
+    quality,
     ...(report.production.sample.completed && report.observedHours > 0
       ? { calculationReport: simulationReportToCalculationReport(job.workspace, report) } : {}),
     specialOperators: report.operators.filter(op => hasConsumptionSkill(op.operatorId)).map(op => ({

@@ -126,7 +126,7 @@
           <svg class="mower-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>
           </svg>
-          中止排班
+          {{ hasVerifiedIncumbent ? '结束优化并保留当前方案' : '中止排班' }}
         </button>
 
         <!-- Auto Generate Roster (Req 10) -->
@@ -283,6 +283,7 @@ export interface PlanToolbarProps {
   disabled?: boolean
   isGeneratingRoster?: boolean
   generationProgress?: SmartRosterProgress | null
+  hasVerifiedIncumbent?: boolean
   isCalculating?: boolean
   calculationProgress?: CalculationProgress | null
   calculationTiming?: string
@@ -297,6 +298,7 @@ const props = withDefaults(defineProps<PlanToolbarProps>(), {
   disabled: false,
   isGeneratingRoster: false,
   generationProgress: null,
+  hasVerifiedIncumbent: false,
   isCalculating: false,
   calculationProgress: null,
   calculationTiming: '',

@@ -1,34 +1,53 @@
-import { onBeforeUnmount, ref, shallowRef, toRaw, watch } from 'vue'
+import { onBeforeUnmount, ref, toRaw, watch } from 'vue'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 import { normalizeProductionWeights } from '../../domain/productionWeights'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
-import type { SmartRosterConfig } from '../settings'
+import { normalizeSmartRosterOptimizationOptions, type SmartRosterConfig } from '../settings'
 import type { WorkbenchSession } from '../session'
 import type { useRosterWorkbenchStore } from '../store'
+
+type VerifiedRosterSnapshot = SmartRosterResult & { score: number }
+
+function isVerifiedIncumbent(report: SmartRosterResult | null | undefined): report is VerifiedRosterSnapshot {
+  return report?.status === 'draft' && !!report.workspace && typeof report.score === 'number' && Number.isFinite(report.score) &&
+    !!report.calculationReport?.summary && Number.isFinite(report.calculationReport.summary.totalScore82)
+}
 
 /** Owns generation options, worker fallback, progress and adoption of verified rosters. */
 export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkbenchStore>, session: WorkbenchSession) {
   const { simSettings, operatorInventory, isCalculating, isGeneratingRoster, activeTab, calculationReport, calculationError, calculationStatus, simulationReport, timelineData, replaceStatusMessage } = session
   const smartRosterConfigModalOpen = ref(false)
   const generationProgress = ref<SmartRosterProgress | null>(null)
-  const activeRosterWorker = shallowRef<Worker | null>(null)
-  function stopGeneration(): void {
-    const worker = activeRosterWorker.value
-    activeRosterWorker.value = null
+  const hasVerifiedIncumbent = ref(false)
+  interface GenerationJob {
+    worker: Worker | null
+    incumbent: VerifiedRosterSnapshot | null
+    adopt: (report: SmartRosterResult) => void
+  }
+  let activeJob: GenerationJob | null = null
+  function releaseWorker(job: GenerationJob): void {
+    const worker = job.worker
+    job.worker = null
     if (worker) {
       worker.onmessage = null
       worker.onerror = null
       worker.onmessageerror = null
       worker.terminate()
     }
+  }
+  function stopGeneration(): void {
+    const job = activeJob
+    activeJob = null
+    if (job) releaseWorker(job)
     isGeneratingRoster.value = false
     generationProgress.value = null
+    hasVerifiedIncumbent.value = false
   }
   watch(() => simSettings.value.productionWeights, value => {
     const weights = normalizeProductionWeights(value)
     const current = normalizeProductionWeights(store.workspace.productionWeights)
     if ((Object.keys(weights) as Array<keyof typeof weights>).some(key => weights[key] !== current[key])) {
-      if (activeRosterWorker.value) {
+      if (activeJob) {
         stopGeneration()
         replaceStatusMessage.value = '产出加权系数已变更，自动排班计算已中止，请重新生成。'
       }
@@ -36,7 +55,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
     }
   }, { deep: true, flush: 'sync' })
   watch(() => store.workspace, () => {
-    if (!activeRosterWorker.value) return
+    if (!activeJob) return
     stopGeneration()
     replaceStatusMessage.value = '排班已变更，自动排班计算已中止，请重新生成。'
   }, { deep: true, flush: 'sync' })
@@ -136,6 +155,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
       enableDeepSearch: config?.enableDeepSearch ?? false,
       enableBackupGeneration: config?.enableBackupGeneration === true,
+      ...normalizeSmartRosterOptimizationOptions(config),
       droneTarget: config?.droneTarget ?? 'none',
       droneRoomId: config?.droneRoomId || undefined,
     }
@@ -153,13 +173,26 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
             calculation.valuation?.stopReason === 'workLimit' || calculation.assignment && calculation.assignment.termination !== 'complete'
           optimizationNote = `${budgetReached ? '已到计算预算' : '分配计算受当前支持范围限制'}，采用完整仿真验证后的较优方案。`
         } else if (calculation?.status === 'invalid') {
-          optimizationNote = runOptions.enableDeepSearch || runOptions.enableBackupGeneration
+          optimizationNote = runOptions.enableDeepSearch || runOptions.enableBackupGeneration || runOptions.enableMainOptimization
             ? '分配优化未完成，已采用完整仿真验证的方案。'
             : '分配优化未完成，已验证并保留初始方案。'
         } else if (calculation?.status === 'unsupported') {
           optimizationNote = '当前配置未进入制造组优化。'
         }
-        replaceStatusMessage.value = `一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班${scoreStr}。${optimizationNote}`
+        const mainOptimization = report.phases.mainOptimization
+        const mainOptimizationWarning = report.diagnostics.filter(d =>
+          d.code === 'MAIN_OPTIMIZATION_NO_QUALIFIED_RESULT' || d.code === 'MAIN_OPTIMIZATION_FAILED').map(d => d.message).join('；')
+        let mainOptimizationNote = ''
+        if (mainOptimization?.qualityRepaired) {
+          mainOptimizationNote = '持续优化已采用工休完整性合格的方案。'
+        } else if (mainOptimization?.improved) {
+          mainOptimizationNote = `本次持续优化额外提高 ${mainOptimization.gain.toFixed(1)} 分/日。`
+        } else if (mainOptimization && mainOptimization.termination !== 'invalid-budget') {
+          mainOptimizationNote = '本次额外比较未发现更高产出。'
+        }
+        replaceStatusMessage.value = mainOptimizationWarning
+          ? `${mainOptimizationWarning} 当前保留排班${scoreStr}。`
+          : `一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班${scoreStr}。${optimizationNote}${mainOptimizationNote}`
         simSettings.value.droneTarget = runOptions.droneTarget
         simSettings.value.droneRoomId = runOptions.droneRoomId
         simSettings.value.droneTradingRoomId = runOptions.droneTarget === 'trading' ? runOptions.droneRoomId : ''
@@ -178,14 +211,31 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       }
     }
 
+    const job: GenerationJob = { worker: null, incumbent: null, adopt: onSmartRosterComplete }
+    activeJob = job
+    function rememberIncumbent(report: SmartRosterResult): void {
+      if (activeJob !== job || !isVerifiedIncumbent(report)) return
+      if (!job.incumbent || report.score >= job.incumbent.score) {
+        job.incumbent = report
+        hasVerifiedIncumbent.value = true
+      }
+    }
+    function receiveProgress({ incumbent, ...progress }: SmartRosterProgress): void {
+      if (activeJob !== job) return
+      if (incumbent) rememberIncumbent(incumbent)
+      generationProgress.value = progress
+    }
+
     try {
       if (!isVitest && typeof Worker !== 'undefined') {
         const worker = new Worker(new URL('../../optimizer/smartRosterWorker.ts', import.meta.url), { type: 'module' })
-        activeRosterWorker.value = worker
+        job.worker = worker
         worker.onmessage = (event) => {
-          if (activeRosterWorker.value !== worker) return
+          if (activeJob !== job) return
           if (event.data.type === 'progress') {
-            generationProgress.value = event.data.progress
+            receiveProgress(event.data.progress)
+          } else if (event.data.type === 'incumbent') {
+            rememberIncumbent(event.data.report)
           } else if (event.data.type === 'complete') {
             // Release the snapshot before adopting its own workspace so that
             // the edit watcher cannot cancel a successful result application.
@@ -197,7 +247,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
           }
         }
         worker.onerror = (err) => {
-          if (activeRosterWorker.value !== worker) return
+          if (activeJob !== job) return
           stopGeneration()
           replaceStatusMessage.value = `自动排班任务发生错误：${err.message || 'Worker 执行失败'}`
         }
@@ -209,26 +259,35 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
         return
       }
     } catch {
+      releaseWorker(job)
       // Fall back to synchronous execution if Worker creation failed (e.g. in test environment)
     }
 
     try {
-      const report = runSmartRoster(baseWorkspace, cleanEntries, runOptions, (p) => {
-        generationProgress.value = p
-      })
+      const report = runSmartRoster(baseWorkspace, cleanEntries, runOptions, receiveProgress)
+      if (activeJob !== job) return
+      stopGeneration()
       onSmartRosterComplete(report)
     } catch (err: unknown) {
+      if (activeJob !== job) return
+      stopGeneration()
       replaceStatusMessage.value = `自动排班生成失败：${err instanceof Error ? err.message : String(err)}`
     } finally {
-      isGeneratingRoster.value = false
-      generationProgress.value = null
+      if (activeJob === job) stopGeneration()
     }
   }
 
   function handleAbortAutoGenerate(): void {
+    const job = activeJob
+    const incumbent = job?.incumbent
     stopGeneration()
-    replaceStatusMessage.value = '已中止自动排班计算。'
+    if (job && incumbent) {
+      job.adopt(incumbent)
+      replaceStatusMessage.value = `已结束优化，保留本次完整仿真确认的较优排班（加权预测：${incumbent.score.toFixed(1)} 分/日）。`
+    } else {
+      replaceStatusMessage.value = '已中止自动排班计算。'
+    }
   }
 
-  return { smartRosterConfigModalOpen, generationProgress, handleAutoGenerate, handleConfirmSmartRosterConfig, handleAbortAutoGenerate }
+  return { smartRosterConfigModalOpen, generationProgress, hasVerifiedIncumbent, handleAutoGenerate, handleConfirmSmartRosterConfig, handleAbortAutoGenerate }
 }

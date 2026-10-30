@@ -4,15 +4,32 @@ import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as admission from './generatedBackupAdmission'
 import * as fixedDuty from './fixedDuty'
 import { simulateCandidate, simulateCandidateWithProgress, type CandidateSimulationJob } from './candidateSimulation'
+import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
+import { createLedger } from '../simulator/resourceLedger'
+import { createDroneState } from '../simulator/droneTimeline'
+import type { ScheduleSimulationReport } from '../simulator/scheduleSimulation'
+import { scoreSimulationProduction } from '../simulator/productionScore'
 
-const job = (): CandidateSimulationJob => ({ workspace: createDefaultWorkspace(),
+const job = (): CandidateSimulationJob & { options: NonNullable<CandidateSimulationJob['options']> } => ({ workspace: createDefaultWorkspace(),
   options: { warmupHours: 0, sampleHours: 1, production: { seed: 42, droneTarget: 'none' } },
   assumptions: { idleOperators: [] }, generatedBackup: { version: 'joint-production-v1',
     trigger: { observers: [{ operatorId: '阿米娅', roomId: 'central' }], activeWhen: 'all-present' } },
 })
-function report() {
+/** A complete empty-roster fixture. No Native calendar runs in these tests. */
+function report(): ScheduleSimulationReport {
   const input = job()
-  return bridge.runScheduleSimulationBridge(input.workspace, input.options, input.assumptions).report!
+  return { schemaVersion: 1, engine: 'mower-morale-v1', success: true, elapsedHours: 1, observedHours: 1,
+    inputs: { schedule: compileRosterSchedule(input.workspace, input.assumptions), options: input.options },
+    assumptions: { schedulingModel: 'mower-alpha', warmupHours: 0, sampleHours: 1, maxStepHours: .25,
+      warmupModel: 'continuous', restingThreshold: .65, operationDurationHours: 0,
+      dormAtmosphere: 'fixture', singleRecoveryTarget: 'fixture' },
+    operators: [], rooms: [], events: [], segments: [], diagnostics: [], shiftDeferrals: [],
+    production: { success: true, ledger: createLedger({}),
+      sample: { completed: { exp: 1000, gold: 2, orderLmd: 500 }, opening: {}, closing: {}, inflows: {}, outflows: {}, net: {} },
+      materialsConsumed: {}, drones: createDroneState(0, 200), manufacturing: [], trading: [], events: [],
+      assumptions: { outputMode: 'potential', inventoryMode: 'unlimited', seed: 42, runOrderMode: 'ideal',
+        droneTarget: 'none', droneReserve: 0, collectionIntervalHours: 0, orderSnapshotPolicy: 'fixture' } },
+  }
 }
 
 afterEach(() => vi.restoreAllMocks())
@@ -42,9 +59,38 @@ describe('explicit generated backup simulation mode', () => {
     expect(result.completed).toBe(true)
     expect(result.incomeCase?.eligible).toBe(true)
     expect(result.simScore).toBe(result.incomeCase?.output?.daily.total)
+    expect(result.quality).toEqual({ eligible: true, strict: true, ordinaryExhaustedHours: 0, pendingDeferrals: 0, issues: [] })
     expect(result.calculationReport).toBeDefined()
     expect(result.specialOperators).toEqual([{ operatorId: 'char_237_gravel', operatorName: '砾', finalMorale: 23,
       workFraction: 1, workRestRatio: null, workHours: 1, restHours: 0, exhaustedHours: 0 }])
+  })
+
+  it('adds compact same-run quality without reclassifying legacy ordinary execution', () => {
+    const input = job(); delete input.generatedBackup
+    const complete = report()
+    complete.operators.push({ operatorId: 'char_237_gravel', operatorName: '砾', initialMorale: 0, finalMorale: 0,
+      mainWorkHours: 0, substituteWorkHours: 0, workHours: 0, restHours: 0, idleHours: 0,
+      exhaustedHours: 1, workFraction: 0, workRestRatio: null })
+    complete.shiftDeferrals = [{ key: 'group:terminal', operatorIds: ['char_237_gravel'], blockedAt: 1 }]
+    complete.diagnostics.push({ code: 'group-blocked', message: 'group:terminal: blocked' })
+    const run = vi.spyOn(bridge, 'runScheduleSimulationBridge').mockReturnValue({ report: complete })
+    const result = simulateCandidate(input)
+    expect(result).toMatchObject({ completed: true, simScore: scoreSimulationProduction(complete).total, diagnostics: [] })
+    expect(result.quality).toMatchObject({ eligible: false, strict: false, ordinaryExhaustedHours: 1, pendingDeferrals: 1 })
+    expect(Object.keys(result.quality!).sort()).toEqual(['eligible', 'issues', 'ordinaryExhaustedHours', 'pendingDeferrals', 'strict'])
+    expect(result).not.toHaveProperty('report')
+    expect(result.quality).not.toHaveProperty('operators')
+    expect(run).toHaveBeenCalledOnce()
+  })
+
+  it('checks the actual job window even when a bridge report labels a shorter window complete', () => {
+    const input = job(); delete input.generatedBackup
+    input.options.sampleHours = 72; input.options.warmupHours = 24
+    vi.spyOn(bridge, 'runScheduleSimulationBridge').mockReturnValue({ report: report() })
+    const result = simulateCandidate(input)
+    expect(result.completed).toBe(true)
+    expect(result.quality?.eligible).toBe(false)
+    expect(result.quality?.issues).toContain('采样或预热窗口未完整覆盖实际请求')
   })
 
   it('keeps partial windows, fatigue, bad ledgers and condition failures ineligible in generated mode', () => {
