@@ -8,6 +8,7 @@ import { currentMoraleRates } from '../engine/morale'
 import { eligibleSingleRecoveryTargets } from '../engine/singleRecoveryEligibility'
 import { isOrdinaryReplacementCandidate } from '../scheduler/scheduleAdapter'
 import { isAoeDormKeeper, isSingleDormKeeper } from '../scheduler/smartDormitoryPolicy'
+import { rankRecoverySupportProposals } from './mainRosterRecoveryPriorities'
 import { productionWorkspaceHourlyScore } from './productionSingletons'
 import { projectRosterConfig } from './rosterProjection'
 
@@ -34,6 +35,9 @@ const positions = (workspace: RosterWorkspace): Position[] => Object.values(work
   .filter(room => room.level > 0).flatMap(room => room.slots.slice(0, facilityCapacity(room.type, room.level))
     .flatMap((slot, index) => slot.occupant.kind === 'operator' ? [{ room, index, slot, operatorId: id(slot.occupant.operatorId) }] : []))
 const memberKey = (members: readonly string[]): string => [...new Set(members.map(id))].sort().join('|')
+const orderedTargetKey = (members: readonly string[]): string => members.map(id).join('|')
+const originalRecoverySlot = (room: MowerFacility, slot: MowerSlot | undefined): boolean => room.type === 'dormitory' &&
+  slot?.occupant.kind === 'operator' && (id(slot.occupant.operatorId) === FIA || slot.dormitoryResident !== false)
 
 /** Recovery proposals only: static group value, initial consumption and dormitory
  * snapshots are search hints. The caller retains the original anchor and must
@@ -43,7 +47,7 @@ export function generateMainRosterRecoveryCandidates(
   workspace: RosterWorkspace, inventory: OperatorInventory, options: Options = {},
 ): { candidates: Candidate[]; diagnostics: Diagnostic[] } {
   const candidates: Candidate[] = [], diagnostics: Diagnostic[] = []
-  const requested = options.maxCandidates ?? 6
+  const requested = options.maxCandidates ?? 4
   if (!Number.isInteger(requested) || requested < 0) return { candidates, diagnostics: [{ code: 'RECOVERY_INVALID_LIMIT', message: '恢复候选上限须为非负有限整数。' }] }
   const limit = Math.min(requested, MAX_CANDIDATES)
   if (requested > MAX_CANDIDATES) diagnostics.push({ code: 'RECOVERY_LIMIT_CLAMPED', message: `恢复提案最多 ${MAX_CANDIDATES} 份。` })
@@ -53,8 +57,9 @@ export function generateMainRosterRecoveryCandidates(
   const all = positions(workspace), owned = new Map(inventory.operators.map(operator => [operator.charId, operator]))
   const records = inventoryOperatorRecords(inventory), lockedOperators = new Set([...(options.lockedOperators ?? [])].map(id))
   const locked = (position: Position): boolean => {
-    const original = options.userBase?.mainPlan.facilities[position.room.roomId]?.slots[position.index]
+    const originalRoom = options.userBase?.mainPlan.facilities[position.room.roomId], original = originalRoom?.slots[position.index]
     return Boolean(options.lockedPositions?.has(`${position.room.roomId}:${position.index}`) ||
+      originalRoom && originalRecoverySlot(originalRoom, original) ||
       [...references(position.slot), ...(original ? references(original) : [])].some(operator => lockedOperators.has(operator)))
   }
   const unowned = Object.values(workspace.mainPlan.facilities).filter(room => room.level > 0)
@@ -71,12 +76,13 @@ export function generateMainRosterRecoveryCandidates(
     return Array.from({ length: Math.max(room?.slots.length ?? 0, originalRoom.slots.length) }, (_, index) => index).some(index => {
       const current = room?.slots[index], original = originalRoom.slots[index]
       const protectedSlot = options.lockedPositions?.has(`${originalRoom.roomId}:${index}`) ||
+        originalRecoverySlot(originalRoom, original) ||
         (original ? references(original) : []).some(operator => lockedOperators.has(operator))
       return protectedSlot && (room?.type !== originalRoom.type || room?.level !== originalRoom.level || JSON.stringify(current) !== JSON.stringify(original))
     })
   })
   if (originalLockChanged) {
-    return { candidates, diagnostics: [...diagnostics, { code: 'RECOVERY_ORIGINAL_LOCK_CHANGED', message: '输入候选与原始显式锁不一致，交回调用方保留原表。' }] }
+    return { candidates, diagnostics: [...diagnostics, { code: 'RECOVERY_ORIGINAL_LOCK_CHANGED', message: '输入候选与原始显式锁、菲亚名单或固定宿舍槽不一致，交回调用方保留原表。' }] }
   }
 
   const seen = new Set([JSON.stringify(workspace)])
@@ -86,9 +92,21 @@ export function generateMainRosterRecoveryCandidates(
     if (!seen.has(key)) { seen.add(key); candidates.push(candidate) }
   }
   const permanent = new Set(workspace.mainPlan.conf.workaholic.map(id))
+  const primaryScore = (draft: RosterWorkspace): number | null => {
+    try {
+      const score = productionWorkspaceHourlyScore(draft, inventory)
+      return score !== undefined && Number.isFinite(score) ? score : null
+    } catch { return null }
+  }
+  let baselinePrimaryScore: number | null = null, baselineEvaluated = false
+  const baselineScore = (): number | null => {
+    if (!baselineEvaluated) { baselinePrimaryScore = primaryScore(workspace); baselineEvaluated = true }
+    return baselinePrimaryScore
+  }
   const freeBeds = Object.values(workspace.mainPlan.facilities).filter(room => room.type === 'dormitory' && room.level > 0)
     .reduce((count, room) => count + room.slots.slice(0, facilityCapacity(room.type, room.level)).filter(slot => slot.occupant.kind === 'free').length, 0)
-  const fiaDrafts: Candidate[] = [], fiaResidents = all.filter(position => position.operatorId === FIA && position.room.type === 'dormitory')
+  const fiaDrafts: Candidate[] = [], mixedFiaDrafts: Candidate[] = []
+  const fiaResidents = all.filter(position => position.operatorId === FIA && position.room.type === 'dormitory')
   const fia = fiaResidents.length === 1 ? fiaResidents[0] : undefined
   if (fia && (locked(fia) || fia.slot.groupBindings?.length)) {
     diagnostics.push({ code: 'RECOVERY_FIA_PROTECTED', message: '保留原始锁定菲亚及其完整目标列表。' })
@@ -115,20 +133,17 @@ export function generateMainRosterRecoveryCandidates(
         components.push(merged)
       }
     }
-    let baseScore: number | undefined
-    try { baseScore = productionWorkspaceHourlyScore(workspace, inventory) } catch { /* Unknown stays unknown. */ }
+    const baseScore = baselineScore()
     const groups = components.flatMap(component => {
       const targets = component.filter(position => workers.includes(position))
         .sort((a, b) => rates[b.operatorId]! - rates[a.operatorId]! || a.operatorId.localeCompare(b.operatorId))
       if (!targets.length || !component.some(position => ['manufacture', 'trading', 'central', 'power'].includes(position.room.type))) return []
       let value: number | null = null
-      if (baseScore !== undefined && Number.isFinite(baseScore)) {
+      if (baseScore !== null) {
         const absent = structuredClone(workspace)
         for (const position of component) absent.mainPlan.facilities[position.room.roomId].slots[position.index]!.occupant = { kind: 'empty' }
-        try {
-          const score = productionWorkspaceHourlyScore(absent, inventory)
-          if (score !== undefined && Number.isFinite(score)) value = baseScore - score
-        } catch { /* A recovery proposal is not evidence of a quantified gain. */ }
+        const score = primaryScore(absent)
+        if (score !== null) value = baseScore - score
       }
       const relief = new Set(component.flatMap(position => position.slot.replacements.filter(operator =>
         owned.has(id(operator)) && isOrdinaryReplacementCandidate(id(operator), position.room.type)).map(id)))
@@ -142,21 +157,29 @@ export function generateMainRosterRecoveryCandidates(
       : b.value - a.value || b.pressure - a.pressure || tie(a, b))
     const byPressure = [...groups].sort((a, b) => b.pressure - a.pressure || tie(a, b))
     const byRate = [...groups].sort((a, b) => b.fastest - a.fastest || b.pressure - a.pressure || tie(a, b))
-    const targetSets = new Set([memberKey(fia.slot.replacements)])
-    const targets = (label: string, members: Position[]): void => {
-      const ordered = [...new Set(members.map(position => position.operatorId))], key = memberKey(ordered)
+    // Native Fia targets are ordered candidates. The set key is only a group
+    // identity/tie-breaker; changing the priority order is a distinct proposal.
+    const targetSets = new Set([orderedTargetKey(fia.slot.replacements)])
+    const targets = (label: string, members: Position[], family = fiaDrafts): void => {
+      const ordered = [...new Set(members.map(position => position.operatorId))], key = orderedTargetKey(ordered)
       if (!ordered.length || targetSets.has(key)) return
       targetSets.add(key)
       const draft = structuredClone(workspace)
       draft.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements = ordered
-      fiaDrafts.push({ id: `recovery-fia-${label}`, workspace: draft })
+      family.push({ id: `recovery-fia-${label}`, workspace: draft })
     }
     if (byValue[0]) targets('whole-group', byValue[0].targets)
     if (byPressure[0]) targets('recovery-pressure', byPressure[0].targets)
     if (byRate[0]) targets('work-rate', byRate[0].targets)
     if (byValue[1]) targets('alternative-group', byValue[1].targets)
     if (byValue[0]) targets('group-bottleneck', byValue[0].targets.slice(0, 1))
-    if (byValue[1]) targets('two-groups', byValue.slice(0, 2).flatMap(group => group.targets))
+    if (byValue[0] && byValue[1]) {
+      const first = byValue[0].targets, second = byValue[1].targets
+      const directions = [{ label: 'two-groups', members: [...first, ...second] },
+        { label: 'two-groups-reversed', members: [...second, ...first] }]
+      if (memberKey(fia.slot.replacements) === memberKey(first.map(position => position.operatorId))) directions.reverse()
+      for (const direction of directions) targets(direction.label, direction.members, mixedFiaDrafts)
+    }
     if (groups.some(group => group.value === null)) diagnostics.push({ code: 'RECOVERY_GROUP_VALUE_UNKNOWN', message: '部分完整组产出边际未知；保留耗速/床位压力提案，不将未知视为零收益。' })
   }
   // Keep the first complete-group proposal first, including the one-candidate
@@ -227,23 +250,28 @@ export function generateMainRosterRecoveryCandidates(
     }
     return total
   }
-  const rankedDorms = dormDrafts.map(candidate => {
-    let score: number | null = null
-    try { score = supportCapacity(candidate.workspace) } catch { /* Keep the snapshot unknown. */ }
-    return { candidate, score }
-  }).sort((a, b) => a.score === null || b.score === null ? Number(b.score !== null) - Number(a.score !== null) || a.candidate.id.localeCompare(b.candidate.id)
-    : b.score - a.score || a.candidate.id.localeCompare(b.candidate.id))
-  if (rankedDorms.some(row => row.score === null)) diagnostics.push({ code: 'RECOVERY_SUPPORT_SNAPSHOT_UNKNOWN', message: '部分宿管恢复快照无法量化；保留未知状态，不能视为恢复或收益增益。' })
+  const dormBaseline = dormDrafts.length ? baselineScore() : null
+  const rankedDorms = rankRecoverySupportProposals(dormDrafts.map(candidate => {
+    let supportScore: number | null = null
+    try { supportScore = supportCapacity(candidate.workspace) } catch { /* Keep the snapshot unknown. */ }
+    return { candidate, supportScore, primaryScore: primaryScore(candidate.workspace) }
+  }), dormBaseline)
+  if (rankedDorms.some(row => row.supportScore === null)) diagnostics.push({ code: 'RECOVERY_SUPPORT_SNAPSHOT_UNKNOWN', message: '部分宿管恢复快照无法量化；保留未知状态，不能视为恢复或收益增益。' })
+  if (rankedDorms.length && (dormBaseline === null || rankedDorms.some(row => row.primaryScore === null))) diagnostics.push({ code: 'RECOVERY_SUPPORT_PRIMARY_UNKNOWN', message: '部分宿管布局的全基地生产快照无法量化；未知不补零，也不据此排除完整 F 的可能收益。' })
   const jointDrafts: Candidate[] = []
-  if (fiaDrafts[0] && rankedDorms[0] && fia) {
+  // The actual compound must be available even if neither the priority-only
+  // nor the support-only parent improves F. Keep the single-group fallback.
+  const jointFia = mixedFiaDrafts[0] ?? fiaDrafts[0]
+  if (jointFia && rankedDorms[0] && fia) {
     const draft = structuredClone(rankedDorms[0].candidate.workspace)
-    draft.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements = [...fiaDrafts[0].workspace.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements]
+    draft.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements = [...jointFia.workspace.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements]
     jointDrafts.push({ id: 'recovery-fia-and-dorm-support', workspace: draft })
   }
-  // A shared budget gets one proposal per available family before a second
-  // from any family. The joint workspace needs its own native F; neither
-  // independent duty cycles nor an additive gain are assumed here.
-  const families = [fiaDrafts.slice(0, 5), rankedDorms.slice(0, 2).map(row => row.candidate), jointDrafts]
+  // This finite source domain has at most 5 single-group/bottleneck, 2 dorm,
+  // 1 joint and 2 mixed-priority proposals. Round-robin output truncates it at
+  // 8; a four-proposal budget reaches the first mixed priority. It is not the
+  // same set as the former eight-proposal domain, nor an exhaustive F search.
+  const families = [fiaDrafts.slice(0, 5), rankedDorms.slice(0, 2).map(row => row.candidate), jointDrafts, mixedFiaDrafts.slice(0, 2)]
   for (let index = 0; index < Math.max(...families.map(family => family.length)) && candidates.length < limit; index++) {
     for (const family of families) if (family[index]) offer(family[index]!)
   }

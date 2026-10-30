@@ -1,3 +1,20 @@
+# 2026-10-30 恢复机会成本与菲亚优先级（实现及4次专项F完成）
+
+- 用户要求持续寻优。上一批主班模型已提交并推送 test=d426df86645789e3f07444b07ec2163df3cbd874，342完整F增益400分/日；main仍42e11c8，Tools/Release未变。本轮沿用同一codex/roster-main-combination-search-20261030，不为迭代另建分支，从342的94800新胜者及四金101133原最佳继续。
+- 真实依据：四金桃金娘换冰酿虽恢复快照较高，实际少6000订单；存在同18.69恢复但不损主班G的“黑→波登可”被名额截断。342完整深海名单18次交换集中于歌蕾蒂娅17/深巡1，原感知组不再优先获援，需比较两个完整组的名单优先顺序；原生成器使用无序集合key去重、只一种两组拼接，不完整表示原生有序候选语义。
+- 目标：让有限恢复提案同时保留“不损主班G的最高恢复”和“最高恢复探索”，不按静态G永久剪掉高恢复候选；新增两完整组的有序拼接方向并按实际当前名单选择互补的优先序，仍由完整F决定。主替、阈值、conf、床位、实际库存/阶段、用户原表与锁、完整组闭包和原生执行机制保持。
+- 并行归属：priority-helper agent独占新增mainRosterRecoveryPriorities.ts/spec.ts（纯排名，不依赖Native/UI）；recovery agent独占mainRosterRecoveryCandidates.ts/spec.ts（接共享排序、原生有序目标去重/两组方向与有限输出）；root独占公共契约、必要调度接线/测试、计划/索引/说明/Git；Native agent只写本轮native目录并拥有唯一新F执行权，独立agent审查最后差异。旧8F/6F/副表4F及冻结账本一律保留。
+- helper契约：rankRecoverySupportProposals<T>(rows:readonly {candidate:T; supportScore:number|null; primaryScore:number|null}[], baselinePrimaryScore:number|null)返回完整稳定排列；优先无主班G损失的最高已知恢复，再保留最大恢复不同提案，余项继续保留，未知不填0、不作为完整F上界。caller只取原最多2宿管名额。
+- 有序候选与预算：保留max1原首个合法完整组快速路径；目标去重按规范ID的顺序而非集合，组身份去重仍可用无序key。两组同时比较主要组先/次要组先，当前已采用主要完整组时优先尝试次要组在前；不硬编码深海或感知人名。单次最多5份单组/瓶颈候选、2份两组顺序、2份宿管和1份联合，按固定输出上限8分配，默认max4中留一次有序混合探索机会；源集合与截断要明确，不作最优证明。
+- 验收：先红后绿验证同恢复的全局机会成本、未知/稳定/不突变、相同集合不同顺序保留、用户保护、max1/4/8预算和实际胜者再提案；相关接线、类型/独立构建/结构与独立审查。实际新F另开独立总账上限4（不改上一批已结束8F），优先342混合顺序、无损G宿管和真实复合，再四金无损G宿管；参数仍432合成库/seed42/24+72h/none/固定权重，Native字节相同可明示复用历史及刚验证的94800/101133基线，不补跑基线或旧坏方案。
+- 备份：artifacts/recovery-priority-search-20261030/backup/source-d426df8.zip，SHA256 298b93aa1e581ae430a265a14c1a3d53f58363b8bea0bdb8e17043763d7b6f60。本轮候选/报告/构建按各agent独占子目录保存，当前仍未证明完整F全域最优，继续以合格最高样本为起点。
+- 实现：纯helper 19项先红后绿；恢复集成agent因服务容量中断，替代agent完成46项恢复测试与helper共65项通过后再次容量中断，root接手已绿实现并补“混合优先序＋无损G宿管”的真实联合候选（无mixed时保留单组fallback）。复合反例先红，最后5相关文件143项通过、全局类型exit0、结构/diff检查通过；Vite13.98秒成功（原有大chunk提示），独立只读审查无未关闭P1/P2。
+- 真实生成：从342的94800和四金101133原best、原始空锁userBase调用生产生成器，max4均输出fia/dorm/joint/mixed，max8各7份，静态门禁全过；所选四份G均不损且与旧6+4+8完整jobs不重复。342混合次组实际为承曦格雷伊/清流/温蒂/森蚺，随后原深海6人，由当前组件评分生成，并非将旧感知组三人硬编码拼接。
+- 最终4F：342混合单项95200.00001299（较94800再+400、较最初94400累计+800，约0.84746%），strict/eligible=true、普通疲劳0、pending0；23次实际菲亚为承曦格雷伊6/清流6/温蒂5/森蚺5/歌蕾蒂娅1。342单宿管94933.33334730有期末延期1，不采用；真实mixed＋宿管94933.33334551合格但低于mixed单项，保留95200；四金单宿管100800.00001035有期末延期1且低于原best，保留101133。不同修改的收益、工休和延期不能相加推断。
+- 来源与收尾：本轮独立GLOBAL恰好4启动/4返回/4桥/4引擎、0H/短窗/重试，冻结bundle d2a3db41b3af8133c639caa55fdb244b4d4bfe8fd8ea641a021b2b917bc2f63f；未改Native生产/调度或期末时长算法，基线按Native依赖字节一致条件明示复用。最高计划Mower格式导出、旧账本保护、完整审计与显式四配置组合域证书由唯一runner纯0F收尾；未将预算搜索或静态指标称为全排班最优。
+- 收尾完成：FINAL_AUDIT全部通过，旧8+4+6账本不变。D342-CERTIFICATE.json逐字段核实仅名单/固定宿舍槽两处因子可变，其余workspace/options/assumptions相同；156份Native/资格依赖相同，四份完整窗口均可核验，coverageComplete=true、finiteDomainSampleOptimumProven=true、selected=95200.00001299，F2为已知不合格且原始分保留。globalOptimumProven=false、全局上界null，证书SHA256 b3250c6bc3db4d67c288f7103c79a1f32b3b9a64811da4debaaeb7a19596cdd6。
+- 交付产物：最高342计划已由现有导出器生成真正Mower JSON并完成导入/回编译/库存与实体核对，路径 artifacts/recovery-priority-search-20261030/native/best-final-plans/342-pure-money/mower.json，SHA256 94624f92f845b1455c44687c4ea601551737cf9ef3a399413dd99d0f49203be7；四金保留101133.33原最高（JSON SHA 0f3efd500732fa97f04d924c881ed20d553ae052dde3c122bc9343b327cb090d）。它们是固定合成库存下的可复查格式产物，不是实际游戏执行证明。README与算法说明已同步最新95200及范围，准备普通推送test；main/Tools/Release本轮未更新。
+
 # 2026-10-30 主班组合与恢复迭代搜索（实现与8次专项F完成）
 
 - 用户要求副表完成后继续寻找提高主班分数的方法、最优队伍搭配并持续优化。副表本批已完成并普通推送 test=d111341d92b3899b08f7881846a638810fa91ddb，自有 codex/roster-backup-policy-20261030 同步一致，main仍42e11c8，Tools与Release未改。新任务从该test提交建立 codex/roster-main-combination-search-20261030，保留全部旧15方法和Native证据。
