@@ -159,8 +159,12 @@ export function generateMainRosterRecoveryCandidates(
     if (byValue[1]) targets('two-groups', byValue.slice(0, 2).flatMap(group => group.targets))
     if (groups.some(group => group.value === null)) diagnostics.push({ code: 'RECOVERY_GROUP_VALUE_UNKNOWN', message: '部分完整组产出边际未知；保留耗速/床位压力提案，不将未知视为零收益。' })
   }
-  for (const draft of fiaDrafts.slice(0, Math.min(5, limit))) offer(draft)
-  if (candidates.length >= limit) return { candidates, diagnostics: [...diagnostics, { code: 'RECOVERY_PROPOSALS_ONLY', message: '恢复集合变化仅为提案，须经完整 F 和工休质量验收。' }] }
+  // Keep the first complete-group proposal first, including the one-candidate
+  // path, but do not fill a larger budget before other recovery families exist.
+  if (limit === 1 && fiaDrafts[0]) {
+    offer(fiaDrafts[0])
+    return { candidates, diagnostics: [...diagnostics, { code: 'RECOVERY_PROPOSALS_ONLY', message: '恢复集合变化仅为提案，须经完整 F 和工休质量验收。' }] }
+  }
 
   const keeper = (operatorId: string): boolean => Boolean(records[operatorId] && (isAoeDormKeeper(records[operatorId]!) || isSingleDormKeeper(records[operatorId]!)))
   const reserved = new Set(Object.values(workspace.mainPlan.facilities).filter(room => room.level > 0)
@@ -230,11 +234,18 @@ export function generateMainRosterRecoveryCandidates(
   }).sort((a, b) => a.score === null || b.score === null ? Number(b.score !== null) - Number(a.score !== null) || a.candidate.id.localeCompare(b.candidate.id)
     : b.score - a.score || a.candidate.id.localeCompare(b.candidate.id))
   if (rankedDorms.some(row => row.score === null)) diagnostics.push({ code: 'RECOVERY_SUPPORT_SNAPSHOT_UNKNOWN', message: '部分宿管恢复快照无法量化；保留未知状态，不能视为恢复或收益增益。' })
-  for (const row of rankedDorms.slice(0, 2)) offer(row.candidate)
-  if (fiaDrafts[0] && rankedDorms[0] && candidates.length < limit && fia) {
+  const jointDrafts: Candidate[] = []
+  if (fiaDrafts[0] && rankedDorms[0] && fia) {
     const draft = structuredClone(rankedDorms[0].candidate.workspace)
     draft.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements = [...fiaDrafts[0].workspace.mainPlan.facilities[fia.room.roomId].slots[fia.index]!.replacements]
-    offer({ id: 'recovery-fia-and-dorm-support', workspace: draft })
+    jointDrafts.push({ id: 'recovery-fia-and-dorm-support', workspace: draft })
+  }
+  // A shared budget gets one proposal per available family before a second
+  // from any family. The joint workspace needs its own native F; neither
+  // independent duty cycles nor an additive gain are assumed here.
+  const families = [fiaDrafts.slice(0, 5), rankedDorms.slice(0, 2).map(row => row.candidate), jointDrafts]
+  for (let index = 0; index < Math.max(...families.map(family => family.length)) && candidates.length < limit; index++) {
+    for (const family of families) if (family[index]) offer(family[index]!)
   }
   diagnostics.push({ code: 'RECOVERY_PROPOSALS_ONLY', message: '保留生产主替、组、Free 床位和用户阈值；恢复集合与宿管快照仅为有限提案，须经完整 F 和工休质量验收。' })
   return { candidates, diagnostics }

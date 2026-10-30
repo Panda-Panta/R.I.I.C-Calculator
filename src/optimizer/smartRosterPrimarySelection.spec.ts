@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDefaultWorkspace } from '../workbench/defaults'
-import { fullCatalogIdleInventory } from '../domain/operatorInventory'
+import { compileOperatorInventory, fullCatalogIdleInventory } from '../domain/operatorInventory'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 import type { RosterWorkspace } from '../domain/roster'
 import type { CalculationReport } from '../domain/types'
@@ -9,6 +9,8 @@ import * as nativeSimulation from '../workbench/scheduleSimulationBridge'
 import * as construction from './molecularSynthesis'
 import * as computation from './computedManufacturingRoster'
 import * as simulation from './candidateSimulation'
+import * as crewCandidates from './mainRosterCrewCandidates'
+import { applyGeneratedWarmupPolicy } from './generatedWarmupPolicy'
 import * as freeCandidates from './mainRosterFreeCandidates'
 import * as recoveryCandidates from './mainRosterRecoveryCandidates'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
@@ -189,9 +191,10 @@ function prepareContinuation() {
   }
   const recovery = vi.spyOn(recoveryCandidates, 'generateMainRosterRecoveryCandidates').mockReturnValue({ candidates: [], diagnostics: [] })
   const free = vi.spyOn(freeCandidates, 'generateMainRosterFreeCandidates').mockReturnValue({ candidates: [], diagnostics: [] })
+  const crew = vi.spyOn(crewCandidates, 'generateMainRosterCrewCandidates').mockReturnValue({ candidates: [], diagnostics: [] })
   fixture.evaluate.mockImplementation(job => wiredSummary(
     job.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId?.startsWith('wired-') ? 140 : 120))
-  return { ...fixture, nativeF, proposal, recovery, free }
+  return { ...fixture, nativeF, proposal, recovery, free, crew }
 }
 
 describe('continued main-roster optimization through actual smartRosterSteps', () => {
@@ -203,6 +206,7 @@ describe('continued main-roster optimization through actual smartRosterSteps', (
     expect(result.phases.mainOptimization).toBeUndefined()
     expect(fixture.recovery).not.toHaveBeenCalled()
     expect(fixture.free).not.toHaveBeenCalled()
+    expect(fixture.crew).not.toHaveBeenCalled()
     expect(fixture.evaluate).toHaveBeenCalledTimes(1)
     expect(fixture.nativeF).not.toHaveBeenCalled()
     expect(progress.some(value => value.incumbent)).toBe(false)
@@ -303,4 +307,160 @@ describe('continued main-roster optimization through actual smartRosterSteps', (
     expect(fixture.evaluate).toHaveBeenCalledTimes(1)
     expect(fixture.nativeF).not.toHaveBeenCalled()
   })
+})
+
+function controlledWholeCrew(workspace: RosterWorkspace, step: number) {
+  const candidate = structuredClone(workspace), slot = candidate.mainPlan.facilities.room_1_1.slots[0]!
+  const workers = ['斑点', '芬', '砾'] as const
+  // Keep the longer budget chain legal when Fang's generated warmup policy
+  // becomes active: Fang remains a primary or idle, never an unsupported relief.
+  const main = step <= 2 ? workers[step - 1]! : step % 2 ? '芬' : '斑点'
+  const relief = step === 2 ? '斑点' : '砾'
+  slot.occupant = { kind: 'operator', operatorId: id(main) }
+  slot.replacements = [id(relief)]
+  slot.groupId = `wired-crew-${step}`
+  expect(validatePhysicalRoster(candidate)).toEqual([])
+  expect(recoveryGroupCapacityIssues(candidate)).toEqual([])
+  expect(compileRosterSchedule(candidate).diagnostics.filter(issue => issue.severity === 'error')).toEqual([])
+  return { id: `wired-crew-${step}`, workspace: candidate }
+}
+
+describe('whole-crew and recovery iteration through actual smartRosterSteps', () => {
+  it.each([undefined, false])('does not request whole-crew proposals with allowFreeCombinations=%s', allowFreeCombinations => {
+    const fixture = prepareContinuation()
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42, enableMainOptimization: true, allowFreeCombinations })
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(120)
+    expect(fixture.crew).not.toHaveBeenCalled()
+    expect(fixture.free).not.toHaveBeenCalled()
+    expect(fixture.evaluate).toHaveBeenCalledTimes(1)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('passes the original input and explicit locks to the opt-in crew constructor', () => {
+    const fixture = prepareContinuation(), original = structuredClone(fixture.base)
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42,
+      enableMainOptimization: true, allowFreeCombinations: true })
+    expect(result.status).toBe('draft')
+    expect(fixture.crew).toHaveBeenCalledTimes(1)
+    const [seed, inventory, options] = fixture.crew.mock.calls[0]!
+    expect(seed.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('砾') })
+    expect(options?.allowFreeCombinations).toBe(true)
+    expect(options?.userBase?.mainPlan).toEqual(original.mainPlan)
+    expect(options?.userBase?.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'empty' })
+    expect(options?.lockedPositions).toEqual(new Set(['room_1_3:0', 'dormitory_1:0']))
+    expect(options?.lockedOperators).toEqual(new Set([id('Lancet-2'), id('杜林')]))
+    expect(inventory.valid).toBe(true)
+    expect(inventory.operators.map(operator => operator.charId).sort()).toEqual(fixture.entries.map(entry => entry.operator).sort())
+    expect(fixture.base).toEqual(original)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('continues from a qualified whole-crew winner and retains each same-run compact report', () => {
+    const fixture = prepareContinuation(), progress: SmartRosterProgress[] = []
+    fixture.crew.mockImplementation(workspace => {
+      const tag = workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId
+      const step = tag === 'wired-crew-1' ? 2 : tag === 'wired-crew-2' ? 0 : 1
+      return { candidates: step ? [controlledWholeCrew(workspace, step)] : [], diagnostics: [] }
+    })
+    fixture.evaluate.mockImplementation(job => {
+      const tag = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId
+      const result = wiredSummary(tag === 'wired-crew-1' ? 140 : tag === 'wired-crew-2' ? 160 : 120)
+      result.calculationReport!.efficiencyNotes = [tag ?? 'initial-F']
+      return result
+    })
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42,
+      enableMainOptimization: true, allowFreeCombinations: true }, state => progress.push(state))
+    expect(result.score).toBe(160)
+    expect(result.workspace?.mainPlan.facilities.room_1_1.slots[0]).toMatchObject({
+      occupant: { kind: 'operator', operatorId: id('芬') }, replacements: [id('斑点')], groupId: 'wired-crew-2',
+    })
+    expect(result.calculationReport?.summary?.totalScore82).toBe(160)
+    expect(result.calculationReport?.efficiencyNotes).toEqual(['wired-crew-2'])
+    const nextSeed = fixture.crew.mock.calls.find(([workspace]) => workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId === 'wired-crew-1')
+    expect(nextSeed).toBeDefined()
+    expect(nextSeed![0].mainPlan.facilities.room_1_1.slots[0]).toMatchObject({
+      occupant: { kind: 'operator', operatorId: id('斑点') }, replacements: [id('砾')],
+    })
+    for (const [, , options] of fixture.crew.mock.calls) {
+      expect(options?.userBase?.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'empty' })
+      expect(options?.lockedPositions).toEqual(new Set(['room_1_3:0', 'dormitory_1:0']))
+    }
+    expect(progress.flatMap(state => state.incumbent ? [[state.incumbent.score,
+      state.incumbent.calculationReport?.summary?.totalScore82, state.incumbent.calculationReport?.efficiencyNotes?.[0]]] : []))
+      .toEqual([[120, 120, 'initial-F'], [140, 140, 'wired-crew-1'], [160, 160, 'wired-crew-2']])
+    expect(fixture.evaluate).toHaveBeenCalledTimes(3)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('compares a winning crew-plus-recovery state even when both separate changes lose within the default three F', () => {
+    const fixture = prepareContinuation()
+    fixture.entries.push(fullCatalogIdleInventory().find(entry => entry.operator === id('安赛尔'))!)
+    const hasCrew = (workspace: RosterWorkspace) => workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant.kind === 'operator'
+      && workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant.operatorId === id('斑点')
+    const hasRecovery = (workspace: RosterWorkspace) => workspace.mainPlan.facilities.dormitory_1.slots[1]!.occupant.kind === 'operator'
+      && workspace.mainPlan.facilities.dormitory_1.slots[1]!.occupant.operatorId === id('安赛尔')
+    fixture.crew.mockImplementation(workspace => ({ candidates: hasCrew(workspace) ? [] : [controlledWholeCrew(workspace, 1)], diagnostics: [] }))
+    fixture.recovery.mockImplementation(workspace => {
+      if (hasRecovery(workspace)) return { candidates: [], diagnostics: [] }
+      const candidate = structuredClone(workspace)
+      candidate.mainPlan.facilities.dormitory_1.slots[1]!.occupant = { kind: 'operator', operatorId: id('安赛尔') }
+      expect(validatePhysicalRoster(candidate)).toEqual([])
+      expect(recoveryGroupCapacityIssues(candidate)).toEqual([])
+      expect(compileRosterSchedule(candidate).diagnostics.filter(issue => issue.severity === 'error')).toEqual([])
+      return { candidates: [{ id: 'wired-dorm-recovery', workspace: candidate }], diagnostics: [] }
+    })
+    fixture.evaluate.mockImplementation(job => wiredSummary(hasCrew(job.workspace) && hasRecovery(job.workspace)
+      ? 200 : hasCrew(job.workspace) || hasRecovery(job.workspace) ? 110 : 120))
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42,
+      enableMainOptimization: true, allowFreeCombinations: true })
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(200)
+    expect(hasCrew(result.workspace!)).toBe(true)
+    expect(hasRecovery(result.workspace!)).toBe(true)
+    expect(result.calculationReport?.summary?.totalScore82).toBe(200)
+    expect(result.phases.mainOptimization).toMatchObject({ evaluatedCandidates: 3, improved: true, gain: 80 })
+    const compared = fixture.evaluate.mock.calls.slice(1).map(([job]) => `${hasCrew(job.workspace)}:${hasRecovery(job.workspace)}`)
+    expect(compared.sort()).toEqual(['false:true', 'true:false', 'true:true'])
+    expect(fixture.evaluate).toHaveBeenCalledTimes(4)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it.each([{ requested: 2, expected: 2 }, { requested: 999, expected: 8 }])(
+    'returns identical serial and parallel winners while keeping $expected total extra F across winner rounds', async ({ requested, expected }) => {
+      const fixture = prepareContinuation()
+      // Distinct full jobs form a controlled improvement chain. Their scores
+      // prove shared dispatch budgets, not a physical gain from group labels.
+      const stepOf = (workspace: RosterWorkspace) => Number(workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId?.match(/^wired-crew-(\d+)$/)?.[1] ?? 0)
+      fixture.crew.mockImplementation(workspace => {
+        const candidate = controlledWholeCrew(workspace, stepOf(workspace) + 1)
+        expect(applyGeneratedWarmupPolicy(structuredClone(candidate.workspace), compileOperatorInventory(fixture.entries)).valid).toBe(true)
+        return { candidates: [candidate], diagnostics: [] }
+      })
+      fixture.evaluate.mockImplementation(job => wiredSummary(120 + stepOf(job.workspace) * 20))
+      const options = { seed: 42, enableMainOptimization: true, allowFreeCombinations: true, optimizationMaxSimulations: requested }
+      const serial = runSmartRoster(fixture.base, fixture.entries, options)
+      const serialJobs = fixture.evaluate.mock.calls.map(([job]) => structuredClone(job))
+      expect(serial.diagnostics.filter(issue => issue.code === 'MAIN_OPTIMIZATION_FAILED')).toEqual([])
+      expect(serialJobs).toHaveLength(1 + expected)
+      expect(new Set(serialJobs.map(job => JSON.stringify(job))).size).toBe(1 + expected)
+      for (const job of serialJobs) {
+        expect(job.options).toEqual(serialJobs[0]!.options)
+        expect(job.assumptions).toEqual(serialJobs[0]!.assumptions)
+      }
+      fixture.evaluate.mockClear()
+      const parallel = await runSmartRosterParallel(fixture.base, fixture.entries, options, async (jobs, onComplete) => {
+        const results = jobs.map(job => simulation.simulateCandidate(job))
+        for (let index = results.length - 1; index >= 0; index--) onComplete(results[index]!, index)
+        return results
+      })
+      expect(fixture.evaluate).toHaveBeenCalledTimes(1 + expected)
+      expect(fixture.evaluate.mock.calls.map(([job]) => job)).toEqual(serialJobs)
+      expect(parallel).toEqual(serial)
+      expect(parallel.score).toBe(120 + expected * 20)
+      expect(parallel.phases.mainOptimization).toMatchObject({ evaluatedCandidates: expected, termination: 'simulation-budget',
+        searchScope: 'generated-neighborhood', globalOptimumProven: false, fullFUpperBound: null })
+      expect(parallel.calculationReport?.summary?.totalScore82).toBe(parallel.score)
+      expect(fixture.nativeF).not.toHaveBeenCalled()
+    })
 })

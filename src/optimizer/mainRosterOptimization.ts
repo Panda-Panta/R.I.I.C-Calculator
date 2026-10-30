@@ -6,6 +6,7 @@ import { candidateScoreImproves, isQualifiedCandidateSimulation, type CandidateS
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import { generateMainRosterRecoveryCandidates } from './mainRosterRecoveryCandidates'
 import { generateMainRosterFreeCandidates } from './mainRosterFreeCandidates'
+import { generateMainRosterCrewCandidates } from './mainRosterCrewCandidates'
 import { preservesFormedCombinations } from './combinationIntegrity'
 import { validatePhysicalRoster } from './rosterDraft'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
@@ -18,9 +19,14 @@ export interface MainRosterOptimizationSummary {
   acceptedCandidates: number
   improved: boolean
   qualityRepaired: boolean
+  /** Proposal rounds from distinct verified incumbents, not a global certificate. */
+  rounds?: number
+  searchScope?: 'generated-neighborhood'
+  globalOptimumProven?: false
+  fullFUpperBound?: null
   gain: number
   termination: 'complete' | 'simulation-budget' | 'time-budget' | 'no-candidates' | 'invalid-budget'
-  candidates: { id: string; score: number | null; eligible: boolean; fromCache: boolean; diagnostics: string[] }[]
+  candidates: { id: string; score: number | null; eligible: boolean; fromCache: boolean; diagnostics: string[]; round?: number }[]
 }
 
 interface OptimizationInput {
@@ -48,7 +54,9 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
   let acceptedBest = isQualifiedCandidateSimulation(input.baselineSummary)
   const initialAccepted = acceptedBest
   const stats: MainRosterOptimizationSummary = { generatedCandidates: 0, evaluatedCandidates: 0, cacheHits: 0,
-    acceptedCandidates: 0, improved: false, qualityRepaired: false, gain: 0, termination: 'complete', candidates: [] }
+    acceptedCandidates: 0, improved: false, qualityRepaired: false, rounds: 0,
+    searchScope: 'generated-neighborhood', globalOptimumProven: false, fullFUpperBound: null,
+    gain: 0, termination: 'complete', candidates: [] }
   const snapshot = (): SmartRosterResult => {
     stats.gain = (best.score ?? initialScore) - initialScore
     stats.improved = candidateScoreImproves(best.score ?? initialScore, initialScore)
@@ -71,29 +79,47 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
   const seed = structuredClone(best.workspace)
   const options = { lockedPositions: input.lockedPositions, lockedOperators: input.lockedOperators,
     userBase: input.userBase, allowFreeCombinations: input.allowFreeCombinations, maxCandidates: 4 }
-  const recovery = generateMainRosterRecoveryCandidates(seed, input.inventory, options)
-  const free = input.allowFreeCombinations ? generateMainRosterFreeCandidates(seed, input.inventory, options)
-    : { candidates: [], diagnostics: [] }
-  best.diagnostics.push(...recovery.diagnostics, ...free.diagnostics)
-  // Compose an actual crew change with its own recovery proposal. A composed
-  // workspace must receive its own full F; neither parent's score is reused.
-  const combined = free.candidates.length
-    ? generateMainRosterRecoveryCandidates(free.candidates[0]!.workspace, input.inventory, { ...options, maxCandidates: 1 })
-    : { candidates: [], diagnostics: [] }
-  best.diagnostics.push(...combined.diagnostics)
-  // An explicit free-combination request must get a real F opportunity even
-  // when one full window already consumes the soft wall-clock budget.
-  const families = [...(input.allowFreeCombinations ? [free.candidates, recovery.candidates] : [recovery.candidates]),
-    combined.candidates.map(c => ({ ...c, id: `combined:${c.id}` }))]
-  const queue: { id: string; workspace: RosterWorkspace }[] = []
-  for (let i = 0; i < Math.max(...families.map(family => family.length)); i++) {
-    for (const family of families) if (family[i]) queue.push(family[i]!)
+  const context = (workspace: RosterWorkspace): string => JSON.stringify({ conf: workspace.mainPlan.conf,
+    weights: workspace.productionWeights, rooms: Object.values(workspace.mainPlan.facilities)
+      .map(room => [room.roomId, room.type, room.level, room.product, room.slots.length]) })
+  const propose = (current: RosterWorkspace): { id: string; workspace: RosterWorkspace; round: number; context: string; firstWave: boolean }[] => {
+    const round = (stats.rounds ?? 0) + 1
+    stats.rounds = round
+    const recovery = generateMainRosterRecoveryCandidates(structuredClone(current), input.inventory, options)
+    const free = input.allowFreeCombinations ? generateMainRosterFreeCandidates(structuredClone(current), input.inventory, options)
+      : { candidates: [], diagnostics: [] }
+    const crew = input.allowFreeCombinations ? generateMainRosterCrewCandidates(structuredClone(current), input.inventory, options)
+      : { candidates: [], diagnostics: [] }
+    best.diagnostics.push(...recovery.diagnostics, ...free.diagnostics, ...crew.diagnostics)
+    // A composed state receives its own full F; no parent score is reused.
+    const combined = free.candidates.length
+      ? generateMainRosterRecoveryCandidates(free.candidates[0]!.workspace, input.inventory, { ...options, maxCandidates: 1 })
+      : { candidates: [], diagnostics: [] }
+    const combinedCrew = crew.candidates.length
+      ? generateMainRosterRecoveryCandidates(crew.candidates[0]!.workspace, input.inventory, { ...options, maxCandidates: 1 })
+      : { candidates: [], diagnostics: [] }
+    best.diagnostics.push(...combined.diagnostics, ...combinedCrew.diagnostics)
+    // Reserve a full-F opportunity for the actual compound state. Neither
+    // declining parent needs to be accepted before their combination is tried.
+    const families = crew.candidates.length
+      ? [crew.candidates, recovery.candidates, combinedCrew.candidates.map(c => ({ ...c, id: `combined-crew:${c.id}` })),
+        free.candidates, combined.candidates.map(c => ({ ...c, id: `combined:${c.id}` }))]
+      : [...(input.allowFreeCombinations ? [free.candidates, recovery.candidates] : [recovery.candidates]),
+        combined.candidates.map(c => ({ ...c, id: `combined:${c.id}` }))]
+    const expectedContext = context(current)
+    const proposals: { id: string; workspace: RosterWorkspace; round: number; context: string; firstWave: boolean }[] = []
+    for (let i = 0; i < Math.max(...families.map(family => family.length)); i++) {
+      for (const family of families) if (family[i]) proposals.push({ ...family[i]!, round, context: expectedContext, firstWave: i === 0 })
+    }
+    return proposals
   }
+  const queue = propose(seed)
   const seen = new Set<string>([input.cache.key(input.makeJob(structuredClone(seed)))])
-  for (const proposal of queue) {
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const proposal = queue[cursor]!
     if (now() - started >= milliseconds) { stats.termination = 'time-budget'; break }
     const candidate = structuredClone(proposal.workspace)
-    const reject = (message: string) => stats.candidates.push({ id: proposal.id, score: null, eligible: false, fromCache: false, diagnostics: [message] })
+    const reject = (message: string) => stats.candidates.push({ id: proposal.id, score: null, eligible: false, fromCache: false, diagnostics: [message], round: proposal.round })
     const lockedPositions = new Set(input.lockedPositions)
     const lockedActors = new Set([...input.lockedOperators].map(resolveOperatorCharId))
     for (const room of Object.values(input.userBase.mainPlan.facilities)) room.slots.forEach((slot, index) => {
@@ -104,12 +130,10 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
       return JSON.stringify(candidate.mainPlan.facilities[room as keyof typeof candidate.mainPlan.facilities]?.slots[position]) ===
         JSON.stringify(input.userBase.mainPlan.facilities[room as keyof typeof candidate.mainPlan.facilities]?.slots[position])
     })
-    const sameContext = JSON.stringify(candidate.mainPlan.conf) === JSON.stringify(seed.mainPlan.conf) &&
-      JSON.stringify(candidate.productionWeights) === JSON.stringify(seed.productionWeights) &&
-      Object.values(seed.mainPlan.facilities).every(room => {
-        const other = candidate.mainPlan.facilities[room.roomId]
-        return other && other.type === room.type && other.level === room.level && other.product === room.product && other.slots.length === room.slots.length
-      })
+    // The job factory may persist a required generated warmup policy in a
+    // verified winner. Its descendants keep that exact parent context, while
+    // pending siblings remain bound to their own original round.
+    const sameContext = context(candidate) === proposal.context
     if (!sameLocks || !sameContext || candidate.compatibility.backupPlans.length) { reject('候选改变已锁工位、布局、策略、权重或携带副表'); continue }
     if (!preservesFormedCombinations(input.userBase, candidate, input.inventory) ||
         !input.allowFreeCombinations && !preservesFormedCombinations(seed, candidate, input.inventory)) { reject('候选违反需保留的组合约束'); continue }
@@ -140,7 +164,7 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
     }
     const eligible = isQualifiedCandidateSimulation(evaluated)
     stats.candidates.push({ id: proposal.id, score: evaluated?.completed && Number.isFinite(evaluated.simScore) ? evaluated.simScore : null,
-      eligible, fromCache, diagnostics: [...evaluated?.diagnostics ?? [], ...evaluated?.quality?.issues ?? []] })
+      eligible, fromCache, diagnostics: [...evaluated?.diagnostics ?? [], ...evaluated?.quality?.issues ?? []], round: proposal.round })
     if (!eligible || !evaluated) continue
     stats.acceptedCandidates++
     if (acceptedBest && !candidateScoreImproves(evaluated.simScore, best.score ?? initialScore)) continue
@@ -150,6 +174,19 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
     best.calculationReport = structuredClone(evaluated.calculationReport)
     best.specialOperators = structuredClone(evaluated.specialOperators ?? [])
     input.onIncumbent?.(snapshot())
+    if (now() - started >= milliseconds) { stats.termination = 'time-budget'; break }
+    // Retain pending siblings while giving proposals from the real winner an
+    // opportunity. Seen full inputs and the shared budget span every round.
+    const pending = queue.slice(cursor + 1), next = propose(best.workspace)
+    // A continuing crew winner must not consume every slot ahead of the
+    // already reserved recovery/compound opportunities from its parent round.
+    const reserved = pending.filter(item => item.firstWave), remainder = pending.filter(item => !item.firstWave)
+    const interleaved: typeof queue = []
+    for (let i = 0; i < Math.max(next.length, remainder.length); i++) {
+      if (next[i]) interleaved.push(next[i]!)
+      if (remainder[i]) interleaved.push(remainder[i]!)
+    }
+    queue.splice(cursor + 1, queue.length - cursor - 1, ...reserved, ...interleaved)
   }
   if (!stats.generatedCandidates && stats.termination === 'complete') stats.termination = 'no-candidates'
   if (!acceptedBest) best.diagnostics.push({ code: 'MAIN_OPTIMIZATION_NO_QUALIFIED_RESULT', message: '预算内未找到满足新增工休收益质量门槛的方案，保留快速入口结果及其原有诊断。' })

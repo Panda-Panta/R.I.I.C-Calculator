@@ -10,6 +10,7 @@ import type { CandidateSimulationJob, CandidateSimulationResult } from './candid
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import type { MainRosterDutyQuality } from './mainRosterDutyEvaluation'
 import * as freeCandidates from './mainRosterFreeCandidates'
+import * as crewCandidates from './mainRosterCrewCandidates'
 import { mainRosterOptimizationSteps } from './mainRosterOptimization'
 import * as recoveryCandidates from './mainRosterRecoveryCandidates'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
@@ -84,13 +85,14 @@ function fixture() {
     makeJob, allowFreeCombinations: true, now: () => 0 }
   const recovery = vi.spyOn(recoveryCandidates, 'generateMainRosterRecoveryCandidates').mockReturnValue({ candidates: [], diagnostics: [] })
   const free = vi.spyOn(freeCandidates, 'generateMainRosterFreeCandidates').mockReturnValue({ candidates: [], diagnostics: [] })
+  const crew = vi.spyOn(crewCandidates, 'generateMainRosterCrewCandidates').mockReturnValue({ candidates: [], diagnostics: [] })
   const families = (recoveryProposals: Proposal[], freeProposals: Proposal[] = [], combinedProposals: Proposal[] = []) => {
     for (const candidate of [...recoveryProposals, ...freeProposals, ...combinedProposals]) valid(candidate.workspace)
     recovery.mockReset().mockReturnValueOnce({ candidates: recoveryProposals, diagnostics: [] })
       .mockReturnValue({ candidates: combinedProposals, diagnostics: [] })
     free.mockReturnValue({ candidates: freeProposals, diagnostics: [] })
   }
-  return { workspace, input, propose, families, recovery, free, makeJob, valid }
+  return { workspace, input, propose, families, recovery, free, crew, makeJob, valid }
 }
 
 function drain(input: Input, evaluate: (job: CandidateSimulationJob, index: number) => CandidateSimulationResult = () => summary(90)) {
@@ -108,6 +110,84 @@ function drain(input: Input, evaluate: (job: CandidateSimulationJob, index: numb
 afterEach(() => vi.restoreAllMocks())
 
 describe('bounded main-roster optimization dispatch', () => {
+  it('preserves the original recovery and compound first wave while crew winners keep improving', () => {
+    const f = fixture()
+    f.crew.mockImplementation(workspace => {
+      const current = workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId ?? ''
+      const index = current.startsWith('crew-') ? Number(current.slice(5)) + 1 : 1
+      const next = structuredClone(workspace)
+      next.mainPlan.facilities.room_1_1.slots[0]!.groupId = `crew-${index}`
+      return { candidates: [{ id: `crew-${index}`, workspace: next }], diagnostics: [] }
+    })
+    f.recovery.mockImplementation(workspace => {
+      const group = workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId ?? ''
+      const next = structuredClone(workspace), label = group.startsWith('crew-') ? `compound-${group}` : 'recovery-alone'
+      next.mainPlan.facilities.room_1_1.slots[0]!.groupId = label
+      return { candidates: [{ id: label, workspace: next }], diagnostics: [] }
+    })
+    const { result, jobs } = drain(f.input, job => {
+      const group = job.workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId ?? ''
+      return summary(group.startsWith('compound-') ? 150 : group.startsWith('crew-') ? 110 + Number(group.slice(5)) : 100)
+    })
+    expect(jobs.map(job => job.workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId))
+      .toEqual(['crew-1', 'recovery-alone', 'compound-crew-1'])
+    expect(result.score).toBe(150)
+  })
+
+  it('compares the actual crew-plus-recovery state even when both parents score lower', () => {
+    const f = fixture(), crew = f.propose('crew-only', workspace => {
+      workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant = { kind: 'operator', operatorId: id('斑点') }
+    }), recovery = f.propose('recovery-only'), combined = structuredClone(crew)
+    combined.id = 'crew-with-recovery'
+    combined.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId = 'crew-with-recovery'
+    f.crew.mockReturnValue({ candidates: [crew], diagnostics: [] })
+    f.recovery.mockImplementation(workspace => {
+      const occupant = workspace.mainPlan.facilities.room_1_1.slots[0]?.occupant
+      return { candidates: [occupant?.kind === 'operator' && occupant.operatorId === id('斑点') ? combined : recovery], diagnostics: [] }
+    })
+    const { result, jobs } = drain(f.input, job => summary(
+      job.workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId === 'crew-with-recovery' ? 125 : 90))
+    expect(jobs).toHaveLength(3)
+    expect(jobs[2]!.workspace).toEqual(combined.workspace)
+    expect(result.score).toBe(125)
+    expect(result.workspace).toEqual(combined.workspace)
+  })
+
+  it('continues from a verified winner to find the next compatible improvement', () => {
+    const f = fixture(), first = f.propose('step-one'), second = f.propose('step-two')
+    f.input.allowFreeCombinations = false
+    f.recovery.mockImplementation(workspace => ({ candidates:
+      workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId === 'step-one' ? [second]
+        : workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId === 'step-two' ? [] : [first], diagnostics: [] }))
+    const { result, jobs } = drain(f.input, job => summary(job.workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId === 'step-two' ? 120 : 110))
+    expect(jobs).toHaveLength(2)
+    expect(result.score).toBe(120)
+    expect(result.workspace).toEqual(second.workspace)
+    expect(result.phases.mainOptimization?.acceptedCandidates).toBe(2)
+    expect(result.phases.mainOptimization).toMatchObject({ rounds: 3,
+      searchScope: 'generated-neighborhood', globalOptimumProven: false, fullFUpperBound: null })
+  })
+
+  it('binds the next round to policies legitimately normalized in its verified parent job', () => {
+    const f = fixture(), make = f.makeJob.getMockImplementation()!
+    f.input.allowFreeCombinations = false
+    f.makeJob.mockImplementation(workspace => {
+      if (workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId) workspace.mainPlan.conf.exhaust_require = [id('芬')]
+      return make(workspace)
+    })
+    f.recovery.mockImplementation(workspace => {
+      const group = workspace.mainPlan.facilities.room_1_1.slots[0]?.groupId
+      if (group === 'step-two') return { candidates: [], diagnostics: [] }
+      const next = structuredClone(workspace), nextId = group === 'step-one' ? 'step-two' : 'step-one'
+      next.mainPlan.facilities.room_1_1.slots[0]!.groupId = nextId
+      return { candidates: [{ id: nextId, workspace: next }], diagnostics: [] }
+    })
+    const { result, jobs } = drain(f.input, (_job, index) => summary(110 + index * 10))
+    expect(jobs).toHaveLength(2)
+    expect(result.score).toBe(120)
+    expect(result.workspace?.mainPlan.conf.exhaust_require).toEqual([id('芬')])
+  })
+
   it('retains the baseline when equal product counts differ only by clock roundoff', () => {
     const f = fixture(), score = 101066.66667276855
     f.input.baseline.score = score
@@ -193,8 +273,10 @@ describe('bounded main-roster optimization dispatch', () => {
     combined.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId = 'crew-and-recovery'
     f.families(recoveries, [free], [combined])
     const outcome = drain(f.input, (_, index) => summary(105 + index))
-    expect(outcome.result.phases.mainOptimization?.candidates.filter(candidate => candidate.score !== null).map(candidate => candidate.id))
-      .toEqual(['free', 'recovery-0', 'combined:crew-and-recovery'])
+    // A recovery from the newly verified free winner is itself the composed
+    // state, even when its proposer does not repeat the old combined prefix.
+    expect(outcome.result.phases.mainOptimization?.candidates.filter(candidate => candidate.score !== null).map(candidate => candidate.id.replace(/^combined:/, '')))
+      .toEqual(['free', 'recovery-0', 'crew-and-recovery'])
     expect(outcome.jobs).toHaveLength(3)
     expect(outcome.result.score).toBe(107)
     expect(f.recovery.mock.calls[1]![0]).toEqual(free.workspace)

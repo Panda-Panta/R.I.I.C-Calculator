@@ -42,8 +42,53 @@ const freeCounts = (workspace: RosterWorkspace) => Object.values(workspace.mainP
   .map(room => room.slots.filter(slot => slot.occupant.kind === 'free').length)
 const working = (workspace: RosterWorkspace) => Object.fromEntries(Object.values(workspace.mainPlan.facilities)
   .filter(room => room.type !== 'dormitory').map(room => [room.roomId, room]))
+const family = (candidate: { id: string }): string => candidate.id === 'recovery-fia-and-dorm-support' ? 'joint'
+  : candidate.id.startsWith('recovery-dorm-') ? 'dorm' : 'fia'
 
 describe('bounded main-roster recovery proposals', () => {
+  it.each([
+    { maxCandidates: 2, families: ['fia', 'dorm'] },
+    { maxCandidates: 3, families: ['fia', 'dorm', 'joint'] },
+    { maxCandidates: 4, families: ['fia', 'dorm', 'joint', 'fia'] },
+  ])('gives available recovery families a turn within $maxCandidates proposals', ({ maxCandidates, families }) => {
+    const workspace = fixture(), fullDomain = generate(workspace, full, { maxCandidates: 8 })
+    expect(new Set(fullDomain.candidates.map(family))).toEqual(new Set(['fia', 'dorm', 'joint']))
+    const result = generate(workspace, full, { maxCandidates })
+    expect(result.candidates.map(family)).toEqual(families)
+    expect(result.candidates[0]).toEqual(fullDomain.candidates.find(candidate => candidate.id === 'recovery-fia-whole-group'))
+    const pureDorm = result.candidates.find(candidate => family(candidate) === 'dorm')!
+    expect(targets(pureDorm.workspace)).toEqual(targets(workspace))
+    const joint = result.candidates.find(candidate => family(candidate) === 'joint')
+    if (joint) {
+      expect(targets(joint.workspace)).toEqual(targets(result.candidates[0]!.workspace))
+      const onlyDorm = structuredClone(joint.workspace)
+      onlyDorm.mainPlan.facilities.dormitory_1.slots[0]!.replacements = [...targets(workspace)]
+      expect(onlyDorm).toEqual(pureDorm.workspace)
+    }
+  })
+
+  it('recomputes all available families from a new winner without state or suppressing its existing Fia policy', () => {
+    const workspace = fixture(), winner = generate(workspace, full, { maxCandidates: 8 }).candidates[0]!.workspace
+    const before = structuredClone(winner), first = generate(winner, full, { maxCandidates: 4 }), second = generate(winner, full, { maxCandidates: 4 })
+    expect(new Set(first.candidates.map(family))).toEqual(new Set(['fia', 'dorm', 'joint']))
+    expect(first).toEqual(second)
+    const dorm = first.candidates.find(candidate => family(candidate) === 'dorm')!
+    expect(targets(dorm.workspace)).toEqual(targets(winner))
+    expect(winner).toEqual(before)
+  })
+
+  it('reuses the budget for Fia proposals when dorm support is protected', () => {
+    const workspace = fixture(), result = generate(workspace, full, { maxCandidates: 4, lockedPositions: new Set(['dormitory_1:1', 'dormitory_2:0']) })
+    expect(result.candidates.length).toBeGreaterThan(1)
+    expect(result.candidates.every(candidate => family(candidate) === 'fia')).toBe(true)
+  })
+
+  it('keeps all explicit original Fia and fixed-keeper locks when the budget is shared between families', () => {
+    const workspace = fixture(), userBase = structuredClone(workspace)
+    const lockedPositions = new Set(['dormitory_1:0', 'dormitory_1:1', 'dormitory_2:0'])
+    expect(generate(workspace, full, { userBase, lockedPositions, maxCandidates: 4 }).candidates).toEqual([])
+  })
+
   it('proposes different target memberships including a complete cross-room group, preserving every working field', () => {
     const workspace = fixture(), before = structuredClone(workspace), inventoryBefore = structuredClone(full)
     const result = generate(workspace, full, { maxCandidates: 8 })
