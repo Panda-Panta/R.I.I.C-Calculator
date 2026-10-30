@@ -28,6 +28,13 @@ import {compiledScheduleToRuntimeConfig} from '../scheduler/scheduleAdapter'
 import {normalizeMowerRecoveryBeds} from '../scheduler/mowerRecoveryBeds'
 import {advanceRoster,createRosterRuntime,currentMoraleDerivatives,MORALE_EPSILON,nextRosterEventHours,nextRosterActionHours,settleRoster,moraleDerivative,type RuntimeState,type RuntimeRates,type RuntimeEvent} from '../scheduler/rosterRuntime'
 
+/** Optional prediction-only observation host. Never installed on full production runs. */
+export interface ScheduleOrderClock {
+ rates:Pick<RuntimeRates,'mowerRunOrderIO'>
+ advance(hours:number,frame:ProductionFrame):void
+}
+export type ScheduleOrderClockFactory=(schedule:CompiledSchedule,state:RuntimeState,frame:()=>ProductionFrame)=>ScheduleOrderClock
+
 export interface ScheduleSimulationProgress {
  phase:'warmup'|'sampling'; elapsedHours:number; totalHours:number; warmupHours:number
  activity?:SimulationActivity
@@ -115,10 +122,11 @@ export function projectScheduleState(schedule:CompiledSchedule,state:RuntimeStat
 }
 
 /** Integrates rates over actual joint rosters. This reports efficiency and duty, not order/resource settlement. */
-export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimulationOptions={},onProgress?:(progress:ScheduleSimulationProgress)=>void):ScheduleSimulationReport {
+export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimulationOptions={},onProgress?:(progress:ScheduleSimulationProgress)=>void,orderClockFactory?:ScheduleOrderClockFactory):ScheduleSimulationReport {
  const schedulingModel=options.schedulingModel??'mower-default'
  if(!['mower-default','mower-alpha'].includes(schedulingModel))throw new Error('Invalid scheduling model')
  options={...options,schedulingModel,production:resolveInventoryProduction(schedule,options.production)}
+ if(orderClockFactory&&(options.production||schedulingModel!=='mower-alpha'))throw new Error('Expected order clocks require production-off explicit alpha calendars')
  assertRunOrderMode(options.production?.runOrderMode)
  assertRunOrderMode(schedule.assumptions.runOrderSimulationMode)
  schedule=structuredClone(schedule)
@@ -438,11 +446,16 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   Object.assign(rates,createMowerProductionIO(state,production,()=>frameAt(0)))
   diagnostic('MOWER_ORDER_OBSERVATION_MODEL','理想跑单在新单开始时锁定佩佩/可露希尔模式，在普通订单完成时转换但书/龙舌兰收益；保留 Mower 订单读取、任务排序与唤醒，不执行临时换人；常规换班、收取及无人机任务仍按 Mower 时间线执行。')
  }
+ const orderClock=orderClockFactory?.(schedule,state,()=>frameAt(0))
+ if(orderClock){
+  Object.assign(rates,orderClock.rates)
+  diagnostic('DUTY_EXPECTED_ORDER_CALENDAR','期望订单倒计时仅用于理论工休预测；及时收取、无限容量，无完整生产账本、通知、线索或原生等价保证。')
+ }
  let steps=0,lastProgress=-1,lastPhase=''
  const activityMonitor=onProgress?createSimulationActivityMonitor():undefined
  // Production-only subdivisions preserve the independent morale clock. Inventory/product
  // conditions can change staffing at those boundaries and must recompute from live morale.
- const independentMoraleClock=!!production&&!state.mowerBackupObservationWakeMicros&&(options.production?.runOrderMode??'ideal')==='ideal'
+ const independentMoraleClock=(!!production||!!orderClock)&&!state.mowerBackupObservationWakeMicros&&(options.production?.runOrderMode??'ideal')==='ideal'
  let moraleStep:{end:number;morale:Record<string,number>;actionAt:number}|undefined
  const reportProgress=()=>{
   if(!onProgress)return
@@ -538,6 +551,7 @@ export function simulateSchedule(schedule:CompiledSchedule,options:ScheduleSimul
   // The production frame shortcut can reuse start-of-interval morale; clues need the true midpoint.
   receptionClues.observe(frameAt(dt/2).config,state.time,state.time+dt,new Map([...entered].map(([id,session])=>[id,Math.max(0,state.time-session.time)])))
   production?.advance(dt,frame(dt/2))
+  orderClock?.advance(dt,frame(dt/2))
   advanceRoster(state,dt,rates,derivativeRates())
   if(moraleStep&&Math.abs(state.time-moraleStep.end)<=EPS){
    state.time=moraleStep.end
