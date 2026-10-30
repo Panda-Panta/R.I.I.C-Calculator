@@ -1,4 +1,4 @@
-# 2026-10-30 恢复机会成本与菲亚优先级（实现及4次专项F完成）
+# 2026-10-30 恢复机会成本与菲亚优先级（已验证并推送test）
 
 - 用户要求持续寻优。上一批主班模型已提交并推送 test=d426df86645789e3f07444b07ec2163df3cbd874，342完整F增益400分/日；main仍42e11c8，Tools/Release未变。本轮沿用同一codex/roster-main-combination-search-20261030，不为迭代另建分支，从342的94800新胜者及四金101133原最佳继续。
 - 真实依据：四金桃金娘换冰酿虽恢复快照较高，实际少6000订单；存在同18.69恢复但不损主班G的“黑→波登可”被名额截断。342完整深海名单18次交换集中于歌蕾蒂娅17/深巡1，原感知组不再优先获援，需比较两个完整组的名单优先顺序；原生成器使用无序集合key去重、只一种两组拼接，不完整表示原生有序候选语义。
@@ -13,7 +13,8 @@
 - 最终4F：342混合单项95200.00001299（较94800再+400、较最初94400累计+800，约0.84746%），strict/eligible=true、普通疲劳0、pending0；23次实际菲亚为承曦格雷伊6/清流6/温蒂5/森蚺5/歌蕾蒂娅1。342单宿管94933.33334730有期末延期1，不采用；真实mixed＋宿管94933.33334551合格但低于mixed单项，保留95200；四金单宿管100800.00001035有期末延期1且低于原best，保留101133。不同修改的收益、工休和延期不能相加推断。
 - 来源与收尾：本轮独立GLOBAL恰好4启动/4返回/4桥/4引擎、0H/短窗/重试，冻结bundle d2a3db41b3af8133c639caa55fdb244b4d4bfe8fd8ea641a021b2b917bc2f63f；未改Native生产/调度或期末时长算法，基线按Native依赖字节一致条件明示复用。最高计划Mower格式导出、旧账本保护、完整审计与显式四配置组合域证书由唯一runner纯0F收尾；未将预算搜索或静态指标称为全排班最优。
 - 收尾完成：FINAL_AUDIT全部通过，旧8+4+6账本不变。D342-CERTIFICATE.json逐字段核实仅名单/固定宿舍槽两处因子可变，其余workspace/options/assumptions相同；156份Native/资格依赖相同，四份完整窗口均可核验，coverageComplete=true、finiteDomainSampleOptimumProven=true、selected=95200.00001299，F2为已知不合格且原始分保留。globalOptimumProven=false、全局上界null，证书SHA256 b3250c6bc3db4d67c288f7103c79a1f32b3b9a64811da4debaaeb7a19596cdd6。
-- 交付产物：最高342计划已由现有导出器生成真正Mower JSON并完成导入/回编译/库存与实体核对，路径 artifacts/recovery-priority-search-20261030/native/best-final-plans/342-pure-money/mower.json，SHA256 94624f92f845b1455c44687c4ea601551737cf9ef3a399413dd99d0f49203be7；四金保留101133.33原最高（JSON SHA 0f3efd500732fa97f04d924c881ed20d553ae052dde3c122bc9343b327cb090d）。它们是固定合成库存下的可复查格式产物，不是实际游戏执行证明。README与算法说明已同步最新95200及范围，准备普通推送test；main/Tools/Release本轮未更新。
+- 交付产物：最高342计划已由现有导出器生成真正Mower JSON并完成导入/回编译/库存与实体核对，路径 artifacts/recovery-priority-search-20261030/native/best-final-plans/342-pure-money/mower.json，SHA256 94624f92f845b1455c44687c4ea601551737cf9ef3a399413dd99d0f49203be7；四金保留101133.33原最高（JSON SHA 0f3efd500732fa97f04d924c881ed20d553ae052dde3c122bc9343b327cb090d）。它们是固定合成库存下的可复查格式产物，不是实际游戏执行证明。README与算法说明已同步最新95200及范围。
+- Git交付：程序提交3dc6f4f068d61c2fd16651a0e44b04024c0c3816已普通原子推送自有codex/roster-main-combination-search-20261030与test，远端查询一致，原有分支历史完整保留；main仍42e11c8cd668c7c63e8afe5f9562fa4248ea309c，Tools/Release本轮未更新。本次记录仅补已发生的交付事实，不改变已验程序或重复构建；最终文档提交与程序来源分别记在本机SUMMARY.json。
 
 # 2026-10-30 主班组合与恢复迭代搜索（实现与8次专项F完成）
 
