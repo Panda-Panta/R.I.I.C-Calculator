@@ -2,7 +2,7 @@ import type { OperatorInventory } from '../domain/operatorInventory'
 import type { RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId } from '../domain/operatorIdentifiers'
 import type { SmartRosterResult } from './smartRoster'
-import type { CandidateSimulationBatch, CandidateSimulationJob, CandidateSimulationResult } from './candidateSimulation'
+import { candidateScoreImproves, isQualifiedCandidateSimulation, type CandidateSimulationBatch, type CandidateSimulationJob, type CandidateSimulationResult } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import { generateMainRosterRecoveryCandidates } from './mainRosterRecoveryCandidates'
 import { generateMainRosterFreeCandidates } from './mainRosterFreeCandidates'
@@ -39,30 +39,19 @@ interface OptimizationInput {
   now?: () => number
 }
 
-function usable(summary: CandidateSimulationResult | undefined): summary is CandidateSimulationResult {
-  const displayed = summary?.calculationReport?.summary?.totalScore82
-  const quality = summary?.quality
-  return summary?.completed === true && Number.isFinite(summary.simScore) && quality?.eligible === true &&
-    quality.strict === true && quality.ordinaryExhaustedHours !== null &&
-    Number.isFinite(quality.ordinaryExhaustedHours) && quality.ordinaryExhaustedHours >= 0 && quality.ordinaryExhaustedHours <= 1e-7 &&
-    quality.pendingDeferrals === 0 &&
-    typeof displayed === 'number' && Number.isFinite(displayed) &&
-    Math.abs(displayed - summary.simScore) <= 1e-6 * Math.max(1, Math.abs(summary.simScore))
-}
-
 /** A bounded extension of the fast result. G proposes; same-window complete F selects.
  * The deadline is checked before dispatch, never by truncating an active F window.
  */
 export function* mainRosterOptimizationSteps(input: OptimizationInput): Generator<CandidateSimulationBatch, SmartRosterResult, CandidateSimulationResult[]> {
   const best = structuredClone(input.baseline)
   const initialScore = best.score ?? 0
-  let acceptedBest = usable(input.baselineSummary)
+  let acceptedBest = isQualifiedCandidateSimulation(input.baselineSummary)
   const initialAccepted = acceptedBest
   const stats: MainRosterOptimizationSummary = { generatedCandidates: 0, evaluatedCandidates: 0, cacheHits: 0,
     acceptedCandidates: 0, improved: false, qualityRepaired: false, gain: 0, termination: 'complete', candidates: [] }
   const snapshot = (): SmartRosterResult => {
     stats.gain = (best.score ?? initialScore) - initialScore
-    stats.improved = stats.gain > 1e-6
+    stats.improved = candidateScoreImproves(best.score ?? initialScore, initialScore)
     stats.qualityRepaired = !initialAccepted && acceptedBest
     best.phases.mainOptimization = structuredClone(stats)
     return structuredClone(best)
@@ -149,12 +138,12 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
         else evaluated = undefined
       } catch (error) { reject(error instanceof Error ? error.message : String(error)); continue }
     }
-    const eligible = usable(evaluated)
+    const eligible = isQualifiedCandidateSimulation(evaluated)
     stats.candidates.push({ id: proposal.id, score: evaluated?.completed && Number.isFinite(evaluated.simScore) ? evaluated.simScore : null,
       eligible, fromCache, diagnostics: [...evaluated?.diagnostics ?? [], ...evaluated?.quality?.issues ?? []] })
     if (!eligible || !evaluated) continue
     stats.acceptedCandidates++
-    if (acceptedBest && evaluated.simScore <= (best.score ?? -Infinity) + 1e-6) continue
+    if (acceptedBest && !candidateScoreImproves(evaluated.simScore, best.score ?? initialScore)) continue
     acceptedBest = true
     best.workspace = structuredClone(job.workspace)
     best.score = evaluated.simScore

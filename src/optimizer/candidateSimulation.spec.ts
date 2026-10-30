@@ -3,7 +3,7 @@ import { createDefaultWorkspace } from '../workbench/defaults'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as admission from './generatedBackupAdmission'
 import * as fixedDuty from './fixedDuty'
-import { simulateCandidate, simulateCandidateWithProgress, type CandidateSimulationJob } from './candidateSimulation'
+import { candidateScoreImproves, isQualifiedCandidateSimulation, simulateCandidate, simulateCandidateWithProgress, type CandidateSimulationJob } from './candidateSimulation'
 import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
 import { createLedger } from '../simulator/resourceLedger'
 import { createDroneState } from '../simulator/droneTimeline'
@@ -33,6 +33,30 @@ function report(): ScheduleSimulationReport {
 }
 
 afterEach(() => vi.restoreAllMocks())
+
+describe('shared complete candidate qualification', () => {
+  it('treats the observed same-production denominator drift as a tie', () => {
+    const baseline = 101066.66667276855, sameProduction = 101066.66667440505
+    expect(candidateScoreImproves(sameProduction, baseline)).toBe(false)
+    expect(candidateScoreImproves(baseline + 0.001, baseline)).toBe(true)
+    expect(candidateScoreImproves(Number.NaN, baseline)).toBe(false)
+  })
+
+  it('requires same-run duty evidence and a matching display score before either search accepts a result', () => {
+    vi.spyOn(admission, 'validateGeneratedBackupCandidate').mockReturnValue({ valid: true, diagnostics: [] })
+    vi.spyOn(bridge, 'runScheduleSimulationBridge').mockReturnValue({ report: report() })
+    const complete = simulateCandidate(job())
+    expect(isQualifiedCandidateSimulation(complete)).toBe(true)
+    expect(isQualifiedCandidateSimulation(undefined)).toBe(false)
+    expect(isQualifiedCandidateSimulation({ ...complete, quality: undefined })).toBe(false)
+    expect(isQualifiedCandidateSimulation({ ...complete, calculationReport: undefined })).toBe(false)
+    const mismatched = structuredClone(complete)
+    mismatched.calculationReport!.summary!.totalScore82 += 100
+    expect(isQualifiedCandidateSimulation(mismatched)).toBe(false)
+    expect(isQualifiedCandidateSimulation({ ...complete, quality: { ...complete.quality!, ordinaryExhaustedHours: 1 } })).toBe(false)
+    expect(isQualifiedCandidateSimulation({ ...complete, quality: { ...complete.quality!, pendingDeferrals: 1 } })).toBe(false)
+  })
+})
 
 describe('explicit generated backup simulation mode', () => {
   it('keeps arbitrary backups forbidden without a descriptor and stops invalid generated jobs before F', () => {

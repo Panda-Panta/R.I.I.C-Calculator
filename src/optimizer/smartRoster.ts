@@ -13,7 +13,7 @@ import { generateMolecularCandidates } from './molecularSynthesis'
 import { computeManufacturingRoster, type ComputedRosterCalculation } from './computedManufacturingRoster'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
 import { preservesFormedCombinations } from './combinationIntegrity'
-import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
+import { isQualifiedCandidateSimulation, simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
 export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import { candidateExecutionOrder } from './candidateExecutionOrder'
@@ -117,7 +117,8 @@ export interface SmartRosterResult {
       swappedCount: number
       logs: string[]
     }
-    jointBackup?: Pick<JointBackupSearchResult, 'generatedCandidates' | 'evaluatedCandidates' | 'selectedCandidateId' | 'improved' | 'candidates'> & { gain: number }
+    jointBackup?: Pick<JointBackupSearchResult, 'generatedCandidates' | 'evaluatedCandidates' | 'selectedCandidateId' | 'improved' | 'candidates' |
+      'simulations' | 'cacheHits' | 'acceptedCandidates' | 'qualityRepaired' | 'termination'> & { gain: number }
   }
 }
 
@@ -646,18 +647,36 @@ function* smartRosterSteps(
   let finalGeneratedBackup: GeneratedBackupDescriptor | undefined
   if (options.enableBackupGeneration === true) {
     const plainScore = finalScore
+    const phase = (joint: JointBackupSearchResult): NonNullable<SmartRosterResult['phases']['jointBackup']> => ({
+      generatedCandidates: joint.generatedCandidates, evaluatedCandidates: joint.evaluatedCandidates,
+      selectedCandidateId: joint.selectedCandidateId, improved: joint.improved, candidates: structuredClone(joint.candidates),
+      simulations: joint.simulations, cacheHits: joint.cacheHits, acceptedCandidates: joint.acceptedCandidates,
+      qualityRepaired: joint.qualityRepaired, termination: joint.termination, gain: joint.score - plainScore,
+    })
     const joint = yield* jointBackupSearchSteps({
       primaryCandidates: [{ id: 'verified-plain', workspace: finalWorkspace }, ...uniqueCandidates],
-      entries, inventory, baseline: { workspace: finalWorkspace, score: finalScore },
+      entries, inventory, baseline: { workspace: finalWorkspace, score: finalScore, summary: cache.get(simulationJob(structuredClone(finalWorkspace))) },
       lockedPositions, lockedOperators, cache, makeJob: simulationJob, maxCandidates: 4,
+      maxSimulations: options.optimizationMaxSimulations, timeBudgetMs: options.optimizationTimeBudgetMs,
       onProgress: (completed, total, bestScore) => onProgress?.({ phase: 'searching', phaseProgress: completed / Math.max(1, total),
-        currentTrial: completed, totalTrials: total, bestScore, label: `条件副表联合比较：已完成 ${completed}/${total}，保留完整仿真产出较高的配置…` }),
+        currentTrial: completed, totalTrials: total, bestScore, label: `条件副表联合比较：已完成 ${completed}/${total}，按实际工休与产出保留完整方案…` }),
+      onIncumbent: incumbent => {
+        const summary = cache.get(simulationJob(structuredClone(incumbent.workspace), incumbent.generatedBackup))
+        if (!isQualifiedCandidateSimulation(summary)) return
+        const snapshot: SmartRosterResult = { ...structuredClone(result), status: 'draft',
+          workspace: structuredClone(incumbent.workspace), score: summary.simScore,
+          calculationReport: structuredClone(summary.calculationReport), specialOperators: structuredClone(summary.specialOperators ?? []),
+          diagnostics: [...structuredClone(result.diagnostics), ...structuredClone(incumbent.diagnostics)],
+          phases: { ...structuredClone(result.phases), jointBackup: phase(incumbent) } }
+        onProgress?.({ phase: 'searching', phaseProgress: 0, bestScore: snapshot.score ?? undefined,
+          label: '完整排班已就绪，正在预算内逐份比较条件副表。', incumbent: snapshot })
+      },
     })
     finalWorkspace = joint.workspace; finalScore = joint.score; finalGeneratedBackup = joint.generatedBackup
-    result.phases.jointBackup = { generatedCandidates: joint.generatedCandidates, evaluatedCandidates: joint.evaluatedCandidates,
-      selectedCandidateId: joint.selectedCandidateId, improved: joint.improved, candidates: joint.candidates, gain: finalScore - plainScore }
+    result.phases.jointBackup = phase(joint)
     result.diagnostics.push(...joint.diagnostics)
-    if (joint.improved) result.diagnostics.push({ code: 'GENERATED_BACKUP_SELECTED', message: `联合比较保留了带一张条件副表的排班；同种子完整仿真日均加权产出增加 ${(finalScore - plainScore).toFixed(2)}。` })
+    if (joint.qualityRepaired) result.diagnostics.push({ code: 'GENERATED_BACKUP_QUALITY_REPAIRED', message: '联合比较保留了工休完整性合格的条件副表配置；原基线不满足该门槛，此处不将质量修复视为产出增益。' })
+    else if (joint.improved) result.diagnostics.push({ code: 'GENERATED_BACKUP_SELECTED', message: `联合比较保留了带一张条件副表的排班；同种子完整仿真日均加权产出增加 ${(finalScore - plainScore).toFixed(2)}。` })
   }
 
   // The exported roster must be the one whose score was evaluated. Never fill or rewrite
@@ -681,7 +700,7 @@ function* smartRosterSteps(
   }
   const finalJob = simulationJob(finalWorkspace, finalGeneratedBackup)
   const cachedFinal = cache.get(finalJob)
-  if (finalGeneratedBackup && !cachedFinal?.completed) {
+  if (finalGeneratedBackup && !isQualifiedCandidateSimulation(cachedFinal)) {
     result.workspace = finalWorkspace
     result.diagnostics.push({ code: 'GENERATED_BACKUP_RESULT_UNVERIFIED', message: '最终条件副表配置与已完成的演算输入不一致，未采用该结果。' })
     return result

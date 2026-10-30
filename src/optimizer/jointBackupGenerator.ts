@@ -8,6 +8,7 @@ import { compileBackupExpression } from '../scheduler/backupExpression'
 import { readBackupGroups } from '../scheduler/backupGroups'
 import { validatePhysicalRoster } from './rosterDraft'
 import { productionWorkspaceHourlyScore } from './productionSingletons'
+import { projectJointBackupRestState } from './jointBackupProjection'
 import {
   GENERATED_BACKUP_PLAN_NAME, GENERATED_BACKUP_TIMING, generatedBackupTriggerExpression,
   type GeneratedBackupDescriptor, type GeneratedBackupTrigger,
@@ -174,7 +175,7 @@ export function generateJointBackupCandidates(
       prepared.push({ ...candidate, exported: exported as Record<string, unknown> })
     } catch (error) { reject('INVALID_MAIN', error instanceof Error ? error.message : '主表格式无效') }
   }
-  const fingerprints = new Set<string>()
+  const fingerprints = new Set<string>(), policies = new Set<string>()
   const changedRoomsFor = (a: Prepared, b: Prepared): MowerRoomId[] | undefined => {
     if (commonState(a.workspace) !== commonState(b.workspace)) {
       reject('INCOMPATIBLE_MAIN_CONFIGURATION', '主副输入的策略或兼容元数据不同，不能丢弃或改写未知配置')
@@ -232,10 +233,8 @@ export function generateJointBackupCandidates(
     if (!changedRooms) continue
     pairs.push({ a, b, changedRooms, closure: migrationClosure(a.workspace, b.workspace, changedRooms) })
   }
-  // Ranking is G-only, never a bound on F. In the formal four-main/eight-trigger
-  // domain this has at most 4 on + 4*8*(2**2-1) off projections = 100 calls.
-  // Outside those bounds, or if any peer is unquantified, use stable fair order.
-  const canRank = prepared.length <= 4 && triggers.length <= 8
+  // Ranking is G-only, never a bound on F. All pairs/triggers share 100 calls;
+  // a larger legal input pool must not silently disable direction selection.
   const scoreCache = new Map<Prepared, Map<string, number | undefined>>()
   let projections = 0
   const score = (main: Prepared, absent: readonly string[]): number | undefined => {
@@ -244,11 +243,8 @@ export function generateJointBackupCandidates(
     if (cached.has(key)) return cached.get(key)
     let value: number | undefined
     if (projections < 100) {
-      const projected = structuredClone(main.workspace)
-      for (const actor of absent) {
-        const position = primaryPosition(projected, actor)!
-        position.slot.occupant = { kind: 'empty' }
-      }
+      const projected = projectJointBackupRestState(main.workspace, inventory, absent)
+      if (!projected) { cached.set(key, undefined); return undefined }
       projections++
       try { value = productionWorkspaceHourlyScore(projected, inventory) } catch { value = undefined }
     }
@@ -256,28 +252,40 @@ export function generateJointBackupCandidates(
     cached.set(key, value)
     return value
   }
-  const rankPairs = (eligible: LegalPair[], trigger: GeneratedBackupTrigger): LegalPair[] => {
-    if (!canRank || eligible.length < 2) return eligible
-    const ranked: { pair: LegalPair; crossover: number; order: number }[] = []
+  const rankPairs = (eligible: LegalPair[], trigger: GeneratedBackupTrigger): { pair: LegalPair; reverse: boolean }[] => {
+    const ranked: { pair: LegalPair; crossover?: number; order: number; reverse: boolean }[] = []
     for (const [order, pair] of eligible.entries()) {
       const a = score(pair.a, []), b = score(pair.b, [])
-      if (a === undefined || b === undefined) return eligible
+      if (a === undefined || b === undefined) { ranked.push({ pair, order, reverse: false }); continue }
       const onGap = a - b
       let crossover = 0
+      const offGaps: number[] = []
       // For an AND trigger, each nonempty absence subset is a possible false
       // state. These hypothetical copies are not admitted plans or F queries.
       for (let mask = 1; mask < 2 ** trigger.observers.length; mask++) {
         const absent = trigger.observers.filter((_observer, index) => mask & 2 ** index).map(observer => observer.operatorId)
         const offA = score(pair.a, absent), offB = score(pair.b, absent)
-        if (offA === undefined || offB === undefined) return eligible
+        if (offA === undefined || offB === undefined) break
         const offGap = offA - offB
+        offGaps.push(offGap)
         if (onGap > 1e-7 && offGap < -1e-7 || onGap < -1e-7 && offGap > 1e-7) {
           crossover = Math.max(crossover, Math.min(Math.abs(onGap), Math.abs(offGap)))
         }
       }
-      ranked.push({ pair, crossover, order })
+      if (offGaps.length !== 2 ** trigger.observers.length - 1) { ranked.push({ pair, order, reverse: false }); continue }
+      // Favor the smaller worst-state regret; no state probabilities or duty
+      // ratio are invented. G still supplies only a proposal direction hint.
+      const change = Math.min(onGap, -Math.max(...offGaps)) - Math.min(-onGap, Math.min(...offGaps))
+      const reverse = trigger.activeWhen === 'all-present' ? change > 1e-7 : change < -1e-7
+      ranked.push({ pair, crossover, order, reverse })
     }
-    return ranked.sort((a, b) => b.crossover - a.crossover || a.order - b.order).map(item => item.pair)
+    return ranked.sort((a, b) => {
+      // A quantified crossover is a useful proposal hint. Unknown peers keep
+      // their relative order; they never receive an invented zero score.
+      const first = a.crossover !== undefined && a.crossover > 0
+      const second = b.crossover !== undefined && b.crossover > 0
+      return Number(second) - Number(first) || (first && second ? b.crossover! - a.crossover! : 0) || a.order - b.order
+    })
   }
   // Fair across pairs before spending another trigger polarity on the same pair.
   for (const { trigger, expression, index } of triggers) {
@@ -292,8 +300,19 @@ export function generateJointBackupCandidates(
       }
       return true
     })
-    for (const { a, b, changedRooms } of rankPairs(eligible, trigger)) {
-      for (const [main, overlay] of [[a, b], [b, a]] as const) {
+    const ranked = rankPairs(eligible, trigger)
+    // Cover distinct endpoint pairs before spending another proposal on a
+    // reversed state policy. Unknown projections retain stable input order.
+    for (const second of [false, true]) for (const { pair: { a, b, changedRooms }, reverse } of ranked) {
+        const [main, overlay] = reverse !== second ? [b, a] as const : [a, b] as const
+        // Complementary predicates with reversed endpoints have the same
+        // steady state map. This is proposal diversity, not proof that their
+        // startup transitions or Native F results would be identical.
+        const on = trigger.activeWhen === 'all-present' ? overlay : main
+        const off = trigger.activeWhen === 'all-present' ? main : overlay
+        const policy = canonical({ observers: [...trigger.observers].sort((a, b) => a.operatorId.localeCompare(b.operatorId)),
+          on: on.workspace, off: off.workspace })
+        if (policies.has(policy)) continue
         const plan = Object.fromEntries(changedRooms.map(room => [room, structuredClone(overlay.exported[room])]))
         const workspace = structuredClone(main.workspace)
         workspace.compatibility.backupPlans = [{
@@ -306,13 +325,13 @@ export function generateJointBackupCandidates(
         const fingerprint = canonical(workspace)
         if (fingerprints.has(fingerprint)) continue
         fingerprints.add(fingerprint)
+        policies.add(policy)
         result.candidates.push({
           id: `generated-backup:${main.id}:${overlay.id}:${index + 1}`,
           workspace, mainId: main.id, overlayId: overlay.id,
           generatedBackup: { version: 'joint-production-v1', trigger: structuredClone(trigger) },
         })
         if (result.candidates.length >= limit) return finish()
-      }
     }
   }
   return finish()

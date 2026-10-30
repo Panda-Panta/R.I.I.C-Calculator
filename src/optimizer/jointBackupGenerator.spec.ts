@@ -18,7 +18,7 @@ import {
 const primary = ['芬', '香草', '翎羽']
 const alternate = ['克洛丝', '炎熔', '米格鲁']
 const observers = ['阿米娅', '杜宾']
-const inventory = (): OwnedOperatorInput[] => [...primary, ...alternate, ...observers]
+const inventory = (): OwnedOperatorInput[] => [...primary, ...alternate, ...observers, '霜叶', '红豆']
   .map(operator => ({ operator, elitePhase: 0, level: 1 }))
 const slot = (operator: string, replacement?: string): MowerSlot => ({
   occupant: { kind: 'operator', operatorId: id(operator) }, groupId: '生产组',
@@ -41,8 +41,18 @@ function pair() {
 
 const rawPlan = (workspace: RosterWorkspace) => workspace.compatibility.backupPlans[0] as Record<string, unknown>
 const crewKey = (workspace: RosterWorkspace) => JSON.stringify(workspace.mainPlan.facilities.room_1_1.slots.map(position => position.occupant))
+const observerPresent = (workspace: RosterWorkspace) => {
+  const occupant = workspace.mainPlan.facilities.central.slots[0]!.occupant
+  return occupant.kind === 'operator' && id(occupant.operatorId) === id('阿米娅')
+}
+const withObserverRelief = <T extends { workspace: RosterWorkspace }>(mains: T[]): T[] => {
+  for (const main of mains) main.workspace.mainPlan.facilities.central.slots.forEach((slot, index) => {
+    if (slot.occupant.kind === 'operator') slot.replacements = [id(['霜叶', '红豆'][index]!)]
+  })
+  return mains
+}
 function threeOrFourMains(includeFourth = false) {
-  const [a, b] = pair()
+  const [a, b] = withObserverRelief(pair())
   const middle = structuredClone(a!)
   middle.id = 'initial'
   middle.workspace.mainPlan.facilities.room_1_1.slots.reverse()
@@ -274,7 +284,7 @@ describe('joint main and one conditional production backup generation', () => {
     })
     expect(result.candidates).toHaveLength(4)
     expect(result.candidates.map(candidate => [candidate.mainId, candidate.overlayId])).toEqual([
-      ['A', 'initial'], ['initial', 'A'], ['A', 'B'], ['B', 'A'],
+      ['A', 'initial'], ['A', 'B'], ['initial', 'B'], ['initial', 'A'],
     ])
     expect(result.candidates.every(candidate => candidate.generatedBackup.trigger.activeWhen === 'all-present')).toBe(true)
   })
@@ -283,32 +293,62 @@ describe('joint main and one conditional production backup generation', () => {
     const mains = threeOrFourMains(true), before = structuredClone(mains)
     const scores = new Map(mains.map((main, index) => [crewKey(main.workspace), [[10, 4], [5, 3], [4, 2], [6, 9]][index]!]))
     const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(workspace => {
-      const on = workspace.mainPlan.facilities.central.slots[0]!.occupant.kind === 'operator'
+      const on = observerPresent(workspace)
       return scores.get(crewKey(workspace))?.[on ? 0 : 1]
     })
     const result = generateJointBackupCandidates(mains, inventory(), {
       triggers: [trigger(), trigger('not-all-present')], maxCandidates: 4,
     })
     expect(result.candidates).toHaveLength(4)
-    expect(result.candidates.slice(0, 2).map(candidate => [candidate.mainId, candidate.overlayId])).toEqual([['A', 'B'], ['B', 'A']])
+    expect(result.candidates[0]).toMatchObject({ mainId: 'B', overlayId: 'A' })
+    expect(new Set(result.candidates.map(candidate => [candidate.mainId, candidate.overlayId].sort().join('|'))).size).toBe(4)
     expect(score.mock.calls.length).toBeGreaterThan(0)
     expect(score.mock.calls.length).toBeLessThanOrEqual(100)
     expect(mains).toEqual(before)
   })
 
+  it('spends a one-candidate budget on the direction that follows the stronger conditional state', () => {
+    const mains = withObserverRelief(pair())
+    const scores = new Map(mains.map((main, index) => [crewKey(main.workspace), [[10, 4], [6, 9]][index]!]))
+    vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(workspace =>
+      scores.get(crewKey(workspace))?.[observerPresent(workspace) ? 0 : 1])
+    const result = generateJointBackupCandidates(mains, inventory(), { triggers: [trigger()], maxCandidates: 1 })
+    expect(result.candidates.map(candidate => [candidate.mainId, candidate.overlayId])).toEqual([['B', 'A']])
+  })
+
+  it('reverses the preferred endpoints for the complementary predicate and avoids duplicate state policies', () => {
+    const mains = withObserverRelief(pair())
+    const scores = new Map(mains.map((main, index) => [crewKey(main.workspace), [[10, 4], [6, 9]][index]!]))
+    vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(workspace =>
+      scores.get(crewKey(workspace))?.[observerPresent(workspace) ? 0 : 1])
+    const complement = generateJointBackupCandidates(mains, inventory(), { triggers: [trigger('not-all-present')], maxCandidates: 1 })
+    expect(complement.candidates[0]).toMatchObject({ mainId: 'A', overlayId: 'B' })
+    const both = generateJointBackupCandidates(mains, inventory(), { triggers: [trigger(), trigger('not-all-present')], maxCandidates: 4 })
+    expect(both.candidates).toHaveLength(2)
+    expect(both.candidates.every(candidate => candidate.generatedBackup.trigger.activeWhen === 'all-present')).toBe(true)
+  })
+
+  it('does not rank an unavailable observer rest state as an empty workplace or a zero score', () => {
+    const mains = pair()
+    const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockReturnValue(100)
+    const result = generateJointBackupCandidates(mains, inventory(), { triggers: [trigger()], maxCandidates: 1 })
+    expect(result.candidates[0]).toMatchObject({ mainId: 'A', overlayId: 'B' })
+    expect(score.mock.calls.every(([workspace]) => observerPresent(workspace))).toBe(true)
+  })
+
   it('keeps the original fair pair order when one static projection is unquantified, not zero', () => {
     const mains = threeOrFourMains(true), unavailable = crewKey(mains[3]!.workspace)
     vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(workspace =>
-      crewKey(workspace) === unavailable ? undefined : workspace.mainPlan.facilities.central.slots[0]!.occupant.kind === 'operator' ? 5 : 2)
+      crewKey(workspace) === unavailable ? undefined : observerPresent(workspace) ? 5 : 2)
     const result = generateJointBackupCandidates(mains, inventory(), {
       triggers: [trigger(), trigger('not-all-present')], maxCandidates: 4,
     })
     expect(result.candidates.map(candidate => [candidate.mainId, candidate.overlayId])).toEqual([
-      ['A', 'initial'], ['initial', 'A'], ['A', 'other'], ['other', 'A'],
+      ['A', 'initial'], ['A', 'other'], ['A', 'B'], ['initial', 'other'],
     ])
   })
 
-  it('keeps static ranking inside four-main/eight-trigger bounds and skips ranking beyond them', () => {
+  it('keeps one shared static-call bound when the real input domain exceeds four mains or eight triggers', () => {
     const mains = threeOrFourMains(true)
     const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockReturnValue(1)
     const conditions = [trigger(), trigger('not-all-present'),
@@ -321,25 +361,58 @@ describe('joint main and one conditional production backup generation', () => {
     expect(score.mock.calls.length).toBeLessThanOrEqual(100)
     score.mockClear()
     generateJointBackupCandidates(mains, inventory(), { triggers: Array.from({ length: 9 }, () => trigger()), maxCandidates: 4 })
-    expect(score).not.toHaveBeenCalled()
+    expect(score.mock.calls.length).toBeGreaterThan(0)
+    expect(score.mock.calls.length).toBeLessThanOrEqual(100)
     const fifth = structuredClone(mains[3]!)
     fifth.id = 'fifth-unique'
     fifth.workspace.mainPlan.facilities.room_1_1.slots.reverse()
     generateJointBackupCandidates([...mains, fifth], inventory(), { triggers: [trigger()], maxCandidates: 4 })
-    expect(score).not.toHaveBeenCalled()
+    expect(score.mock.calls.length).toBeGreaterThan(0)
+    expect(score.mock.calls.length).toBeLessThanOrEqual(100)
+  })
+
+  it('still selects the useful direction from six distinct mains while keeping unknown peers in the pool', () => {
+    const mains = threeOrFourMains(true)
+    const fifth = structuredClone(mains[0]!), sixth = structuredClone(mains[0]!)
+    fifth.id = 'fifth'; fifth.workspace.name = 'fifth'
+    sixth.id = 'sixth'; sixth.workspace.name = 'sixth'
+    const row = fifth.workspace.mainPlan.facilities.room_1_1.slots
+    ;[row[0], row[1]] = [row[1]!, row[0]!]
+    sixth.workspace.mainPlan.facilities.room_1_1.slots.reverse()
+    mains.push(fifth, sixth)
+    const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(workspace => {
+      if (workspace.name === 'fifth' || workspace.name === 'sixth') return undefined
+      const scores = new Map(mains.slice(0, 4).map((main, index) => [crewKey(main.workspace), [[10, 4], [5, 3], [4, 2], [6, 9]][index]!]))
+      return scores.get(crewKey(workspace))?.[observerPresent(workspace) ? 0 : 1]
+    })
+    const result = generateJointBackupCandidates(mains, inventory(), { triggers: [trigger()], maxCandidates: 1 })
+    expect(result.candidates[0]).toMatchObject({ mainId: 'B', overlayId: 'A' })
+    expect(score.mock.calls.length).toBeGreaterThan(0)
+    expect(score.mock.calls.length).toBeLessThanOrEqual(100)
+  })
+
+  it('does not exceed 100 static calls even when many legal endpoint copies compete for one proposal', () => {
+    const mains = withObserverRelief(pair())
+    const many = Array.from({ length: 60 }, (_, index) => {
+      const main = structuredClone(mains[index % 2]!)
+      main.id = `copy-${index}`; main.workspace.name = `copy-${index}`
+      return main
+    })
+    const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockReturnValue(100)
+    const result = generateJointBackupCandidates(many, inventory(), { triggers: [trigger()], maxCandidates: 1 })
+    expect(result.candidates).toHaveLength(1)
+    expect(score).toHaveBeenCalledTimes(100)
   })
 
   it('counts verified-plain plus four inputs by unique workspace, not by the five raw rows', () => {
     const mains = threeOrFourMains(true)
     const scores = new Map(mains.map((main, index) => [crewKey(main.workspace), [[10, 4], [5, 3], [4, 2], [6, 9]][index]!]))
     const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(workspace =>
-      scores.get(crewKey(workspace))?.[workspace.mainPlan.facilities.central.slots[0]!.occupant.kind === 'operator' ? 0 : 1])
+      scores.get(crewKey(workspace))?.[observerPresent(workspace) ? 0 : 1])
     const result = generateJointBackupCandidates([{ id: 'verified-plain', workspace: structuredClone(mains[0]!.workspace) }, ...mains], inventory(), {
       triggers: [trigger(), trigger('not-all-present')], maxCandidates: 4,
     })
-    expect(result.candidates.slice(0, 2).map(candidate => [candidate.mainId, candidate.overlayId])).toEqual([
-      ['verified-plain', 'B'], ['B', 'verified-plain'],
-    ])
+    expect(result.candidates[0]).toMatchObject({ mainId: 'B', overlayId: 'verified-plain' })
     expect(score.mock.calls.length).toBeGreaterThan(0)
     expect(score.mock.calls.length).toBeLessThanOrEqual(100)
   })

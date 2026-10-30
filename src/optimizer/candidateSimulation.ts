@@ -36,6 +36,26 @@ export interface CandidateSimulationResult {
   quality?: MainRosterDutyQuality
 }
 
+/** Extra policy searches share one same-run qualification rule. Legacy completed
+ * still describes execution, so an unknown or exhausted result is not promoted.
+ */
+export function isQualifiedCandidateSimulation(summary: CandidateSimulationResult | undefined): summary is CandidateSimulationResult {
+  const displayed = summary?.calculationReport?.summary?.totalScore82
+  const quality = summary?.quality
+  return summary?.completed === true && Number.isFinite(summary.simScore) && quality?.eligible === true &&
+    quality.strict === true && quality.ordinaryExhaustedHours !== null &&
+    Number.isFinite(quality.ordinaryExhaustedHours) && quality.ordinaryExhaustedHours >= 0 && quality.ordinaryExhaustedHours <= 1e-7 &&
+    quality.pendingDeferrals === 0 &&
+    typeof displayed === 'number' && Number.isFinite(displayed) &&
+    Math.abs(displayed - summary.simScore) <= 1e-6 * Math.max(1, Math.abs(summary.simScore))
+}
+
+/** Full-window clocks can differ by roundoff even for identical product counts. */
+export function candidateScoreImproves(candidate: number, baseline: number): boolean {
+  return Number.isFinite(candidate) && Number.isFinite(baseline) &&
+    candidate - baseline > Math.max(1e-6, 1e-9 * Math.max(1, Math.abs(candidate), Math.abs(baseline)))
+}
+
 export interface CandidateSimulationBatch {
   jobs: CandidateSimulationJob[]
   onComplete: (result: CandidateSimulationResult, index: number) => void

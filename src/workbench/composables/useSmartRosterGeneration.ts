@@ -144,6 +144,8 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
     baseWorkspace.productionWeights = weights
     const cleanEntries: OwnedOperatorInput[] = JSON.parse(JSON.stringify(inventoryEntries))
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
+    const optimizationOptions = normalizeSmartRosterOptimizationOptions(config)
+    const enableBackupGeneration = config?.enableBackupGeneration === true
     const runOptions = {
       productionWeights: weights,
       seed: (config?.seed !== undefined && config.seed >= 0)
@@ -154,8 +156,9 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       simulationWarmupHours: config?.simulationWarmupHours ?? (isVitest ? 6 : 24),
       simulationSampleHours: config?.simulationSampleHours ?? (isVitest ? 18 : 72),
       enableDeepSearch: config?.enableDeepSearch ?? false,
-      enableBackupGeneration: config?.enableBackupGeneration === true,
-      ...normalizeSmartRosterOptimizationOptions(config),
+      enableBackupGeneration,
+      ...optimizationOptions,
+      optimizationMaxSimulations: Math.min(enableBackupGeneration ? 4 : 8, optimizationOptions.optimizationMaxSimulations),
       droneTarget: config?.droneTarget ?? 'none',
       droneRoomId: config?.droneRoomId || undefined,
     }
@@ -179,20 +182,23 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
         } else if (calculation?.status === 'unsupported') {
           optimizationNote = '当前配置未进入制造组优化。'
         }
-        const mainOptimization = report.phases.mainOptimization
-        const mainOptimizationWarning = report.diagnostics.filter(d =>
-          d.code === 'MAIN_OPTIMIZATION_NO_QUALIFIED_RESULT' || d.code === 'MAIN_OPTIMIZATION_FAILED').map(d => d.message).join('；')
-        let mainOptimizationNote = ''
-        if (mainOptimization?.qualityRepaired) {
-          mainOptimizationNote = '持续优化已采用工休完整性合格的方案。'
-        } else if (mainOptimization?.improved) {
-          mainOptimizationNote = `本次持续优化额外提高 ${mainOptimization.gain.toFixed(1)} 分/日。`
-        } else if (mainOptimization && mainOptimization.termination !== 'invalid-budget') {
-          mainOptimizationNote = '本次额外比较未发现更高产出。'
+        const jointBackup = report.phases.jointBackup
+        const comparison = jointBackup ?? report.phases.mainOptimization
+        const comparisonLabel = jointBackup ? '联合主副表比较' : '持续优化'
+        const comparisonWarning = report.diagnostics.filter(d =>
+          d.code === 'MAIN_OPTIMIZATION_NO_QUALIFIED_RESULT' || d.code === 'MAIN_OPTIMIZATION_FAILED' ||
+          d.code.startsWith('JOINT_BACKUP_')).map(d => d.message).join('；')
+        let comparisonNote = ''
+        if (comparison?.qualityRepaired) {
+          comparisonNote = `${comparisonLabel}已采用工休完整性合格的方案。`
+        } else if (comparison?.improved) {
+          comparisonNote = `本次${comparisonLabel}额外提高 ${comparison.gain.toFixed(1)} 分/日。`
+        } else if (comparison && comparison.termination !== 'invalid-budget') {
+          comparisonNote = jointBackup ? '本次联合主副表比较未发现更高产出。' : '本次额外比较未发现更高产出。'
         }
-        replaceStatusMessage.value = mainOptimizationWarning
-          ? `${mainOptimizationWarning} 当前保留排班${scoreStr}。`
-          : `一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班${scoreStr}。${optimizationNote}${mainOptimizationNote}`
+        replaceStatusMessage.value = comparisonWarning
+          ? `${comparisonWarning} 当前保留排班${scoreStr}。`
+          : `一键排班成功！已保留当前建筑与已配置干员，并采用完整仿真确认的排班${scoreStr}。${optimizationNote}${comparisonNote}`
         simSettings.value.droneTarget = runOptions.droneTarget
         simSettings.value.droneRoomId = runOptions.droneRoomId
         simSettings.value.droneTradingRoomId = runOptions.droneTarget === 'trading' ? runOptions.droneRoomId : ''

@@ -69,28 +69,12 @@
         </div>
         <div class="checkbox-row">
           <label class="checkbox-label" for="allow-free-combinations">
-            <input id="allow-free-combinations" v-model="form.allowFreeCombinations" :disabled="!form.enableMainOptimization" type="checkbox" class="mower-checkbox" data-test="allow-free-combinations" />
+            <input id="allow-free-combinations" v-model="form.allowFreeCombinations" :disabled="!form.enableMainOptimization || form.enableBackupGeneration" type="checkbox" class="mower-checkbox" data-test="allow-free-combinations" />
             <span class="checkbox-text">
               <strong>允许自由组合</strong>
               <small class="checkbox-hint" data-test="free-combinations-description">允许打散自动构造的内部预设组合，按实际驻员重新评价联动；输入中已配置工位与人员继续锁定。</small>
             </span>
           </label>
-        </div>
-        <div class="field-row">
-          <div class="field-item">
-            <label for="optimization-max-simulations">
-              <span>额外完整仿真上限</span>
-              <small class="field-tip">初始结果确认后最多追加 1–8 次比较</small>
-            </label>
-            <input id="optimization-max-simulations" v-model.number="form.optimizationMaxSimulations" :disabled="!form.enableMainOptimization" type="number" min="1" max="8" step="1" class="mower-num-input" data-test="optimization-max-simulations" />
-          </div>
-          <div class="field-item">
-            <label for="optimization-time-budget-seconds">
-              <span>继续比较的时间预算（秒）</span>
-              <small class="field-tip">到时停止启动新候选，已开始的完整仿真会继续完成</small>
-            </label>
-            <input id="optimization-time-budget-seconds" v-model.number="optimizationTimeBudgetSeconds" :disabled="!form.enableMainOptimization" type="number" min="1" max="300" step="1" class="mower-num-input" data-test="optimization-time-budget-seconds" />
-          </div>
         </div>
       </fieldset>
 
@@ -131,9 +115,32 @@
             />
             <span class="checkbox-text">
               <strong>联合生成条件副表（实验）</strong>
-              <small class="checkbox-hint" data-test="backup-generation-description">比较主表方案与附带条件副表的方案；可能增加等待时间，产出未必更高。</small>
+              <small class="checkbox-hint" data-test="backup-generation-description">逐份完整仿真比较主表与条件副表，采用与主班相同的工休完整性门槛；可结束并保留已验结果。可能增加等待时间，产出未必更高。</small>
             </span>
           </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="config-fieldset">
+        <legend class="fieldset-legend">
+          <span class="phase-badge phase-3">预算</span> 追加比较预算
+        </legend>
+        <p class="stage-description" data-test="comparison-mode-description">{{ comparisonModeDescription }}</p>
+        <div class="field-row">
+          <div class="field-item">
+            <label for="optimization-max-simulations">
+              <span>额外完整仿真上限</span>
+              <small class="field-tip">初始结果确认后最多追加 1–{{ comparisonSimulationLimit }} 次比较</small>
+            </label>
+            <input id="optimization-max-simulations" v-model.number="optimizationMaxSimulations" :disabled="!comparisonBudgetEnabled" type="number" min="1" :max="comparisonSimulationLimit" step="1" class="mower-num-input" data-test="optimization-max-simulations" />
+          </div>
+          <div class="field-item">
+            <label for="optimization-time-budget-seconds">
+              <span>继续比较的时间预算（秒）</span>
+              <small class="field-tip">到时停止启动新候选，已开始的完整仿真会继续完成</small>
+            </label>
+            <input id="optimization-time-budget-seconds" v-model.number="optimizationTimeBudgetSeconds" :disabled="!comparisonBudgetEnabled" type="number" min="1" max="300" step="1" class="mower-num-input" data-test="optimization-time-budget-seconds" />
+          </div>
         </div>
       </fieldset>
 
@@ -314,6 +321,19 @@ const loadPersistedConfig = (): SmartRosterConfig => {
 }
 
 const form = ref<SmartRosterConfig>(loadPersistedConfig())
+const comparisonBudgetEnabled = computed(() => form.value.enableMainOptimization === true || form.value.enableBackupGeneration === true)
+const comparisonSimulationLimit = computed(() => form.value.enableBackupGeneration === true ? 4 : 8)
+const comparisonModeDescription = computed(() => form.value.enableBackupGeneration === true
+  ? form.value.enableMainOptimization === true
+    ? '本次副表比较优先，采用联合主副表比较，不另行运行持续主班优化。'
+    : '本次采用联合主副表比较，最多追加 4 次完整仿真。'
+  : form.value.enableMainOptimization === true
+    ? '本次采用持续主班优化，最多追加 8 次完整仿真。'
+    : '开启持续主班优化或联合主副表比较后，可调整追加比较预算。')
+const optimizationMaxSimulations = computed({
+  get: () => Math.min(comparisonSimulationLimit.value, form.value.optimizationMaxSimulations ?? SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationMaxSimulations),
+  set: (count: number) => { form.value.optimizationMaxSimulations = count },
+})
 const optimizationTimeBudgetSeconds = computed({
   get: () => (form.value.optimizationTimeBudgetMs ?? SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationTimeBudgetMs) / 1000,
   set: (seconds: number) => { form.value.optimizationTimeBudgetMs = Number(seconds) * 1000 },
@@ -360,6 +380,7 @@ const handleReset = () => {
 
 const handleConfirm = () => {
   if (!weightsValid.value) return
+  const optimizationOptions = normalizeSmartRosterOptimizationOptions(form.value)
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
     productionWeights: normalizeProductionWeights(form.value.productionWeights),
@@ -370,7 +391,8 @@ const handleConfirm = () => {
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
     enableDeepSearch: Boolean(form.value.enableDeepSearch),
     enableBackupGeneration: form.value.enableBackupGeneration === true,
-    ...normalizeSmartRosterOptimizationOptions(form.value),
+    ...optimizationOptions,
+    optimizationMaxSimulations: Math.min(comparisonSimulationLimit.value, optimizationOptions.optimizationMaxSimulations),
     droneTarget: facilities.value.find(f => f.roomId === selectedRoom.value)?.target ?? 'none',
     droneRoomId: selectedRoom.value === 'none' ? '' : selectedRoom.value,
     seed: Number.isInteger(form.value.seed) ? form.value.seed : -1,

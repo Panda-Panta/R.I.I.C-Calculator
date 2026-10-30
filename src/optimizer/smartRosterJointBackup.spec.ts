@@ -11,6 +11,21 @@ import * as crewSeeds from './jointBackupCrewSeeds'
 import * as simulation from './candidateSimulation'
 import { runSmartRoster, runSmartRosterParallel } from './smartRoster'
 import { generatedBackupTriggerExpression, type GeneratedBackupDescriptor } from './generatedBackupTypes'
+import type { CalculationReport } from '../domain/types'
+import type { SmartRosterProgress } from './smartRoster'
+
+function controlledSummary(score: number): simulation.CandidateSimulationResult {
+  const calculationReport: CalculationReport = {
+    power: { generation: 270, consumption: 10, margin: 260, sufficient: true },
+    layoutValid: true, validationMessages: [], efficiencyNotes: ['controlled same-run F'],
+    manufacture: [], trading: [], drones: 0, morale: [], roomShiftDetails: {},
+    summary: { exp: 0, goldCount: 0, goldValue: 0, virtualGoldCount: 0, virtualGoldValue: 0,
+      orderLmd: 0, fragments: 0, orundum: 0, goldConsumed: 0, fragmentsConsumed: 0,
+      netGoldCount: 0, netGoldValue: 0, totalScore82: score, totalEquivalentLmd: 0 },
+  }
+  return { completed: true, simScore: score, diagnostics: [], calculationReport,
+    quality: { eligible: true, strict: true, ordinaryExhaustedHours: 0, pendingDeferrals: 0, issues: [] } }
+}
 
 const descriptor: GeneratedBackupDescriptor = { version: 'joint-production-v1', trigger: {
   observers: [{ operatorId: 'Lancet-2', roomId: 'room_1_3' }], activeWhen: 'all-present',
@@ -58,8 +73,7 @@ function prepare(score = 120) {
   const generator = vi.spyOn(generation, 'generateJointBackupCandidates').mockReturnValue({ candidates: [
     { id: 'joint', mainId: 'main-1', overlayId: 'main-0', workspace: joint, generatedBackup: descriptor },
   ], diagnostics: [] })
-  const evaluator = vi.spyOn(simulation, 'simulateCandidate').mockImplementation(job => ({ completed: true,
-    simScore: job.generatedBackup ? score : 100, diagnostics: [] }))
+  const evaluator = vi.spyOn(simulation, 'simulateCandidate').mockImplementation(job => controlledSummary(job.generatedBackup ? score : 100))
   return { ...fixture, generator, evaluator }
 }
 
@@ -104,6 +118,55 @@ describe('smart roster joint backup opt-in', () => {
     expect(result.status).toBe('draft')
     expect(result.score).toBe(100)
     expect(result.workspace?.compatibility.backupPlans).toEqual([])
+  })
+
+  it('publishes the verified plain and conditional incumbents with their own reports', () => {
+    const fixture = prepare(), progress: SmartRosterProgress[] = []
+    const result = runSmartRoster(fixture.base, fixture.owned, { seed: 42, enableBackupGeneration: true }, event => progress.push(event))
+    const snapshots = progress.flatMap(event => event.incumbent ? [event.incumbent] : [])
+    expect(snapshots.map(snapshot => snapshot.score)).toEqual([100, 120])
+    expect(snapshots[0]!.workspace?.compatibility.backupPlans).toEqual([])
+    expect(snapshots[1]!.workspace).toEqual(result.workspace)
+    for (const snapshot of snapshots) expect(snapshot.calculationReport?.summary?.totalScore82).toBe(snapshot.score)
+    snapshots[1]!.workspace!.name = 'consumer edit'
+    expect(result.workspace?.name).toBe('joint-winner')
+  })
+
+  it('passes a zero extra simulation budget without starting a conditional F', () => {
+    const fixture = prepare()
+    const result = runSmartRoster(fixture.base, fixture.owned, { seed: 42, enableBackupGeneration: true, optimizationMaxSimulations: 0 })
+    expect(result.status).toBe('draft')
+    expect(result.workspace?.compatibility.backupPlans).toEqual([])
+    expect(fixture.evaluator.mock.calls.filter(([job]) => job.generatedBackup)).toHaveLength(0)
+    expect(result.phases.jointBackup).toMatchObject({ simulations: 0, termination: 'simulation-budget' })
+  })
+
+  it('rejects a higher-scoring conditional plan with ordinary fatigue', () => {
+    const fixture = prepare()
+    fixture.evaluator.mockImplementation(job => {
+      const summary = controlledSummary(job.generatedBackup ? 150 : 100)
+      if (job.generatedBackup) summary.quality!.ordinaryExhaustedHours = 1
+      return summary
+    })
+    const result = runSmartRoster(fixture.base, fixture.owned, { seed: 42, enableBackupGeneration: true })
+    expect(result.score).toBe(100)
+    expect(result.workspace?.compatibility.backupPlans).toEqual([])
+    expect(result.phases.jointBackup?.improved).toBe(false)
+  })
+
+  it('reports a lower-scoring quality repair without claiming output improvement', () => {
+    const fixture = prepare(90)
+    fixture.evaluator.mockImplementation(job => {
+      const summary = controlledSummary(job.generatedBackup ? 90 : 100)
+      if (!job.generatedBackup) summary.quality!.ordinaryExhaustedHours = 1
+      return summary
+    })
+    const result = runSmartRoster(fixture.base, fixture.owned, { seed: 42, enableBackupGeneration: true })
+    expect(result.score).toBe(90)
+    expect(result.workspace?.compatibility.backupPlans).toHaveLength(1)
+    expect(result.phases.jointBackup).toMatchObject({ qualityRepaired: true, improved: false, gain: -10 })
+    expect(result.diagnostics.some(d => d.code === 'GENERATED_BACKUP_QUALITY_REPAIRED')).toBe(true)
+    expect(result.diagnostics.some(d => d.code === 'GENERATED_BACKUP_SELECTED')).toBe(false)
   })
 
   it('reports why an automatic room complement was rejected', () => {

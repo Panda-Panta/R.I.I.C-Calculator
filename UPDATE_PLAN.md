@@ -1,3 +1,21 @@
+# 2026-10-30 条件副表策略优化（实现与专项验证完成）
+
+- 用户要求先推送 test，再继续开发副表更优算法。前批主班成果已由 test 的 10b5c98 快进到 84fe8e2aa7c49e16fae1f61249115ffe4be8836a，远端查询一致，原有历史完整保留；main、Release、Tools 未改。本轮从该提交建立 codex/roster-backup-policy-20261030，避免给现有 PR #36 混入新任务。
+- 目标：用实际工休状态更准确地提出条件副表，有限完整 F 逐份筛选，保留合格主班基线并及时发布最佳完整结果。副表仍显式选择、默认关闭；不改用户副表、原生调度规则或游戏数据，不用旧 H 替代 F，不承诺所有布局必然增产。
+- 已核资源：现有 jointBackupObservers/Generator/Search、generatedBackupAdmission、candidateSimulationCache、mainRosterDutyEvaluation、mainRosterOptimization 和 scripts/benchmark-auto-roster.mjs；沿用有限观察者触发族、全基地 G、实际阶段和完整 Native F。候选归档/报告独占 artifacts/backup-policy-20261030，旧实验和用户数据保持。
+- 已证实缺口：Search 仅凭 completed 和有限分数选优，尚未使用同次工休质量及展示分一致性；四份一次派发不能逐份检查预算和保留胜者。Generator 在有限预算下固定 A/B 方向，可能首先模拟静态状态都更差的映射；离岗 G 投影将单人清空，未反映可明确解析的原组与普通替班。
+- 方案取舍：沿用一张普通制造/贸易覆盖副表，修正状态投影、方向与候选预算分配，并共享完整 F 质量门槛；暂不扩大任意表达式、多副表状态机或引入未校准代理模型，避免同时改变执行语义和搜索域。
+- 并行归属：backup_candidate_upgrade 独占 jointBackupGenerator/Observers 及其测试、新增 jointBackupProjection.ts/spec.ts；backup_quality_budget 独占 jointBackupSearch.ts/spec.ts；backup_native_preparation 仅准备受控输入和本机工具/报告。主 agent 独占共享 quality helper、smartRoster 接线/测试、UI 预算与结果说明、计划/结构/文档/Git，后续由独立 agent 审查实际差异；所有源码编辑前已备份。
+- 兼容与接口：Search 增可选 baseline.summary、maxSimulations、timeBudgetMs、now、onIncumbent，旧调用形状可读取但未知质量不得接纳。保留 evaluatedCandidates 为比较数，新增 simulations/cacheHits/acceptedCandidates/qualityRepaired/termination；默认至多 4 次额外完整 F、30 秒软派发预算，硬上限 4 次/300 秒，不截短在途完整 F。候选输出均保留实际库存、工位/人员锁、主替与观察者迁移闭包和完整原生入场校验。
+- 验收：先复现方向反例、无效高分/同次报告不一致反例；定点新旧路径测试、串并行/缓存/预算/快照接线、类型与独立构建、结构检查及只读审查。实际收益限定最多 4 次新增完整 F（含需重跑的基线），固定 seed、实际阶段合成库、窗口/权重/无人机；逐项记录工休、转场、完整性与分数，差方案保留证据并拒绝，不恢复全仓或十五方法大矩阵。真实游戏与浏览器 Worker 另属未验证范围。
+- 备份：artifacts/backup-policy-20261030/backup/source-84fe8e2.zip，SHA256 4412dd302fee1d8b8cae43465c072ccb2e4701a80932a7d84c743f4f83f1ffe3；只归档已提交源码，不包含用户干员库、排班和浏览器数据。
+- 实现进展：候选、搜索、UI 已并行完成，新增简单组工休投影，100次评分硬预算内排序切换方向及跨pair分配；Search复用主班质量helper，逐份完整F、精确缓存、预算与合格快照已接真实自动入口。统一14文件288项通过；三处测试夹具可空summary访问收窄后，受影响三文件重验通过、全局类型通过。独立Vite构建14.34秒成功（原有大chunk提示）；结构已生成并校验，收尾diff检查有两文件末尾空行待Native源冻结运行结束后整理。
+- 实际验证进行中：最终候选、原始主班、原排序首选和同次Native入口冻结于 artifacts/backup-policy-20261030/native-prep/final-native；总预算4F，432人合成库、seed42、24+72h、none无人机和相同权重/assumptions。第一份纯主班101066.66667277分/日、普通疲劳0、严格合格、pending0；本段不提前声称副表增产。
+- 用户追加队列：副表任务完成后继续开发主班高分搜索，寻找更好的队伍搭配与工休组合，先沿用现有四布局固定基准；最优性须注明搜索域与可核验上界，当前最高样本分、有限域最优和全域证明分别记录。该后续任务尚未开始改主班源码，先完成本批副表。
+- 最终4F：原表101066.66667277合格；新1为101133.33333942但期末延期1，拒绝；新2为101066.66667441合格且实物产量与原表完全相同；旧首选100600.00000681合格但更低。三份副表均实际切换，保留原纯主班。冻结bundle为6b017a2272da0b84f84f9a5a9ee14e3f7b151f88bf06455c334417a116e1b981，4启动/4返回/4桥/4引擎，0H/短窗/重试；审计、原件、同次报告及输入哈希完整保存。
+- 反例收尾：新2浮点分母产生约1.64e-6伪增益，已先红再绿修复共享选择容差为max(1e-6,1e-9*scale)，Search与主班持续优化共用；不改Native生产/调度/计时，仅选择器与相应测试变化。受影响4文件99项通过，保留原冻结F与最终源码的差异映射，不追加F。两处EOF空行已整理，diff检查通过。
+- 收尾通过：最终类型检查exit0，Vite14.85秒构建成功（原有大chunk提示）；独立全包及浮点修复增量审查无未关闭P1/P2。生产Search用真实4份报告进行0F重放，实际选回baseline、improved=false；原始job、cache及账本不变。214份冻结输入有212份字节不变，仅共享选择helper和Search导入/两处调用/EOF变动，精确差异归一核验通过，simulateCandidate/WithProgress函数体与Native桥/模拟器/生产计分字节未变。详细记录位于 artifacts/backup-policy-20261030/{SUMMARY.json,review,replay,native-prep/final-native}；不将逻辑摘要重放计为新的物理F。本批准备普通推送test，main/Tools/Release保持。
+
 # 2026-10-30 主班联合优化与自由组合（实现、有限验证完成，开发分支交付）
 
 - 用户批准并行开发此前四方向，并追加要求继续检查脱离预设组合的排班。目标是提高实际长期主班产出并控制生成等待；副表继续搁置。现有已发布 v1.1.3 保留为可用基线。

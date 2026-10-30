@@ -224,7 +224,73 @@ describe('SmartRosterConfigModal.vue', () => {
       expect(description).toContain('条件副表')
       expect(description).toContain('增加等待')
       expect(description).toContain('未必更高')
+      expect(description).toContain('逐份完整仿真')
+      expect(description).toContain('与主班相同的工休完整性门槛')
+      expect(description).toContain('结束并保留已验结果')
       expect(description).not.toMatch(/ALNS|贝叶斯|GP|查询预算|候选预算/)
+    } finally { wrapper.unmount() }
+  })
+
+  it('enables the existing shared budgets for backup comparison alone and explains its four-run limit', async () => {
+    const wrapper = mountModal()
+    try {
+      let count = wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]')
+      let time = wrapper.get<HTMLInputElement>('[data-test="optimization-time-budget-seconds"]')
+      expect(count.element.disabled).toBe(true)
+      expect(time.element.disabled).toBe(true)
+      await wrapper.get('[data-test="enable-backup-generation"]').setValue(true)
+      count = wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]')
+      time = wrapper.get<HTMLInputElement>('[data-test="optimization-time-budget-seconds"]')
+      expect(count.element.disabled).toBe(false)
+      expect(time.element.disabled).toBe(false)
+      expect(count.element.max).toBe('4')
+      expect(count.element.value).toBe('3')
+      expect(time.element.value).toBe('30')
+      expect(wrapper.get('[data-test="comparison-mode-description"]').text()).toContain('联合主副表比较')
+      expect(wrapper.text()).toContain('到时停止启动新候选，已开始的完整仿真会继续完成')
+      await count.setValue(8)
+      time = wrapper.get<HTMLInputElement>('[data-test="optimization-time-budget-seconds"]')
+      await time.setValue(999)
+      await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+      expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ enableBackupGeneration: true, enableMainOptimization: false,
+        optimizationMaxSimulations: 4, optimizationTimeBudgetMs: 300000 })
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)!)).toMatchObject({ optimizationMaxSimulations: 4 })
+    } finally { wrapper.unmount() }
+  })
+
+  it('shows backup precedence when both modes are selected, retaining the saved main-only budget until confirmation', async () => {
+    const saved = JSON.stringify({ ...DEFAULT_CONFIG, enableMainOptimization: true, allowFreeCombinations: true, optimizationMaxSimulations: 8 })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, saved)
+    const wrapper = mountModal()
+    try {
+      let count = wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]')
+      expect(count.element.max).toBe('8')
+      expect(count.element.value).toBe('8')
+      await wrapper.get('[data-test="enable-backup-generation"]').setValue(true)
+      count = wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]')
+      expect(count.element.max).toBe('4')
+      expect(count.element.value).toBe('4')
+      expect(wrapper.get<HTMLInputElement>('[data-test="allow-free-combinations"]').element.disabled).toBe(true)
+      expect(wrapper.get('[data-test="comparison-mode-description"]').text()).toContain('副表比较优先')
+      expect(wrapper.get('[data-test="comparison-mode-description"]').text()).toContain('不另行运行持续主班优化')
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(saved)
+      await wrapper.get('[data-test="enable-backup-generation"]').setValue(false)
+      count = wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]')
+      expect(count.element.max).toBe('8')
+      expect(count.element.value).toBe('8')
+      expect(wrapper.get<HTMLInputElement>('[data-test="allow-free-combinations"]').element.disabled).toBe(false)
+    } finally { wrapper.unmount() }
+  })
+
+  it('restores a legacy backup preference without changing saved settings or the existing budget defaults', () => {
+    const saved = JSON.stringify({ enableBackupGeneration: true, seed: 17, simulationSampleHours: 48 })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, saved)
+    const wrapper = mountModal()
+    try {
+      expect(wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]').element.disabled).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]').element.value).toBe('3')
+      expect(wrapper.get<HTMLInputElement>('[data-test="optimization-time-budget-seconds"]').element.value).toBe('30')
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(saved)
     } finally { wrapper.unmount() }
   })
 

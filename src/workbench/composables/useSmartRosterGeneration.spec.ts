@@ -110,12 +110,30 @@ it('bounds extra simulation work and requires true for either main optimization 
   })
 })
 
-it('keeps confirmed snapshots private until manual stop, then adopts the best roster and its same-run report', async () => {
-  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+it('keeps the existing default budget for legacy backup requests', () => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableBackupGeneration: true })
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options).toMatchObject({
+    enableBackupGeneration: true, optimizationMaxSimulations: 3, optimizationTimeBudgetMs: 30000,
+  })
+})
+
+it.each([false, true])('forwards backup budgets bounded to four simulations when main optimization is %j', enableMainOptimization => {
+  const incoming = { ...config, enableMainOptimization, enableBackupGeneration: true, optimizationMaxSimulations: 8, optimizationTimeBudgetMs: 999999 }
+  const original = structuredClone(incoming)
+  api.handleConfirmSmartRosterConfig(incoming)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].options).toMatchObject({
+    enableBackupGeneration: true, enableMainOptimization, optimizationMaxSimulations: 4, optimizationTimeBudgetMs: 300000,
+  })
+  expect(incoming).toEqual(original)
+})
+
+it.each(['main', 'backup'] as const)('keeps confirmed %s snapshots private until manual stop, then adopts the best roster and its same-run report', async mode => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: mode === 'main', enableBackupGeneration: mode === 'backup' })
   const worker = workers[0]!, callback = worker.onmessage!
   const original = JSON.stringify(store.workspace)
   const report = completed(worker.postMessage.mock.calls[0]![0].base)
   report.workspace!.name = 'confirmed best'
+  if (mode === 'backup') report.workspace!.compatibility.backupPlans = [{ name: 'confirmed backup', trigger: 'True' }]
   deliverIncumbent(callback, report)
   expect(JSON.stringify(store.workspace)).toBe(original)
   expect(session.calculationReport.value).toBeNull()
@@ -130,6 +148,7 @@ it('keeps confirmed snapshots private until manual stop, then adopts the best ro
   await nextTick()
   expect(store.workspace.name).toBe('confirmed best')
   expect(session.calculationReport.value).toBe(report.calculationReport)
+  expect(store.workspace.compatibility.backupPlans).toEqual(report.workspace!.compatibility.backupPlans)
   expect(session.calculationStatus.value).toContain('本次排班验证产出')
   expect(session.replaceStatusMessage.value).toContain('结束优化')
   expect(session.replaceStatusMessage.value).toContain('保留')
@@ -162,8 +181,11 @@ it.each(['blocked', 'workspace', 'score', 'report', 'summary', 'report score'] a
   expect(session.replaceStatusMessage.value).toBe('已中止自动排班计算。')
 })
 
-it.each(['weights', 'edit', 'unmount'] as const)('discards a confirmed incumbent after %s cancellation and ignores all late results', kind => {
-  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: true })
+it.each([
+  { kind: 'weights', backup: false }, { kind: 'edit', backup: false }, { kind: 'unmount', backup: false },
+  { kind: 'weights', backup: true }, { kind: 'edit', backup: true }, { kind: 'unmount', backup: true },
+])('discards a confirmed incumbent after $kind cancellation (backup=$backup) and ignores all late results', ({ kind, backup }) => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableMainOptimization: !backup, enableBackupGeneration: backup })
   const worker = workers[0]!, callback = worker.onmessage!
   const stale = completed(worker.postMessage.mock.calls[0]![0].base)
   stale.workspace!.name = 'stale confirmed'
@@ -326,6 +348,39 @@ it.each([
   expect(session.replaceStatusMessage.value).not.toContain('排班成功')
   expect(session.replaceStatusMessage.value).not.toContain('未发现更高产出')
   expect(session.replaceStatusMessage.value).not.toContain('工休完整性合格')
+  expect(session.calculationReport.value).toBe(report.calculationReport)
+})
+
+it.each([
+  { improved: true, qualityRepaired: false, gain: 12.34, message: '本次联合主副表比较额外提高 12.3 分/日' },
+  { improved: false, qualityRepaired: true, gain: -20, message: '联合主副表比较已采用工休完整性合格的方案' },
+  { improved: true, qualityRepaired: true, gain: 20, message: '联合主副表比较已采用工休完整性合格的方案' },
+  { improved: false, qualityRepaired: false, gain: 0, message: '联合主副表比较未发现更高产出' },
+])('describes the joint backup outcome without implying both optimization modes ran: $message', ({ improved, qualityRepaired, gain, message }) => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableBackupGeneration: true, enableMainOptimization: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.phases.jointBackup = { generatedCandidates: 4, evaluatedCandidates: 3, simulations: 3, cacheHits: 0, acceptedCandidates: 2,
+    improved, qualityRepaired, gain, termination: 'simulation-budget', candidates: [] }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value).toContain(message)
+  expect(session.replaceStatusMessage.value).not.toContain('本次持续优化')
+  if (qualityRepaired) expect(session.replaceStatusMessage.value).not.toContain('额外提高')
+  expect(session.calculationReport.value).toBe(report.calculationReport)
+})
+
+it.each([
+  { code: 'JOINT_BACKUP_NO_QUALIFIED_RESULT', message: '预算内未找到工休完整性合格的联合主副表，保留原快速结果及其诊断。', hasSummary: true },
+  { code: 'JOINT_BACKUP_EVALUATION_FAILED', message: '条件副表比较未完成，保留已验证方案：测试中断', hasSummary: false },
+])('prioritizes the original $code warning even without a joint summary', ({ code, message, hasSummary }) => {
+  api.handleConfirmSmartRosterConfig({ ...config, enableBackupGeneration: true })
+  const report = completed(workers[0]!.postMessage.mock.calls[0]![0].base)
+  report.diagnostics.push({ code, message })
+  if (hasSummary) report.phases.jointBackup = { generatedCandidates: 4, evaluatedCandidates: 3, simulations: 3, cacheHits: 0, acceptedCandidates: 0,
+    improved: false, qualityRepaired: false, gain: 0, termination: 'simulation-budget', candidates: [] }
+  deliver(workers[0]!.onmessage!, report)
+  expect(session.replaceStatusMessage.value?.startsWith(message)).toBe(true)
+  expect(session.replaceStatusMessage.value).not.toContain('排班成功')
+  expect(session.replaceStatusMessage.value).not.toContain('未发现更高产出')
   expect(session.calculationReport.value).toBe(report.calculationReport)
 })
 

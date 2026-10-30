@@ -108,6 +108,18 @@ function drain(input: Input, evaluate: (job: CandidateSimulationJob, index: numb
 afterEach(() => vi.restoreAllMocks())
 
 describe('bounded main-roster optimization dispatch', () => {
+  it('retains the baseline when equal product counts differ only by clock roundoff', () => {
+    const f = fixture(), score = 101066.66667276855
+    f.input.baseline.score = score
+    f.input.baseline.calculationReport = report(score)
+    f.input.baselineSummary = summary(score)
+    f.families([f.propose('roundoff-only')])
+    const { result } = drain(f.input, () => summary(101066.66667440505))
+    expect(result.score).toBe(score)
+    expect(result.workspace).toEqual(f.input.baseline.workspace)
+    expect(result.phases.mainOptimization).toMatchObject({ improved: false, gain: 0 })
+  })
+
   it.each([{ requested: undefined, expected: 3 }, { requested: 999, expected: 8 }])(
     'limits extra full F to $expected when requested=$requested', ({ requested, expected }) => {
       const f = fixture()
