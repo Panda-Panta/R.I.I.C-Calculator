@@ -28,6 +28,7 @@ import { compareProductionEfficiencyVectors, productionEfficiencyVector } from '
 import { generateProductionShiftAlternatives } from './jointBackupMainAlternatives'
 import { generateContextualCrewCandidates } from './jointBackupCrewSeeds'
 import { selectHighOutputMainCandidates } from './mainRosterSelection'
+import { mainRosterOptimizationSteps, type MainRosterOptimizationSummary } from './mainRosterOptimization'
 import { jointBackupSearchSteps, type JointBackupSearchResult } from './jointBackupSearch'
 import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
 
@@ -44,6 +45,12 @@ export interface SmartRosterOptions {
   enableDeepSearch?: boolean
   /** Compare bounded jointly generated main/conditional-backup configurations. */
   enableBackupGeneration?: boolean
+  /** Bounded extra main-roster search after the fast, complete initial result. */
+  enableMainOptimization?: boolean
+  /** Internal templates are proposals; original user-configured slots stay locked. */
+  allowFreeCombinations?: boolean
+  optimizationMaxSimulations?: number
+  optimizationTimeBudgetMs?: number
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
   productionWeights?: ProductionWeights
@@ -56,6 +63,8 @@ export interface SmartRosterProgress {
   totalTrials?: number
   bestScore?: number
   label: string
+  /** Same-input, complete, quality-accepted result available during continued search. */
+  incumbent?: SmartRosterResult
 }
 
 export interface SpecialOperatorSimData {
@@ -87,6 +96,7 @@ export interface SmartRosterResult {
   /** Completed output of the exact returned roster and generation settings. */
   calculationReport?: CalculationReport
   phases: {
+    mainOptimization?: MainRosterOptimizationSummary
     primarySelection?: { scores: { id: string; primaryHourlyScore: number | null }[]; selectedIds: string[] }
     /** Bounds describe the declared manufacturing model, never the full simulation objective. */
     calculation?: ComputedRosterCalculation
@@ -701,6 +711,33 @@ function* smartRosterSteps(
   result.status = 'draft'
   result.workspace = finalWorkspace
   result.score = finalScore
+
+  if (options.enableMainOptimization === true && options.enableBackupGeneration !== true) {
+    let lastConfirmed = structuredClone(result)
+    try {
+    const optimized = yield* mainRosterOptimizationSteps({
+      baseline: result,
+      baselineSummary: cache.get(simulationJob(finalWorkspace)),
+      inventory, userBase: base, lockedPositions, lockedOperators, cache,
+      makeJob: simulationJob,
+      allowFreeCombinations: options.allowFreeCombinations === true,
+      maxSimulations: options.optimizationMaxSimulations,
+      timeBudgetMs: options.optimizationTimeBudgetMs,
+      onIncumbent: report => {
+        lastConfirmed = structuredClone(report)
+        onProgress?.({ phase: 'searching', phaseProgress: 0,
+          bestScore: report.score ?? undefined, label: '完整主班方案已就绪，正在预算内继续优化。', incumbent: report })
+      },
+    })
+    Object.assign(result, optimized)
+    } catch (error) {
+      Object.assign(result, lastConfirmed)
+      result.diagnostics.push({ code: 'MAIN_OPTIMIZATION_FAILED', message: `持续优化未完成，保留最近已完成排班及其同次报告：${error instanceof Error ? error.message : String(error)}` })
+    }
+    finalScore = result.score ?? finalScore
+  } else if (options.enableMainOptimization === true) {
+    result.diagnostics.push({ code: 'MAIN_OPTIMIZATION_BACKUP_UNSUPPORTED', message: '持续主班优化与条件副表实验分别运行，本次保留副表实验结果。' })
+  }
 
   onProgress?.({
     phase: 'done',

@@ -1,3 +1,18 @@
+# 2026-10-30 主班联合优化与自由组合（实现、有限验证完成，开发分支交付）
+
+- 用户批准并行开发此前四方向，并追加要求继续检查脱离预设组合的排班。目标是提高实际长期主班产出并控制生成等待；副表继续搁置。现有已发布 v1.1.3 保留为可用基线。
+- 隔离：当前干净 42e11c8 新建自有 codex/roster-free-combinations-20261030 专项分支；test 属于其他批次，旧15方法、H实验、原工程未提交计划和安装数据全部保留。修改前源码归档于本机 artifacts/main-roster-next-20261030/backup。
+- 设计：默认快速流程保持；增加显式主班持续优化选项。完成原快速入口的有效表后，按限定额外F次数/墙钟预算比较恢复策略与自由跨房候选，及时发布已完成候选快照；停止时可保留当前最好结果。G只提案，最终完整F和质量门槛决定胜者。
+- 预设组合是搜索提示：自由组合选项允许拆解内部自动构造的模板，仍保留输入中已配置工位/人员锁、实际库存和技能阶段、物理唯一、完整主替、暖机和恢复约束。候选中真实技能按实际驻员重算，不继承被拆模板的理论加成。
+- 分工：主agent独占共享选项/进度接口、smartRoster接线、持续优化调度模块、计划/结构/文档/Git；recovery agent独占mainRosterRecoveryCandidates.ts/spec；free agent独占mainRosterFreeCandidates.ts/spec；duty agent独占mainRosterDutyEvaluation.ts/spec及必要candidateSimulation.ts/spec质量字段；UI agent独占settings、SmartRosterConfigModal、worker、useSmartRosterGeneration及对应测试和最小Shell取消按钮接线。其他文件越界须先报依赖。
+- 接口：SmartRosterOptions新增 enableMainOptimization/allowFreeCombinations/optimizationMaxSimulations/optimizationTimeBudgetMs（均可缺省，旧配置兼容）。两生成模块统一 generateMainRosterRecoveryCandidates / generateMainRosterFreeCandidates(workspace,inventory,{lockedPositions,lockedOperators,maxCandidates, userBase?,allowFreeCombinations?})，返回 {candidates:[{id,workspace}],diagnostics:[{code,message}]}。候选只提案，不新跑F。candidateSimulation可增加可选quality摘要，不改旧调用成功语义；新优化层才要求合格质量。
+- 检查与验收：新增模块定点测试、实际调用接线、类型、构建/结构及独立审查；不重跑此前全仓回归/大规模矩阵。用户另行要求的自由组合需要专项核原完整候选在锁、实际练度、技能联动、工休和真实F上的差异；有限检查不足以证明增益时如实记录，不发布为已增产。旧H贸易误差28–31%的模型不得冒充可靠预测排序，不修改原生执行规则去迎合分数。
+- 第一轮实现：4个并行实现包已交付，独立预算/入口测试与集成审查另行完成；首次统一13文件247项通过，后补7项真实smartRoster入口受控测试，两文件61项通过且0真实F。统一类型检查先修复测试options可空及可变变量窄化后通过。可选阶段异常回退保留最近完整结果，不称自然Native异常已复现。
+- 用户本轮明确要求继续检查自由组合，因此仅恢复本任务的有限专项F，不恢复旧全仓/15方法大矩阵。单场252三金3次新完整F：baseline101066.67/普通疲劳0/strict=true；free1为93866.67/疲劳83.33h；free4为96400/疲劳41.06h，两者strict=false，质量门槛拒绝且保留baseline。243复杂跨房绑定无候选，未对其新增F；此处原userBase为空，非空锁是定点证据，不能称真实F已覆盖非空锁。
+- 反例驱动迭代：纯读取真实报告发现疲劳集中在跨房换人后的耗尽组，原普通替班有上岗且无疲劳，没有对应延期记录；优先检查人物耗尽策略与内部同步组不适配，不推断已证明唯一因果。正在新增受限的内部组独立恢复候选，保持暖机耗尽conf/替班/用户原组与锁，总静态预算不扩张，随后最多2次新F检查这两份修复。另授权1次252四金恢复目标集合的真实F，账本分开记录。
+- 最终有限结果：6次新完整F、0H/短窗/重试。恢复目标候选为101133.33334465分/日、普通疲劳0、strict=true、pending0，相比历史同条件252四金100400.00增加733.33（0.7304%），历史基线本轮未重跑。自由三金原表101066.67合格；原自由1/4疲劳83.33/41.06h；仅改变6个内部组字段的修复版均疲劳0且合格，但分别96133.33和95800.00，仍低于原表，保留原方案。不得将工休修复等同增产或宣称任意自由组合更优。
+- 验收与边界：统一14文件275项通过；仅测试数组末项访问改为现有TS目标兼容语法后，受影响14项和全局类型复查。Vite生产构建22.80秒成功（原大chunk提示保留），结构索引同步并校验；独立只读审查及v2增量无未关闭P1/P2，追加非空原表槽/人员锁/外部高级排除为真实输入0F探针，不冒充非空锁位Native F。没有全仓回归、真实Worker/游戏、长窗收敛或全域最优证明。
+- Git与软件交付：已推送自有开发分支 codex/roster-free-combinations-20261030，程序提交 d574c4476bf3da4673ceeb41fec77771b688234c，已创建并附加 [草稿 PR #36](https://github.com/Panda-Panta/R.I.I.C-Calculator/pull/36)，基于当前远端main 42e11c8；新选项默认关闭并明确尚未进入v1.1.3发行包。提交代码与说明、供PR审阅，不覆盖稳定Tools或再建Release。旧H预测误差未解决，实际择优使用同次完整F质量。源码备份SHA256 db7e8ea4d082df66aeed281c469bd3bbca0e5cc22e99608ce055ebeafa251912；原件/失败/账本/审查/构建记录位于本机 artifacts/main-roster-next-20261030。
 # 2026-10-29 v1.1.3 高产主班稳定发布（已合入主线、发布并安装）
 
 - 用户已授权：推送当前已完善、效果最好的稳定主班模型至自有 main 与本地软件目录，创建 Release，并同步 GitHub README 和自动排班说明。沿用 agent-dev-workflow、领域 skill 与 DEVELOPMENT_WORKFLOW.md，采用既有专项分支 codex/auto-main-backup-20261028 和普通 PR #34；共享 test 属于其他批次，本轮不夹带或改写。

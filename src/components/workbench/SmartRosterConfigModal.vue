@@ -54,6 +54,46 @@
         </div>
       </fieldset>
 
+      <fieldset class="config-fieldset">
+        <legend class="fieldset-legend">
+          <span class="phase-badge phase-3">可选</span> 持续主班优化
+        </legend>
+        <div class="checkbox-row">
+          <label class="checkbox-label" for="enable-main-optimization">
+            <input id="enable-main-optimization" v-model="form.enableMainOptimization" type="checkbox" class="mower-checkbox" data-test="enable-main-optimization" />
+            <span class="checkbox-text">
+              <strong>继续比较主班与恢复方案</strong>
+              <small class="checkbox-hint">先生成并验证可用排班，再按预算继续比较。可随时结束并保留已确认的较优方案，产出未必更高。</small>
+            </span>
+          </label>
+        </div>
+        <div class="checkbox-row">
+          <label class="checkbox-label" for="allow-free-combinations">
+            <input id="allow-free-combinations" v-model="form.allowFreeCombinations" :disabled="!form.enableMainOptimization" type="checkbox" class="mower-checkbox" data-test="allow-free-combinations" />
+            <span class="checkbox-text">
+              <strong>允许自由组合</strong>
+              <small class="checkbox-hint" data-test="free-combinations-description">允许打散自动构造的内部预设组合，按实际驻员重新评价联动；输入中已配置工位与人员继续锁定。</small>
+            </span>
+          </label>
+        </div>
+        <div class="field-row">
+          <div class="field-item">
+            <label for="optimization-max-simulations">
+              <span>额外完整仿真上限</span>
+              <small class="field-tip">初始结果确认后最多追加 1–8 次比较</small>
+            </label>
+            <input id="optimization-max-simulations" v-model.number="form.optimizationMaxSimulations" :disabled="!form.enableMainOptimization" type="number" min="1" max="8" step="1" class="mower-num-input" data-test="optimization-max-simulations" />
+          </div>
+          <div class="field-item">
+            <label for="optimization-time-budget-seconds">
+              <span>继续比较的时间预算（秒）</span>
+              <small class="field-tip">到时停止启动新候选，已开始的完整仿真会继续完成</small>
+            </label>
+            <input id="optimization-time-budget-seconds" v-model.number="optimizationTimeBudgetSeconds" :disabled="!form.enableMainOptimization" type="number" min="1" max="300" step="1" class="mower-num-input" data-test="optimization-time-budget-seconds" />
+          </div>
+        </div>
+      </fieldset>
+
       <!-- Optional additional comparison -->
       <fieldset class="config-fieldset">
         <legend class="fieldset-legend">
@@ -174,7 +214,7 @@
 </template>
 
 <script lang="ts">
-import type { SmartRosterConfig } from '../../workbench/settings'
+import { SMART_ROSTER_OPTIMIZATION_DEFAULTS, type SmartRosterConfig } from '../../workbench/settings'
 export type { SmartRosterConfig } from '../../workbench/settings'
 
 export const STORAGE_KEY_SMART_ROSTER = 'arcinc-smart-roster-options-v1'
@@ -187,6 +227,7 @@ export const DEFAULT_CONFIG: SmartRosterConfig = {
   simulationWarmupHours: 24,
   enableDeepSearch: false,
   enableBackupGeneration: false,
+  ...SMART_ROSTER_OPTIMIZATION_DEFAULTS,
   droneTarget: 'gold',
   seed: -1,
 }
@@ -199,6 +240,7 @@ import { droneFacilities } from '../../workbench/droneTargets'
 import type { RosterWorkspace } from '../../domain/roster'
 import ProductionWeightsEditor from './ProductionWeightsEditor.vue'
 import { normalizeProductionWeights, type ProductionWeights } from '../../domain/productionWeights'
+import { normalizeSmartRosterOptimizationOptions } from '../../workbench/settings'
 
 const props = withDefaults(
   defineProps<{
@@ -254,6 +296,7 @@ const loadPersistedConfig = (): SmartRosterConfig => {
         simulationWarmupHours: Math.max(6, Math.min(48, Number(parsed.simulationWarmupHours) || DEFAULT_CONFIG.simulationWarmupHours)),
         enableDeepSearch: parsed.enableDeepSearch !== undefined ? Boolean(parsed.enableDeepSearch) : DEFAULT_CONFIG.enableDeepSearch,
         enableBackupGeneration: parsed.enableBackupGeneration === true,
+        ...normalizeSmartRosterOptimizationOptions(parsed),
         droneTarget: ['gold', 'exp', 'trading', 'none'].includes(parsed.droneTarget) ? parsed.droneTarget : props.initialDroneTarget,
         droneRoomId: typeof parsed.droneRoomId === 'string' ? parsed.droneRoomId : '',
         seed: Number.isInteger(parsed.seed) ? parsed.seed : props.initialSeed,
@@ -271,6 +314,10 @@ const loadPersistedConfig = (): SmartRosterConfig => {
 }
 
 const form = ref<SmartRosterConfig>(loadPersistedConfig())
+const optimizationTimeBudgetSeconds = computed({
+  get: () => (form.value.optimizationTimeBudgetMs ?? SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationTimeBudgetMs) / 1000,
+  set: (seconds: number) => { form.value.optimizationTimeBudgetMs = Number(seconds) * 1000 },
+})
 
 watch(
   () => props.open ?? props.visible ?? false,
@@ -323,6 +370,7 @@ const handleConfirm = () => {
     simulationWarmupHours: Math.max(6, Math.min(48, Math.floor(form.value.simulationWarmupHours) || 6)),
     enableDeepSearch: Boolean(form.value.enableDeepSearch),
     enableBackupGeneration: form.value.enableBackupGeneration === true,
+    ...normalizeSmartRosterOptimizationOptions(form.value),
     droneTarget: facilities.value.find(f => f.roomId === selectedRoom.value)?.target ?? 'none',
     droneRoomId: selectedRoom.value === 'none' ? '' : selectedRoom.value,
     seed: Number.isInteger(form.value.seed) ? form.value.seed : -1,
@@ -483,6 +531,12 @@ const handleConfirm = () => {
 .mower-select-input:focus {
   border-color: #42d6c7;
   box-shadow: 0 0 0 2px rgba(66, 214, 199, 0.2);
+}
+
+.mower-num-input:disabled,
+.mower-checkbox:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .checkbox-row {
