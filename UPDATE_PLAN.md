@@ -1,3 +1,23 @@
+# 2026-10-31 工休模型跨布局稳健性（验证完成，交付test候选）
+
+- 用户再次要求完善工休模型，跨布局测试直到误差可接受。基线为已推送test的5b32fed09059d391416782597213562f3848b5fb，当前codex/duty-model-accuracy-20261030及工作树均已核对；沿用本次专项分支，保留原13份用户表、全部原始H/F证据与个人数据。本轮仍交付test，不更新main、Tools或Release。
+- 目标：对153、243、252三金、252四金、342五类场景检验最终版本的独立种子泛化；补查工休验收是否漏掉疲劳占岗、完整时长或角色差异；优化有真实依据的模型实现，服务自动排班的正确筛选。默认完整F择优不变，不凭已有五例浮点级匹配宣称全域/实机精确，也不为近似模型拟合倍率。
+- 固定门槛继续为24h预热＋72h采样，活跃工作者有效工时MAE≤0.1h、逐人工作/休息/待命最大误差各≤0.5h；疲劳占岗、联合床位/岗位、Native资格及资源分项分别报告。验收代码补查如发现可构造漏验则修复并保持原门槛，不放宽标准迎合结果。新增种子和场景在执行前冻结清单，诊断与最终留出区分。
+- 复用资源：src/optimizer/mainRosterDuty*、scripts/benchmark-duty-model.mjs、上轮matrix/native-repair-3最终5组输入和已保存Native，以及user-mower/jobs/m01-job.json。实际日历唯一路径由runner持有；本轮artifacts/duty-model-robustness-20261031下按agent分目录保存，不重写上轮数据或原表。暂不重复13份含副表长耗时生产检查；它们不在当前H支持范围。
+- 第一批并行：prediction-profile只读分析模型耗时及缺失机制，独占profile/，不启动日历；acceptance-hardening检查/实现mainRosterDutyAcceptance.ts及对应.spec.ts，独占acceptance/，不得改阈值；layout-validation独占matrix/及唯一本轮新H/F执行权，先准备五布局×两新种子的输入与现有工具适用性清单，root冻结后执行；root负责Trace/共享API、计划、源码备份、集成、文档/结构及Git。重要变更完成后再派独立审查。
+- 调用与来源：本批计划至多10H＋10完整F；先在当前Native依赖冻结后取得F，H候选冻结后配对。默认24＋72/.25、原库存/权重/无人机none/主表配置保持，只作显式种子派生；任何进一步实际调用必须先登记必要性，不以短窗或重放冒充完整新验证。不为比较H速度并行争用CPU，保存H日历、转换、积分成本。
+- 备份：artifacts/duty-model-robustness-20261031/backup/source-5b32fed.zip及manifest.json；先核验SHA256后派工。验收包含有意义反例的定点回归、跨布局原始时长误差与联合时序、类型/独立构建/结构/diff、源码及最终证据独立审查；候选变化仅重验实际受影响范围。新增开发如影响Native则失效的F不得复用。
+- 备份SHA256已核：4307490f8aa962c13e21b62831eb33d4b26dfc7ca8f75ca582e52848ee48fe70。实际分工复用duty_event_diagnosis（profile）、duty_acceptance_checks（Acceptance）及duty_layout_runner（唯一本轮H/F），均已同时启动；root统一集成，沿用个人模式。
+- 新结果前固定的补强契约：原有效工作MAE0.1h和逐人W0.5h保持；新增疲劳占岗E、物理占岗W+E、主位有效工时和替班有效工时各max0.5h，旧四字段调用自动补默认值；休息/待命max仍0.5h但覆盖全部operator，避免遗漏纯宿管。此为显式预测验收，不在默认自动排名，不改变Native资格。先用真实Comparator的守恒夹具核验反例，非法伪造行不据此声称正式业务误接纳。
+- 已核新输入：matrix/INPUT_MANIFEST.json SHA256 f7667ff32c8bc3386223f3029b8d171275131aab2054efc6b77640996e8ed349，五类×seed7/314159均仅改options.production.seed，root逐份独立核旧/新哈希、恢复seed后JSON全等、窗口/库存/none/noBP保持。两新seed未用于前轮实际矩阵；7作为诊断，314159作为冻结候选留出。153继续明确沿用原主表派生provenance，不把它写成原有无人机及副表原配置。
+- 耗时研究已结束：profile/prediction-profile.md/json仅消费旧保存数据，0新H/F/日历；22,344阶段精确心情/效率完整变化输入重复0，故不加占员cache或改率层/Native。旧H日历占总成本91.6%–94.4%，即便全省转换等开销理论上也仅省5.6%–8.4%；这些旧观察和一次纯重放采样不作新提速证据。本轮优先保证精度，不增加没有收益依据的缓存复杂度。
+- 纯夹具与集成：4个真实Comparator可达的守恒反例证实旧验收覆盖不足，修复后验收60＋Calibration14一次组合74通过。全局类型初检发现4处Object.hasOwn与当前lib不兼容，改为hasOwnProperty.call后只重跑受影响60项通过，原14项结果按纯兼容改动保留；最终类型复查exit0，独立源码审查无未关闭P1/P2。一次Vite构建26.61s成功（3113模块、既有大chunk提示），结构索引检查通过，未改变Native/H日历。
+- CLI复用接线由root独占scripts/benchmark-duty-model.mjs：沿现有保存报告重放入口输出accuracy.json、summary准确度状态和REPORT列，明确“重放完成≠精度或Native资格通过”，仍0新H/F、旧证据保护及来源校验不变。新增实际接线验收仅重放历史正/负两例，由acceptance agent只读准备输入，root执行；不新增完整日历。此脚本不在Native/H束依赖闭包，未改变前述构建的应用输入。
+- 最终新矩阵：10H/10F全96h完成，0失败/0重试；真实H入口均buildMainRosterDutyTrajectory，不接收F报告，原API轨迹为主结果，额外同H纯转换只单列0日历成本及一致性。冻结8指标10/10达线，工作MAE最大7.388e-14h，逐人W/E/physical/main/sub/全体R/I最大均≤2.558e-13h；旧5对纯重评5/5另列。整个日历/H与Native依赖未改变，未为了数字贴合修改调度或拟合倍率。
+- 资格/资源边界：Native8/10，153两新seed均普通疲劳0但骑士组期末pending1；其他四布局两seed结果相同，不虚称10个独立随机路径。153/314159虚拟赤金H9.794148/F13/72h，误差−24.6604%；订单LMD最大相对差+2.66881%（153/7，+2989.064/72h），加权分最大绝对差567.966/日、最大相对差−0.545771%。不将工休精确提升为离散产出精确或Native候选全合格。
+- 官方CLI实测：cli/VERIFICATION.json记录同一有效243参考对历史sampled正例accepted、expected-orders负例rejected，operation completed=true但allDutyAccuracyAccepted=false，两例Native质量相同且eligible。新增日历/H/F/guard尝试全0，源与输入保护通过；直接F完整闭包182与CLI按Native目录过滤152是不同scope，均如实记录。脚本Node语法检查、独立增量审查通过，未重复前述已完成的应用构建。
+- 收尾：README/模型说明更新本轮实际结果与范围，现有结构无新增路径；独立最终证据审查、最终diff/结构及六文件候选绑定后普通快进推送test。提交、源码树、远端回读及本地Git对齐另记本轮delivery/DELIVERY.json，原始用户图/库/排班、产物均不提交；main、Tools及Release不变。
+
 # 2026-10-31 工休模型跨布局精度（验证完成，交付test候选）
 
 - 用户要求继续完善工休模型，并在各布局测试至误差可接受。起点为自有 codex/duty-model-accuracy-20261030、HEAD=318e790，工作树干净；保留用户库、排班、旧原始证据，默认完整 Native/F 择优不变。本轮只交付 test 开发候选，不更新 main、Tools 或 Release。

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { DutyOperatorComparison, DutyPredictionComparison, DutyPredictionError } from './mainRosterDutyCalibration'
+import { resolveDroneCapacity } from '../domain/droneCapacity'
+import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
+import { createDroneState } from '../simulator/droneTimeline'
+import { createLedger } from '../simulator/resourceLedger'
+import type { ScheduleSimulationReport } from '../simulator/scheduleSimulation'
+import { createDefaultWorkspace } from '../workbench/defaults'
+import type { CandidateSimulationJob } from './candidateSimulation'
+import { compareMainRosterDutyPrediction, type DutyOperatorComparison, type DutyPredictionComparison, type DutyPredictionError } from './mainRosterDutyCalibration'
 import { evaluateMainRosterDutyAccuracy } from './mainRosterDutyAcceptance'
+import { integrateMainRosterDutyOutput } from './mainRosterDutyIntegration'
 
 function error(difference = 0, observed = 24): DutyPredictionError {
   const predicted = observed + difference, actualDifference = predicted - observed
@@ -30,6 +38,58 @@ function fixture(overrides: Partial<DutyPredictionComparison> = {}): DutyPredict
 
 const metricKeys = ['meanAbsoluteWorkHours', 'maxAbsoluteWorkHours', 'maxAbsoluteRestHours', 'maxAbsoluteIdleHours'] as const
 const defaults = { meanAbsoluteWorkHours: .1, maxAbsoluteWorkHours: .5, maxAbsoluteRestHours: .5, maxAbsoluteIdleHours: .5 }
+const workDefaults = { maxAbsoluteExhaustedHours: .5, maxAbsolutePhysicalWorkHours: .5,
+  maxAbsoluteMainWorkHours: .5, maxAbsoluteSubstituteWorkHours: .5 }
+const workMetricKeys = ['maxAbsoluteExhaustedHours', 'maxAbsolutePhysicalWorkHours', 'maxAbsoluteMainWorkHours', 'maxAbsoluteSubstituteWorkHours'] as const
+
+type DutyState = { main: number; substitute: number; exhausted: number; rest: number; idle: number }
+const exactState: DutyState = { main: 24, substitute: 0, exhausted: 0, rest: 24, idle: 24 }
+
+/** Complete paired report fixtures through the real comparator; no calendar runs. */
+function pairedComparison(pairs: Array<{ predicted: DutyState; observed: DutyState }> = [{ predicted: exactState, observed: exactState }]) {
+  const workspace = createDefaultWorkspace()
+  const ids = ['char_002_amiya', 'char_123_fang', 'char_212_ansel', 'char_236_rope', 'char_237_gravel']
+  const workSlots = Object.values(workspace.mainPlan.facilities).filter(room => room.type !== 'dormitory').flatMap(room => room.slots)
+  const restSlots = Object.values(workspace.mainPlan.facilities).filter(room => room.type === 'dormitory').flatMap(room => room.slots)
+  pairs.forEach((pair, index) => {
+    const physical = pair.predicted.main + pair.predicted.substitute + pair.predicted.exhausted
+      + pair.observed.main + pair.observed.substitute + pair.observed.exhausted
+    const slot = physical > 0 ? workSlots.shift()! : restSlots.shift()!
+    slot.occupant = { kind: 'operator', operatorId: ids[index]! }
+  })
+  const job: CandidateSimulationJob = { workspace, assumptions: { idleOperators: [] }, options: {
+    schedulingModel: 'mower-alpha', sampleHours: 72, warmupHours: 24, maxStepHours: .25,
+    production: { outputMode: 'potential', droneTarget: 'none', seed: 42 },
+  } }
+  const operator = (state: DutyState, index: number): ScheduleSimulationReport['operators'][number] => ({
+    operatorId: ids[index]!, operatorName: ids[index]!, mainWorkHours: state.main, substituteWorkHours: state.substitute,
+    workHours: state.main + state.substitute, exhaustedHours: state.exhausted, restHours: state.rest, idleHours: state.idle,
+    workFraction: (state.main + state.substitute) / 72, workRestRatio: state.rest ? (state.main + state.substitute) / state.rest : null,
+    initialMorale: 24, finalMorale: 24,
+  })
+  const calendar: ScheduleSimulationReport = { schemaVersion: 1, engine: 'mower-morale-v1', success: true,
+    observedHours: 72, elapsedHours: 96,
+    inputs: { schedule: compileRosterSchedule(workspace, job.assumptions), options: { ...job.options, recordSegments: true } },
+    assumptions: { schedulingModel: 'mower-alpha', warmupHours: 24, sampleHours: 72, maxStepHours: .25,
+      warmupModel: 'continuous', restingThreshold: .65, operationDurationHours: 0, dormAtmosphere: 'fixture', singleRecoveryTarget: 'fixture' },
+    operators: pairs.map((pair, index) => operator(pair.predicted, index)), rooms: [], events: [], segments: [], diagnostics: [], shiftDeferrals: [] }
+  calendar.inputs.schedule.sourceWorkspace.droneCapacity = resolveDroneCapacity(workspace)
+  Object.assign(calendar.inputs.schedule.assumptions, { droneRoom: null, runOrderSimulationMode: 'ideal', idealRunOrderWakeOnly: true })
+  delete calendar.inputs.options.production
+  const native = structuredClone(calendar)
+  native.inputs.options = { ...structuredClone(job.options), recordSegments: false }
+  native.operators = pairs.map((pair, index) => operator(pair.observed, index))
+  native.production = { success: true, ledger: createLedger({}), sample: { completed: { exp: 0, gold: 0, orderLmd: 0 },
+    opening: {}, closing: {}, inflows: {}, outflows: {}, net: {} }, materialsConsumed: {}, drones: createDroneState(0, 200),
+    manufacturing: [], trading: [], events: [], assumptions: { outputMode: 'potential', inventoryMode: 'unlimited', seed: 42,
+      runOrderMode: 'ideal', droneTarget: 'none', droneReserve: 0, collectionIntervalHours: 0, orderSnapshotPolicy: 'fixture' } }
+  const projection = integrateMainRosterDutyOutput({ status: 'complete', window: { warmupHours: 24, sampleHours: 72, maxStepHours: .25 },
+    sourceKind: 'predicted-schedule', nativeScheduleParity: 'not-established', operators: calendar.operators,
+    phases: [{ start: 24, end: 96, jointStateKey: 'fixture', output: { status: 'quantified',
+      rates: { exp: 0, gold: 0, orderLmd: 0, virtualGold: 0, fragments: 0, orundum: 0 }, diagnostics: [], assumptions: [] } }],
+    diagnostics: [], assumptions: [], cost: { scheduleOnlyCalls: 0, elapsedMs: 0, cpuMs: null, phaseEvaluations: 1 } })
+  return compareMainRosterDutyPrediction(job, calendar, native, projection)
+}
 
 describe('theoretical duty accuracy acceptance', () => {
   it('rejects a large individual error even when score error and active-worker mean are small', () => {
@@ -65,7 +125,7 @@ describe('theoretical duty accuracy acceptance', () => {
         maxAbsoluteRestHours: .5, maxAbsoluteIdleHours: .5, maxWorkFractionPercentagePoints: 100 * .5 / 72 } })
     const result = evaluateMainRosterDutyAccuracy(f)
     expect(result.status).toBe('accepted')
-    expect(result.thresholds).toEqual(defaults)
+    expect(result.thresholds).toEqual({ ...defaults, ...workDefaults })
     expect(result.issues).toEqual([])
   })
 
@@ -177,5 +237,106 @@ describe('theoretical duty accuracy acceptance', () => {
     f.operators.push(structuredClone(f.operators[0]!))
     f.activeWorkerErrors.count = 2
     expect(evaluateMainRosterDutyAccuracy(f).status).toBe('unavailable')
+  })
+
+  it('rejects comparator-produced fatigue error split into acceptable rest and idle errors', () => {
+    const comparison = pairedComparison([{ observed: exactState,
+      predicted: { main: 24, substitute: 0, exhausted: .6, rest: 23.7, idle: 23.7 } }])
+    expect(comparison.status).toBe('comparable')
+    expect(comparison.activeWorkerErrors.meanAbsoluteWorkHours).toBe(0)
+    expect(comparison.activeWorkerErrors.maxAbsoluteRestHours).toBeCloseTo(.3)
+    expect(comparison.activeWorkerErrors.maxAbsoluteIdleHours).toBeCloseTo(.3)
+    const result = evaluateMainRosterDutyAccuracy(comparison)
+    expect(result.status).toBe('rejected')
+    expect(result.issues.some(issue => issue.includes('maxAbsoluteExhaustedHours'))).toBe(true)
+  })
+
+  it('checks physical work independently when work and exhaustion each stay within their own bounds', () => {
+    const comparison = pairedComparison([{ observed: exactState,
+      predicted: { main: 24.5, substitute: 0, exhausted: .5, rest: 23.5, idle: 23.5 } },
+    ...Array.from({ length: 4 }, () => ({ observed: exactState, predicted: exactState }))])
+    expect(comparison.status).toBe('comparable')
+    expect(comparison.activeWorkerErrors.meanAbsoluteWorkHours).toBe(.1)
+    const result = evaluateMainRosterDutyAccuracy(comparison)
+    expect(result.status).toBe('rejected')
+    expect(result.issues.some(issue => issue.includes('maxAbsolutePhysicalWorkHours'))).toBe(true)
+    expect(result.issues.some(issue => issue.includes('maxAbsoluteExhaustedHours'))).toBe(false)
+  })
+
+  it('does not cancel a large main/substitute role swap into zero total work error', () => {
+    const comparison = pairedComparison([{ observed: exactState,
+      predicted: { main: 0, substitute: 24, exhausted: 0, rest: 24, idle: 24 } }])
+    expect(comparison.status).toBe('comparable')
+    expect(comparison.activeWorkerErrors.maxAbsoluteWorkHours).toBe(0)
+    const result = evaluateMainRosterDutyAccuracy(comparison)
+    expect(result.status).toBe('rejected')
+    expect(result.issues.some(issue => issue.includes('maxAbsoluteMainWorkHours'))).toBe(true)
+    expect(result.issues.some(issue => issue.includes('maxAbsoluteSubstituteWorkHours'))).toBe(true)
+  })
+
+  it('checks rest and idle errors for a nonworking dorm operator omitted from the active summary', () => {
+    const comparison = pairedComparison([{ observed: exactState, predicted: exactState },
+      { observed: { main: 0, substitute: 0, exhausted: 0, rest: 72, idle: 0 },
+        predicted: { main: 0, substitute: 0, exhausted: 0, rest: 0, idle: 72 } }])
+    expect(comparison.status).toBe('comparable')
+    expect(comparison.activeWorkerErrors.count).toBe(1)
+    expect(comparison.activeWorkerErrors.maxAbsoluteRestHours).toBe(0)
+    const result = evaluateMainRosterDutyAccuracy(comparison)
+    expect(result.status).toBe('rejected')
+    expect(result.issues.some(issue => issue.includes('maxAbsoluteRestHours'))).toBe(true)
+    expect(result.issues.some(issue => issue.includes('maxAbsoluteIdleHours'))).toBe(true)
+  })
+
+  it('derives signed physical differences before taking absolute error', () => {
+    const observed = { main: 24, substitute: 0, exhausted: 1, rest: 23, idle: 24 }
+    const comparison = pairedComparison([{ observed,
+      predicted: { main: 24.5, substitute: 0, exhausted: .5, rest: 23, idle: 24 } },
+    ...Array.from({ length: 4 }, () => ({ observed: exactState, predicted: exactState }))])
+    expect(comparison.status).toBe('comparable')
+    const result = evaluateMainRosterDutyAccuracy(comparison, { ...defaults, maxAbsolutePhysicalWorkHours: 0 })
+    expect(result.status).toBe('accepted')
+  })
+
+  it.each(workMetricKeys)('keeps legacy four-field callers compatible and makes %s inclusive and independently configurable', metric => {
+    const pair = metric === 'maxAbsoluteMainWorkHours' || metric === 'maxAbsoluteSubstituteWorkHours'
+      ? { observed: exactState, predicted: { main: 23.5, substitute: .5, exhausted: 0, rest: 24, idle: 24 } }
+      : { observed: exactState, predicted: { main: 24, substitute: 0, exhausted: .5, rest: 23.5, idle: 24 } }
+    const comparison = pairedComparison([pair])
+    expect(comparison.status).toBe('comparable')
+    expect(evaluateMainRosterDutyAccuracy(comparison, defaults).status).toBe('accepted')
+    expect(evaluateMainRosterDutyAccuracy(comparison, { ...defaults, [metric]: .5 }).status).toBe('accepted')
+    const result = evaluateMainRosterDutyAccuracy(comparison, { ...defaults, [metric]: .5 - 1e-9 })
+    expect(result.status).toBe('rejected')
+    expect(result.issues.some(issue => issue.includes(metric))).toBe(true)
+  })
+
+  it.each([null, undefined, NaN, Infinity, -Infinity, -1])('does not replace explicitly invalid added thresholds (%s) with defaults', value => {
+    for (const metric of workMetricKeys) {
+      expect(evaluateMainRosterDutyAccuracy(fixture(), Object.assign({ ...defaults }, { [metric]: value })).status, metric).toBe('unavailable')
+    }
+  })
+
+  it('keeps corrupt time conservation unavailable, while the comparator already rejects such reports', () => {
+    const invalid = pairedComparison([{ observed: exactState,
+      predicted: { main: 24, substitute: 0, exhausted: 24, rest: 24, idle: 24 } }])
+    expect(invalid.status).toBe('invalid')
+    expect(evaluateMainRosterDutyAccuracy(invalid).status).toBe('unavailable')
+    // Defense for a modified/deserialized comparison, not a producer-reachable report.
+    const modified = fixture()
+    modified.operators[0]!.hours.exhaustedHours = error(.1, 0)
+    expect(evaluateMainRosterDutyAccuracy(modified).status).toBe('unavailable')
+  })
+
+  it('keeps inconsistent main plus substitute totals unavailable', () => {
+    const modified = fixture()
+    modified.operators[0]!.hours.mainWorkHours = error(.1)
+    expect(evaluateMainRosterDutyAccuracy(modified).status).toBe('unavailable')
+  })
+
+  it('permits the comparator conservation tolerance without turning it into an error threshold allowance', () => {
+    const comparison = pairedComparison([{ predicted: exactState,
+      observed: { main: 24, substitute: 0, exhausted: 1e-6, rest: 24, idle: 24 } }])
+    expect(comparison.status).toBe('comparable')
+    expect(evaluateMainRosterDutyAccuracy(comparison).status).toBe('accepted')
   })
 })

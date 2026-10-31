@@ -24,6 +24,7 @@ All manifest paths resolve relative to the manifest. baseline is a saved old pro
 The source is this script's project. Output must not exist; old reports are never changed.
 This command converts saved H segments and integrates rates. A runtime guard rejects
 any attempt to start simulateSchedule; native F, short F, and new H counts must be zero.
+Each case includes accuracy.json with duty-hour acceptance, separate from Native quality.
 `
 
 function argumentsFrom(argv) {
@@ -121,6 +122,7 @@ async function freezeEngine(out, comparisonModule) {
     "export { dutyTrajectoryFromReport } from './src/optimizer/mainRosterDutyTrace';",
     "export { integrateMainRosterDutyOutput } from './src/optimizer/mainRosterDutyIntegration';",
     "export { simulationOutputAmounts } from './src/simulator/productionScore';",
+    "export { evaluateMainRosterDutyAccuracy } from './src/optimizer/mainRosterDutyAcceptance';",
     `export { compareMainRosterDutyPrediction } from ${JSON.stringify('./' + comparisonModule)};`,
   ].join('\n')
   const result = await build({ stdin: { contents: entry, resolveDir: root, loader: 'ts' }, absWorkingDir: root,
@@ -147,7 +149,7 @@ async function freezeEngine(out, comparisonModule) {
   assert(guards.length === 1, 'Exactly one Native/H schedule entry guard is required')
   const manifest = { schemaVersion: 1, root, node: process.version, esbuild: version, entry, inputs,
     sourceSha256: sha(canonical(inputs)), bundle: fileBinding(enginePath), guards,
-    script: fileBinding(fileURLToPath(import.meta.url)), exports: ['dutyTrajectoryFromReport', 'integrateMainRosterDutyOutput', 'compareMainRosterDutyPrediction', 'simulationOutputAmounts'],
+    script: fileBinding(fileURLToPath(import.meta.url)), exports: ['dutyTrajectoryFromReport', 'integrateMainRosterDutyOutput', 'compareMainRosterDutyPrediction', 'simulationOutputAmounts', 'evaluateMainRosterDutyAccuracy'],
     guardMeaning: 'Only the local replay bundle is instrumented to fail on simulateSchedule. Production source remains unchanged.' }
   write(resolve(out, 'source-manifest.json'), manifest)
   return manifest
@@ -221,9 +223,11 @@ async function benchmark(args) {
     const projection = engine.integrateMainRosterDutyOutput(trajectory, weights)
     assert(projection.status === 'estimated', `Cannot quantify ${row.id}: ${projection.status}; ${projection.diagnostics.join('; ')}`)
     const comparison = engine.compareMainRosterDutyPrediction(row.job, row.calendar, row.native, projection)
+    const accuracy = engine.evaluateMainRosterDutyAccuracy(comparison)
     write(resolve(out, 'trajectory.json'), trajectory)
     write(resolve(out, 'projection.json'), projection)
     write(resolve(out, 'comparison.json'), comparison)
+    write(resolve(out, 'accuracy.json'), accuracy)
     write(resolve(out, 'rooms.json'), roomDiagnostics(row.calendar, row.native))
     assert(comparison.status === 'comparable', `Paired comparison rejected ${row.id}: ${comparison.status}; ${comparison.diagnostics.join('; ')}`)
     let baselinePhaseReplay = null, baselineComparison = null
@@ -257,7 +261,7 @@ async function benchmark(args) {
       coverageHours: projection.coverageHours, phaseCount: trajectory.phases.length, nativeAmounts,
       nativeSavedCompletedAmounts: row.native.production.sample.completed,
       nativeAmountScope: 'Shared simulationOutputAmounts: sample completed physical output plus event-derived virtual gold/fragments/orundum, exactly as Native scoring.',
-      nativeQuality: comparison.nativeQuality, activeWorkerErrors: comparison.activeWorkerErrors,
+      nativeQuality: comparison.nativeQuality, accuracy, activeWorkerErrors: comparison.activeWorkerErrors,
       crossRoomJointParity: comparison.crossRoomJointParity,
       priorHCost: row.files.calendarSummary ? json(row.files.calendarSummary.path).timing : null,
       conversionCost: trajectory.cost,
@@ -268,7 +272,7 @@ async function benchmark(args) {
       elapsedMs: performance.now() - caseStarted, cpuMs: (cpu.user + cpu.system) / 1000 }
     write(resolve(out, 'summary.json'), summary)
     results.push(summary)
-    console.log(JSON.stringify({ id: row.id, projectionStatus: projection.status, before: row.baseline?.amounts ?? null, after: projection.amounts, native: nativeAmounts, newF: 0, newH: 0 }))
+    console.log(JSON.stringify({ id: row.id, projectionStatus: projection.status, dutyAccuracy: accuracy.status, before: row.baseline?.amounts ?? null, after: projection.amounts, native: nativeAmounts, newF: 0, newH: 0 }))
   }
   assert(globalThis.__dutyReplayForbiddenCalls === 0, 'A forbidden schedule call was attempted')
   for (const file of [...protectedFiles, ...source.inputs, source.script]) assert(sha(readFileSync(file.path)) === file.sha256, `Input/source drifted during replay: ${file.path}`)
@@ -280,6 +284,7 @@ async function benchmark(args) {
     'Native room teams give within-room joint histograms, without cross-room chronology. Missing Native global segments cannot be reconstructed by multiplying marginal duty fractions.',
     'Observed production is used only to measure errors, never to fit a multiplier or alter predicted phase rates.',
     'No accuracy gain here enables theoretical projections for final optimizer selection or establishes real game behavior.',
+    'Replay completion is not duty-accuracy acceptance or Native eligibility; inspect each accuracy.status and nativeQuality separately.',
   ]
   const summary = { schemaVersion: 1, kind: 'saved-H-duty-model-replay', completed: true,
     manifest: fileBinding(args.cases), sourceManifest: fileBinding(resolve(args.out, 'source-manifest.json')),
@@ -287,10 +292,11 @@ async function benchmark(args) {
     newFullFCalls: 0, newShortFCalls: 0, newHCalls: 0, forbiddenSimulationCalls: 0,
     protectedFilesUnchanged: true, bundledSourcesUnchanged: true,
     blindHoldoutCases: cases.filter(row => row.split === 'blind-holdout').length,
+    allDutyAccuracyAccepted: results.every(row => row.accuracy.status === 'accepted'),
     results, boundaries, elapsedMs: performance.now() - started }
   write(resolve(args.out, 'summary.json'), summary)
-  const table = results.map(row => `| ${row.id} | ${row.split} | ${row.baseline?.errors.orderLmd.relativeError === null || !row.baseline ? 'n/a' : (100 * row.baseline.errors.orderLmd.relativeError).toFixed(6) + '%'} | ${(100 * row.current.errors.orderLmd.relativeError).toFixed(6)}% | ${row.current.score.total.toFixed(6)} |`).join('\n')
-  writeFileSync(resolve(args.out, 'REPORT.md'), `# Saved H duty-model replay\n\n0 new F, 0 short F, 0 new H. Native dependencies matched: ${compatibility.count}. Protected evidence and bundled sources remain unchanged.\n\n| Case | Split | Old trade error | Current trade error | Current predicted daily score |\n| --- | --- | --- | --- | --- |\n${table}\n\nPer-person W/E/R/I and W/T errors are in each case's comparison.json; output errors and hashes are in summary.json.\n\n${boundaries.map(item => '- ' + item).join('\n')}\n`, { flag: 'wx' })
+  const table = results.map(row => `| ${row.id} | ${row.split} | ${row.accuracy.status} | ${row.baseline?.errors.orderLmd.relativeError === null || !row.baseline ? 'n/a' : (100 * row.baseline.errors.orderLmd.relativeError).toFixed(6) + '%'} | ${(100 * row.current.errors.orderLmd.relativeError).toFixed(6)}% | ${row.current.score.total.toFixed(6)} |`).join('\n')
+  writeFileSync(resolve(args.out, 'REPORT.md'), `# Saved H duty-model replay\n\n0 new F, 0 short F, 0 new H. Native dependencies matched: ${compatibility.count}. Protected evidence and bundled sources remain unchanged.\n\n| Case | Split | Duty accuracy | Old trade error | Current trade error | Current predicted daily score |\n| --- | --- | --- | --- | --- | --- |\n${table}\n\nPer-person W/E/R/I and W/T errors are in each case's comparison.json; accuracy.json records the eight duty thresholds and rejection reasons. Output errors, Native quality and hashes are in summary.json. Completing this replay does not mean every prediction met its accuracy limits.\n\n${boundaries.map(item => '- ' + item).join('\n')}\n`, { flag: 'wx' })
   return summary
 }
 
