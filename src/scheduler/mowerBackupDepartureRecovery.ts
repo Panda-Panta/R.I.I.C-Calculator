@@ -11,18 +11,22 @@ import type {MowerSchedulingData} from './mowerSchedulingData'
 import type {MowerTask,MowerTaskPlan} from './mowerTaskQueue'
 
 export class MowerBackupRecoveryBlocked extends MowerShiftPreviewError {
- constructor(readonly names:string[],readonly projection:MowerSchedulingData,readonly explicitSlots:ReadonlySet<string>,readonly reservedSlots:ReadonlySet<string>,message='副表下班干员尚无可用恢复床位，保留原任务'){super(message)}
+ constructor(readonly names:string[],readonly projection:MowerSchedulingData,readonly explicitSlots:ReadonlySet<string>,readonly reservedSlots:ReadonlySet<string>,message='副表下班干员尚无可用恢复床位，保留原任务',readonly reservedNames:ReadonlySet<string>=new Set()){super(message)}
+}
+
+/** Required recovery on the effective projection, before any arrangement is committed. */
+export function mowerMissingDepartedRecovery(data:MowerSchedulingData,names:Iterable<string>):string[] {
+ return [...names].filter(name=>{
+  const op=data.operators[name]!
+  if(op.workaholic||op.room.startsWith('dorm')||op.currentRoom||data.restMoodComplete(name))return false
+  const mood=mowerDormCandidateMood(data,name)
+  return mood===undefined||mood<op.upperLimit
+ })
 }
 
 /** Native _complete_departed_recovery, shared by correction and backup transition admission. */
 export function completeMowerDepartedRecovery(data:MowerSchedulingData,plan:MowerTaskPlan,names:ReadonlySet<string>,pending:readonly MowerTask[],reservedSlots:ReadonlySet<string>=new Set()):boolean {
- const projected=projectMowerArrangements(data,[plan])
- const missing=[...names].filter(name=>{
-  const op=projected.operators[name]!
-  if(op.workaholic||op.room.startsWith('dorm')||op.currentRoom||projected.restMoodComplete(name))return false
-  const mood=mowerDormCandidateMood(projected,name)
-  return mood===undefined||mood<op.upperLimit
- })
+ const projected=projectMowerArrangements(data,[plan]),missing=mowerMissingDepartedRecovery(projected,names)
  if(!missing.length)return true
  const reserved=mowerDormTaskReservations(projected,[...pending])
  if(missing.some(name=>reserved.names.has(name)))return false

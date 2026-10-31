@@ -61,6 +61,30 @@ function report(scene = input()): ScheduleSimulationReport {
 }
 
 describe('joint H schedule trace adapter (0 actual H/F)', () => {
+  it('admits an explicit sampled observation calendar without starting full production', () => {
+    const scene = input()
+    Object.assign(scene, { calendarModel: 'sampled-observations' })
+    const saved = report(scene)
+    saved.diagnostics.push({ code: 'DUTY_SAMPLED_OBSERVATION_CALENDAR', message: 'synthetic sampled observations' },
+      { code: 'DUTY_OBSERVATION_SEED', message: '42' })
+    vi.mocked(simulation.simulateSchedule).mockReturnValue(saved)
+    const trajectory = buildMainRosterDutyTrajectory(scene)
+    expect(trajectory.status).toBe('complete')
+    expect(simulation.simulateSchedule).toHaveBeenCalledWith(expect.anything(), expect.not.objectContaining({ production: expect.anything() }), undefined, expect.any(Function))
+    expect(trajectory.nativeScheduleParity).toBe('not-established')
+    expect(trajectory.assumptions.join(' ')).toMatch(/sampled/i)
+  })
+
+  it('rejects saved sampled observations from a different production seed', () => {
+    const scene = input(), saved = report(scene)
+    Object.assign(scene, { calendarModel: 'sampled-observations' })
+    saved.diagnostics.push({ code: 'DUTY_SAMPLED_OBSERVATION_CALENDAR', message: 'synthetic sampled observations' },
+      { code: 'DUTY_OBSERVATION_SEED', message: '17' })
+    const trajectory = dutyTrajectoryFromReport(scene, saved)
+    expect(trajectory.status).toBe('unsupported')
+    expect(trajectory.diagnostics.join(' ')).toMatch(/SEED_MISMATCH/)
+  })
+
   it('passes the expected-order clock only on explicit opt-in and retains its approximation boundary', () => {
     const scene = input()
     Object.assign(scene, { calendarModel: 'expected-orders' })

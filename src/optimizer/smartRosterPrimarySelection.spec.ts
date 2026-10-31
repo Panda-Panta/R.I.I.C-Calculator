@@ -48,11 +48,9 @@ function prepare() {
   const fixture = scene()
   const build = vi.spyOn(construction, 'generateMolecularCandidates').mockReturnValue(fixture.proposals)
   const slowModel = vi.spyOn(computation, 'computeManufacturingRoster').mockImplementation(() => { throw new Error('Unexpected slow default model') })
-  const evaluate = vi.spyOn(simulation, 'simulateCandidate').mockImplementation(job => ({ completed: true,
-    simScore: job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant.kind === 'operator' &&
-      job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant.operatorId === id('砾') ? 120 : 100,
-    diagnostics: [],
-  }))
+  const evaluate = vi.spyOn(simulation, 'simulateCandidate').mockImplementation(job => wiredSummary(
+    job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant.kind === 'operator' &&
+      job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant.operatorId === id('砾') ? 120 : 100))
   return { ...fixture, build, slowModel, evaluate }
 }
 
@@ -65,6 +63,7 @@ describe('fast high-output primary selection', () => {
     expect(result.score).toBe(120)
     expect(result.phases.primarySelection!.selectedIds).toEqual(['strong'])
     expect(result.phases.simulation!.candidates.map(candidate => candidate.id)).toEqual(['strong'])
+    expect(result.calculationReport?.summary?.totalScore82).toBe(120)
     expect(fixture.evaluate).toHaveBeenCalledTimes(1)
   })
 
@@ -75,7 +74,7 @@ describe('fast high-output primary selection', () => {
       const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
       return occupant.kind === 'operator' && occupant.operatorId === id('砾')
         ? { completed: false, simScore: 1e9, diagnostics: ['anchor did not complete'] }
-        : { completed: true, simScore: 100, diagnostics: [] }
+        : wiredSummary(100)
     })
     const batches: string[][] = [], progress: number[] = []
     const result = await runSmartRosterParallel(fixture.base, fixture.entries, { seed: 42 }, async (jobs, done) => {
@@ -130,7 +129,7 @@ describe('fast high-output primary selection', () => {
       const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
       return occupant.kind === 'operator' && occupant.operatorId === id('砾')
         ? { completed: false, simScore: 1e9, diagnostics: ['incomplete'] }
-        : { completed: true, simScore: 100, diagnostics: [] }
+        : wiredSummary(100)
     })
     const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42 })
     expect(result.status).toBe('draft')
@@ -168,6 +167,129 @@ function wiredSummary(score: number, eligible = true): simulation.CandidateSimul
     quality: { eligible, strict: eligible, ordinaryExhaustedHours: eligible ? 0 : 2,
       pendingDeferrals: eligible ? 0 : 1, issues: eligible ? [] : ['controlled unresolved recovery'] } }
 }
+
+/** Exercise public candidate batching, ranking, cache reuse and progress with
+ * same-run compact evidence. The Native bridge is forbidden in these unit seams.
+ */
+function prepareDefaultQuality() {
+  const fixture = prepare()
+  const nativeF = vi.spyOn(nativeSimulation, 'runScheduleSimulationBridge').mockImplementation(() => {
+    throw new Error('Unexpected real F in the default-quality wiring test')
+  })
+  const actor = (job: simulation.CandidateSimulationJob): string => {
+    const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
+    if (occupant.kind !== 'operator') throw new Error('Controlled complete primary was not dispatched')
+    return occupant.operatorId
+  }
+  fixture.evaluate.mockImplementation(job => {
+    const operator = actor(job), summary = wiredSummary(operator === id('砾') ? 1e9 : 100, operator !== id('砾'))
+    summary.calculationReport!.efficiencyNotes = [operator]
+    return summary
+  })
+  return { ...fixture, nativeF, actor }
+}
+
+describe('default main selection uses same-F duty quality without another model', () => {
+  it('verifies the deferred safe main when a completed high-score anchor has unqualified duty', async () => {
+    const fixture = prepareDefaultQuality(), progress: SmartRosterProgress[] = []
+    fixture.build.mockReturnValue([fixture.proposals[1]!, fixture.proposals[0]!])
+    const batches: simulation.CandidateSimulationJob[][] = []
+    const result = await runSmartRosterParallel(fixture.base, fixture.entries, { seed: 42 }, async (jobs, done) => {
+      batches.push(structuredClone(jobs))
+      const summaries = jobs.map(job => simulation.simulateCandidate(job))
+      summaries.forEach((summary, index) => done(summary, index))
+      return summaries
+    }, value => progress.push(value))
+    expect(batches.map(jobs => jobs.map(fixture.actor))).toEqual([[id('砾')], [id('芬')]])
+    expect(batches[1]![0]!.options).toEqual(batches[0]![0]!.options)
+    expect(batches[1]![0]!.assumptions).toEqual(batches[0]![0]!.assumptions)
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(100)
+    expect(result.workspace?.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('芬') })
+    expect(result.calculationReport?.summary?.totalScore82).toBe(100)
+    expect(result.calculationReport?.efficiencyNotes).toEqual([id('芬')])
+    expect(result.phases.primarySelection!.selectedIds).toEqual(['strong', 'anchor'])
+    expect(result.phases.simulation!.candidates[0]!.id).toBe('anchor')
+    expect(progress.flatMap(value => value.bestScore === undefined ? [] : [value.bestScore])).not.toContain(1e9)
+    expect(fixture.evaluate).toHaveBeenCalledTimes(2)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('selects a lower-scoring qualified main from the same parallel batch without changing candidate identities', async () => {
+    const fixture = prepareDefaultQuality(), batches: string[][] = []
+    const result = await runSmartRosterParallel(fixture.base, fixture.entries, { seed: 42 }, async (jobs, done) => {
+      batches.push(jobs.map(fixture.actor))
+      const summaries = jobs.map(job => simulation.simulateCandidate(job))
+      // Complete the qualified job first; the later high raw score must not replace it.
+      const completionOrder = summaries.map((summary, index) => ({ index, qualified: simulation.isQualifiedCandidateSimulation(summary) }))
+        .sort((a, b) => Number(b.qualified) - Number(a.qualified))
+      for (const { index } of completionOrder) done(summaries[index]!, index)
+      return summaries
+    })
+    expect(batches).toHaveLength(1)
+    expect(batches[0]).toHaveLength(2)
+    expect(new Set(batches[0])).toEqual(new Set([id('砾'), id('芬')]))
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(100)
+    expect(result.phases.simulation!.candidates.map(candidate => candidate.id)).toEqual(['anchor', 'strong'])
+    expect(result.workspace?.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('芬') })
+    expect(result.calculationReport?.summary?.totalScore82).toBe(100)
+    expect(result.calculationReport?.efficiencyNotes).toEqual([id('芬')])
+    expect(fixture.evaluate).toHaveBeenCalledTimes(2)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('publishes only qualified best scores while completed unqualified results retain their raw score for review', async () => {
+    const fixture = prepareDefaultQuality(), progress: SmartRosterProgress[] = []
+    const result = await runSmartRosterParallel(fixture.base, fixture.entries, { seed: 42 }, async (jobs, done) => {
+      const summaries = jobs.map(job => simulation.simulateCandidate(job))
+      const unqualified = summaries.findIndex(summary => !simulation.isQualifiedCandidateSimulation(summary))
+      const qualified = summaries.findIndex(summary => simulation.isQualifiedCandidateSimulation(summary))
+      expect(unqualified).toBeGreaterThanOrEqual(0); expect(qualified).toBeGreaterThanOrEqual(0)
+      done(summaries[unqualified]!, unqualified)
+      done(summaries[qualified]!, qualified)
+      return summaries
+    }, value => progress.push(value))
+    expect(progress.filter(value => value.phase === 'simulating' && value.currentTrial !== undefined).map(value => value.bestScore))
+      .toEqual([undefined, 100])
+    expect(progress.flatMap(value => value.bestScore === undefined ? [] : [value.bestScore])).toEqual([100, 100])
+    expect(result.phases.simulation!.candidates.find(candidate => candidate.id === 'strong')?.simScore).toBe(1e9)
+    expect(fixture.evaluate).toHaveBeenCalledTimes(2)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { kind: 'ordinary fatigue', reason: 'controlled ordinary fatigue', ordinaryExhaustedHours: 2, pendingDeferrals: 1 },
+    { kind: 'assumption-only', reason: 'controlled maintenance assumption remains unverified', ordinaryExhaustedHours: 0, pendingDeferrals: 0 },
+  ])('retains a complete reviewable draft with original $kind issues when neither of the two F results qualifies', async ({ kind, reason, ordinaryExhaustedHours, pendingDeferrals }) => {
+    const fixture = prepareDefaultQuality(), progress: SmartRosterProgress[] = []
+    fixture.build.mockReturnValue([fixture.proposals[1]!, fixture.proposals[0]!])
+    fixture.evaluate.mockImplementation(job => {
+      const summary = wiredSummary(fixture.actor(job) === id('砾') ? 1e9 : 100, false)
+      summary.quality = { eligible: false, strict: false, ordinaryExhaustedHours, pendingDeferrals, issues: [reason] }
+      return summary
+    })
+    const batches: number[] = []
+    const result = await runSmartRosterParallel(fixture.base, fixture.entries, { seed: 42 }, async (jobs, done) => {
+      batches.push(jobs.length)
+      const summaries = jobs.map(job => simulation.simulateCandidate(job))
+      summaries.forEach((summary, index) => done(summary, index))
+      return summaries
+    }, value => progress.push(value))
+    expect(batches).toEqual([1, 1])
+    expect(fixture.evaluate).toHaveBeenCalledTimes(2)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(1e9)
+    expect(result.calculationReport?.summary?.totalScore82).toBe(1e9)
+    expect(result.workspace?.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('砾') })
+    const warnings = result.diagnostics.filter(issue => issue.code === 'MAIN_ROSTER_QUALITY_UNCONFIRMED')
+    expect(warnings).toHaveLength(1)
+    expect(result.diagnostics.map(issue => issue.message).join('\n')).toContain(reason)
+    if (kind === 'assumption-only') expect(warnings.map(issue => issue.message).join('\n')).not.toMatch(/疲劳|fatigue/i)
+    expect(progress.every(value => value.bestScore === undefined)).toBe(true)
+  })
+})
 
 function prepareContinuation() {
   const fixture = prepare()

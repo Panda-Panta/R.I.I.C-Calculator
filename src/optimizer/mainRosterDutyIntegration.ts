@@ -1,5 +1,7 @@
 import { scoreProduction } from '../domain/productionScore'
 import { resolveOperatorCharId } from '../domain/operatorIdentifiers'
+import { fromMowerMicros } from '../scheduler/mowerTaskQueue'
+import { MORALE_EPSILON } from '../scheduler/rosterRuntime'
 import { DUTY_RESOURCE_KEYS, type DutyResourceRates, type MainRosterDutyProjection,
   type MainRosterDutyTrajectory, type MainRosterDutyWeights } from './mainRosterDutyTypes'
 
@@ -45,6 +47,17 @@ export function integrateMainRosterDutyOutput(
   const totals = { exp: new CompensatedSum(), gold: new CompensatedSum(), orderLmd: new CompensatedSum(),
     virtualGold: new CompensatedSum(), fragments: new CompensatedSum(), orundum: new CompensatedSum() }
   const coverage = new CompensatedSum(), states = new Map<string, CompensatedSum>()
+  // Native task time uses microseconds; scheduleSimulation also snaps morale
+  // endpoints within MORALE_EPSILON. Exported holes never earn work or output.
+  const clockQuantum = trajectory.diagnostics.some(issue => issue.startsWith('MOWER_IO_CLOCK_MODEL:')) ? fromMowerMicros(1) : 0
+  const uncovered = new CompensatedSum()
+  const recordGap = (hours: number, at: number) => {
+    if (hours <= 0) return false
+    uncovered.add(hours)
+    // The existing morale-end snap plus one clock tick and two rounded endpoints.
+    const bound = MORALE_EPSILON + 2 * clockQuantum
+    return !clockQuantum || hours > bound + 64 * Number.EPSILON * Math.max(1, Math.abs(at))
+  }
   let unquantified = false
   let previousEnd = 0, cursor = warmupHours, gap = false
   // These frames already carry rates and absolute times. Sorting never reconstructs scheduling causality.
@@ -58,7 +71,7 @@ export function integrateMainRosterDutyOutput(
     const start = Math.max(phase.start, warmupHours), stop = Math.min(phase.end, end)
     const hours = Math.max(0, stop - start)
     if (!hours) continue
-    if (start > cursor) gap = true
+    if (start > cursor) gap = recordGap(start - cursor, start) || gap
     cursor = stop
     if (!coverage.add(hours)) return finish('invalid', 'DUTY_COVERAGE_OVERFLOW')
     result.coverageHours = coverage.value
@@ -83,7 +96,12 @@ export function integrateMainRosterDutyOutput(
       }
     }
   }
+  if (cursor < end) gap = recordGap(end - cursor, end) || gap
+  if (uncovered.value > 0 && !gap) result.diagnostics.push(`DUTY_CLOCK_QUANTIZATION_GAP: ${uncovered.value} hours remain uncovered; no time or production was filled.`)
   result.jointStateHours = Object.fromEntries([...states].map(([key, hours]) => [key, hours.value]))
+  // A phase-budgeted trace still owns full-window operator totals. Do not compare
+  // those totals to a truncated prefix or turn the prefix into a prediction.
+  if (coverage.value <= 0 || trajectory.status === 'incomplete') return finish('incomplete', 'DUTY_INCOMPLETE_SAMPLE_COVERAGE')
   const operatorDuty: MainRosterDutyProjection['operatorDuty'] = [], operatorIds = new Set<string>()
   // Allow conservative upstream summation roundoff, without normalizing or inventing any duration.
   const timeTolerance = 64 * Number.EPSILON * sampleHours * Math.max(1, phases.length)
@@ -98,7 +116,7 @@ export function integrateMainRosterDutyOutput(
     const total = new CompensatedSum(), work = new CompensatedSum()
     if (![operator.workHours, operator.exhaustedHours, operator.restHours, operator.idleHours].every(value => total.add(value))
       || !work.add(operator.mainWorkHours) || !work.add(operator.substituteWorkHours)
-      || Math.abs(total.value - sampleHours) > timeTolerance || Math.abs(work.value - operator.workHours) > timeTolerance) {
+      || Math.abs(total.value - coverage.value) > timeTolerance || Math.abs(work.value - operator.workHours) > timeTolerance) {
       return finish('invalid', `DUTY_NONCONSERVED_OPERATOR_TIME:${canonicalId}`)
     }
     const physicalWorkHours = operator.workHours + operator.exhaustedHours
@@ -112,7 +130,7 @@ export function integrateMainRosterDutyOutput(
       noRestObserved: operator.restHours === 0 })
   }
   result.operatorDuty = operatorDuty
-  if (gap || cursor < end || trajectory.status === 'incomplete') return finish('incomplete', 'DUTY_INCOMPLETE_SAMPLE_COVERAGE')
+  if (gap) return finish('incomplete', 'DUTY_INCOMPLETE_SAMPLE_COVERAGE')
   if (trajectory.status === 'unsupported') return finish('unquantified', 'DUTY_UNSUPPORTED_TRAJECTORY')
   if (unquantified) return finish('unquantified')
   const amounts: Record<keyof DutyResourceRates, number> = {

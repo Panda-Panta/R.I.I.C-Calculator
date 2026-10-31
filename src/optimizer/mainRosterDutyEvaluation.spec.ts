@@ -77,6 +77,46 @@ describe('same-run native main-roster duty evaluation', () => {
     expect(evaluateMainRosterDuty(permanent)).toMatchObject({ eligible: false, ordinaryExhaustedHours: 72 })
   })
 
+  it('recognizes measured workaholic primary duty when the group also leaves the operator idle', () => {
+    const value = report(), op = exhausted(value)
+    value.inputs.schedule.policies.workaholic = [operatorId]
+    Object.assign(op, { mainWorkHours: 24, workHours: 24, exhaustedHours: 36,
+      restHours: 0, idleHours: 12, permanentPrimaryOccupancyHours: 60, workFraction: 1 / 3 })
+    const result = evaluateMainRosterDuty(value)
+    expect(result.ordinaryExhaustedHours).toBe(0)
+    expect(result.operators[0]!.permanentExhaustionExempt).toBe(true)
+    op.permanentPrimaryOccupancyHours = 59
+    expect(evaluateMainRosterDuty(value).ordinaryExhaustedHours).toBe(36)
+  })
+
+  it('accepts an uninterrupted global name policy independently of partial primary coverage', () => {
+    const value = report(), workspace = value.inputs.schedule.sourceWorkspace
+    workspace.mainPlan.conf.workaholic = [operatorId]
+    workspace.compatibility.backupPlans = [{ name: 'additive-empty-policy', trigger: 'True', plan: {}, task: {},
+      conf: { workaholic: '', removed_operators: {} } }]
+    value.inputs.schedule = compileRosterSchedule(workspace, { idleOperators: [] })
+    const op = exhausted(value)
+    Object.assign(op, { mainWorkHours: 24, workHours: 24, exhaustedHours: 36, idleHours: 12,
+      workFraction: 1 / 3, permanentPrimaryOccupancyHours: 60 - 22 / 3600 })
+    const before = structuredClone(value)
+    expect(evaluateMainRosterDuty(value)).toMatchObject({ eligible: true, strict: true, ordinaryExhaustedHours: 0 })
+    expect(evaluateMainRosterDuty(value).operators[0]?.permanentExhaustionExempt).toBe(true)
+    expect(value).toEqual(before)
+  })
+
+  it('does not infer uninterrupted permission when a backup can revoke the original workaholic name', () => {
+    const value = report(), workspace = value.inputs.schedule.sourceWorkspace
+    workspace.mainPlan.conf.workaholic = [operatorId]
+    workspace.compatibility.backupPlans = [{ name: 'possible-revocation', trigger: 'True', plan: {}, task: {},
+      conf: { removed_operators: { workaholic: [operatorId] } } }]
+    value.inputs.schedule = compileRosterSchedule(workspace, { idleOperators: [] })
+    const op = exhausted(value)
+    op.permanentPrimaryOccupancyHours = 72 - 22 / 3600
+    const result = evaluateMainRosterDuty(value)
+    expect(result).toMatchObject({ eligible: false, strict: false, ordinaryExhaustedHours: 72 })
+    expect(result.operators[0]?.permanentExhaustionExempt).toBe(false)
+  })
+
   it('uses the actual passive auxiliary permanent policy while preserving the stricter income verdict', () => {
     const value = report(), op = exhausted(value)
     const room = value.inputs.schedule.rooms.find(room => room.roomId === 'room_1_1')!

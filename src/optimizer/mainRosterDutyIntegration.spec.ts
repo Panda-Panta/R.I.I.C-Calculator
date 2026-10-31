@@ -303,6 +303,53 @@ describe('integrateMainRosterDutyOutput', () => {
     expect(result.score).toBeNull()
   })
 
+  it('retains documented microsecond clock gaps without inventing work or production', () => {
+    const gap = 1 / 3_600_000_000
+    const input = trajectory([phase(0, 4, 'a', { exp: 10 }), phase(4 + gap, 8, 'b', { exp: 10 })])
+    input.diagnostics.push('MOWER_IO_CLOCK_MODEL: scheduler advances one microsecond between same-time tasks')
+    input.operators = [operator({ mainWorkHours: 4, substituteWorkHours: 0, workHours: 4, exhaustedHours: 0, restHours: 4 - gap, idleHours: 0 })]
+    const before = structuredClone(input), result = integrateMainRosterDutyOutput(input)
+    expect(result.status).toBe('estimated')
+    expect(result.coverageHours).toBeCloseTo(8 - gap, 12)
+    expect(result.amounts?.exp).toBeCloseTo(10 * (8 - gap), 11)
+    expect(result.operatorDuty[0]!.restHours).toBe(4 - gap)
+    expect(result.diagnostics.join(' ')).toMatch(/DUTY_CLOCK_QUANTIZATION_GAP/)
+    expect(input).toEqual(before)
+    input.diagnostics = []
+    expect(integrateMainRosterDutyOutput(input).status).toBe('incomplete')
+  })
+
+  it('does not excuse a material missing interval as clock quantization', () => {
+    const input = trajectory([phase(0, 4, 'a', { exp: 10 }), phase(4.001, 8, 'b', { exp: 10 })])
+    input.diagnostics.push('MOWER_IO_CLOCK_MODEL: one microsecond task clock')
+    expect(integrateMainRosterDutyOutput(input).status).toBe('incomplete')
+  })
+
+  it('bounds the shared morale-end snap and clock rounding without admitting larger holes', () => {
+    const quantum = 1 / 3_600_000_000
+    // The existing Native morale-end snap admits36us;20us can be omitted,
+    // while60us exceeds that snap plus a clock tick and rounded endpoints.
+    const input = trajectory([phase(0, 4, 'a', { exp: 10 }), phase(4 + 20 * quantum, 8, 'b', { exp: 10 })])
+    input.diagnostics.push('MOWER_IO_CLOCK_MODEL: one microsecond task clock')
+    expect(integrateMainRosterDutyOutput(input).status).toBe('estimated')
+    input.phases[1]!.start = 4 + 60 * quantum
+    expect(integrateMainRosterDutyOutput(input).status).toBe('incomplete')
+  })
+
+  it('keeps phase-budget truncation incomplete with full-window operator evidence', () => {
+    const input = trajectory([phase(0, 4, 'budget-prefix', { exp: 10 })])
+    input.status = 'incomplete'; input.operators = [operator({ restHours: 2 - 1e-8 })]
+    expect(integrateMainRosterDutyOutput(input).status).toBe('incomplete')
+  })
+
+  it('requires actual phase coverage even for a window shorter than one clock quantum', () => {
+    const input = trajectory([], 1 / 7_200_000_000)
+    input.diagnostics.push('MOWER_IO_CLOCK_MODEL: one microsecond task clock')
+    const result = integrateMainRosterDutyOutput(input)
+    expect(result.status).toBe('incomplete')
+    expect(result.predictionEligible).toBe(false)
+  })
+
   it('allows bounded floating-point time-sum roundoff without rewriting input durations', () => {
     const input = trajectory([phase(0, 8, 'a', { exp: 10 })])
     const times = operator({ mainWorkHours: 4, substituteWorkHours: 0, workHours: 4, exhaustedHours: 0, restHours: 4 - 1e-14, idleHours: 0 })

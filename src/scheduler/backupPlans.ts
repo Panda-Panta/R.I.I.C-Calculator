@@ -280,8 +280,8 @@ export function createBackupPlanController(base: CompiledSchedule, state: Runtim
       // Native admission checks the transition alone, before the caller's intent
       // can appear to free a future bed and before replacement preservation.
       if(!completeMowerDepartedRecovery(next,transition,departing,pending)){
-        const reserved=mowerDormTaskReservations(next,pending)
-        throw new MowerBackupRecoveryBlocked([...departing],projectMowerArrangements(next,[transition]),alphaModel.explicitSlots!(original,conditions),reserved.slots,'绑组依赖未解除，挂起换班，等待离岗成员的恢复床位')
+        const projection=projectMowerArrangements(next,[transition]),reserved=mowerDormTaskReservations(projection,pending)
+        throw new MowerBackupRecoveryBlocked([...departing],projection,alphaModel.explicitSlots!(original,conditions),reserved.slots,'绑组依赖未解除，挂起换班，等待离岗成员的恢复床位',reserved.names)
       }
       if(groupPositions.size)alphaCorrectGroupDorms(next,transition,groupPositions)
       if(joiningResting.size?!preserveMowerBackupRestingJoins(next,transition,replacementPositions,recovery.dorms,joiningResting,pendingTasks??getMowerSourceRuntime(state).queue.tasks.filter(task=>task!==getMowerSourceRuntime(state).activeTask),protectedTraining):!preserveMowerBackupReplacements(next,transition,replacementPositions,recovery.dorms))throw new MowerShiftPreviewError('副表替班或恢复床位不可用，暂缓切表')

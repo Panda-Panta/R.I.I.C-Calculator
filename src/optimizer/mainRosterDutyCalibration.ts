@@ -82,6 +82,17 @@ export function compareMainRosterDutyPrediction(
   if (canonical(normalizeOptions(calendar.inputs.options)) !== canonical(normalizeOptions(native.inputs.options))
     || canonical(normalizeOptions(calendar.inputs.options)) !== canonical(normalizeOptions(source))
     || canonical(native.inputs.options.production) !== canonical(source.production)) return fail('mismatch', 'DUTY_COMPARISON_OPTIONS_OR_SEED_MISMATCH')
+  const sampledCalendar = calendar.diagnostics.some(issue => issue.code === 'DUTY_SAMPLED_OBSERVATION_CALENDAR')
+  const sampledProjection = projection.diagnostics.some(issue => issue.startsWith('DUTY_SAMPLED_OBSERVATION_CALENDAR:'))
+  if (sampledCalendar || sampledProjection) {
+    const calendarSeeds = calendar.diagnostics.filter(issue => issue.code === 'DUTY_OBSERVATION_SEED')
+    const projectionSeeds = projection.diagnostics.filter(issue => issue.startsWith('DUTY_OBSERVATION_SEED:'))
+    const seed = String(source.production?.seed ?? 1)
+    if (!sampledCalendar || !sampledProjection || calendarSeeds.length !== 1 || calendarSeeds[0]!.message !== seed
+      || projectionSeeds.length !== 1 || projectionSeeds[0] !== `DUTY_OBSERVATION_SEED: ${seed}`) {
+      return fail('mismatch', 'DUTY_COMPARISON_SAMPLED_SEED_MISMATCH')
+    }
+  }
   for (const report of [calendar, native]) {
     if (!finite(sample) || sample === 0 || !finite(warmup) || !finite(report.observedHours) || !close(report.observedHours, sample)
       || !finite(report.elapsedHours) || !close(report.elapsedHours, sample + warmup)

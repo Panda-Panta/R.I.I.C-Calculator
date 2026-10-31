@@ -7,6 +7,7 @@ import * as synthesis from './molecularSynthesis'
 import * as computation from './computedManufacturingRoster'
 import type { ComputedManufacturingRosterResult } from './computedManufacturingRoster'
 import type { RosterWorkspace } from '../domain/roster'
+import type { CalculationReport } from '../domain/types'
 import * as bridge from '../workbench/scheduleSimulationBridge'
 import * as replacement from './globalPerCapitaReplacement'
 import * as incomeSearch from './rosterIncomeSearch'
@@ -21,6 +22,21 @@ import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 import { productionTeamHourlyOutput, productionWorkspaceHourlyScore } from './productionSingletons'
 import { compileOperatorInventory, fullCatalogIdleInventory } from '../domain/operatorInventory'
 import { compareWorkspacePreference } from './automaticCombinationPreferences'
+
+/** Same-run-shaped compact evidence for controlled successful worker outputs.
+ * Native calculation and the derivation of quality are exercised separately.
+ */
+function qualifiedSummary(score: number): simulation.CandidateSimulationResult {
+  const calculationReport: CalculationReport = {
+    power: { generation: 270, consumption: 10, margin: 260, sufficient: true },
+    layoutValid: true, validationMessages: [], manufacture: [], trading: [], drones: 0, morale: [], roomShiftDetails: {},
+    summary: { exp: 0, goldCount: 0, goldValue: 0, virtualGoldCount: 0, virtualGoldValue: 0,
+      orderLmd: 0, fragments: 0, orundum: 0, goldConsumed: 0, fragmentsConsumed: 0,
+      netGoldCount: 0, netGoldValue: 0, totalScore82: score, totalEquivalentLmd: 0 },
+  }
+  return { completed: true, simScore: score, diagnostics: [], calculationReport,
+    quality: { eligible: true, strict: true, ordinaryExhaustedHours: 0, pendingDeferrals: 0, issues: [] } }
+}
 
 function computedResult(workspace: RosterWorkspace | null = null): ComputedManufacturingRosterResult {
   return { workspace: workspace ? structuredClone(workspace) : null, diagnostics: [], calculation: {
@@ -68,7 +84,7 @@ it('chooses the highest completed daily output even when another candidate has h
   const progress: SmartRosterProgress[] = []
   const result = await runSmartRosterParallel(base, owned, options, async (jobs, done) => jobs.map((job, i) => {
     const main = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
-    const summary = { completed: true, simScore: main.kind === 'operator' && main.operatorId === id('苍苔') ? 10000 : 100, diagnostics: [] }; done(summary, i); return summary
+    const summary = qualifiedSummary(main.kind === 'operator' && main.operatorId === id('苍苔') ? 10000 : 100); done(summary, i); return summary
   }), p => progress.push(p))
   expect(result.status, JSON.stringify(result.diagnostics)).toBe('draft')
   expect(result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.occupant).toEqual({ kind: 'operator', operatorId: id('苍苔') })
@@ -114,7 +130,7 @@ it.each([true, false])('compares complete primary/relief proposals by completed 
     ]))
     return jobs.map((job, i) => {
       const main = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
-      const summary = { completed: true, simScore: main.kind === 'operator' && main.operatorId === id('砾') ? 200 : computedWins ? 100 : 300, diagnostics: [] }
+      const summary = qualifiedSummary(main.kind === 'operator' && main.operatorId === id('砾') ? 200 : computedWins ? 100 : 300)
       done(summary, i); return summary
     })
   })
@@ -159,8 +175,8 @@ describe('parallel smart roster preserves serial semantics', () => {
       ])
       running?.({ phase: 'warmup', elapsedHours: 1, totalHours: 96, warmupHours: 24 }, 0)
       const summaries = [
-        { completed: true, simScore: 20, diagnostics: ['Fen report'], specialOperators: [] },
-        { completed: true, simScore: 42, diagnostics: ['Gravel report'], specialOperators: winnerData },
+        { ...qualifiedSummary(20), diagnostics: ['Fen report'], specialOperators: [] },
+        { ...qualifiedSummary(42), diagnostics: ['Gravel report'], specialOperators: winnerData },
       ]
       done(summaries[1]!, 1); done(summaries[0]!, 0)
       return summaries
@@ -184,7 +200,7 @@ describe('parallel smart roster preserves serial semantics', () => {
     const result = await runSmartRosterParallel(baseWorkspace(), entries, defaults, async (jobs, done) => {
       batches++
       return jobs.map((_job, index) => {
-        const summary = { completed: true, simScore: index + 1, diagnostics: [] }
+        const summary = qualifiedSummary(index + 1)
         done(summary, index); return summary
       })
     }, p => progress.push(p))
@@ -208,7 +224,7 @@ describe('parallel smart roster preserves serial semantics', () => {
     const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => {
       expect(jobs).toHaveLength(1)
       return jobs.map((_job, index) => {
-        const summary = { completed: true, simScore: 100 + index, diagnostics: [] }
+        const summary = qualifiedSummary(100 + index)
         done(summary, index); return summary
       })
     })
@@ -220,7 +236,7 @@ describe('parallel smart roster preserves serial semantics', () => {
   it('excludes non-finite completed scores rather than selecting an unrankable result', async () => {
     mockInitialAndComputed()
     const result = await runSmartRosterParallel(baseWorkspace(), entries, options, async (jobs, done) => jobs.map((_job, index) => {
-      const summary = { completed: true, simScore: index ? 50 : Number.NaN, diagnostics: [] }
+      const summary = index ? qualifiedSummary(50) : { completed: true, simScore: Number.NaN, diagnostics: [] }
       done(summary, index); return summary
     }))
     expect(result.status).toBe('draft')
@@ -247,7 +263,8 @@ describe('parallel smart roster preserves serial semantics', () => {
       return jobs.map((job, i) => {
         const occupant = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.occupant
         const ordinaryPlan = occupant.kind === 'operator' && id(occupant.operatorId) === id('芬')
-        const result = { completed: ordinaryPlan || blackkeyCompleted, simScore: ordinaryPlan ? 1000 : 10, diagnostics: [] }
+        const result = ordinaryPlan || blackkeyCompleted ? qualifiedSummary(ordinaryPlan ? 1000 : 10)
+          : { completed: false, simScore: 10, diagnostics: [] }
         done(result, i); return result
       })
     }, p => progress.push(p))

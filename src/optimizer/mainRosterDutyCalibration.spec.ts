@@ -50,6 +50,24 @@ function fixture() {
 }
 
 describe('paired theoretical duty calibration', () => {
+  it.each(['wrong', 'missing', 'duplicate', 'projection'] as const)('rejects %s seed evidence for a sampled calendar without running H/F', kind => {
+    const f = fixture()
+    const model = { code: 'DUTY_SAMPLED_OBSERVATION_CALENDAR', message: 'fixture sampled observation host' }
+    f.calendar.diagnostics.push(model)
+    if (kind !== 'missing') f.calendar.diagnostics.push({ code: 'DUTY_OBSERVATION_SEED', message: kind === 'wrong' ? '17' : '42' })
+    if (kind === 'duplicate') f.calendar.diagnostics.push({ code: 'DUTY_OBSERVATION_SEED', message: '42' })
+    f.projection.diagnostics.push(`${model.code}: ${model.message}`, `DUTY_OBSERVATION_SEED: ${kind === 'projection' ? 17 : 42}`)
+    expect(compareMainRosterDutyPrediction(f.job, f.calendar, f.native, f.projection).status).toBe('mismatch')
+  })
+
+  it('compares a sampled calendar only when the calendar and projection bind the original seed', () => {
+    const f = fixture()
+    f.calendar.diagnostics.push({ code: 'DUTY_SAMPLED_OBSERVATION_CALENDAR', message: 'fixture sampled observation host' },
+      { code: 'DUTY_OBSERVATION_SEED', message: '42' })
+    f.projection.diagnostics.push('DUTY_SAMPLED_OBSERVATION_CALENDAR: fixture sampled observation host', 'DUTY_OBSERVATION_SEED: 42')
+    expect(compareMainRosterDutyPrediction(f.job, f.calendar, f.native, f.projection).status).toBe('comparable')
+  })
+
   it('separates waiting, work share, work/rest ratio and resource errors', () => {
     const f = fixture(), before = structuredClone(f)
     const result = compareMainRosterDutyPrediction(f.job, f.calendar, f.native, f.projection)

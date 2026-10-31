@@ -158,14 +158,14 @@ function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies
   return { onComplete: (result: CandidateSimulationResult, index: number) => {
     completed++
     fractions.set(index, 1)
-    if (result.completed && Number.isFinite(result.simScore)) {
+    if (isQualifiedCandidateSimulation(result)) {
       const preference = bestIndex === undefined ? 1 : compareWorkspacePreference(workspaces[index]!, workspaces[bestIndex]!) ||
         compareProductionEfficiencyVectors(efficiencies[index]!, efficiencies[bestIndex]!)
       if (bestIndex === undefined || result.simScore > bestScore! || result.simScore === bestScore && preference > 0) { bestScore = result.simScore; bestIndex = index }
     }
     onProgress?.({ phase: 'simulating', phaseProgress: (offset + [...fractions.values()].reduce((a, b) => a + b, 0)) / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/${stages}: 动态拟真进度 ${completed}/${total}（${result.completed && Number.isFinite(result.simScore) ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
+      label: `阶段 2/${stages}: 动态拟真进度 ${completed}/${total}（${result.completed && Number.isFinite(result.simScore) ? `${isQualifiedCandidateSimulation(result) ? '加权产出' : '质量待确认，加权产出'}: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
   }, onProgress: (progress: ScheduleSimulationProgress, index: number) => {
     fractions.set(index, progress.elapsedHours / progress.totalHours)
     const warmup = progress.phase === 'warmup'
@@ -439,7 +439,7 @@ function* smartRosterSteps(
   const initialResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, stages, onProgress,
     0, jobs.length + Number(Boolean(deferredPrimaryCandidate))) }
   const simulationResults = [...initialResults]
-  if (deferredPrimaryCandidate && !simulationResults.some(summary => summary.completed && Number.isFinite(summary.simScore))) {
+  if (deferredPrimaryCandidate && !simulationResults.some(isQualifiedCandidateSimulation)) {
     const fallback = deferredPrimaryCandidate, job = simulationJob(fallback.workspace)
     const inputKey = cache.key(job), efficiency = productionEfficiencyVector(job.workspace, inventory)
     const fallbackResults = yield { jobs: [job], ...simulationProgress([job.workspace], [efficiency], stages, onProgress, 1, 2) }
@@ -454,11 +454,15 @@ function* smartRosterSteps(
     cache.remember(inputKeys[idx]!, summary)
     candidate.simScore = summary.completed && Number.isFinite(summary.simScore) ? summary.simScore : null
     candidate.diagnostics.push(...summary.diagnostics)
+    const qualityIssues = summary.quality?.issues ?? []
+    if (!isQualifiedCandidateSimulation(summary)) candidate.diagnostics.push(...qualityIssues)
     if (summary.specialOperators) candidate.specialOperators = summary.specialOperators
   }
 
   const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed && Number.isFinite(summary.simScore) ? [uniqueCandidates[index]!.id] : []))
-  simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
+  const qualifiedIds = new Set(simulationResults.flatMap((summary, index) => isQualifiedCandidateSimulation(summary) ? [uniqueCandidates[index]!.id] : []))
+  simCandidates.sort((a, b) => Number(qualifiedIds.has(b.id)) - Number(qualifiedIds.has(a.id)) ||
+    Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
     (b.simScore ?? 0) - (a.simScore ?? 0) ||
     ((primaryScores.get(b.id) ?? -Infinity) - (primaryScores.get(a.id) ?? -Infinity)) ||
     compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!))
@@ -758,11 +762,19 @@ function* smartRosterSteps(
     result.diagnostics.push({ code: 'MAIN_OPTIMIZATION_BACKUP_UNSUPPORTED', message: '持续主班优化与条件副表实验分别运行，本次保留副表实验结果。' })
   }
 
+  const selectedEvidence = result.workspace ? cache.get(simulationJob(structuredClone(result.workspace), finalGeneratedBackup)) : undefined
+  const selectedIssues = selectedEvidence?.quality?.issues ?? []
+  const selectedQualified = isQualifiedCandidateSimulation(selectedEvidence)
+  if (!selectedQualified) {
+    result.diagnostics.push({ code: 'MAIN_ROSTER_QUALITY_UNCONFIRMED',
+      message: `排班已完成演算，工休及收益质量仍待确认：${selectedIssues.length ? selectedIssues.join('；') : '缺少同次完整仿真的合格质量证据'}。` })
+  }
   onProgress?.({
     phase: 'done',
     phaseProgress: 1,
-    bestScore: finalScore,
-    label: `一键智能排班已完成，最终加权产出评分：${finalScore.toFixed(1)} 分/日`,
+    bestScore: selectedQualified ? finalScore : undefined,
+    label: selectedQualified ? `一键智能排班已完成，最终加权产出评分：${finalScore.toFixed(1)} 分/日`
+      : `排班草案已生成，质量待确认；本次加权产出：${finalScore.toFixed(1)} 分/日`,
   })
 
   return result

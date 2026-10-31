@@ -1,6 +1,7 @@
 import type { RosterWorkspace } from '../domain/roster'
 import { compiledScheduleToRuntimeConfig } from '../scheduler/scheduleAdapter'
 import type { ScheduleSimulationReport } from '../simulator/scheduleSimulation'
+import { hasContinuousMowerWorkaholicPolicy, hasMeasuredPermanentPrimaryDuty } from '../simulator/permanentDutyEvidence'
 import { summarizeIncome, type IncomeCase } from './incomeComparison'
 
 /** Small enough for candidate workers; absence is never evidence of eligibility. */
@@ -8,7 +9,7 @@ export interface MainRosterDutyQuality {
   eligible: boolean
   /** Preserve the existing income-comparison verdict, including all its diagnostics. */
   strict: boolean
-  /** Unknown/missing duty data is null, never a fabricated fatigue-free zero. */
+  /** Unexempted fatigue is conservative; missing duty data is null, never a fabricated zero. */
   ordinaryExhaustedHours: number | null
   pendingDeferrals: number
   issues: string[]
@@ -114,12 +115,11 @@ export function evaluateMainRosterDuty(
       || (op.workRestRatio !== null && !finiteNonnegative(op.workRestRatio))) add('干员心情或工休指标缺少有限观测')
     const primary = runtime?.positions.filter(position => !position.dormitory && position.primary === op.operatorId) ?? []
     const permanent = primary.length === 1 && primary[0]!.permanent === true
-    // Configuration alone is insufficient: the report must prove that the
-    // operator actually occupied that one permanent primary for the whole window.
-    const permanentExhaustionExempt = permanent && validTimes
-      && close(op.permanentPrimaryOccupancyHours ?? NaN, report.observedHours)
-      && close(op.workHours + op.exhaustedHours, report.observedHours)
-      && op.restHours === 0 && op.idleHours === 0
+    // Mower grants workaholic permission by name across positions. A proven
+    // unchanged global policy and full measured primary coverage are separate proofs.
+    const permanentExhaustionExempt = validTimes && primary.length <= 1
+      && (hasContinuousMowerWorkaholicPolicy(schedule, op.operatorId)
+        || permanent && hasMeasuredPermanentPrimaryDuty(op))
     if (validTimes && !permanentExhaustionExempt) ordinaryExhaustedHours += op.exhaustedHours
     return {
       operatorId: op.operatorId, operatorName: op.operatorName,

@@ -1,5 +1,6 @@
 import {assertRunOrderMode} from '../simulator/productionTimeline'
 import { scoreSimulationProduction } from '../simulator/productionScore'
+import { hasContinuousMowerWorkaholicPolicy, hasMeasuredPermanentPrimaryDuty } from '../simulator/permanentDutyEvidence'
 import { type ProductionScore } from '../domain/productionScore'
 import { type IncomeObjective } from './productionObjective'
 import type {ScheduleSimulationReport} from '../simulator/scheduleSimulation'
@@ -38,9 +39,8 @@ export function summarizeIncome(report:ScheduleSimulationReport):IncomeCase {
   const times=[op.workHours,op.exhaustedHours,op.restHours,op.idleHours]
   if(times.some(n=>!Number.isFinite(n)||n<0)||Math.abs(times.reduce((n,v)=>n+v,0)-report.observedHours)>EPS)add('干员工休时间不守恒')
   const primarySlots=report.inputs.schedule.rooms.filter(r=>r.type!=='dormitory').flatMap(r=>r.slots).filter(s=>s.primaryOperatorId===op.operatorId)
-  const permanent=report.inputs.schedule.policies.workaholic?.includes(op.operatorId)&&primarySlots.length===1
-   &&Number.isFinite(op.permanentPrimaryOccupancyHours)&&Math.abs(op.permanentPrimaryOccupancyHours!-report.observedHours)<=EPS
-   &&Math.abs(op.workHours+op.exhaustedHours-report.observedHours)<=EPS&&op.restHours===0&&op.idleHours===0
+  const permanent=primarySlots.length<=1&&(hasContinuousMowerWorkaholicPolicy(report.inputs.schedule,op.operatorId)
+   ||report.inputs.schedule.policies.workaholic?.includes(op.operatorId)&&primarySlots.length===1&&hasMeasuredPermanentPrimaryDuty(op))
   if(op.exhaustedHours>1e-7&&!permanent)add('存在疲劳占岗')
  }
  if(p){

@@ -84,8 +84,8 @@ export interface MainRosterDutyProjection {
 }
 export interface MainRosterDutyModelInput {
   job: CandidateSimulationJob
-  /** Explicit prediction calendar; neither mode is a full production simulation. */
-  calendarModel?: 'production-off' | 'expected-orders'
+  /** Explicit prediction calendar; sampled observations include event timers, not the income ledger. */
+  calendarModel?: 'production-off' | 'expected-orders' | 'sampled-observations'
   /** Optional caller budget for the H calendar; no production F is permitted in this stage. */
   limits?: { maxEvents?: number; maxPhases?: number }
 }

@@ -9,6 +9,7 @@ import type { CompiledSchedule } from '../scheduler/types'
 import { projectScheduleState, simulateSchedule, type ScheduleSimulationOptions, type ScheduleSimulationReport } from '../simulator/scheduleSimulation'
 import { createMainRosterDutyRateProjector } from './mainRosterDutyRates'
 import { createMainRosterDutyOrderClock } from './mainRosterDutyOrderClock'
+import { createMainRosterDutyObservationClock } from './mainRosterDutyObservationClock'
 import { validatePhysicalRoster } from './rosterDraft'
 import type { MainRosterDutyModelInput, MainRosterDutyTrajectory } from './mainRosterDutyTypes'
 
@@ -29,6 +30,7 @@ interface Prepared {
 const EPS = 1e-5
 const PARITY = 'DUTY_NATIVE_PARITY_NOT_ESTABLISHED: production-off omits ProductionIO and ClueIO and disables independentMoraleClock; native task timing and output parity are not established.'
 const EXPECTED_PARITY = 'DUTY_NATIVE_PARITY_NOT_ESTABLISHED: expected-order calendar supplies mean-order observations and an independent morale clock; full ProductionIO, ClueIO, notifications, capacity and Native parity remain unavailable.'
+const SAMPLED_PARITY = 'DUTY_NATIVE_PARITY_NOT_ESTABLISHED: sampled observation timers preserve seeded order durations, storage and task observations without an income/resource ledger; matching a tested schedule does not establish general Native or game parity.'
 const ASSUMPTIONS = [
   'One simultaneous whole-base schedule state is projected for each segment; marginal operator times are not multiplied to reconstruct a joint roster.',
   'Segment efficiencyPercent is the H scheduler\'s actual joint-state evaluation, including its internal session/warmup calculation. Missing workAge is not filled with zero or static caps.',
@@ -45,13 +47,16 @@ const cpuSince = (started: ReturnType<typeof readCpu>): number | null => {
 const windowFor = (input: MainRosterDutyModelInput): Window => ({ warmupHours: input.job.options?.warmupHours ?? 0,
   sampleHours: input.job.options?.sampleHours ?? 336, maxStepHours: input.job.options?.maxStepHours ?? .25 })
 function empty(window: Window, status: MainRosterDutyTrajectory['status'], diagnostics: string[], sourceKind: MainRosterDutyTrajectory['sourceKind'], model: MainRosterDutyModelInput['calendarModel'] = 'production-off'): MainRosterDutyTrajectory {
-  return { status, window, phases: [], operators: [], sourceKind, nativeScheduleParity: 'not-established', diagnostics: [model === 'expected-orders' ? EXPECTED_PARITY : PARITY, ...diagnostics],
-    assumptions: [...ASSUMPTIONS], cost: { scheduleOnlyCalls: 0, elapsedMs: 0, cpuMs: null, phaseEvaluations: 0 } }
+  return { status, window, phases: [], operators: [], sourceKind, nativeScheduleParity: 'not-established', diagnostics: [model === 'sampled-observations' ? SAMPLED_PARITY : model === 'expected-orders' ? EXPECTED_PARITY : PARITY, ...diagnostics],
+    assumptions: model === 'sampled-observations'
+      ? [...ASSUMPTIONS.filter(value => !value.startsWith('Production RNG is absent')), 'Sampled trade timers use the original per-room production seed. This predicts one stochastic duty path, not an expectation over seeds; no Native report or income ledger is used to generate it.']
+      : [...ASSUMPTIONS], cost: { scheduleOnlyCalls: 0, elapsedMs: 0, cpuMs: null, phaseEvaluations: 0 } }
 }
 function prepare(input: MainRosterDutyModelInput): { value?: Prepared; status: 'unsupported' | 'incomplete'; diagnostics: string[] } {
   const window = windowFor(input), source = input.job.options ?? {}, production = source.production
   const fail = (message: string) => ({ status: 'unsupported' as const, diagnostics: [message] })
-  if (input.calendarModel !== undefined && !['production-off', 'expected-orders'].includes(input.calendarModel)) return fail('DUTY_UNKNOWN_CALENDAR_MODEL')
+  if (input.calendarModel !== undefined && !['production-off', 'expected-orders', 'sampled-observations'].includes(input.calendarModel)) return fail('DUTY_UNKNOWN_CALENDAR_MODEL')
+  if (input.calendarModel === 'sampled-observations' && (!Number.isSafeInteger(production?.seed ?? 1) || (production?.seed ?? 1) < 0 || (production?.seed ?? 1) > 0xffffffff)) return fail('DUTY_INVALID_OBSERVATION_SEED')
   if (!finite(window.warmupHours) || window.warmupHours < 0 || !finite(window.sampleHours) || window.sampleHours <= 0 || !finite(window.warmupHours + window.sampleHours) || !finite(window.maxStepHours) || window.maxStepHours <= 0) return fail('DUTY_INVALID_WINDOW: finite nonnegative warmup and positive sample/step are required.')
   if (!production || production.outputMode !== 'potential' || production.inventoryMode === 'finite' || production.droneTarget !== 'none') return fail('DUTY_UNSUPPORTED_PRODUCTION_SCOPE: only potential, infinite-material, none-drone input jobs are supported.')
   if (source.schedulingModel && source.schedulingModel !== 'mower-alpha') return fail('DUTY_UNSUPPORTED_SCHEDULER: this H wrapper supports explicit alpha only.')
@@ -81,7 +86,8 @@ function prepare(input: MainRosterDutyModelInput): { value?: Prepared; status: '
 function convert(input: MainRosterDutyModelInput, report: ScheduleSimulationReport, prepared: Prepared,
   evidence: MainRosterDutyTraceEvidence, started: number, cpuStarted: ReturnType<typeof readCpu>): MainRosterDutyTrajectory {
   const sourceKind = evidence.sourceKind ?? 'predicted-schedule'
-  const model = report.diagnostics.some(issue => issue.code === 'DUTY_EXPECTED_ORDER_CALENDAR') ? 'expected-orders' : 'production-off'
+  const model = report.diagnostics.some(issue => issue.code === 'DUTY_SAMPLED_OBSERVATION_CALENDAR') ? 'sampled-observations'
+    : report.diagnostics.some(issue => issue.code === 'DUTY_EXPECTED_ORDER_CALENDAR') ? 'expected-orders' : 'production-off'
   const result = empty(prepared.window, 'complete', report.diagnostics.map(issue => `${issue.code}: ${issue.message}`), sourceKind, model)
   const finish = () => {
     const conversionCpu = cpuSince(cpuStarted), priorCpu = evidence.cpuMs === undefined ? ((evidence.scheduleOnlyCalls ?? 0) ? null : 0) : evidence.cpuMs
@@ -92,6 +98,13 @@ function convert(input: MainRosterDutyModelInput, report: ScheduleSimulationRepo
   if (input.calendarModel !== undefined && input.calendarModel !== model) {
     result.status = 'unsupported'; result.diagnostics.push('DUTY_CALENDAR_MODEL_MISMATCH: saved calendar lacks the requested observation-host evidence.')
     return finish()
+  }
+  if (model === 'sampled-observations') {
+    const seeds = report.diagnostics.filter(issue => issue.code === 'DUTY_OBSERVATION_SEED')
+    if (seeds.length !== 1 || seeds[0]!.message !== String(input.job.options?.production?.seed ?? 1)) {
+      result.status = 'unsupported'; result.diagnostics.push('DUTY_OBSERVATION_SEED_MISMATCH: saved sampled calendar must bind the original production seed.')
+      return finish()
+    }
   }
   if (report.production !== undefined && sourceKind === 'predicted-schedule') {
     result.status = 'unsupported'; result.diagnostics.push('DUTY_OBSERVED_PRODUCTION_NOT_PREDICTION: an F report may only be converted with explicit observed-replay provenance.')
@@ -179,9 +192,13 @@ export function buildMainRosterDutyTrajectory(input: MainRosterDutyModelInput): 
     return result
   }
   try {
-    const report = input.calendarModel === 'expected-orders'
-      ? simulateSchedule(prepared.value.compiled, prepared.value.options, undefined, createMainRosterDutyOrderClock)
-      : simulateSchedule(prepared.value.compiled, prepared.value.options)
+    const report = input.calendarModel === 'sampled-observations'
+      ? simulateSchedule(prepared.value.compiled, prepared.value.options, undefined, (schedule, state, frame) =>
+          createMainRosterDutyObservationClock(schedule, state, frame, { seed: input.job.options?.production?.seed ?? 1,
+            fragmentFormulaByRoom: input.job.options?.production?.fragmentFormulaByRoom }))
+      : input.calendarModel === 'expected-orders'
+        ? simulateSchedule(prepared.value.compiled, prepared.value.options, undefined, createMainRosterDutyOrderClock)
+        : simulateSchedule(prepared.value.compiled, prepared.value.options)
     return convert(input, report, prepared.value, { scheduleOnlyCalls: 1, elapsedMs: 0, cpuMs: 0 }, started, cpuStarted)
   } catch (error) {
     const result = empty(prepared.value.window, 'incomplete', ['DUTY_CALENDAR_FAILED: ' + (error instanceof Error ? error.message : String(error))], 'predicted-schedule', input.calendarModel)

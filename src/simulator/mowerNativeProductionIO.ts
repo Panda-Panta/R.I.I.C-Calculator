@@ -14,7 +14,15 @@ import {bridgeMowerNativeIO} from '../scheduler/mowerRunOrderBridge'
 import {executeMowerDroneOperation,type MowerDroneOperationRequest,type MowerDroneOperationObservation} from '../scheduler/mowerDroneOperations'
 import type {createProductionTimeline,ProductionFrame} from './productionTimeline'
 import {toMowerMicros} from '../scheduler/mowerTaskQueue'
-type Controller=ReturnType<typeof createProductionTimeline>
+/** Only the facility observations used by the headless task policy, without income/report ownership. */
+export type MowerProductionObservationSource=Pick<ReturnType<typeof createProductionTimeline>,
+ 'nativeRemainingSeconds'|'nativePendingTradeOrders'|'nativeAcceptOrder'|
+ 'nativeHasTrade'|'nativeHasManufacture'|'nativeTradeDroneAvailable'|
+ 'nativeManufactureDroneMaximum'|'nativeSpendManufacturingDrones'|
+ 'nativeDroneCount'|'nativeTradeRequiredDrones'|'nativeSpendTradeDrones'|
+ 'nativePendingManufacturingItems'|'nativePendingRecycleItems'|
+ 'nativeCollectTradeOrders'|'nativeCollectManufacturingItems'|'nativeCollectRecycleItems'>
+type Controller=MowerProductionObservationSource
 export function createMowerProductionIO(state:RuntimeState,production:Controller,frame:()=>ProductionFrame):Pick<RuntimeRates,'mowerRunOrderIO'|'mowerNotificationIO'|'mowerTodoListVisible'|'mowerTodoTaskIO'>{
  const now=()=>toMowerMicros(state.time)
  const ui=state.mowerUI??={scene:'INFRA_MAIN',lastRoom:''}
