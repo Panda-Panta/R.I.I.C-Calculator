@@ -1,10 +1,13 @@
-# 2026-11-01 已验证工休模型晋升主线（整合当前main）
+# 2026-11-01 已验证工休模型晋升主线（整合检查完成，普通PR交付）
 
 - 用户明确要求验证完成后推送main。已验候选为ee377adb69d259c0c8aa1d75a601548cabab5db1，test与专项codex分支一致；五布局十组96h的10H/10F、工休八指标、定向回归、类型、构建及独立审查证据复用上一节，不重复昂贵长测。
 - 晋升核对期间main从42e11c8推进至5d248f757dca174a8c3ef682053d6b75f364b337，已合入PR37的共享标识与甘特图结构重构。先在本专项codex分支整合新main，保留双方源码/文档和原作者历史；通过受影响检查后快进test，并经普通PR合入main。平台保护不绕过，不强推，不修改其他分支或工作树。
 - root独占计划、整合、最终检查和Git；main_promotion_impact只读核对结构改动的模型语义/证据复用范围；main_promotion_review独立审查最终整合与交付说明。两者不执行H/F，不改共享源码；不把当前共享标识重构后的检查冒充新十组仿真。
 - 备份、原候选六文件绑定和当前main记录见artifacts/duty-model-main-promotion-20261101/PREPARATION.json。整合前源码备份source-ee377ad.zip已核SHA256；用户图、排班、干员库、配置、浏览器数据不在提交范围。
 - 验收：检查实际冲突/导入及共享标识语义，执行必要定向回归、类型、独立生产构建、结构与diff检查，独立审查最终树；仅文档或同语义导入变化复用既有长测并明确边界。最终候选/PR/main回读与本地对齐证据另存本轮artifacts；不手动更新Tools或创建Release，main既有自动工作流按实际结果单列。
+- 整合结果：源码无手工冲突，UPDATE_PLAN保留双方完整任务段，PROJECT_STRUCTURE用主线生成器重建。独立按Git blob核对，除两份文档外，主线新增的18路径与5d248f7一致，原候选的69路径与ee377ad一致；模型公式、Mower调度与原有自动排班择优没有因整合改变。
+- 本次检查：18个相关文件437项全通过，覆盖共享标识/身份/房间、helper/编译/校验、全局替换、甘特图及展示、架构和工休接口；全局vue-tsc退出0，新Vite生产构建45.00秒、3116模块成功（既有大chunk提示），结构、CLI语法与diff检查通过。没有新增H/F、重跑全仓或游戏/安装验收。
+- 证据范围：旧10H/10F仍绑定原冻结候选，整合后标识/adapter/validate依赖字节已改变，不能将旧闭包哈希称为新树全部一致。纯抽取与导入语义保全由本次独立审查和定点检查补充；旧官方CLI正负回放同样保持原候选范围。模型仍有153期末延期与离散资源误差，不以工休达线宣称所有排班合格或全域最优。提交/PR/主线实际结果以本轮artifacts交付记录为准。
 
 # 2026-10-31 工休模型跨布局稳健性（验证完成，交付test候选）
 
@@ -163,6 +166,22 @@
 - 最终有限结果：6次新完整F、0H/短窗/重试。恢复目标候选为101133.33334465分/日、普通疲劳0、strict=true、pending0，相比历史同条件252四金100400.00增加733.33（0.7304%），历史基线本轮未重跑。自由三金原表101066.67合格；原自由1/4疲劳83.33/41.06h；仅改变6个内部组字段的修复版均疲劳0且合格，但分别96133.33和95800.00，仍低于原表，保留原方案。不得将工休修复等同增产或宣称任意自由组合更优。
 - 验收与边界：统一14文件275项通过；仅测试数组末项访问改为现有TS目标兼容语法后，受影响14项和全局类型复查。Vite生产构建22.80秒成功（原大chunk提示保留），结构索引同步并校验；独立只读审查及v2增量无未关闭P1/P2，追加非空原表槽/人员锁/外部高级排除为真实输入0F探针，不冒充非空锁位Native F。没有全仓回归、真实Worker/游戏、长窗收敛或全域最优证明。
 - Git与软件交付：已推送自有开发分支 codex/roster-free-combinations-20261030，程序提交 d574c4476bf3da4673ceeb41fec77771b688234c，已创建并附加 [草稿 PR #36](https://github.com/Panda-Panta/R.I.I.C-Calculator/pull/36)，基于当前远端main 42e11c8；新选项默认关闭并明确尚未进入v1.1.3发行包。提交代码与说明、供PR审阅，不覆盖稳定Tools或再建Release。旧H预测误差未解决，实际择优使用同次完整F质量。源码备份SHA256 db7e8ea4d082df66aeed281c469bd3bbca0e5cc22e99608ce055ebeafa251912；原件/失败/账本/审查/构建记录位于本机 artifacts/main-roster-next-20261030。
+# 2026-11-01 项目结构检查与职责优化（实现与必要检查完成，主线交付中）
+
+- 用户目标：检查当前结构并实施有实际收益的优化；沿用现有 Vue/TypeScript 分层、公式、数据、排班协议、存储键和界面行为。最新补充允许检查合格后直接提交，复用与内容、范围相符的既有证据，不重复无关验证。
+- 现状与隔离：原工程在 codex/roster-methods-20261028，原 UPDATE_PLAN 的18增1删已核对交付报告/提交树/视频哈希并单独提交为910be79；约2.8万未跟踪历史文件保留。优化使用 managed worktree 的 codex/structure-optimization-20261101，基于实际远端 main 42e11c8；共享 test 的工休研究和草稿PR36不纳入。
+- 备份：原工程 artifacts/structure-optimization-20261101/backup/original-checkout.zip，2019项逐字节校验，SHA256 532f59405522ab62cfd75c20970d9e165dcc1658f2fc459dbe937820c1f906a6；另有 main-42e11c8.zip（CRC通过，SHA256 db7e8ea4d082df66aeed281c469bd3bbca0e5cc22e99608ce055ebeafa251912）及原计划/补丁。用户干员库、排班、安装配置与WebView2不在改写范围；程序安装仅在主线晋升后通过既有脚本更新。
+- 结构判断：现有 domain → rules/engine/scheduler → simulator/optimizer → workbench → components 分工总体合理；WorkbenchShell 已抽取生命周期，不因行数再拆；BackupPlanEditor 已复用条件/分组 helpers；生成Unicode表不按行数拆分。选择以下两处真实职责混合做渐进抽取，不批量搬迁目录或删除未知文件。
+- 工作包A（timeline_implementation 独占）：src/components/workbench/ScheduleTimelineGantt.vue、src/workbench/timeline/timelinePresentation.ts及其测试；统一普通/导出时间轴的纯坐标与刻度模型，抽出分卷、范围、像素及文件名布局。Vue refs/watch、拖动、事件跳转、DOM/图片/剪贴板副作用留在组件，保持同步分卷下标修正规则。
+- 工作包B（identity_implementation 独占）：domain/operatorIdentifiers.ts、纯身份/房间名称模块、workbench/operatorHelpers.ts、adapter.ts、validate.ts、optimizer/globalPerCapitaReplacement.ts及对应定向测试；计算消费者改为直接引用领域入口，消除对拼音/头像展示模块的依赖。旧 helper 导出保留，大小写占位符、未知名称、中文诊断文本不变；不改 operatorImport 的独立导入语义。
+- 主agent：统一共享入口、计划、src/README、结构生成器/索引及架构检查；补齐 rules 层现有保护遗漏。独立审计agent先完成只读定位，A/B随后真实并行实施；Git/提交由主agent串行执行。
+- 资源复用：src/README.md、src/test/architecture.spec.ts、现有timeline/组件/adapter/validate/globalPerCapitaReplacement测试；scripts/update-project-structure.mjs；现有相同package与pnpm-lock依赖通过junction复用，不升级依赖。原历史文档直接复用相符交付证据；新增源码仅补直接受影响检查、类型和独立构建。
+- 验收：A轴坐标/刻度、48h/336h分卷/尾卷/自定义范围/像素策略与组件交互；B名称/占位符/身份/房间诊断与计算消费者；架构依赖、结构索引、类型检查、独立生产构建。验证以展示与调用契约为限，不重跑无关全仓长仿真或宣称游戏/真实长图导出已验。
+- 实际结果：A新增两个纯展示入口，甘特图2968→2814行，模板与样式逐字保持；B共用姓名/代号索引并去掉重复ID索引，身份与房间规则下沉，原helper兼容导出保留，三个计算消费者仅调整导入且依赖闭包不再到达拼音/资产模块。两个独立审计agent对非本人编写的冻结差异完成复核，无阻塞发现。
+- 必要验证：最终整合13文件152项通过；应用与工程配置类型检查、独立Vite生产构建（1007文件，既有大分块提示）、结构索引检查通过。首轮类型检查发现新增测试的Array.at与当前目标不兼容，只改两处测试索引后10项复验及两套类型检查通过；生产源码哈希未变，复用相同构建，不重复整套。详细日志/哈希/审查结论在本机artifacts/structure-optimization-20261101。原工程2019份登记文件字节保持，28494份未跟踪文件及667条同粒度状态均保持。
+- 证据范围：覆盖抽取的展示、标识、适配/校验、优化调用与架构契约；未重跑全仓长仿真，未做真实浏览器PNG/剪贴板或游戏验收。AGENTS.md和DEVELOPMENT_WORKFLOW.md的既有流程足够，本轮无新增机制/来源或工作流，不改领域skill与用户数据。
+- 最新授权与交付：用户随后明确“验证完毕即可提交到主分支”，本条取代上轮仅本地提交边界。沿用已审查的9865213候选和实际内容相符的152项关联检查、类型、构建与独立审查，不重复业务验证。主agent串行普通推送自有codex分支、创建PR并遵守平台保护合入main；拉取实际主线核对源码树/构建输入后，执行既有sync-tools.ps1预览、备份、安全同步D:/Tools/R.I.I.C-Calculator并核对管理/保留文件。原实验分支、共享test和草稿PR36不纳入；不新建Release或更改版本。源码与安装的提交、PR、哈希及未完成项分别记录在本段和本机delivery/。
+
 # 2026-10-29 v1.1.3 高产主班稳定发布（已合入主线、发布并安装）
 
 - 用户已授权：推送当前已完善、效果最好的稳定主班模型至自有 main 与本地软件目录，创建 Release，并同步 GitHub README 和自动排班说明。沿用 agent-dev-workflow、领域 skill 与 DEVELOPMENT_WORKFLOW.md，采用既有专项分支 codex/auto-main-backup-20261028 和普通 PR #34；共享 test 属于其他批次，本轮不夹带或改写。

@@ -5,52 +5,24 @@
  */
 
 import { match, pinyin } from 'pinyin-pro'
-import { OPERATOR_MAP, OPERATORS, type OperatorRecord } from '../domain/operators'
-import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
-import type { MowerCompatibilityEnvelope, MowerFacilityType, MowerMainPlan, MowerRoomId } from '../domain/roster'
+import { OPERATOR_MAP, type OperatorRecord } from '../domain/operators'
+import { findOperatorByName } from '../domain/operatorIdentifiers'
+import { getRoomDisplayName } from '../domain/roomNames'
+import type { MowerCompatibilityEnvelope, MowerMainPlan, MowerRoomId } from '../domain/roster'
 import { operatorReplacementLocations } from './operatorReplacement'
 import { resolveAssetUrl } from '../utils/assets'
-export { resolveAssetUrl }
+export { resolveAssetUrl, getRoomDisplayName }
+export { getOperatorName } from '../domain/operatorIdentifiers'
+export { isRunOrderOperator, isProviso, isFiammetta } from '../domain/operatorRoles'
 
 export interface OperatorSearchItem extends OperatorRecord {
   fullPinyin: string
   firstLetters: string
 }
 
-const OPERATOR_BY_NAME = new Map(OPERATORS.map((op) => [op.name, op]))
-const OPERATOR_BY_APPELLATION = new Map(OPERATORS.map((op) => [op.appellation.toLowerCase(), op]))
-
-export function getOperatorName(identifier: string | null | undefined): string {
-  if (!identifier) return ''
-  if (identifier === 'Free' || identifier === 'free') return 'Free'
-  if (identifier === 'Current' || identifier === 'current') return 'Current'
-  const op =
-    OPERATOR_MAP.get(identifier) ||
-    OPERATOR_BY_NAME.get(identifier) ||
-    OPERATOR_BY_APPELLATION.get(identifier.toLowerCase())
-  return op ? op.name : identifier
-}
-
-export function isRunOrderOperator(identifier: string | null | undefined): boolean {
-  if (!identifier) return false
-  return isTradeRunOrderOperator(getOperatorName(identifier))
-}
-
-export function isProviso(identifier: string | null | undefined): boolean {
-  if (!identifier) return false
-  const name = getOperatorName(identifier)
-  return name === '但书'
-}
-
-export function isFiammetta(identifier: string | null | undefined): boolean {
-  if (!identifier) return false
-  const name = getOperatorName(identifier)
-  return name === '菲亚梅塔'
-}
-
 export function buildOperatorSearchIndex(operators: OperatorRecord[]): OperatorSearchItem[] {
   return operators.map((op) => {
-    const domainOp = OPERATOR_MAP.get(op.charId) || OPERATOR_BY_NAME.get(op.name)
+    const domainOp = OPERATOR_MAP.get(op.charId) || findOperatorByName(op.name)
     const appellation = op.appellation || domainOp?.appellation || ''
     const fullPinyin = pinyin(op.name, { toneType: 'none', separator: '' }).toLowerCase()
     const firstLetters = pinyin(op.name, { pattern: 'first', toneType: 'none', separator: '' }).toLowerCase()
@@ -139,48 +111,6 @@ export function getOperatorAvatarUrl(identifier: string): string {
   const op = OPERATOR_MAP.get(identifier)
   const name = op ? op.name : identifier
   return resolveAssetUrl(`avatar/${encodeURI(name)}.webp`)
-}
-
-const FACILITY_TYPE_NAMES: Record<string, string> = {
-  manufacture: '制造站',
-  trading: '贸易站',
-  power: '发电站',
-  dormitory: '宿舍',
-  central: '控制中枢',
-  meeting: '会客室',
-  factory: '加工站',
-  contact: '办公室',
-  train: '训练室',
-  recycle: '回收站',
-  gaming: '活动室',
-}
-
-export function getRoomDisplayName(roomId: string, type?: MowerFacilityType | string): string {
-  if (roomId.startsWith('room_')) {
-    const parts = roomId.split('_')
-    const floor = parts[1]
-    const col = parts[2]
-    const baseCode = `B${floor}0${col}`
-    if (type && FACILITY_TYPE_NAMES[type]) {
-      return `${baseCode} (${FACILITY_TYPE_NAMES[type]})`
-    }
-    return baseCode
-  }
-  if (roomId === 'central') return '控制中枢'
-  if (roomId.startsWith('dormitory_') || roomId.startsWith('dorm_')) {
-    const num = roomId.replace(/^(dormitory_|dorm_)/, '')
-    return `宿舍${num}`
-  }
-  if (roomId === 'meeting') return '会客室'
-  if (roomId === 'factory') return '加工站'
-  if (roomId === 'contact') return '办公室'
-  if (roomId === 'train') return '训练室'
-  if (roomId === 'recycle') return '回收站'
-  if (roomId.startsWith('gaming_')) {
-    const num = roomId.replace('gaming_', '')
-    return `活动室${num}`
-  }
-  return roomId
 }
 
 export function getAssignedSummaryMap(mainPlan: MowerMainPlan): Map<string, string> {

@@ -27,6 +27,18 @@ describe('operatorHelpers', () => {
       expect(amiya!.firstLetters).toContain('amy')
     })
 
+    it('only backfills appellations from a catalog ID or an exact catalog name', () => {
+      const texas = OPERATORS.find(op => op.name === '德克萨斯')!
+      const records = [
+        { ...texas, charId: 'unknown', name: '德克萨斯', appellation: '' },
+        { ...texas, charId: 'unknown', name: 'Texas', appellation: '' },
+        { ...texas, charId: 'unknown', name: texas.charId, appellation: '' },
+        { ...texas, name: 'Custom name', appellation: '' },
+      ]
+      expect(buildOperatorSearchIndex(records).map(op => op.appellation))
+        .toEqual([texas.appellation, '', '', texas.appellation])
+    })
+
     it('searches by Chinese character name', () => {
       const results = searchOperators('银灰', index)
       expect(results.length).toBeGreaterThan(0)
@@ -80,6 +92,12 @@ describe('operatorHelpers', () => {
     it('returns standard avatar webp URL for operators', () => {
       expect(getOperatorAvatarUrl('银灰')).toBe('/avatar/%E9%93%B6%E7%81%B0.webp')
       expect(getOperatorAvatarUrl('char_172_svrash')).toBe('/avatar/%E9%93%B6%E7%81%B0.webp')
+    })
+
+    it('keeps appellations and lowercase placeholders as literal avatar names', () => {
+      expect(getOperatorAvatarUrl('Texas')).toBe('/avatar/Texas.webp')
+      expect(getOperatorAvatarUrl('free')).toBe('/avatar/free.webp')
+      expect(getOperatorAvatarUrl('current')).toBe('/avatar/current.webp')
     })
 
     it('returns Free and Current avatar URLs', () => {

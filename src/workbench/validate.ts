@@ -1,6 +1,6 @@
 import {validateBackupPlans} from './validateBackupPlans'
 import {validateMowerRosterRules} from '../domain/mowerRosterRules'
-import {resolveOperatorCharId} from '../domain/operatorIdentifiers'
+import {getOperatorName, resolveOperatorCharId} from '../domain/operatorIdentifiers'
 import {
   MOWER_OUTPUT_ROOM_IDS,
   MOWER_ROOM_IDS,
@@ -9,11 +9,8 @@ import {
   type MowerRoomId,
   type RosterWorkspace,
 } from '../domain/roster'
-import {
-  getOperatorName,
-  getRoomDisplayName,
-  isFiammetta,
-} from './operatorHelpers'
+import { getRoomDisplayName } from '../domain/roomNames'
+import { isFiammetta } from '../domain/operatorRoles'
 import { facilityCapacity } from '../domain/facilities'
 
 export type ValidationSeverity = 'critical' | 'warning' | 'info'
