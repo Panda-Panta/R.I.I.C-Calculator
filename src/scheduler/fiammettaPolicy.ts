@@ -1,4 +1,5 @@
-import { MORALE_EPSILON, type RuntimeState } from './rosterRuntime'
+import type { RuntimeState } from './rosterRuntime'
+import { MORALE_EPSILON } from './rosterMorale'
 export interface FiammettaPolicy { operatorId: string; orderedTargets: string[]; threshold?: number; fool?: boolean }
 export function nextFiammettaSwap(s: RuntimeState): string | undefined {
   const f = s.config.fiammetta

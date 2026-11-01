@@ -52,12 +52,17 @@ export interface SmartRosterConfig {
 
 type SmartRosterOptimizationConfig = Pick<SmartRosterConfig,
   'enableMainOptimization' | 'allowFreeCombinations' | 'optimizationMaxSimulations' | 'optimizationTimeBudgetMs'>
+type SmartRosterComparisonConfig = SmartRosterOptimizationConfig & Pick<SmartRosterConfig, 'enableBackupGeneration'>
 
 export const SMART_ROSTER_OPTIMIZATION_DEFAULTS: Required<SmartRosterOptimizationConfig> = {
   enableMainOptimization: false,
   allowFreeCombinations: false,
   optimizationMaxSimulations: 3,
   optimizationTimeBudgetMs: 30000,
+}
+
+export function getSmartRosterComparisonSimulationLimit(config: Pick<SmartRosterConfig, 'enableBackupGeneration'> = {}): number {
+  return config.enableBackupGeneration === true ? 4 : 8
 }
 
 /** Share persisted-preference and request bounds without rewriting existing storage. */
@@ -70,8 +75,17 @@ export function normalizeSmartRosterOptimizationOptions(config: SmartRosterOptim
   return {
     enableMainOptimization: config.enableMainOptimization === true,
     allowFreeCombinations: config.allowFreeCombinations === true,
-    optimizationMaxSimulations: boundedInteger(config.optimizationMaxSimulations, SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationMaxSimulations, 1, 8),
+    optimizationMaxSimulations: boundedInteger(config.optimizationMaxSimulations, SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationMaxSimulations, 1, getSmartRosterComparisonSimulationLimit()),
     optimizationTimeBudgetMs: boundedInteger(config.optimizationTimeBudgetMs, SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationTimeBudgetMs, 1000, 300000),
+  }
+}
+
+/** Apply the selected comparison mode only when assembling a confirmed request. */
+export function normalizeSmartRosterComparisonOptions(config: SmartRosterComparisonConfig = {}): Required<SmartRosterOptimizationConfig> {
+  const options = normalizeSmartRosterOptimizationOptions(config)
+  return {
+    ...options,
+    optimizationMaxSimulations: Math.min(getSmartRosterComparisonSimulationLimit(config), options.optimizationMaxSimulations),
   }
 }
 

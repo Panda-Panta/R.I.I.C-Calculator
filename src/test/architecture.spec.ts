@@ -6,23 +6,38 @@ import { expect, it } from 'vitest'
 
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-function sourceFiles(directory: string): string[] {
+function sourceFiles(directory: string, includeVue = false): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const file = resolve(directory, entry.name)
-    if (entry.isDirectory()) return entry.name === 'fixtures' ? [] : sourceFiles(file)
-    return entry.name.endsWith('.ts') && !/\.(spec|test|d)\.ts$/.test(entry.name) ? [file] : []
+    if (entry.isDirectory()) return entry.name === 'fixtures' ? [] : sourceFiles(file, includeVue)
+    return (entry.name.endsWith('.ts') && !/\.(spec|test|d)\.ts$/.test(entry.name))
+      || (includeVue && entry.name.endsWith('.vue')) ? [file] : []
   })
 }
 
-function dependencies(file: string): string[] {
-  const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)
+function dependencies(file: string, runtimeOnly = false): string[] {
+  const content = readFileSync(file, 'utf8')
+  const script = file.endsWith('.vue')
+    ? [...content.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1]).join('\n')
+    : content
+  const source = ts.createSourceFile(file, script, ts.ScriptTarget.Latest, true)
   const result = new Set<string>()
   function visit(node: ts.Node): void {
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      result.add(node.moduleSpecifier.text)
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const clause = node.importClause
+      const named = clause?.namedBindings
+      const typeOnly = clause?.isTypeOnly || (!clause?.name && named && ts.isNamedImports(named)
+        && named.elements.length > 0 && named.elements.every(element => element.isTypeOnly))
+      if (!runtimeOnly || !typeOnly) result.add(node.moduleSpecifier.text)
+    }
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      const named = node.exportClause
+      const typeOnly = node.isTypeOnly || (named && ts.isNamedExports(named)
+        && named.elements.length > 0 && named.elements.every(element => element.isTypeOnly))
+      if (!runtimeOnly || !typeOnly) result.add(node.moduleSpecifier.text)
     }
     if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
-      result.add(node.argument.literal.text)
+      if (!runtimeOnly) result.add(node.argument.literal.text)
     }
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
       result.add(node.arguments[0].text)
@@ -48,6 +63,34 @@ it.each([
     }
   }
   expect(violations).toEqual([])
+})
+
+it('keeps runtime source imports acyclic, excluding type-only references', () => {
+  const files = new Set(sourceFiles(sourceRoot, true))
+  const visited = new Set<string>()
+  const active = new Set<string>()
+  const stack: string[] = []
+  const cycles: string[] = []
+  function visit(file: string): void {
+    if (active.has(file)) {
+      cycles.push([...stack.slice(stack.indexOf(file)), file].map(path => relative(sourceRoot, path)).join(' -> '))
+      return
+    }
+    if (visited.has(file)) return
+    active.add(file)
+    stack.push(file)
+    for (const dependency of dependencies(file, true)) {
+      if (!dependency.startsWith('.')) continue
+      const base = resolve(dirname(file), dependency.split('?')[0]!)
+      const target = [base, base + '.ts', base + '.vue', resolve(base, 'index.ts')].find(candidate => files.has(candidate))
+      if (target) visit(target)
+    }
+    stack.pop()
+    active.delete(file)
+    visited.add(file)
+  }
+  for (const file of files) visit(file)
+  expect(cycles).toEqual([])
 })
 
 it('keeps every component reachable from the application entry', () => {

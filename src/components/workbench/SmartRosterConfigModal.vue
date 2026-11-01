@@ -247,7 +247,11 @@ import { droneFacilities } from '../../workbench/droneTargets'
 import type { RosterWorkspace } from '../../domain/roster'
 import ProductionWeightsEditor from './ProductionWeightsEditor.vue'
 import { normalizeProductionWeights, type ProductionWeights } from '../../domain/productionWeights'
-import { normalizeSmartRosterOptimizationOptions } from '../../workbench/settings'
+import {
+  getSmartRosterComparisonSimulationLimit,
+  normalizeSmartRosterComparisonOptions,
+  normalizeSmartRosterOptimizationOptions,
+} from '../../workbench/settings'
 
 const props = withDefaults(
   defineProps<{
@@ -322,13 +326,13 @@ const loadPersistedConfig = (): SmartRosterConfig => {
 
 const form = ref<SmartRosterConfig>(loadPersistedConfig())
 const comparisonBudgetEnabled = computed(() => form.value.enableMainOptimization === true || form.value.enableBackupGeneration === true)
-const comparisonSimulationLimit = computed(() => form.value.enableBackupGeneration === true ? 4 : 8)
+const comparisonSimulationLimit = computed(() => getSmartRosterComparisonSimulationLimit(form.value))
 const comparisonModeDescription = computed(() => form.value.enableBackupGeneration === true
   ? form.value.enableMainOptimization === true
     ? '本次副表比较优先，采用联合主副表比较，不另行运行持续主班优化。'
-    : '本次采用联合主副表比较，最多追加 4 次完整仿真。'
+    : `本次采用联合主副表比较，最多追加 ${comparisonSimulationLimit.value} 次完整仿真。`
   : form.value.enableMainOptimization === true
-    ? '本次采用持续主班优化，最多追加 8 次完整仿真。'
+    ? `本次采用持续主班优化，最多追加 ${comparisonSimulationLimit.value} 次完整仿真。`
     : '开启持续主班优化或联合主副表比较后，可调整追加比较预算。')
 const optimizationMaxSimulations = computed({
   get: () => Math.min(comparisonSimulationLimit.value, form.value.optimizationMaxSimulations ?? SMART_ROSTER_OPTIMIZATION_DEFAULTS.optimizationMaxSimulations),
@@ -380,7 +384,7 @@ const handleReset = () => {
 
 const handleConfirm = () => {
   if (!weightsValid.value) return
-  const optimizationOptions = normalizeSmartRosterOptimizationOptions(form.value)
+  const optimizationOptions = normalizeSmartRosterComparisonOptions(form.value)
   // Sanitize numeric ranges
   const config: SmartRosterConfig = {
     productionWeights: normalizeProductionWeights(form.value.productionWeights),
@@ -392,7 +396,6 @@ const handleConfirm = () => {
     enableDeepSearch: Boolean(form.value.enableDeepSearch),
     enableBackupGeneration: form.value.enableBackupGeneration === true,
     ...optimizationOptions,
-    optimizationMaxSimulations: Math.min(comparisonSimulationLimit.value, optimizationOptions.optimizationMaxSimulations),
     droneTarget: facilities.value.find(f => f.roomId === selectedRoom.value)?.target ?? 'none',
     droneRoomId: selectedRoom.value === 'none' ? '' : selectedRoom.value,
     seed: Number.isInteger(form.value.seed) ? form.value.seed : -1,

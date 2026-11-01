@@ -15,10 +15,11 @@ import type {MowerBackupContext} from './mowerSourceRuntime'
 import { mowerReturnDelay, mowerRescueDelay } from './mowerTiming'
 import { applyFiammetta, type FiammettaPolicy } from './fiammettaPolicy'
 import type { RunOrderPolicy } from './types'
+import {MORALE_EPSILON,lower,upper,shiftThreshold,moraleDerivative,moraleRateSnapshot,nextRosterMoraleEventHours} from './rosterMorale'
 
 export { compiledScheduleToRuntimeConfig, scheduleToRuntimeConfig, isShiftRunOperator } from './scheduleAdapter'
+export {MORALE_EPSILON,moraleDerivative,currentMoraleDerivatives} from './rosterMorale'
 
-export const MORALE_EPSILON = 1e-8
 export interface RuntimePosition {
   id: string; roomId: string; primary: string; candidates: string[]; group?: string
   shiftOffThreshold?: number; lowerLimit?: number; upperLimit?: number; exhaustRequired?: boolean; restToFull?: boolean; restMoodLimit?: boolean
@@ -137,8 +138,6 @@ export function createRosterRuntime(config: RuntimeConfig): RuntimeState {
   if (config.mowerPolicy && config.beds.length && config.idleOperators === undefined && config.availableIdleOperators === undefined) rosterDiagnostic(s,'idle-roster-unspecified','Mower Free card pool is unspecified in this direct fixture')
   return s
 }
-const lower = (p: RuntimePosition) => p.shiftOffThreshold ?? (p.exhaustRequired ? 0 : (p.lowerLimit ?? 0))
-const upper = (p: RuntimePosition) => p.shiftOffThreshold !== undefined ? (p.upperLimit ?? 24) : p.restToFull ? 24 : (p.upperLimit ?? 24)
 export function rosterDiagnostic(s: RuntimeState, code: string, message: string) {
   if (!s.diagnostics.some(d => d.code === code && d.message === message)) s.diagnostics.push({ code, message })
 }
@@ -209,11 +208,6 @@ function releaseRecoveredSubstitutes(s: RuntimeState): void {
     if (s.config.beds.find(b => b.id === bed)?.managedRecovery === false || s.backupBedOccupants?.has(id)) continue
     if ((s.morale[id] ?? 0) >= 24 - MORALE_EPSILON && !s.config.positions.some(p => p.primary === id && s.occupants[p.id] !== id)) delete s.bedOccupants[bed]
   }
-}
-function shiftThreshold(p: RuntimePosition, s: RuntimeState, rates?: RuntimeRates): number {
-  if (!p.exhaustRequired || !s.config.mowerPolicy?.taskBuffers || !rates) return s.config.mowerPolicy && !p.exhaustRequired ? Math.min(lower(p),upper(p)-2) : lower(p)
-  // base_schedule.py:1467–1497; first refresh at lower+2, fallback lower+.25 minus 30 minutes.
-  return (p.lowerLimit ?? 0) + Math.min(2, .25 + rates.workRate(p.primary,p.roomId,s) * .5)
 }
 /** Guard against empty recovery cycles using the operator's mood floor.
  * The planning threshold is not a minimum return mood: Mower returns groups
@@ -644,38 +638,6 @@ function updateMowerReturnDeadlines(s: RuntimeState, rates: RuntimeRates): void 
   s.returnDeadlines=deadlines
 }
 
-// Switching a backup changes the slot's planned role without moving its resident.
-// Keep reading that actual dorm resident from either physical occupancy map.
-const positionOccupant=(s:RuntimeState,p:RuntimePosition)=>s.occupants[p.id]??(p.dormitory?s.bedOccupants[p.id]:undefined)
-const bedOccupant=(s:RuntimeState,bed:RuntimeBed)=>s.bedOccupants[bed.id]??s.occupants[bed.id]
-function placedMoraleDerivative(s:RuntimeState,id:string,rates:RuntimeRates,p?:RuntimePosition,bed?:RuntimeBed,snapshot?:ReturnType<NonNullable<RuntimeRates['snapshotRates']>>):number {
-  if (id === s.config.fiammetta?.operatorId && (p?.dormitory || bed)) return 2
-  const recovery=(room:string)=>snapshot?(snapshot.recovery[id]??0):rates.recoveryRate(id,room,s)
-  const work=(room:string)=>snapshot?(snapshot.work[id]??0):rates.workRate(id,room,s)
-  const rate = bed ? recovery(bed.roomId) : p ? (p.dormitory ? recovery(p.roomId) : -work(p.roomId)) : 0
-  if (!Number.isFinite(rate)) throw new Error(`Non-finite morale rate: ${id}`)
-  return rate
-}
-export function moraleDerivative(s: RuntimeState, id: string, rates: RuntimeRates): number {
-  const p = s.config.positions.find(p => positionOccupant(s,p) === id)
-  const bed = s.config.beds.find(b => bedOccupant(s,b) === id)
-  return placedMoraleDerivative(s,id,rates,p,bed)
-}
-/** Index the current physical roster once for a whole rate sweep. */
-function moraleRateSnapshot(s:RuntimeState,rates:RuntimeRates):{derivatives:Record<string,number>;primary:Map<string,RuntimePosition>} {
- const occupied=new Map<string,RuntimePosition>(),beds=new Map<string,RuntimeBed>(),primary=new Map<string,RuntimePosition>()
- for(const p of s.config.positions){
-  const id=positionOccupant(s,p)
-  if(id&&!occupied.has(id))occupied.set(id,p)
-  if(!primary.has(p.primary))primary.set(p.primary,p)
- }
- for(const bed of s.config.beds){const id=bedOccupant(s,bed);if(id&&!beds.has(id))beds.set(id,bed)}
- const rateSnapshot=rates.snapshotRates?.()
- const derivatives:Record<string,number>={}
- for(const id of Object.keys(s.morale))derivatives[id]=placedMoraleDerivative(s,id,rates,occupied.get(id),beds.get(id),rateSnapshot)
- return {derivatives,primary}
-}
-export function currentMoraleDerivatives(s:RuntimeState,rates:RuntimeRates):Record<string,number>{return moraleRateSnapshot(s,rates).derivatives}
 /** Planning events only. Skill boundaries and a substitute reaching 24 do not run Mower's planner. */
 export function nextRosterActionHours(s: RuntimeState, rates: RuntimeRates): number {
   if(s.config.mowerSourcePlan)return nextMowerSourceActionHours(s,rates)
@@ -712,21 +674,7 @@ export function nextRosterActionHours(s: RuntimeState, rates: RuntimeRates): num
 export function nextRosterEventHours(s: RuntimeState, rates: RuntimeRates, includePlanning = true, preparedDerivatives?:Readonly<Record<string,number>>): number {
   if (includePlanning && s.config.mowerPolicy&&!s.config.mowerSourcePlan) updateMowerReturnDeadlines(s,rates)
   let next = includePlanning ? Math.min(s.config.mowerPolicy ? nextRosterActionHours(s,rates) : Infinity,...[s.nextPlanningTime ?? Infinity,s.nextFiammettaCheckTime ?? Infinity,...Object.values(s.returnDeadlines ?? {})].map(t => t-s.time).filter(t => t > MORALE_EPSILON)) : Infinity
-  const primary=new Map<string,RuntimePosition>()
-  if(preparedDerivatives)for(const p of s.config.positions)if(!primary.has(p.primary))primary.set(p.primary,p)
-  const snapshot=preparedDerivatives?{derivatives:preparedDerivatives,primary}:moraleRateSnapshot(s,rates)
-  for (const [id, m] of Object.entries(s.morale)) {
-    const rate = snapshot.derivatives[id]!
-    if (!rate) continue
-    const p = snapshot.primary.get(id)
-    const thresholds = [0, 24, ...(p ? [shiftThreshold(p,s,rates), upper(p)] : []), ...(rates.thresholds?.(id, s) ?? [])]
-    if (s.config.fiammetta?.orderedTargets.includes(id)) thresholds.push(s.config.fiammetta.threshold ?? 21.6)
-    for (const threshold of thresholds) {
-      const t = (threshold - m) / rate
-      if (t > MORALE_EPSILON && t < next) next = t
-    }
-  }
-  return next
+  return nextRosterMoraleEventHours(s,rates,next,preparedDerivatives)
 }
 export function advanceRoster(s: RuntimeState, hours: number, rates: RuntimeRates, preparedDerivatives?:Readonly<Record<string,number>>): void {
   if (!Number.isFinite(hours) || hours <= 0) throw new Error('Roster advance must be finite and positive')

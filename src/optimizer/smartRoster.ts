@@ -28,7 +28,7 @@ import { compareProductionEfficiencyVectors, productionEfficiencyVector } from '
 import { generateProductionShiftAlternatives } from './jointBackupMainAlternatives'
 import { generateContextualCrewCandidates } from './jointBackupCrewSeeds'
 import { selectHighOutputMainCandidates } from './mainRosterSelection'
-import { mainRosterOptimizationSteps, type MainRosterOptimizationSummary } from './mainRosterOptimization'
+import { mainRosterOptimizationSteps, type MainRosterOptimizationBaseline, type MainRosterOptimizationSummary } from './mainRosterOptimization'
 import { jointBackupSearchSteps, type JointBackupSearchResult } from './jointBackupSearch'
 import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
 
@@ -736,25 +736,37 @@ function* smartRosterSteps(
   result.score = finalScore
 
   if (options.enableMainOptimization === true && options.enableBackupGeneration !== true) {
-    let lastConfirmed = structuredClone(result)
+    const baseline: MainRosterOptimizationBaseline = { status: result.status, workspace: result.workspace, score: result.score,
+      diagnostics: result.diagnostics, specialOperators: result.specialOperators, calculationReport: result.calculationReport }
+    let lastConfirmed: MainRosterOptimizationBaseline & { summary?: MainRosterOptimizationSummary } = structuredClone(baseline)
+    const adopt = ({ summary, ...candidate }: typeof lastConfirmed) => {
+      Object.assign(result, candidate)
+      if (summary) result.phases.mainOptimization = summary
+    }
     try {
     const optimized = yield* mainRosterOptimizationSteps({
-      baseline: result,
+      baseline,
       baselineSummary: cache.get(simulationJob(finalWorkspace)),
       inventory, userBase: base, lockedPositions, lockedOperators, cache,
       makeJob: simulationJob,
       allowFreeCombinations: options.allowFreeCombinations === true,
       maxSimulations: options.optimizationMaxSimulations,
       timeBudgetMs: options.optimizationTimeBudgetMs,
-      onIncumbent: report => {
-        lastConfirmed = structuredClone(report)
-        onProgress?.({ phase: 'searching', phaseProgress: 0,
+      onIncumbent: incumbent => {
+        lastConfirmed = incumbent
+        if (!onProgress) return
+        const { summary, ...candidate } = incumbent
+        // Public progress retains the complete report, isolated from both the
+        // private historical phases and the narrow fallback kept above.
+        const report: SmartRosterResult = structuredClone({ ...candidate,
+          phases: { ...result.phases, mainOptimization: summary } })
+        onProgress({ phase: 'searching', phaseProgress: 0,
           bestScore: report.score ?? undefined, label: '完整主班方案已就绪，正在预算内继续优化。', incumbent: report })
       },
     })
-    Object.assign(result, optimized)
+    adopt(optimized)
     } catch (error) {
-      Object.assign(result, lastConfirmed)
+      adopt(lastConfirmed)
       result.diagnostics.push({ code: 'MAIN_OPTIMIZATION_FAILED', message: `持续优化未完成，保留最近已完成排班及其同次报告：${error instanceof Error ? error.message : String(error)}` })
     }
     finalScore = result.score ?? finalScore

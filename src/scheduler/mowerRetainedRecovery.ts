@@ -1,6 +1,6 @@
 import type {MowerSchedulingData} from './mowerSchedulingData'
 import type {MowerTask,MowerTaskPlan} from './mowerTaskQueue'
-import {alphaPosition} from './mowerAlphaDorm'
+import {alphaPosition} from './mowerDormPolicy'
 
 /** Native retained_task_reservations: unfinished execution owns targets, actual occupants and group members. */
 export function mowerRetainedTaskReservations(data:MowerSchedulingData,tasks:readonly MowerTask[],currentTask?:MowerTask,returningGroups:Iterable<string>=[],ownRecovery:readonly string[]=currentTask?.urgentRecoveryRequestNames??[]):{names:Set<string>;slots:Set<string>} {

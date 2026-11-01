@@ -38,7 +38,7 @@ import {OPERATOR_MAP} from '../domain/operators'
 import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import type {BackupTiming} from './backupPlans'
 import type {RuntimeState,RuntimeRates,RuntimeConfig} from './rosterRuntime'
-import {nextRosterEventHours} from './rosterRuntime'
+import {nextRosterMoraleEventHours} from './rosterMorale'
 import {hasObservedFullMood,MowerOperatorState,type MowerGroupBinding} from './mowerOperatorState'
 import {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {MowerTask,MowerTaskQueue,MOWER_TASK_TYPES as T,toMowerMicros,fromMowerMicros,isMowerRunOrderTask,type MowerTaskPlan} from './mowerTaskQueue'
@@ -208,7 +208,7 @@ function pendingMowerGroupTransitions(source:MowerSourceRuntime):Record<string,b
  */
 function nextMowerDecisionMicros(s:RuntimeState,rates:RuntimeRates):number {
  const {data,queue}=getMowerSourceRuntime(s),queued=nextMowerRunRecoveryMicros(queue,data.nowMicros,data.alpha,s.config.mowerTaskScheduling)
- const moraleHours=nextRosterEventHours(s,rates,false)
+ const moraleHours=nextRosterMoraleEventHours(s,rates)
  const conditionWake=Math.min(s.mowerShiftModel?.nextConditionWakeMicros?.(data)??Infinity,s.mowerBackupObservationWakeMicros?.()??Infinity)
  return Math.min(queued,conditionWake,Number.isFinite(moraleHours)?data.nowMicros+Math.max(1,toMowerMicros(moraleHours)):Infinity)
 }

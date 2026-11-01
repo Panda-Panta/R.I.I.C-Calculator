@@ -2,7 +2,7 @@ import { onBeforeUnmount, ref, toRaw, watch } from 'vue'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 import { normalizeProductionWeights } from '../../domain/productionWeights'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
-import { normalizeSmartRosterOptimizationOptions, type SmartRosterConfig } from '../settings'
+import { normalizeSmartRosterComparisonOptions, type SmartRosterConfig } from '../settings'
 import type { WorkbenchSession } from '../session'
 import type { useRosterWorkbenchStore } from '../store'
 
@@ -61,14 +61,9 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
   }, { deep: true, flush: 'sync' })
   onBeforeUnmount(stopGeneration)
 
-  function handleAutoGenerate(explicitConfig?: SmartRosterConfig): void {
-    if (isCalculating.value || isGeneratingRoster.value) return
-    replaceStatusMessage.value = null
-    calculationError.value = null
-
-    let inventoryEntries: OwnedOperatorInput[] = []
+  function resolveGenerationInventory(): OwnedOperatorInput[] {
     if (operatorInventory.value.enabled && operatorInventory.value.valid && operatorInventory.value.entries.length > 0) {
-      inventoryEntries = operatorInventory.value.entries
+      return operatorInventory.value.entries
     } else if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
       if (rawInv) {
@@ -77,7 +72,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
           if (parsedInv.text) {
             const compiled = parseOperatorInventory(parsedInv.text)
             if (compiled.valid) {
-              inventoryEntries = compiled.entries
+              return compiled.entries
             }
           }
         } catch {
@@ -85,7 +80,15 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
         }
       }
     }
+    return []
+  }
 
+  function handleAutoGenerate(explicitConfig?: SmartRosterConfig): void {
+    if (isCalculating.value || isGeneratingRoster.value) return
+    replaceStatusMessage.value = null
+    calculationError.value = null
+
+    const inventoryEntries = resolveGenerationInventory()
     if (inventoryEntries.length === 0) {
       replaceStatusMessage.value = '无法自动生成排班：请先在「设置」子页面或点击「导入干员库」录入您持有的干员与练度。'
       return
@@ -104,24 +107,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
     if (isCalculating.value || isGeneratingRoster.value) return
     smartRosterConfigModalOpen.value = false
 
-    let inventoryEntries: OwnedOperatorInput[] = []
-    if (operatorInventory.value.enabled && operatorInventory.value.valid && operatorInventory.value.entries.length > 0) {
-      inventoryEntries = operatorInventory.value.entries
-    } else if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const rawInv = localStorage.getItem('arcinc-operator-inventory-v1')
-      if (rawInv) {
-        try {
-          const parsedInv = JSON.parse(rawInv)
-          if (parsedInv.text) {
-            const compiled = parseOperatorInventory(parsedInv.text)
-            if (compiled.valid) {
-              inventoryEntries = compiled.entries
-            }
-          }
-        } catch {}
-      }
-    }
-
+    const inventoryEntries = resolveGenerationInventory()
     if (inventoryEntries.length === 0) {
       replaceStatusMessage.value = '无法自动生成排班：请先在「设置」子页面或点击「导入干员库」录入您持有的干员与练度。'
       return
@@ -144,7 +130,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
     baseWorkspace.productionWeights = weights
     const cleanEntries: OwnedOperatorInput[] = JSON.parse(JSON.stringify(inventoryEntries))
     const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST)
-    const optimizationOptions = normalizeSmartRosterOptimizationOptions(config)
+    const optimizationOptions = normalizeSmartRosterComparisonOptions(config)
     const enableBackupGeneration = config?.enableBackupGeneration === true
     const runOptions = {
       productionWeights: weights,
@@ -158,7 +144,6 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       enableDeepSearch: config?.enableDeepSearch ?? false,
       enableBackupGeneration,
       ...optimizationOptions,
-      optimizationMaxSimulations: Math.min(enableBackupGeneration ? 4 : 8, optimizationOptions.optimizationMaxSimulations),
       droneTarget: config?.droneTarget ?? 'none',
       droneRoomId: config?.droneRoomId || undefined,
     }
