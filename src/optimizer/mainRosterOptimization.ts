@@ -1,7 +1,7 @@
 import type { OperatorInventory } from '../domain/operatorInventory'
 import type { RosterWorkspace } from '../domain/roster'
+import type { CalculationReport } from '../domain/types'
 import { resolveOperatorCharId } from '../domain/operatorIdentifiers'
-import type { SmartRosterResult } from './smartRoster'
 import { candidateScoreImproves, isQualifiedCandidateSimulation, type CandidateSimulationBatch, type CandidateSimulationJob, type CandidateSimulationResult } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import { generateMainRosterRecoveryCandidates } from './mainRosterRecoveryCandidates'
@@ -29,8 +29,22 @@ export interface MainRosterOptimizationSummary {
   candidates: { id: string; score: number | null; eligible: boolean; fromCache: boolean; diagnostics: string[]; round?: number }[]
 }
 
+/** Only the current candidate belongs to this search; earlier phases stay with its caller. */
+export interface MainRosterOptimizationBaseline {
+  status: 'draft' | 'blocked'
+  workspace: RosterWorkspace | null
+  score: number | null
+  diagnostics: { code: string; message: string }[]
+  specialOperators: NonNullable<CandidateSimulationResult['specialOperators']>
+  calculationReport?: CalculationReport
+}
+
+export interface MainRosterOptimizationResult extends MainRosterOptimizationBaseline {
+  summary: MainRosterOptimizationSummary
+}
+
 interface OptimizationInput {
-  baseline: SmartRosterResult
+  baseline: MainRosterOptimizationBaseline
   baselineSummary?: CandidateSimulationResult
   userBase: RosterWorkspace
   inventory: OperatorInventory
@@ -41,15 +55,18 @@ interface OptimizationInput {
   allowFreeCombinations: boolean
   maxSimulations?: number
   timeBudgetMs?: number
-  onIncumbent?: (report: SmartRosterResult) => void
+  onIncumbent?: (snapshot: MainRosterOptimizationResult) => void
   now?: () => number
 }
 
 /** A bounded extension of the fast result. G proposes; same-window complete F selects.
  * The deadline is checked before dispatch, never by truncating an active F window.
  */
-export function* mainRosterOptimizationSteps(input: OptimizationInput): Generator<CandidateSimulationBatch, SmartRosterResult, CandidateSimulationResult[]> {
-  const best = structuredClone(input.baseline)
+export function* mainRosterOptimizationSteps(input: OptimizationInput): Generator<CandidateSimulationBatch, MainRosterOptimizationResult, CandidateSimulationResult[]> {
+  // Project explicitly so structurally compatible callers cannot send historical
+  // candidate workspaces or other report phases through every search snapshot.
+  const { status, workspace, score, diagnostics, specialOperators, calculationReport } = input.baseline
+  const best: MainRosterOptimizationBaseline = structuredClone({ status, workspace, score, diagnostics, specialOperators, calculationReport })
   const initialScore = best.score ?? 0
   let acceptedBest = isQualifiedCandidateSimulation(input.baselineSummary)
   const initialAccepted = acceptedBest
@@ -57,12 +74,11 @@ export function* mainRosterOptimizationSteps(input: OptimizationInput): Generato
     acceptedCandidates: 0, improved: false, qualityRepaired: false, rounds: 0,
     searchScope: 'generated-neighborhood', globalOptimumProven: false, fullFUpperBound: null,
     gain: 0, termination: 'complete', candidates: [] }
-  const snapshot = (): SmartRosterResult => {
+  const snapshot = (): MainRosterOptimizationResult => {
     stats.gain = (best.score ?? initialScore) - initialScore
     stats.improved = candidateScoreImproves(best.score ?? initialScore, initialScore)
     stats.qualityRepaired = !initialAccepted && acceptedBest
-    best.phases.mainOptimization = structuredClone(stats)
-    return structuredClone(best)
+    return structuredClone({ ...best, summary: stats })
   }
   if (acceptedBest) input.onIncumbent?.(snapshot())
   const count = input.maxSimulations ?? 3, duration = input.timeBudgetMs ?? 30_000

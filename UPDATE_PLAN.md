@@ -1,3 +1,20 @@
+# 2026-11-01 结构复查问题处理（实现与必要检查完成，交付中）
+
+- 用户授权：在本轮只读复查后要求“自行处理”，沿用此前验证后交付main与安全同步Tools的授权，不增加例行审批。目标是修复诊断入口、源码导航及主班优化接口，整理已确认的配置重复和调度公共依赖；不更改技能、数值公式、候选生成顺序、评分/资格、预算语义、存储协议或Worker对外报告。
+- 基线与隔离：本worktree原main bfb2119干净，已快进实际主线14ea98edf37a207a77d9de3eccbc1b584737ac72，并复用自有codex/structure-optimization-20261101。共享test为已交付工休批次，不改其他工作树或其未提交内容。
+- 备份：本worktree artifacts/structure-maintenance-20261101/backup/source-14ea98e.zip，CRC通过，SHA256 c7742b64be251b5f98582f1d130236f54d92357aae661a2d57e196bed0711981；原计划单独备份。既有用户干员库、排班、配置、WebView2及原工程历史文件保留；正式安装前由既有脚本完整备份目标。
+- 工作包A（optimization_interface 独占）：mainRosterOptimization.ts/.spec.ts、smartRoster.ts及直接集成测试；将搜索器与完整SmartRosterResult解耦，输入/返回/已验快照仅含本轮所需数据，smartRoster装配总报告；保留完整F门槛、锁定、缓存、预算、停止/失败采用最近已验结果以及全部既有phases/诊断，对外Worker/composable协议不变。
+- 工作包B（workbench_config 独占）：settings.ts及测试、SmartRosterConfigModal.vue/.spec、useSmartRosterGeneration.ts/.spec；集中副表4/主班8次预算规则，复用库存解析；开始/确认仍分别重读库存，不改变收益计算的独立enabled/错误策略、旧存储键、默认关闭选项或归一化边界。
+- 工作包C（scheduler_dependencies 独占）：调度内部共享常量/策略/事件依赖及对应测试；优先消除rosterRuntime/fiammettaPolicy的数值常量短环，并按真实依赖检查其余SCC能否以既有公共职责抽取解除。不得用任意getter/注册表/新全局状态掩盖依赖，不改任务执行、事件时间、心情容差或原Mower条件；需较大机制重写的部分先回报明确接口/影响，由root协调。
+- root独占：package.json/pnpm-lock、诊断脚本、src/README、结构生成器/索引、architecture.spec、计划/集成/Git/构建/安装；诊断tsx补为明确开发依赖并提供无仿真的帮助入口。node_modules原为跨工作树junction，先保留链接元数据再在本worktree独立安装，避免改写其他会话依赖。
+- 资源：复用agent-dev-workflow、codebase-design、项目基建skill及DEVELOPMENT_WORKFLOW；既有优化/Worker取消快照、配置/库存/组件、菲亚/普通/Mower时钟/恢复、架构测试和update-project-structure.mjs、sync-tools.ps1。npm注册表核tsx 4.23.15要求Node>=18，本机Node24.15符合；按packageManager固定pnpm11.19生成/验证锁，不无关升级现有包。
+- 验收：先以现有定向行为固定旧契约，再验证窄接口不会携带历史phases、快照隔离与取消/失败回退，预算各入口一致/库存确认重读、调度数学/事件与联动不变；实际诊断帮助命令可解析。主agent统一受影响回归、类型、独立生产构建、结构索引和运行时依赖图，并由非作者独立审查。无业务模型变更时不重复整批96h H/F或声称新全域/游戏证明。
+- 实际产出：A搜索器已用独立窄baseline/result/summary，不再导入SmartRosterResult；入口保留完整阶段、进度隔离和已验回退。B预算模式与确认请求统一，库存两入口仍分别重读。C新增rosterMorale、mowerDormMood、mowerDormPolicy，匹配进入既有SharedGroups；130声明及原扫描语句保持，旧两runtime SCC/七条环路径全部解除。新架构检查先在旧源码实际失败，再验证当前无环且保留type-only区分。
+- 工程入口与导航：明确添加tsx4.23.15开发依赖，锁按pnpm11.19生成，无无关包升级；依赖改为本工作区独立安装，原junction元数据保留。诊断新增--help无仿真入口，直接tsx与宿主pnpm均成功；受限环境的npm/pnpm包装器30秒超时及一次日志捕获类型错误保留，未冒称业务失败或启动新H/F。src/README已按当前默认主班筛选、可选大域、持续优化和Duty入口重写，结构索引更新为896项。
+- 验证与审查：最终25文件534项通过；只改新增测试两处summary可空访问后，对应60项复验通过，不重复累计。app/node类型检查退出0，独立Vite构建28.90秒/1007文件成功（既有大chunk提示），结构、diff及22文件/63引用离线skill校验通过。三工作包分别由非作者只读审查，无阻塞；A算法主体逐字保全、C130声明保全、B新增14契约先在旧实现通过，原任务/时间/预算/存储与公共Worker协议保持。日志与1842源输入及构建逐文件哈希在本次artifacts的integration/，独立审查与模块冻结记录分别在optimization/workbench/scheduler。
+- 证据边界：本轮覆盖受影响headless调度/生成/Worker/组件及结构契约，未重跑整批96h H/F、全仓长回归或真实游戏/设备验证，未以结构调整声称数值精度或性能提升。游戏数据与skill内容未修改，沿用现有固定来源，不发布或重新生成技能包。
+- 交付：固定候选和构建输入，普通PR晋升main并核对实际树，再按既有脚本ValidateOnly/备份/安全同步D:/Tools/R.I.I.C-Calculator，核管理及保留文件/真实WebView2哈希。分别记录源码、文档、自动云端工作流和安装运行边界；不手工发布新版本。
+
 # 2026-11-01 已验证工休模型晋升主线（整合检查完成，普通PR交付）
 
 - 用户明确要求验证完成后推送main。已验候选为ee377adb69d259c0c8aa1d75a601548cabab5db1，test与专项codex分支一致；五布局十组96h的10H/10F、工休八指标、定向回归、类型、构建及独立审查证据复用上一节，不重复昂贵长测。

@@ -1,4 +1,4 @@
-import {mowerDormCandidateMood} from './mowerAlphaCandidates'
+import {mowerDormCandidateMood} from './mowerDormMood'
 import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import {mowerRestingBindingGroups,mowerSharedReplacements,mowerSameGroupPrimaryReplacement} from './mowerSharedGroups'
 // Decision state for the pinned Mower port. Reservations do not imply physical occupancy.

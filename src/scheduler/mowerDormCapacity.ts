@@ -1,6 +1,6 @@
 // Operators.dorm_capacity_allows, Mower alpha 94a49b4c (MIT).
-import {alphaPosition,alphaRestingTier,mowerMatchReplacements} from './mowerAlphaDorm'
-import {mowerArrangementGroupTransitions} from './mowerSharedGroups'
+import {alphaPosition,alphaRestingTier} from './mowerDormPolicy'
+import {mowerArrangementGroupTransitions,mowerMatchReplacements} from './mowerSharedGroups'
 import {MowerDormState,type MowerSchedulingData} from './mowerSchedulingData'
 import type {MowerTaskPlan} from './mowerTaskQueue'
 

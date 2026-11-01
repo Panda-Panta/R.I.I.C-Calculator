@@ -94,7 +94,7 @@ export function renderProjectStructure(root = projectRoot) {
 | \`.codex/skills/arknights-riic-mechanics/\` | 项目后勤 skill、来源证据和离线查询；同步发布到独立仓库 |
 | \`.github/workflows/\` | 远程构建、发布与页面部署 |
 
-领域、规则、效率引擎与调度层不依赖 Vue、Pinia、界面或优化器。\`src/test/architecture.spec.ts\` 校验这些约定。完整职责说明见 [src/README.md](src/README.md)。
+领域、规则、效率引擎与调度层不依赖 Vue、Pinia、界面或优化器。源码运行时导入保持无环，仅类型引用不计入运行时环。\`src/test/architecture.spec.ts\` 校验这些约定。完整职责说明见 [src/README.md](src/README.md)。
 
 ## 新后勤机制的维护入口
 

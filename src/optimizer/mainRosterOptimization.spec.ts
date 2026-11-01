@@ -11,11 +11,10 @@ import { CandidateSimulationCache } from './candidateSimulationCache'
 import type { MainRosterDutyQuality } from './mainRosterDutyEvaluation'
 import * as freeCandidates from './mainRosterFreeCandidates'
 import * as crewCandidates from './mainRosterCrewCandidates'
-import { mainRosterOptimizationSteps } from './mainRosterOptimization'
+import { mainRosterOptimizationSteps, type MainRosterOptimizationBaseline, type MainRosterOptimizationResult } from './mainRosterOptimization'
 import * as recoveryCandidates from './mainRosterRecoveryCandidates'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { validatePhysicalRoster } from './rosterDraft'
-import type { SmartRosterResult } from './smartRoster'
 
 type Input = Parameters<typeof mainRosterOptimizationSteps>[0]
 type Proposal = { id: string; workspace: RosterWorkspace }
@@ -71,9 +70,8 @@ function fixture() {
     mutate?.(candidate)
     return { id: tag, workspace: candidate }
   }
-  const baseline: SmartRosterResult = { status: 'draft', workspace: structuredClone(workspace), score: 100,
-    diagnostics: [], specialOperators: [], calculationReport: report(100, 'initial F'),
-    phases: { static: { candidates: [], bestScore: null }, simulation: null, search: null } }
+  const baseline: MainRosterOptimizationBaseline = { status: 'draft', workspace: structuredClone(workspace), score: 100,
+    diagnostics: [], specialOperators: [], calculationReport: report(100, 'initial F') }
   const makeJob = vi.fn((candidate: RosterWorkspace): CandidateSimulationJob => ({ workspace: candidate,
     options: { warmupHours: 24, sampleHours: 72, maxStepHours: 0.25,
       productionWeights: { ...DEFAULT_PRODUCTION_WEIGHTS }, operatorInventory: structuredClone(entries),
@@ -108,6 +106,67 @@ function drain(input: Input, evaluate: (job: CandidateSimulationJob, index: numb
 }
 
 afterEach(() => vi.restoreAllMocks())
+
+describe('search-local state interface', () => {
+  it('uses a narrow baseline and never reads or copies an attached report history', () => {
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
+    f.input.baseline.diagnostics.push({ code: 'BASELINE', message: 'earlier diagnostic' })
+    const original = structuredClone(f.input.baseline)
+    const withHistory = { ...f.input.baseline, get phases() { throw new Error('historical phases are not search state') } }
+    f.input.baseline = withHistory
+    f.input.onIncumbent = snapshot => snapshots.push(snapshot)
+    const { result } = drain(f.input)
+    expect(result).toMatchObject(original)
+    expect(result.summary.termination).toBe('no-candidates')
+    expect(result).not.toHaveProperty('phases')
+    expect(snapshots).toHaveLength(1)
+    expect(snapshots[0]).toMatchObject(original)
+    expect(snapshots[0]).not.toHaveProperty('phases')
+  })
+
+  it.each(['blocked', 'missing-workspace', 'missing-score', 'non-finite-score'] as const)(
+    'preserves an invalid %s baseline without proposing or publishing an unverified result', invalid => {
+      const f = fixture(), onIncumbent = vi.fn()
+      delete f.input.baselineSummary
+      f.input.onIncumbent = onIncumbent
+      if (invalid === 'blocked') f.input.baseline.status = 'blocked'
+      if (invalid === 'missing-workspace') f.input.baseline.workspace = null
+      if (invalid === 'missing-score') f.input.baseline.score = null
+      if (invalid === 'non-finite-score') f.input.baseline.score = Number.NaN
+      const original = structuredClone(f.input.baseline), { result, jobs } = drain(f.input)
+      const { summary, ...baseline } = result
+      expect(baseline).toEqual(original)
+      expect(summary).toMatchObject({ generatedCandidates: 0, evaluatedCandidates: 0, termination: 'complete' })
+      expect(jobs).toEqual([])
+      expect(f.recovery).not.toHaveBeenCalled()
+      expect(f.free).not.toHaveBeenCalled()
+      expect(onIncumbent).not.toHaveBeenCalled()
+    })
+
+  it('can qualify a lower-scoring candidate when optional baseline evidence is absent', () => {
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
+    delete f.input.baselineSummary
+    f.input.onIncumbent = snapshot => snapshots.push(snapshot)
+    f.families([f.propose('first-qualified')])
+    const { result } = drain(f.input, () => summary(90))
+    expect(result.score).toBe(90)
+    expect(result.summary).toMatchObject({ improved: false, gain: -10, qualityRepaired: true })
+    expect(snapshots.map(snapshot => snapshot.score)).toEqual([90])
+  })
+
+  it('keeps an unknown baseline reviewable when no optional full-F evidence or candidate exists', () => {
+    const f = fixture(), onIncumbent = vi.fn()
+    delete f.input.baselineSummary
+    f.input.onIncumbent = onIncumbent
+    const { result, jobs } = drain(f.input)
+    expect(result.workspace).toEqual(f.input.baseline.workspace)
+    expect(result.score).toBe(f.input.baseline.score)
+    expect(result.calculationReport).toEqual(f.input.baseline.calculationReport)
+    expect(result.diagnostics.map(issue => issue.code)).toEqual(['MAIN_OPTIMIZATION_NO_QUALIFIED_RESULT'])
+    expect(jobs).toEqual([])
+    expect(onIncumbent).not.toHaveBeenCalled()
+  })
+})
 
 describe('bounded main-roster optimization dispatch', () => {
   it('preserves the original recovery and compound first wave while crew winners keep improving', () => {
@@ -163,8 +222,8 @@ describe('bounded main-roster optimization dispatch', () => {
     expect(jobs).toHaveLength(2)
     expect(result.score).toBe(120)
     expect(result.workspace).toEqual(second.workspace)
-    expect(result.phases.mainOptimization?.acceptedCandidates).toBe(2)
-    expect(result.phases.mainOptimization).toMatchObject({ rounds: 3,
+    expect(result.summary.acceptedCandidates).toBe(2)
+    expect(result.summary).toMatchObject({ rounds: 3,
       searchScope: 'generated-neighborhood', globalOptimumProven: false, fullFUpperBound: null })
   })
 
@@ -197,7 +256,7 @@ describe('bounded main-roster optimization dispatch', () => {
     const { result } = drain(f.input, () => summary(101066.66667440505))
     expect(result.score).toBe(score)
     expect(result.workspace).toEqual(f.input.baseline.workspace)
-    expect(result.phases.mainOptimization).toMatchObject({ improved: false, gain: 0 })
+    expect(result.summary).toMatchObject({ improved: false, gain: 0 })
   })
 
   it.each([{ requested: undefined, expected: 3 }, { requested: 999, expected: 8 }])(
@@ -207,7 +266,7 @@ describe('bounded main-roster optimization dispatch', () => {
       f.families(Array.from({ length: 12 }, (_, index) => f.propose(`recovery-${index}`)))
       const outcome = drain(f.input)
       expect(outcome.jobs).toHaveLength(expected)
-      expect(outcome.result.phases.mainOptimization).toMatchObject({ evaluatedCandidates: expected, termination: 'simulation-budget' })
+      expect(outcome.result.summary).toMatchObject({ evaluatedCandidates: expected, termination: 'simulation-budget' })
     })
 
   it.each([{ maxSimulations: 0, timeBudgetMs: 10, termination: 'simulation-budget' },
@@ -219,7 +278,7 @@ describe('bounded main-roster optimization dispatch', () => {
       expect(outcome.jobs).toHaveLength(0)
       expect(f.recovery).not.toHaveBeenCalled()
       expect(f.free).not.toHaveBeenCalled()
-      expect(outcome.result.phases.mainOptimization?.termination).toBe(budget.termination)
+      expect(outcome.result.summary.termination).toBe(budget.termination)
     })
 
   it.each([{ maxSimulations: -1 }, { maxSimulations: NaN }, { maxSimulations: Infinity },
@@ -229,14 +288,14 @@ describe('bounded main-roster optimization dispatch', () => {
       Object.assign(f.input, budget)
       const outcome = drain(f.input)
       expect(outcome.jobs).toHaveLength(0)
-      expect(outcome.result.phases.mainOptimization?.termination).toBe('invalid-budget')
+      expect(outcome.result.summary.termination).toBe('invalid-budget')
       expect(outcome.result.diagnostics.some(issue => issue.code === 'MAIN_OPTIMIZATION_INVALID_BUDGET')).toBe(true)
     })
 
   it('accepts a complete active F after the deadline but starts no next F', () => {
-    const f = fixture(), snapshots: SmartRosterResult[] = []
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
     let clock = 0
-    Object.assign(f.input, { timeBudgetMs: 10, now: () => clock, onIncumbent: (value: SmartRosterResult) => snapshots.push(value) })
+    Object.assign(f.input, { timeBudgetMs: 10, now: () => clock, onIncumbent: (value: MainRosterOptimizationResult) => snapshots.push(value) })
     f.families([f.propose('first'), f.propose('second')])
     const iterator = mainRosterOptimizationSteps(f.input), first = iterator.next()
     expect(first.done).toBe(false)
@@ -245,7 +304,7 @@ describe('bounded main-roster optimization dispatch', () => {
     expect(done.done).toBe(true)
     if (!done.done) throw new Error('a second F was dispatched after the deadline')
     expect(done.value.score).toBe(125)
-    expect(done.value.phases.mainOptimization).toMatchObject({ evaluatedCandidates: 1, termination: 'time-budget' })
+    expect(done.value.summary).toMatchObject({ evaluatedCandidates: 1, termination: 'time-budget' })
     expect(snapshots.map(value => value.score)).toEqual([100, 125])
   })
 
@@ -261,7 +320,7 @@ describe('bounded main-roster optimization dispatch', () => {
     f.families([f.propose('prepared-after-deadline')])
     const outcome = drain(f.input)
     expect(outcome.jobs).toHaveLength(0)
-    expect(outcome.result.phases.mainOptimization?.termination).toBe('time-budget')
+    expect(outcome.result.summary.termination).toBe('time-budget')
   })
 
   it('shares the default three extra F fairly among recovery, free and composed proposals', () => {
@@ -275,7 +334,7 @@ describe('bounded main-roster optimization dispatch', () => {
     const outcome = drain(f.input, (_, index) => summary(105 + index))
     // A recovery from the newly verified free winner is itself the composed
     // state, even when its proposer does not repeat the old combined prefix.
-    expect(outcome.result.phases.mainOptimization?.candidates.filter(candidate => candidate.score !== null).map(candidate => candidate.id.replace(/^combined:/, '')))
+    expect(outcome.result.summary.candidates.filter(candidate => candidate.score !== null).map(candidate => candidate.id.replace(/^combined:/, '')))
       .toEqual(['free', 'recovery-0', 'crew-and-recovery'])
     expect(outcome.jobs).toHaveLength(3)
     expect(outcome.result.score).toBe(107)
@@ -284,7 +343,7 @@ describe('bounded main-roster optimization dispatch', () => {
   })
 
   it('evaluates free first under the soft deadline and allows its full F to finish without dispatching recovery', () => {
-    const f = fixture(), snapshots: SmartRosterResult[] = []
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
     let clock = 0
     f.input.now = () => clock
     f.input.onIncumbent = value => snapshots.push(value)
@@ -305,8 +364,8 @@ describe('bounded main-roster optimization dispatch', () => {
     if (!completed.done) throw new Error('another F was dispatched after the soft deadline')
     expect(completed.value.workspace).toEqual(free.workspace)
     expect(completed.value.score).toBe(140)
-    expect(completed.value.phases.mainOptimization).toMatchObject({ evaluatedCandidates: 1, termination: 'time-budget' })
-    expect(completed.value.phases.mainOptimization?.candidates.map(candidate => candidate.id)).toEqual(['free-first'])
+    expect(completed.value.summary).toMatchObject({ evaluatedCandidates: 1, termination: 'time-budget' })
+    expect(completed.value.summary.candidates.map(candidate => candidate.id)).toEqual(['free-first'])
     expect(snapshots.map(value => value.score)).toEqual([100, 140])
   })
 
@@ -343,10 +402,10 @@ describe('exact-input de-duplication and request-local F reuse', () => {
     const outcome = drain(f.input, () => summary(120))
     expect(outcome.jobs).toHaveLength(1)
     expect(outcome.result.score).toBe(140)
-    expect(outcome.result.phases.mainOptimization).toMatchObject({ generatedCandidates: 2, evaluatedCandidates: 1, cacheHits: 1 })
+    expect(outcome.result.summary).toMatchObject({ generatedCandidates: 2, evaluatedCandidates: 1, cacheHits: 1 })
     // The baseline at recovery[0] is skipped; fair interleaving encounters the
     // equivalent free proposal before recovery[1]. Either identity has one F.
-    expect(outcome.result.phases.mainOptimization?.candidates.map(candidate => candidate.id)).toEqual(['free-duplicate', 'cached'])
+    expect(outcome.result.summary.candidates.map(candidate => candidate.id)).toEqual(['free-duplicate', 'cached'])
   })
 
   it.each(['warmup', 'sample', 'seed', 'drones', 'weights', 'inventory', 'assumptions'] as const)(
@@ -365,7 +424,7 @@ describe('exact-input de-duplication and request-local F reuse', () => {
       const outcome = drain(f.input, () => summary(120))
       expect(outcome.jobs).toHaveLength(1)
       expect(outcome.result.score).toBe(120)
-      expect(outcome.result.phases.mainOptimization?.cacheHits).toBe(0)
+      expect(outcome.result.summary.cacheHits).toBe(0)
     })
 
   it('still considers an exact cached full F after the permitted new F has completed', () => {
@@ -377,7 +436,7 @@ describe('exact-input de-duplication and request-local F reuse', () => {
     const outcome = drain(f.input, () => summary(110))
     expect(outcome.jobs).toHaveLength(1)
     expect(outcome.result.score).toBe(140)
-    expect(outcome.result.phases.mainOptimization).toMatchObject({ evaluatedCandidates: 1, cacheHits: 1 })
+    expect(outcome.result.summary).toMatchObject({ evaluatedCandidates: 1, cacheHits: 1 })
   })
 
   it('never accepts a result if its dispatched complete input was mutated before it completed', () => {
@@ -385,14 +444,30 @@ describe('exact-input de-duplication and request-local F reuse', () => {
     f.families([f.propose('mutated-in-flight')])
     const outcome = drain(f.input, job => { job.options!.sampleHours = 1; return summary(1e9) })
     expect(outcome.result.score).toBe(100)
-    expect(outcome.result.phases.mainOptimization?.acceptedCandidates).toBe(0)
+    expect(outcome.result.summary.acceptedCandidates).toBe(0)
   })
 })
 
 describe('quality-gated incumbent selection and immutable snapshots', () => {
+  it('retains the latest qualifying same-run snapshot when a later worker throws', () => {
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
+    f.input.onIncumbent = snapshot => snapshots.push(snapshot)
+    f.families([f.propose('verified-first'), f.propose('failed-second')])
+    const iterator = mainRosterOptimizationSteps(f.input)
+    expect(iterator.next().done).toBe(false)
+    expect(iterator.next([summary(120)]).done).toBe(false)
+    const completed = iterator.throw(new Error('later worker failed'))
+    expect(completed.done).toBe(true)
+    if (!completed.done) throw new Error('unexpected extra worker dispatch')
+    expect(completed.value.score).toBe(120)
+    expect(completed.value.calculationReport?.summary?.totalScore82).toBe(120)
+    expect(completed.value.summary.candidates[1]).toMatchObject({ id: 'failed-second', score: null, diagnostics: ['later worker failed'] })
+    expect(snapshots.map(snapshot => snapshot.score)).toEqual([100, 120])
+  })
+
   it.each(['unknown', 'incomplete', 'non-finite', 'quality-rejected', 'missing-display', 'different-display'] as const)(
     'rejects a higher reported score when the same F evidence is %s', failure => {
-      const f = fixture(), snapshots: SmartRosterResult[] = []
+      const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
       f.input.onIncumbent = value => snapshots.push(value)
       f.families([f.propose('bad-high-score')])
       const bad = summary(1e9)
@@ -404,7 +479,7 @@ describe('quality-gated incumbent selection and immutable snapshots', () => {
       if (failure === 'different-display') bad.calculationReport = report(777)
       const outcome = drain(f.input, () => bad)
       expect(outcome.result.score).toBe(100)
-      expect(outcome.result.phases.mainOptimization?.candidates[0]?.eligible).toBe(false)
+      expect(outcome.result.summary.candidates[0]?.eligible).toBe(false)
       expect(snapshots.map(value => value.score)).toEqual([100])
     })
 
@@ -419,7 +494,7 @@ describe('quality-gated incumbent selection and immutable snapshots', () => {
       if (failure === 'pending-deferral') bad.quality!.pendingDeferrals = 1
       const outcome = drain(f.input, () => bad)
       expect(outcome.result.score).toBe(100)
-      expect(outcome.result.phases.mainOptimization?.candidates[0]?.eligible).toBe(false)
+      expect(outcome.result.summary.candidates[0]?.eligible).toBe(false)
     })
 
   it('keeps the qualified baseline when the new complete qualified score is lower', () => {
@@ -428,11 +503,11 @@ describe('quality-gated incumbent selection and immutable snapshots', () => {
     const outcome = drain(f.input, () => summary(99))
     expect(outcome.result.workspace).toEqual(f.input.baseline.workspace)
     expect(outcome.result.score).toBe(100)
-    expect(outcome.result.phases.mainOptimization).toMatchObject({ improved: false, gain: 0, qualityRepaired: false })
+    expect(outcome.result.summary).toMatchObject({ improved: false, gain: 0, qualityRepaired: false })
   })
 
   it('repairs an unqualified initial result with a lower-scoring qualified complete F', () => {
-    const f = fixture(), snapshots: SmartRosterResult[] = []
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
     f.input.baselineSummary = summary(100, { quality: { eligible: false, strict: false,
       ordinaryExhaustedHours: 1, pendingDeferrals: 1, issues: ['initial result has unresolved recovery'] } })
     f.input.onIncumbent = value => snapshots.push(value)
@@ -441,30 +516,35 @@ describe('quality-gated incumbent selection and immutable snapshots', () => {
     const outcome = drain(f.input, () => summary(90))
     expect(outcome.result.score).toBe(90)
     expect(outcome.result.workspace).toEqual(repaired.workspace)
-    expect(outcome.result.phases.mainOptimization).toMatchObject({ improved: false, gain: -10, qualityRepaired: true })
+    expect(outcome.result.summary).toMatchObject({ improved: false, gain: -10, qualityRepaired: true })
     expect(snapshots.map(value => value.score)).toEqual([90])
   })
 
   it('emits only qualifying same-run display reports and snapshots stay isolated from later mutation', () => {
-    const f = fixture(), snapshots: SmartRosterResult[] = []
+    const f = fixture(), snapshots: MainRosterOptimizationResult[] = []
     const original = structuredClone(f.input.baseline), first = summary(120), second = summary(130)
     first.calculationReport = report(120, 'first F only')
     second.calculationReport = report(130, 'second F only')
+    second.specialOperators = [{ operatorId: id('芬'), operatorName: '芬', workFraction: .75, workRestRatio: 3,
+      workHours: 72, restHours: 24, exhaustedHours: 0, finalMorale: 24 }]
     f.input.onIncumbent = value => snapshots.push(value)
     f.families([f.propose('first'), f.propose('second'), f.propose('unqualified')])
     const outcome = drain(f.input, (_, index) => [first, second,
       summary(1e9, { quality: { eligible: false, strict: false, ordinaryExhaustedHours: 2, pendingDeferrals: 1, issues: ['fatigue'] } })][index]!)
     expect(snapshots.map(value => [value.score, value.calculationReport?.summary?.totalScore82,
       value.calculationReport?.efficiencyNotes?.[0]])).toEqual([[100, 100, 'initial F'], [120, 120, 'first F only'], [130, 130, 'second F only']])
-    expect(snapshots[1]!.phases.mainOptimization?.evaluatedCandidates).toBe(1)
-    expect(snapshots[2]!.phases.mainOptimization?.evaluatedCandidates).toBe(2)
+    expect(snapshots[1]!.summary.evaluatedCandidates).toBe(1)
+    expect(snapshots[2]!.summary.evaluatedCandidates).toBe(2)
     outcome.result.workspace!.mainPlan.facilities.room_1_1.slots[0]!.groupId = 'mutated returned workspace'
     outcome.result.calculationReport!.summary!.totalScore82 = -1
     first.calculationReport!.summary!.totalScore82 = -2
     second.calculationReport!.efficiencyNotes!.push('mutated source result')
+    second.specialOperators[0]!.workHours = -1
+    outcome.result.specialOperators[0]!.finalMorale = -1
     expect(snapshots[1]!.calculationReport!.summary!.totalScore82).toBe(120)
     expect(snapshots[2]!.calculationReport!.efficiencyNotes).toEqual(['second F only'])
     expect(snapshots[2]!.workspace!.mainPlan.facilities.room_1_1.slots[0]!.groupId).toBe('second')
+    expect(snapshots[2]!.specialOperators[0]).toMatchObject({ workHours: 72, finalMorale: 24 })
     expect(f.input.baseline).toEqual(original)
   })
 })

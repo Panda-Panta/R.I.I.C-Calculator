@@ -52,6 +52,74 @@ beforeEach(() => {
 })
 afterEach(() => { wrapper.unmount(); vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
+it.each(['current', 'stored'] as const)('rereads the %s inventory when confirming generation options', source => {
+  if (source === 'stored') {
+    session.operatorInventory.value.enabled = false
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: false, text: '芬,1,55' }))
+  }
+  api.handleAutoGenerate()
+  expect(api.smartRosterConfigModalOpen.value).toBe(true)
+  expect(workers).toHaveLength(0)
+
+  if (source === 'current') {
+    session.operatorInventory.value = { enabled: true, valid: true, entries: [{ operator: '香草', elitePhase: 1, level: 55 }] }
+  } else {
+    localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: false, text: '香草,1,55' }))
+  }
+  api.handleConfirmSmartRosterConfig(config)
+  expect(api.smartRosterConfigModalOpen.value).toBe(false)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].entries).toEqual([{ operator: '香草', elitePhase: 1, level: 55 }])
+})
+
+it('prefers the current enabled valid inventory over stored text', () => {
+  localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ text: '香草,1,55' }))
+  api.handleAutoGenerate(config)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].entries).toEqual([{ operator: '芬', elitePhase: 1, level: 55 }])
+})
+
+it.each([
+  { label: 'disabled', enabled: false, valid: true, empty: false },
+  { label: 'invalid', enabled: true, valid: false, empty: false },
+  { label: 'empty', enabled: true, valid: true, empty: true },
+])('falls back from an $label current inventory to stored text regardless of its saved enabled flag', ({ enabled, valid, empty }) => {
+  session.operatorInventory.value = { enabled, valid, entries: empty ? [] : [{ operator: '芬', elitePhase: 1, level: 55 }] }
+  localStorage.setItem('arcinc-operator-inventory-v1', JSON.stringify({ enabled: false, text: '香草,1,55' }))
+  api.handleAutoGenerate(config)
+  expect(workers[0]!.postMessage.mock.calls[0]![0].entries).toEqual([{ operator: '香草', elitePhase: 1, level: 55 }])
+})
+
+it.each([null, '{', 'null', JSON.stringify({ text: '芬,9,55' }), JSON.stringify({ text: 42 })])('keeps the missing-inventory message for unusable stored data: %j', raw => {
+  session.operatorInventory.value = { enabled: true, valid: false, entries: [] }
+  if (raw !== null) localStorage.setItem('arcinc-operator-inventory-v1', raw)
+  const expected = '无法自动生成排班：请先在「设置」子页面或点击「导入干员库」录入您持有的干员与练度。'
+  api.handleAutoGenerate(config)
+  expect(session.replaceStatusMessage.value).toBe(expected)
+  api.handleConfirmSmartRosterConfig(config)
+  expect(session.replaceStatusMessage.value).toBe(expected)
+  expect(workers).toHaveLength(0)
+})
+
+it('rejects confirmation if the previously available inventory has been removed', () => {
+  api.handleAutoGenerate()
+  expect(api.smartRosterConfigModalOpen.value).toBe(true)
+  session.operatorInventory.value = { enabled: true, valid: true, entries: [] }
+  api.handleConfirmSmartRosterConfig(config)
+  expect(api.smartRosterConfigModalOpen.value).toBe(false)
+  expect(workers).toHaveLength(0)
+  expect(session.replaceStatusMessage.value).toBe('无法自动生成排班：请先在「设置」子页面或点击「导入干员库」录入您持有的干员与练度。')
+})
+
+it('preserves storage-read exceptions at both generation entry points', () => {
+  session.operatorInventory.value = { enabled: true, valid: false, entries: [] }
+  const failure = new Error('storage read unavailable')
+  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw failure })
+  try {
+    expect(() => api.handleAutoGenerate()).toThrow(failure)
+    expect(() => api.handleConfirmSmartRosterConfig(config)).toThrow(failure)
+    expect(workers).toHaveLength(0)
+  } finally { read.mockRestore() }
+})
+
 it('uses two stages for a legacy request without a deep-search choice', () => {
   const legacy = { ...config }
   Reflect.deleteProperty(legacy, 'enableDeepSearch')

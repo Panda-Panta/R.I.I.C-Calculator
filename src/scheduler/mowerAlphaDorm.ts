@@ -1,5 +1,4 @@
 import {MowerShiftPreviewError} from './mowerNativeErrors'
-import {mowerDormCandidateMood} from './mowerAlphaCandidates'
 import {mowerDormIsolationCost} from './mowerDormIsolation'
 import {mowerDormCapacityAllows} from './mowerDormCapacity'
 import { orderMowerAlphaDormIndices } from './mowerDormOrder'
@@ -10,62 +9,13 @@ import {restingMood,hasRestingMood} from './mowerOperatorState'
 import type {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {projectMowerArrangements} from './mowerObservations'
 import type {MowerTaskPlan} from './mowerTaskQueue'
+import {alphaPosition,alphaFullDormFiller,alphaRestingTier,alphaRestingKey,compareAlphaKeys,alphaBedTakeoverAllowed} from './mowerDormPolicy'
 
-export const alphaPosition=(room:string,index:number)=>room+'\0'+index
-/** Personal-cap candidates release recovery priority unless the post or policy retains them. */
-export function alphaFullDynamicCandidate(data:MowerSchedulingData,name:string):boolean{
- const op=data.operators[name]
- if(!op||op.isHigh()&&op.room.startsWith('dorm')||data.freeRoomExclusions.includes(name))return false
- const mood=mowerDormCandidateMood(data,name)
- return mood!==undefined&&mood>=op.upperLimit
-}
-export function alphaFullDormFiller(data:MowerSchedulingData,name:string):boolean{
- const op=data.operators[name]
- if(!op?.isResting()||!alphaFullDynamicCandidate(data,name))return false
- const tier=alphaRestingTier(data,name)
- return tier>3&&tier<7&&hasRestingMood(op,data.nowMicros)&&op.timeStampMicros!<=data.nowMicros&&!op.moodIsPrediction&&op.mood>=op.upperLimit
-}
-export function alphaRestingTier(data:MowerSchedulingData,name:string,referencedReplacements?:ReadonlySet<string>):number{
- const op=data.operators[name]
- if(data.freeBlacklist.includes(name)||op?.workaholic)return 7
- if(alphaFullDynamicCandidate(data,name))return 6
- if(data.restingPriorityNames.includes(name))return 0
- if(data.standbyNames.includes(name))return 4
- const replacement=data.priorityReplacement.includes(name)?3:5
- if(op){
-  if(op.room==='train'&&op.index===0||op.currentRoom==='train'&&op.currentIndex===0)return replacement
-  if(op.isHigh())return {high:1,low:2,standby:4}[op.restingPriority]
-  if(op.restingFromTrain)return replacement
- }
- return (referencedReplacements?.has(name)??Object.values(data.operators).some(owner=>owner.nativeName!=='菲亚梅塔'&&(owner.replacement.includes(name)||owner.groupBindings.some(binding=>binding.replacement.includes(name)))))?replacement:6
-}
-export function alphaRestingKey(data:MowerSchedulingData,name:string):[number,number]{return [alphaRestingTier(data,name),(mowerDormCandidateMood(data,name)??24)-(data.operators[name]?.upperLimit??24)]}
-export const compareAlphaKeys=(a:readonly number[],b:readonly number[])=>a[0]!-b[0]!||a[1]!-b[1]!
-
-/** Native augmenting-path matching retains feasible earlier preferences. */
-export function mowerMatchReplacements(options:Record<string,string[]>,allowPartial=false,preferred:Iterable<string>=[]):Record<string,string>|undefined{
- const preferredNames=new Set(preferred)
- const seed=preferredNames.size?mowerMatchReplacements(Object.fromEntries(Object.entries(options).map(([name,covers])=>[name,covers.filter(cover=>preferredNames.has(cover))])),true)??{}:{}
- const owners=new Map<string,string>(Object.entries(seed).map(([name,cover])=>[cover,name]))
- const reserve=(name:string,seen:Set<string>):boolean=>{
-  for(const cover of options[name]!)if(!owners.has(cover)){owners.set(cover,name);return true}
-  for(const cover of options[name]!){if(seen.has(cover))continue;seen.add(cover);if(reserve(owners.get(cover)!,seen)){owners.set(cover,name);return true}}
-  return false
- }
- for(const name of Object.keys(options))if(![...owners.values()].includes(name)&&!reserve(name,new Set())&&!allowPartial)return undefined
- return Object.fromEntries([...owners].map(([cover,name])=>[name,cover]))
-}
+export {alphaPosition,alphaFullDynamicCandidate,alphaFullDormFiller,alphaRestingTier,alphaRestingKey,compareAlphaKeys,alphaBedTakeoverAllowed} from './mowerDormPolicy'
+export {mowerMatchReplacements} from './mowerSharedGroups'
 function alphaSlotEffective(data:MowerSchedulingData,bed:MowerDormState,activeGroups?:Set<string>,plan:MowerTaskPlan={}):boolean{
  const transitions={...data.pendingGroupTransitions,...mowerArrangementGroupTransitions(data,plan),...Object.fromEntries([...(activeGroups??[])].map(group=>[group,true]))}
  return data.effectiveFreeSlot(bed,new Set(Object.keys(transitions).filter(group=>!transitions[group])),new Set(Object.keys(transitions).filter(group=>transitions[group])))
-}
-export function alphaBedTakeoverAllowed(data:MowerSchedulingData,requester:string,resident:string):boolean{
- const requesterTier=alphaRestingTier(data,requester),residentTier=alphaRestingTier(data,resident)
- if(alphaFullDynamicCandidate(data,requester)||requesterTier===7||residentTier<=3)return false
- const incoming=data.operators[requester],mood=mowerDormCandidateMood(data,requester)
- if(alphaFullDormFiller(data,resident))return !!incoming&&mood!==undefined&&mood<incoming.upperLimit
- if(!(requesterTier<residentTier&&residentTier<7))return false
- return requesterTier<=3||!!incoming&&mood!==undefined&&mood<=incoming.upperLimit*.8
 }
 export function alphaSlotTakable(data:MowerSchedulingData,bed:MowerDormState,requester?:string,activeGroups?:Set<string>,plan:MowerTaskPlan={}):boolean{
  if(!alphaSlotEffective(data,bed,activeGroups,plan))return false

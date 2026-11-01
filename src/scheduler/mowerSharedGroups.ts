@@ -2,9 +2,22 @@
 import type {MowerSchedulingData} from './mowerSchedulingData'
 import type {MowerOperatorState} from './mowerOperatorState'
 import type {MowerTaskPlan} from './mowerTaskQueue'
-import {mowerMatchReplacements,alphaPosition} from './mowerAlphaDorm'
+import {alphaPosition} from './mowerDormPolicy'
 
 export type MowerGroupTransitions=Record<string,boolean>
+/** Native augmenting-path matching retains feasible earlier preferences. */
+export function mowerMatchReplacements(options:Record<string,string[]>,allowPartial=false,preferred:Iterable<string>=[]):Record<string,string>|undefined{
+ const preferredNames=new Set(preferred)
+ const seed=preferredNames.size?mowerMatchReplacements(Object.fromEntries(Object.entries(options).map(([name,covers])=>[name,covers.filter(cover=>preferredNames.has(cover))])),true)??{}:{}
+ const owners=new Map<string,string>(Object.entries(seed).map(([name,cover])=>[cover,name]))
+ const reserve=(name:string,seen:Set<string>):boolean=>{
+  for(const cover of options[name]!)if(!owners.has(cover)){owners.set(cover,name);return true}
+  for(const cover of options[name]!){if(seen.has(cover))continue;seen.add(cover);if(reserve(owners.get(cover)!,seen)){owners.set(cover,name);return true}}
+  return false
+ }
+ for(const name of Object.keys(options))if(![...owners.values()].includes(name)&&!reserve(name,new Set())&&!allowPartial)return undefined
+ return Object.fromEntries([...owners].map(([cover,name])=>[name,cover]))
+}
 export function mowerArrangementGroupTransitions(data:MowerSchedulingData,plan:MowerTaskPlan):MowerGroupTransitions {
  const transitions:MowerGroupTransitions={}
  for(const [room,row] of Object.entries(plan))row.forEach((name,index)=>{

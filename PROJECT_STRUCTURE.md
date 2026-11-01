@@ -25,7 +25,7 @@
 | `.codex/skills/arknights-riic-mechanics/` | 项目后勤 skill、来源证据和离线查询；同步发布到独立仓库 |
 | `.github/workflows/` | 远程构建、发布与页面部署 |
 
-领域、规则、效率引擎与调度层不依赖 Vue、Pinia、界面或优化器。`src/test/architecture.spec.ts` 校验这些约定。完整职责说明见 [src/README.md](src/README.md)。
+领域、规则、效率引擎与调度层不依赖 Vue、Pinia、界面或优化器。源码运行时导入保持无环，仅类型引用不计入运行时环。`src/test/architecture.spec.ts` 校验这些约定。完整职责说明见 [src/README.md](src/README.md)。
 
 ## 新后勤机制的维护入口
 
@@ -39,7 +39,7 @@
 
 ## 纳入范围
 
-共 893 个索引文件，其中应用 TypeScript/Vue/CSS 文件 311 个，业务测试文件 417 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 896 个索引文件，其中应用 TypeScript/Vue/CSS 文件 314 个，业务测试文件 417 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -653,8 +653,10 @@ src/
 │   ├── mowerDormIsolation.spec.ts
 │   ├── mowerDormIsolation.ts
 │   ├── mowerDormIsolationLatest.spec.ts
+│   ├── mowerDormMood.ts
 │   ├── mowerDormOrder.spec.ts
 │   ├── mowerDormOrder.ts
+│   ├── mowerDormPolicy.ts
 │   ├── mowerDormRecovery.spec.ts
 │   ├── mowerDormRecovery.ts
 │   ├── mowerDormSelectionParity.spec.ts
@@ -815,6 +817,7 @@ src/
 │   ├── mowerUrgentRecovery.spec.ts
 │   ├── mowerUrgentRecovery.ts
 │   ├── mowerWorkaholicGroup.spec.ts
+│   ├── rosterMorale.ts
 │   ├── rosterPhysicalRates.spec.ts
 │   ├── rosterRuntime.spec.ts
 │   ├── rosterRuntime.ts

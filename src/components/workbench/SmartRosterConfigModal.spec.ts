@@ -294,6 +294,23 @@ describe('SmartRosterConfigModal.vue', () => {
     } finally { wrapper.unmount() }
   })
 
+  it('keeps a saved eight-run main budget when opening with backup comparison already enabled', async () => {
+    const saved = JSON.stringify({ ...DEFAULT_CONFIG, enableMainOptimization: true, enableBackupGeneration: true, optimizationMaxSimulations: 8 })
+    localStorage.setItem(STORAGE_KEY_SMART_ROSTER, saved)
+    const wrapper = mountModal()
+    try {
+      expect(wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]').element.value).toBe('4')
+      expect(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)).toBe(saved)
+      await wrapper.get('[data-test="enable-backup-generation"]').setValue(false)
+      const count = wrapper.get<HTMLInputElement>('[data-test="optimization-max-simulations"]')
+      expect(count.element.max).toBe('8')
+      expect(count.element.value).toBe('8')
+      await wrapper.get('[data-test="confirm-btn"]').trigger('click')
+      expect(wrapper.emitted('confirm')?.[0]?.[0]).toMatchObject({ enableBackupGeneration: false, optimizationMaxSimulations: 8 })
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SMART_ROSTER)!)).toMatchObject({ optimizationMaxSimulations: 8 })
+    } finally { wrapper.unmount() }
+  })
+
   it.each([
     ['missing', undefined, false], ['true', true, true], ['false', false, false],
     ['string false', 'false', false], ['string true', 'true', false],

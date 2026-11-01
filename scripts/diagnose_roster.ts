@@ -92,4 +92,12 @@ async function main() {
   inspectRoster('分子合成智能排班', result)
 }
 
-main().catch(console.error)
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log([
+    '用法：pnpm diagnose:roster [--help]',
+    '使用固定合成全员库存和 seed=42，运行 6 小时预热＋18 小时采样的自动排班诊断。',
+    '--help, -h  仅显示帮助，不启动排班或收益仿真。',
+  ].join('\n'))
+} else {
+  main().catch(console.error)
+}

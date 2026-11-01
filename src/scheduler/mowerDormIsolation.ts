@@ -1,5 +1,5 @@
 // Mower alpha 3de2b2ac6f1aeff6513b63faaeea4b2369cf8856 dorm isolation (MIT).
-import {alphaPosition, alphaRestingTier} from './mowerAlphaDorm'
+import {alphaPosition, alphaRestingTier} from './mowerDormPolicy'
 import {orderMowerAlphaDormIndices} from './mowerDormOrder'
 import {projectMowerArrangements} from './mowerObservations'
 import {hasRestingMood, restingMood} from './mowerOperatorState'

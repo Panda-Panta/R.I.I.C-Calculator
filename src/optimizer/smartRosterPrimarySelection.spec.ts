@@ -13,6 +13,8 @@ import * as crewCandidates from './mainRosterCrewCandidates'
 import { applyGeneratedWarmupPolicy } from './generatedWarmupPolicy'
 import * as freeCandidates from './mainRosterFreeCandidates'
 import * as recoveryCandidates from './mainRosterRecoveryCandidates'
+import * as replacement from './globalPerCapitaReplacement'
+import * as incomeSearch from './rosterIncomeSearch'
 import { recoveryGroupCapacityIssues } from './recoveryGroupCapacity'
 import { validatePhysicalRoster } from './rosterDraft'
 import { runSmartRoster, runSmartRosterParallel, type SmartRosterProgress } from './smartRoster'
@@ -427,6 +429,74 @@ describe('continued main-roster optimization through actual smartRosterSteps', (
     expect(progress[progress.length - 1]?.phase).toBe('done')
     expect(progress.flatMap(value => value.incumbent ? [value.incumbent.score] : [])).toEqual([120])
     expect(fixture.evaluate).toHaveBeenCalledTimes(1)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('preserves every earlier phase when assembling continued-search reports', () => {
+    const fixture = prepareContinuation(), progress: SmartRosterProgress[] = []
+    fixture.slowModel.mockReturnValue({ workspace: null, diagnostics: [{ code: 'EARLIER_MODEL', message: 'controlled earlier phase' }], calculation: {
+      status: 'unsupported', libraryComplete: false, columnCount: 0, quantifiedColumnCount: 0, initialObjective: null,
+      frozenComponents: [], elapsedMs: 0, proofScope: 'quantified-manufacturing-model-only',
+    } })
+    vi.spyOn(replacement, 'runGlobalPerCapitaReplacement').mockImplementation((workspace, _inventory, options) => ({
+      workspace, score: options!.baselineScore, swappedCount: 0, logs: ['controlled earlier replacement'],
+    }))
+    vi.spyOn(incomeSearch, 'rosterIncomeSearchSteps').mockImplementation(function* () { throw new Error('controlled earlier search fallback') })
+    fixture.recovery.mockImplementation(workspace => ({ candidates: [fixture.proposal(workspace, 'recovery')], diagnostics: [] }))
+    const options = { seed: 42, enableDeepSearch: true }
+    const initial = runSmartRoster(fixture.base, fixture.entries, options)
+    const result = runSmartRoster(fixture.base, fixture.entries, { ...options, enableMainOptimization: true }, state => progress.push(state))
+    expect(initial.phases.calculation).toBeDefined()
+    expect(initial.phases.replacement).toBeDefined()
+    expect(initial.phases.search).toEqual({ improved: false, gain: 0 })
+    const snapshots = progress.flatMap(state => state.incumbent ? [state.incumbent] : [])
+    expect(snapshots.map(snapshot => snapshot.score)).toEqual([120, 140])
+    for (const snapshot of [...snapshots, result]) {
+      const { mainOptimization, ...earlierPhases } = snapshot.phases
+      expect(mainOptimization).toBeDefined()
+      expect(earlierPhases).toEqual(initial.phases)
+      expect(snapshot.diagnostics).toEqual(initial.diagnostics)
+    }
+    expect(result.phases.static.candidates.map(candidate => candidate.simScore)).toEqual([120])
+    expect(result.phases.simulation?.bestScore).toBe(120)
+    expect(result.calculationReport?.summary?.totalScore82).toBe(140)
+    expect(fixture.nativeF).not.toHaveBeenCalled()
+  })
+
+  it('isolates observer mutations and retains the latest verified report when that observer throws', () => {
+    const fixture = prepareContinuation(), progress: SmartRosterProgress[] = []
+    const proposed = { code: 'OPTIMIZATION_PROPOSAL', message: 'controlled recovery proposal' }
+    fixture.evaluate.mockImplementation(job => {
+      const optimized = job.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId === 'wired-recovery'
+      return { ...wiredSummary(optimized ? 140 : 120), diagnostics: optimized ? [] : ['1次完整主替评估预算：controlled baseline'] }
+    })
+    fixture.recovery.mockImplementation(workspace => ({ candidates: [fixture.proposal(workspace, 'recovery')], diagnostics: [proposed] }))
+    const initial = runSmartRoster(fixture.base, fixture.entries, { seed: 42 })
+    const result = runSmartRoster(fixture.base, fixture.entries, { seed: 42, enableMainOptimization: true }, state => {
+      progress.push(structuredClone(state))
+      const snapshot = state.incumbent
+      if (!snapshot) return
+      snapshot.workspace!.mainPlan.facilities.room_1_1.slots[0]!.groupId = 'observer mutation'
+      snapshot.calculationReport!.summary!.totalScore82 = -1
+      snapshot.diagnostics.push({ code: 'OBSERVER_MUTATION', message: 'must remain local' })
+      snapshot.phases.static.candidates[0]!.diagnostics.push('observer mutation')
+      snapshot.phases.simulation!.bestScore = -1
+      snapshot.phases.mainOptimization!.candidates.push({ id: 'observer mutation', score: -1, eligible: false, fromCache: false, diagnostics: [] })
+      if (snapshot.score === 140) throw new Error('progress observer failed')
+    })
+    expect(result.status).toBe('draft')
+    expect(result.score).toBe(140)
+    expect(result.workspace?.mainPlan.facilities.room_1_1.slots[0]!.groupId).toBe('wired-recovery')
+    expect(result.calculationReport?.summary?.totalScore82).toBe(140)
+    expect(progress.flatMap(state => state.incumbent ? [state.incumbent.score] : [])).toEqual([120, 140])
+    expect(result.diagnostics.map(issue => issue.code)).toEqual([
+      ...initial.diagnostics.map(issue => issue.code), proposed.code, 'MAIN_OPTIMIZATION_FAILED',
+    ])
+    expect(result.diagnostics[result.diagnostics.length - 1]?.message).toContain('progress observer failed')
+    expect(result.phases.mainOptimization?.candidates.map(candidate => candidate.id)).toEqual(['wired-recovery'])
+    const { mainOptimization: _mainOptimization, ...earlierPhases } = result.phases
+    expect(_mainOptimization?.evaluatedCandidates).toBe(1)
+    expect(earlierPhases).toEqual(initial.phases)
     expect(fixture.nativeF).not.toHaveBeenCalled()
   })
 })

@@ -3,6 +3,7 @@ import { projectMowerArrangements } from './mowerObservations'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mowerAlphaDormCandidates, mowerAlphaFillPlan, planMowerAlphaDormFill, mowerDormTaskReservations } from './mowerAlphaCandidates'
 import * as dorm from './mowerAlphaDorm'
+import * as dormPolicy from './mowerDormPolicy'
 import { MowerTask, MowerTaskQueue, MOWER_TASK_TYPES as T, toMowerMicros } from './mowerTaskQueue'
 import { MowerOperatorState } from './mowerOperatorState'
 import { MowerSchedulingData, MowerDormState } from './mowerSchedulingData'
@@ -25,7 +26,7 @@ describe('large-library dorm candidate ordering', () => {
     const replacement = data.operators.owner!.replacement
     let membershipReads = 0
     Object.defineProperty(data.operators.owner!, 'replacement', { get: () => { membershipReads++; return replacement } })
-    const tier = vi.spyOn(dorm, 'alphaRestingTier')
+    const tier = vi.spyOn(dormPolicy, 'alphaRestingTier')
     const candidates = mowerAlphaDormCandidates(data)
     expect(candidates.filling).toHaveLength(200)
     expect(candidates.filling[0]).toBe('idle-0')

@@ -3,21 +3,15 @@ import {mowerDormCapacityAllows} from './mowerDormCapacity'
 import {mowerRetainedTaskReservations} from './mowerRetainedRecovery'
 // Shared dorm candidates and observed-card estimates, Mower alpha b2d9ac8 (MIT).
 import {orderMowerAlphaDormIndices} from './mowerDormOrder'
-import {hasRestingMood,restingMood} from './mowerOperatorState'
-import {alphaRestingTier,compareAlphaKeys,alphaPosition,alphaSlotTakable,alphaPrioritizeRecovery,alphaFullDynamicCandidate,alphaFullDormFiller,alphaBedTakeoverAllowed} from './mowerAlphaDorm'
+import {hasRestingMood} from './mowerOperatorState'
+import {alphaRestingTier,compareAlphaKeys,alphaPosition,alphaFullDynamicCandidate,alphaFullDormFiller,alphaBedTakeoverAllowed} from './mowerDormPolicy'
+import {alphaSlotTakable,alphaPrioritizeRecovery} from './mowerAlphaDorm'
+import {mowerDormCandidateMood} from './mowerDormMood'
 import type {MowerSchedulingData} from './mowerSchedulingData'
-import {toMowerMicros,MowerTask,MOWER_TASK_TYPES as T,type MowerTaskPlan,type MowerTaskQueue} from './mowerTaskQueue'
+import {MowerTask,MOWER_TASK_TYPES as T,type MowerTaskPlan,type MowerTaskQueue} from './mowerTaskQueue'
 import {simplifyMowerAlphaDormFill} from './mowerAlphaTaskProtection'
 import type {MowerTaskSchedulingOptions} from './mowerTaskScheduling'
-export function mowerDormCandidateMood(data:MowerSchedulingData,name:string):number|undefined {
- return mowerSchedulingMoodObservation(data,name)?.[0]
-}
-export function mowerSchedulingMoodObservation(data:MowerSchedulingData,name:string):[number,number]|undefined {
- const op=data.operators[name],estimate=data.dormMoodEstimates.get(name),elapsed=estimate?data.nowMicros-estimate[1]:-1
- const measured=hasRestingMood(op,data.nowMicros)&&!op!.moodIsPrediction&&op!.timeStampMicros!<=data.nowMicros
- if(estimate&&Number.isFinite(estimate[0])&&estimate[0]>=0&&estimate[0]<=24&&elapsed>=0&&elapsed<toMowerMicros(1)&&(!measured||estimate[1]>op!.timeStampMicros!))return [estimate[0],estimate[1]]
- return measured?[op!.isResting()?op!.mood:restingMood(op,data.nowMicros),op!.timeStampMicros!]:undefined
-}
+export {mowerDormCandidateMood,mowerSchedulingMoodObservation} from './mowerDormMood'
 export function mowerAlphaDormCandidates(data:MowerSchedulingData,excluded=new Set<string>(),currentResidents=new Set<string>()){
  // Candidate state is fixed during this synchronous pass; rebuild keys on every call.
  const referenced=new Set(Object.values(data.operators).flatMap(op=>op.nativeName==='菲亚梅塔'?[]:[...op.replacement,...op.groupBindings.flatMap(binding=>binding.replacement)])),tiers=new Map<string,number>()
