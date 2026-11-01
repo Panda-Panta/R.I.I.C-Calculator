@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { toPng } from 'html-to-image'
 import { nextTick } from 'vue'
 import ScheduleTimelineGantt from './ScheduleTimelineGantt.vue'
 import type { ScheduleSimulationReport } from '../../simulator/scheduleSimulation'
@@ -396,6 +397,10 @@ describe('ScheduleTimelineGantt.vue', () => {
   })
 
   it('supports volume mode and adaptive scaling for 14-day (336h) long timelines', async () => {
+    let downloadedName = ''
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloadedName = this.download
+    })
     const report = createSampleReport()
     report.observedHours = 336
     report.elapsedHours = 336
@@ -410,6 +415,10 @@ describe('ScheduleTimelineGantt.vue', () => {
     const modal = wrapper.find('[data-test="gantt-export-modal"]')
     expect(modal.exists()).toBe(true)
     expect(modal.text()).toContain('全周期共 336 小时')
+    await wrapper.get('[data-test="download-gantt-btn"]').trigger('click')
+    await flushPromises()
+    expect(toPng).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ pixelRatio: 1 }))
+    expect(downloadedName).toBe('基建排班甘特图_设施分道_采样全周期_0h-336h.png')
 
     // Long cycle scope selector exists (>72h)
     const scopeSelector = wrapper.find('[data-test="scope-mode-selector"]')
@@ -425,6 +434,10 @@ describe('ScheduleTimelineGantt.vue', () => {
     // Change volume
     await volumeSelect.setValue('1')
     expect(modal.text()).toContain('第 2 卷')
+    await wrapper.get('[data-test="download-gantt-btn"]').trigger('click')
+    await flushPromises()
+    expect(toPng).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ pixelRatio: 2 }))
+    expect(downloadedName).toBe('基建排班甘特图_设施分道_第2卷_T+72h-144h.png')
   })
 
   it('advances through nearby backup events and wraps after the last event', async () => {

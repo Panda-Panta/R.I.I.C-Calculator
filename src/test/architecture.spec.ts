@@ -34,7 +34,7 @@ function dependencies(file: string): string[] {
 }
 
 it.each([
-  { name: 'domain and engine', folders: ['domain', 'engine'], forbidden: ['components', 'workbench', 'optimizer'] },
+  { name: 'domain, rules and engine', folders: ['domain', 'rules', 'engine'], forbidden: ['components', 'workbench', 'optimizer'] },
   { name: 'scheduler', folders: ['scheduler'], forbidden: ['components', 'workbench', 'optimizer'] },
   { name: 'simulator', folders: ['simulator'], forbidden: ['components', 'optimizer'] },
 ])('keeps $name independent of higher-level modules', ({ folders, forbidden }) => {
