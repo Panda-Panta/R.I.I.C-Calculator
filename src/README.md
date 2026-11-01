@@ -16,6 +16,8 @@
 
 `workbench/session.ts` 创建每个工作台实例共享的响应式状态。收益计算和自动排班各自管理 Worker、进度、取消和卸载清理；持久化模块负责原有存储键、旧版迁移和干员库交换。界面样式位于 `components/workbench/WorkbenchShell.css`，由原页面以 scoped 样式加载。
 
+自动排班 Worker 的请求与响应类型集中在 `optimizer/smartRosterProtocol.ts`，供 Worker 与 `useSmartRosterGeneration.ts` 共同使用。该文件仅声明类型；消息字段、进度、已验快照、完成和错误处理仍由原入口负责。
+
 `workbench/settings.ts` 统一比较预算的模式上限和确认请求归一化。偏好恢复保留通用上限，副表模式的预览与确认采用对应上限；切换预览不改原表单值。自动排班的开始和确认分别解析当时的库存，复用同一私有读取函数，保持确认时重新读取的行为。
 
 共享产出计分由 `domain/productionScore.ts` 唯一实现；`simulator/productionScore.ts` 将已完成生产的仿真报告转换为通用计分输入。排班模型位于 `domain/roster.ts`，干员名称、代号和 ID 解析位于 `domain/operatorIdentifiers.ts`。底层模块直接引用这些位置。
