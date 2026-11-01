@@ -11,6 +11,7 @@ import {
   type TimelineMarkerEvent,
 } from '../../workbench/timeline/timelineModel'
 import { visibleTimelineIntervals, type TimelineDisplayInterval } from '../../workbench/timeline/timelineDisplay'
+import { buildTimelineExportLayout, createTimelineAxis } from '../../workbench/timeline/timelinePresentation'
 
 const props = withDefaults(defineProps<{
   report: ScheduleSimulationReport | null
@@ -60,71 +61,21 @@ const exportSelectedVolumeIndex = ref<number>(0)
 const exportCustomStart = ref<number>(0)
 const exportCustomEnd = ref<number>(72)
 
-interface ExportVolume {
-  index: number
-  start: number
-  end: number
-  label: string
-}
-
-const exportVolumes = computed<ExportVolume[]>(() => {
-  const total = totalObservedHours.value
-  const volHours = Math.max(12, exportVolumeDays.value * 24)
-  const count = Math.ceil(total / volHours)
-  const list: ExportVolume[] = []
-  for (let i = 0; i < count; i++) {
-    const s = i * volHours
-    const e = Math.min(total, s + volHours)
-    const startDay = Math.floor(s / 24) + 1
-    const endDay = Math.ceil(e / 24)
-    list.push({
-      index: i,
-      start: s,
-      end: e,
-      label: `第 ${i + 1} 卷：第 ${startDay}~${endDay} 天 (T+${s.toFixed(0)}h ~ T+${e.toFixed(0)}h)`,
-    })
-  }
-  return list
-})
-
-const activeExportStart = computed(() => {
-  if (exportScopeMode.value === 'volume') {
-    const vol = exportVolumes.value[exportSelectedVolumeIndex.value]
-    return vol ? vol.start : 0
-  }
-  if (exportScopeMode.value === 'custom') {
-    return Math.max(0, exportCustomStart.value)
-  }
-  return 0
-})
-
-const activeExportEnd = computed(() => {
-  if (exportScopeMode.value === 'volume') {
-    const vol = exportVolumes.value[exportSelectedVolumeIndex.value]
-    return vol ? vol.end : totalObservedHours.value
-  }
-  if (exportScopeMode.value === 'custom') {
-    return Math.min(totalObservedHours.value, Math.max(activeExportStart.value + 1, exportCustomEnd.value))
-  }
-  return totalObservedHours.value
-})
-
-const activeExportDuration = computed(() => {
-  return Math.max(0.1, activeExportEnd.value - activeExportStart.value)
-})
-
-const exportPixelsPerHour = computed(() => {
-  const dur = activeExportDuration.value
-  const base = exportScaleMode.value === 'compact' ? 50 : 100
-  const maxTrackWidth = 14000
-  if (dur * base > maxTrackWidth) {
-    return Math.max(20, Math.floor(maxTrackWidth / dur))
-  }
-  return base
-})
-
-const exportTrackWidthPx = computed(() => Math.round(activeExportDuration.value * exportPixelsPerHour.value))
-const exportTotalWidthPx = computed(() => 190 + exportTrackWidthPx.value)
+const exportLayout = computed(() => buildTimelineExportLayout(totalObservedHours.value, {
+  scopeMode: exportScopeMode.value,
+  volumeDays: exportVolumeDays.value,
+  selectedVolumeIndex: exportSelectedVolumeIndex.value,
+  customStart: exportCustomStart.value,
+  customEnd: exportCustomEnd.value,
+  scaleMode: exportScaleMode.value,
+}))
+const exportVolumes = computed(() => exportLayout.value.volumes)
+const activeExportStart = computed(() => exportLayout.value.start)
+const activeExportEnd = computed(() => exportLayout.value.end)
+const activeExportDuration = computed(() => exportLayout.value.duration)
+const exportPixelsPerHour = computed(() => exportLayout.value.pixelsPerHour)
+const exportTrackWidthPx = computed(() => exportLayout.value.trackWidthPx)
+const exportTotalWidthPx = computed(() => exportLayout.value.totalWidthPx)
 
 // Hover inspector state
 const hoveredInterval = ref<TimelineDisplayInterval | null>(null)
@@ -171,9 +122,8 @@ watch(
   { immediate: true },
 )
 
-const windowDuration = computed(() => {
-  return Math.max(0.1, customWindowEnd.value - customWindowStart.value)
-})
+const screenAxis = computed(() => createTimelineAxis(customWindowStart.value, customWindowEnd.value, 'screen'))
+const windowDuration = computed(() => screenAxis.value.duration)
 
 function setWindowDuration(targetDur: number): void {
   backupEventCursor.value = null
@@ -400,62 +350,16 @@ function handleOverviewTrackMouseDown(e: MouseEvent): void {
 }
 
 // Export facility gantt (Supports Full Sampling Phase & Multi-Day Volumes)
+const exportAxis = computed(() => createTimelineAxis(activeExportStart.value, activeExportEnd.value, 'export'))
+const exportRulerTicks = computed(() => exportAxis.value.ticks)
+
 function getExportOffsetPercent(time: number): number {
-  const dur = activeExportDuration.value
-  if (dur <= 0) return 0
-  const rel = time - activeExportStart.value
-  return Math.max(0, Math.min(100, (rel / dur) * 100))
+  return exportAxis.value.offsetPercent(time)
 }
 
 function getExportWidthPercent(start: number, end: number): number {
-  const dur = activeExportDuration.value
-  if (dur <= 0) return 0
-  const s = Math.max(activeExportStart.value, start)
-  const e = Math.min(activeExportEnd.value, end)
-  if (e <= s) return 0
-  return ((e - s) / dur) * 100
+  return exportAxis.value.widthPercent(start, end)
 }
-
-const exportRulerTicks = computed<RulerTick[]>(() => {
-  const start = activeExportStart.value
-  const end = activeExportEnd.value
-  const dur = activeExportDuration.value
-  if (dur <= 0) return []
-  const ticks: RulerTick[] = []
-
-  // Adapt tick step based on export window duration
-  const step = dur <= 72 ? 2 : dur <= 168 ? 4 : dur <= 336 ? 8 : 12
-  const firstTick = Math.ceil(start / step) * step
-
-  for (let t = firstTick; t <= end; t += step) {
-    const isMajor = t % 24 === 0
-    const day = Math.floor(t / 24) + 1
-    const hourInDay = t % 24
-    let label = `${t}h`
-    if (isMajor) {
-      label = `D${day} 00:00`
-    } else {
-      label = `${hourInDay < 10 ? '0' + hourInDay : hourInDay}:00`
-    }
-    ticks.push({
-      time: t,
-      percent: getExportOffsetPercent(t),
-      label,
-      isMajorDay: isMajor,
-    })
-  }
-
-  const lastTick = ticks[ticks.length - 1]
-  if (lastTick && end - lastTick.time > 0.5) {
-    ticks.push({
-      time: end,
-      percent: 100,
-      label: `T+${end.toFixed(0)}h`,
-      isMajorDay: end % 24 === 0,
-    })
-  }
-  return ticks
-})
 
 function openExportModal(): void {
   viewMode.value = 'facility'
@@ -472,30 +376,19 @@ function closeExportModal(): void {
   exportStatus.value = null
 }
 
-function getExportFilename(): string {
-  if (exportScopeMode.value === 'volume') {
-    return `基建排班甘特图_设施分道_第${exportSelectedVolumeIndex.value + 1}卷_T+${activeExportStart.value.toFixed(0)}h-${activeExportEnd.value.toFixed(0)}h.png`
-  }
-  if (exportScopeMode.value === 'custom') {
-    return `基建排班甘特图_设施分道_时段_T+${activeExportStart.value.toFixed(0)}h-${activeExportEnd.value.toFixed(0)}h.png`
-  }
-  return `基建排班甘特图_设施分道_采样全周期_0h-${totalObservedHours.value.toFixed(0)}h.png`
-}
-
 async function handleDownloadGanttImage(): Promise<void> {
   if (!exportCanvasRef.value || isExporting.value) return
   isExporting.value = true
   exportStatus.value = null
   try {
-    const totalW = exportTotalWidthPx.value
-    const pixelRatio = totalW * 2 <= 16000 ? 2 : totalW * 1.5 <= 16000 ? 1.5 : 1
+    const pixelRatio = exportLayout.value.pixelRatio
     const dataUrl = await toPng(exportCanvasRef.value, {
       pixelRatio,
       cacheBust: true,
       backgroundColor: '#0e1319',
     })
     const link = document.createElement('a')
-    link.download = getExportFilename()
+    link.download = exportLayout.value.filename
     link.href = dataUrl
     link.click()
     exportStatus.value = { type: 'success', message: '甘特图长图已成功导出下载！' }
@@ -512,8 +405,7 @@ async function handleCopyGanttImage(): Promise<void> {
   isExporting.value = true
   exportStatus.value = null
   try {
-    const totalW = exportTotalWidthPx.value
-    const pixelRatio = totalW * 2 <= 16000 ? 2 : totalW * 1.5 <= 16000 ? 1.5 : 1
+    const pixelRatio = exportLayout.value.pixelRatio
     const blob = await toBlob(exportCanvasRef.value, {
       pixelRatio,
       cacheBust: true,
@@ -585,60 +477,14 @@ function handleTimelineWheel(e: WheelEvent): void {
 
 // Calculate percentage position and width on timeline
 function getOffsetPercent(time: number): number {
-  const rel = time - customWindowStart.value
-  return Math.max(0, Math.min(100, (rel / windowDuration.value) * 100))
+  return screenAxis.value.offsetPercent(time)
 }
 
 function getWidthPercent(start: number, end: number): number {
-  const s = Math.max(customWindowStart.value, start)
-  const e = Math.min(customWindowEnd.value, end)
-  if (e <= s) return 0
-  return ((e - s) / windowDuration.value) * 100
+  return screenAxis.value.widthPercent(start, end)
 }
 
-// Generate Ruler Ticks (Days & Hours)
-interface RulerTick {
-  time: number
-  percent: number
-  label: string
-  isMajorDay: boolean
-}
-
-const rulerTicks = computed<RulerTick[]>(() => {
-  const dur = windowDuration.value
-  const start = customWindowStart.value
-  const end = customWindowEnd.value
-  const ticks: RulerTick[] = []
-
-  let step = 6
-  if (dur <= 6) step = 1
-  else if (dur <= 12) step = 2
-  else if (dur <= 24) step = 3
-  else if (dur <= 48) step = 6
-  else if (dur <= 120) step = 12
-  else step = 24
-
-  const firstTick = Math.ceil(start / step) * step
-  for (let t = firstTick; t <= end; t += step) {
-    const isMajor = t % 24 === 0
-    const day = Math.floor(t / 24) + 1
-    const hourInDay = t % 24
-    let label = `${t}h`
-    if (isMajor) {
-      label = `D${day} 00:00`
-    } else {
-      label = `${hourInDay < 10 ? '0' + hourInDay : hourInDay}:00`
-    }
-
-    ticks.push({
-      time: t,
-      percent: getOffsetPercent(t),
-      label,
-      isMajorDay: isMajor,
-    })
-  }
-  return ticks
-})
+const rulerTicks = computed(() => screenAxis.value.ticks)
 
 // Filtered Facility Tracks
 const filteredFacilityTracks = computed<FacilityTrack[]>(() => {

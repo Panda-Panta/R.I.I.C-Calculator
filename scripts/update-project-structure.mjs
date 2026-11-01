@@ -77,7 +77,7 @@ export function renderProjectStructure(root = projectRoot) {
 
 | 位置 | 职责与边界 |
 | --- | --- |
-| \`src/domain/\` | 与界面无关的业务类型、干员标识、排班模型和公共计分；共享定义优先放在这里 |
+| \`src/domain/\` | 与界面无关的业务类型、干员标识与身份、设施名称、排班模型和公共计分；共享定义优先放在这里 |
 | \`src/rules/\` | 独立、可测试的订单规则；规则不引用界面状态 |
 | \`src/engine/\` | 静态效率、心情及后勤技能条件；新增机制使用专项模块 |
 | \`src/scheduler/\` | Mower 调度、主副表、策略、任务队列和原生兼容规则 |
@@ -85,6 +85,7 @@ export function renderProjectStructure(root = projectRoot) {
 | \`src/optimizer/\` | 候选枚举、配员搜索和方案比较；调用既有规则而不复制它们 |
 | \`src/workbench/\` | 工作台状态、迁移、Mower JSON/二维码兼容及计算桥接 |
 | \`src/workbench/composables/\` | 持久化、收益任务和自动排班任务生命周期 |
+| \`src/workbench/timeline/\` | 报告时间线、密集区间展示及纯坐标、刻度与导出布局；浏览器副作用留在组件 |
 | \`src/components/workbench/\` | 页面、编辑器与弹窗；WorkbenchShell 只组装界面和路由交互 |
 | \`src/data/\` | 固定版本数据、来源清单和生成结果，不手改自动生成数据 |
 | \`src/test/\` | 架构契约、报告输出与测试辅助；相应业务测试通常与模块放在一起 |

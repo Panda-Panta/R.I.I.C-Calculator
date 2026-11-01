@@ -17,7 +17,7 @@ import {
   type RosterWorkspace,
 } from '../domain/roster'
 import { COMPAT_OPERATOR_GROUPS_KEY } from './migrate'
-import { isRunOrderOperator } from './operatorHelpers'
+import { isRunOrderOperator } from '../domain/operatorRoles'
 
 const DORMITORY_ROOM_IDS = [
   'dormitory_1',
