@@ -39,7 +39,7 @@
 
 ## 纳入范围
 
-共 855 个索引文件，其中应用 TypeScript/Vue/CSS 文件 294 个，业务测试文件 397 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 893 个索引文件，其中应用 TypeScript/Vue/CSS 文件 311 个，业务测试文件 417 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -152,6 +152,7 @@ scripts/
 ├── audit-riic-data.mjs
 ├── benchmark-auto-roster.mjs
 ├── benchmark-cpu.mjs
+├── benchmark-duty-model.mjs
 ├── benchmark-neighborhood.mjs
 ├── check_skills.mjs
 ├── diagnose_roster.ts
@@ -420,10 +421,39 @@ src/
 │   ├── jointBackupMainAlternatives.ts
 │   ├── jointBackupObservers.spec.ts
 │   ├── jointBackupObservers.ts
+│   ├── jointBackupProjection.spec.ts
+│   ├── jointBackupProjection.ts
 │   ├── jointBackupSearch.spec.ts
 │   ├── jointBackupSearch.ts
 │   ├── mainPlanOnly.spec.ts
 │   ├── mainPlanOnly.ts
+│   ├── mainRosterCrewCandidates.spec.ts
+│   ├── mainRosterCrewCandidates.ts
+│   ├── mainRosterDutyAcceptance.spec.ts
+│   ├── mainRosterDutyAcceptance.ts
+│   ├── mainRosterDutyCalibration.spec.ts
+│   ├── mainRosterDutyCalibration.ts
+│   ├── mainRosterDutyEvaluation.spec.ts
+│   ├── mainRosterDutyEvaluation.ts
+│   ├── mainRosterDutyIntegration.spec.ts
+│   ├── mainRosterDutyIntegration.ts
+│   ├── mainRosterDutyObservationClock.spec.ts
+│   ├── mainRosterDutyObservationClock.ts
+│   ├── mainRosterDutyOrderClock.spec.ts
+│   ├── mainRosterDutyOrderClock.ts
+│   ├── mainRosterDutyRates.spec.ts
+│   ├── mainRosterDutyRates.ts
+│   ├── mainRosterDutyTrace.spec.ts
+│   ├── mainRosterDutyTrace.ts
+│   ├── mainRosterDutyTypes.ts
+│   ├── mainRosterFreeCandidates.spec.ts
+│   ├── mainRosterFreeCandidates.ts
+│   ├── mainRosterOptimization.spec.ts
+│   ├── mainRosterOptimization.ts
+│   ├── mainRosterRecoveryCandidates.spec.ts
+│   ├── mainRosterRecoveryCandidates.ts
+│   ├── mainRosterRecoveryPriorities.spec.ts
+│   ├── mainRosterRecoveryPriorities.ts
 │   ├── mainRosterSelection.spec.ts
 │   ├── mainRosterSelection.ts
 │   ├── manufacturingCrewDomain.spec.ts
@@ -475,6 +505,7 @@ src/
 │   ├── smartRosterParallel.spec.ts
 │   ├── smartRosterPrimarySelection.spec.ts
 │   ├── smartRosterWarmup.spec.ts
+│   ├── smartRosterWorker.spec.ts
 │   ├── smartRosterWorker.ts
 │   ├── staffingQuality.ts
 │   ├── warmupPolicyApplicability.spec.ts
@@ -600,6 +631,7 @@ src/
 │   ├── mowerBackupRefresh.spec.ts
 │   ├── mowerBackupRefresh.ts
 │   ├── mowerBackupReplacements.ts
+│   ├── mowerBackupReservationWait.spec.ts
 │   ├── mowerBackupRestingJoin.spec.ts
 │   ├── mowerBackupRestingJoin.ts
 │   ├── mowerBackupTransitionConfig.spec.ts
@@ -705,8 +737,11 @@ src/
 │   ├── mowerPlanningWake.ts
 │   ├── mowerPolicyParity.spec.ts
 │   ├── mowerPreviewRecovery.spec.ts
+│   ├── mowerPreviewRecoveryAdmission.spec.ts
+│   ├── mowerPreviewRecoveryAdmission.ts
 │   ├── mowerPreviewRecoveryWait.spec.ts
 │   ├── mowerPreviewRecoveryWait.ts
+│   ├── mowerPreviewWakeAdmission.spec.ts
 │   ├── mowerReconciliation.spec.ts
 │   ├── mowerRecoveryAllocation.spec.ts
 │   ├── mowerRecoveryBeds.ts
@@ -820,6 +855,8 @@ src/
 │   ├── mowerWorkSession.spec.ts
 │   ├── orderTimeline.spec.ts
 │   ├── orderTimeline.ts
+│   ├── permanentDutyEvidence.spec.ts
+│   ├── permanentDutyEvidence.ts
 │   ├── potentialProduction.spec.ts
 │   ├── productionDroneTargets.spec.ts
 │   ├── productionEndpointPrecision.spec.ts
@@ -839,6 +876,7 @@ src/
 │   ├── resourceLedger.ts
 │   ├── scheduleAbyssalFatigue.spec.ts
 │   ├── scheduleAdmission.spec.ts
+│   ├── scheduleOrderClock.spec.ts
 │   ├── scheduleRateCache.spec.ts
 │   ├── scheduleReceptionClues.spec.ts
 │   ├── scheduleSimulation.spec.ts

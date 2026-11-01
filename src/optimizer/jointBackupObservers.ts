@@ -2,6 +2,7 @@ import type { OperatorInventory } from '../domain/operatorInventory'
 import type { MowerRoomId, RosterWorkspace } from '../domain/roster'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 import { productionWorkspaceHourlyScore } from './productionSingletons'
+import { projectJointBackupRestState } from './jointBackupProjection'
 import type { GeneratedBackupObserver, GeneratedBackupTrigger } from './generatedBackupTypes'
 
 interface MainCandidate { id: string; workspace: RosterWorkspace }
@@ -13,12 +14,28 @@ export function selectJointBackupTriggers(candidates: readonly MainCandidate[], 
   if (!limit || !inventory.valid || candidates.length < 2) return []
   const owned = new Set(inventory.operators.map(operator => operator.charId))
   const ranked = new Map<string, RankedObserver>()
+  const scores = new Map<RosterWorkspace, Map<string, number | undefined>>()
+  let calls = 0
+  const score = (workspace: RosterWorkspace, absent = ''): number | undefined => {
+    const cache = scores.get(workspace) ?? new Map<string, number | undefined>()
+    scores.set(workspace, cache)
+    if (cache.has(absent)) return cache.get(absent)
+    let value: number | undefined
+    const projection = absent ? projectJointBackupRestState(workspace, inventory, [absent]) : workspace
+    if (projection && calls < 100) {
+      calls++
+      try { value = productionWorkspaceHourlyScore(projection, inventory) } catch { value = undefined }
+    }
+    if (value !== undefined && !Number.isFinite(value)) value = undefined
+    cache.set(absent, value)
+    return value
+  }
   for (let left = 0; left < candidates.length; left++) for (let right = left + 1; right < candidates.length; right++) {
     const a = candidates[left]!.workspace, b = candidates[right]!.workspace
     const changed = new Set(Object.values(a.mainPlan.facilities).filter(room => room.level > 0 &&
       ['manufacture', 'trading'].includes(room.type) && JSON.stringify(room) !== JSON.stringify(b.mainPlan.facilities[room.roomId])).map(room => room.roomId))
     if (!changed.size) continue
-    const scoreA = productionWorkspaceHourlyScore(a, inventory), scoreB = productionWorkspaceHourlyScore(b, inventory)
+    const scoreA = score(a), scoreB = score(b)
     if (scoreA === undefined || scoreB === undefined || !Number.isFinite(scoreA - scoreB)) continue
     const onGap = scoreA - scoreB
     const permanent = new Set([...a.mainPlan.conf.workaholic, ...b.mainPlan.conf.workaholic].map(id))
@@ -28,10 +45,7 @@ export function selectJointBackupTriggers(candidates: readonly MainCandidate[], 
         if (slot.occupant.kind !== 'operator') continue
         const actor = id(slot.occupant.operatorId), other = b.mainPlan.facilities[room.roomId]?.slots[index]
         if (!owned.has(actor) || permanent.has(actor) || other?.occupant.kind !== 'operator' || id(other.occupant.operatorId) !== actor) continue
-        const withoutA = structuredClone(a), withoutB = structuredClone(b)
-        withoutA.mainPlan.facilities[room.roomId].slots[index]!.occupant = { kind: 'empty' }
-        withoutB.mainPlan.facilities[room.roomId].slots[index]!.occupant = { kind: 'empty' }
-        const offA = productionWorkspaceHourlyScore(withoutA, inventory), offB = productionWorkspaceHourlyScore(withoutB, inventory)
+        const offA = score(a, actor), offB = score(b, actor)
         if (offA === undefined || offB === undefined || !Number.isFinite(offA - offB)) continue
         const offGap = offA - offB, change = Math.abs(onGap - offGap)
         if (change < 1e-7) continue

@@ -2,6 +2,7 @@ import {mowerInitialStaffingBlocked} from './mowerInitialStaffing'
 import {isMowerFiammetta,mowerInitialMorale} from './mowerInitialMorale'
 import {MowerBackupRecoveryBlocked} from './mowerBackupDepartureRecovery'
 import {parkMowerBackupDepartureRecovery,parkMowerPreviewRecovery,resumeMowerPreviewRecovery,nextMowerPreviewRecoveryObservation,type MowerPreviewRecoveryWait} from './mowerPreviewRecoveryWait'
+import {previewMowerBackupRecoveryRetry} from './mowerPreviewRecoveryAdmission'
 import {mowerVerifiedRecoveryDependencyReturn,mowerRecoveryDependencyProofs} from './mowerRecoveryDependency'
 import {mowerOrdinaryCoordinationNeeded,mowerPendingExhaust} from './mowerExhaustPolicy'
 import {hasSingleRecoverySkill} from '../engine/singleRecoveryEligibility'
@@ -150,6 +151,10 @@ export function getMowerSourceRuntime(s:RuntimeState):MowerSourceRuntime {
 }
 function mowerReservationTasks(source:MowerSourceRuntime,exclude?:MowerTask):MowerTask[] {
  return [...new Set([...source.queue.tasks,...(source.waitingGroupShifts??[]).map(wait=>wait.task),...(source.waitingRecovery??[]).map(wait=>wait.task)])].filter(task=>task!==exclude)
+}
+function resumeMowerSourcePreviewRecovery(state:RuntimeState,source:MowerSourceRuntime):boolean {
+ const model=state.mowerShiftModel
+ return resumeMowerPreviewRecovery(source,model?task=>previewMowerBackupRecoveryRetry(source.data,task,model,source.queue.tasks.filter(other=>other!==task)):undefined)
 }
 function refreshMowerGroupWaitNames(source:MowerSourceRuntime):void {
  const recoveryNames=new Set(source.waitingRecovery?.flatMap(wait=>[...Object.values(wait.task.plan).flat(),...Object.values(wait.task.groupShiftExpected??{})])??[])
@@ -707,7 +712,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
    const rooms=new Set(source.waitingRecovery?.flatMap(wait=>Object.entries(wait.deadlines).filter(([,due])=>due<=source.data.nowMicros).map(([room])=>room)))
    for(const room of rooms){invalidateMowerDormTime(source.data,room);observeRoom(s,rates,room,undefined,source.data.plan[room]?.map((_,i)=>i)??[])}
   }
-  if(resumeMowerPreviewRecovery(source)){delete source.runReturn;source.queue.sort()}
+  if(resumeMowerSourcePreviewRecovery(s,source)){delete source.runReturn;source.queue.sort()}
  }
  if(source.initial){
   for(const room of Object.keys(source.data.plan))if(!canReuseMowerStartupMood(source.data,room,source.startupMoodObservations?.[room]))observeRoom(s,rates,room,undefined,room==='central'||source.startupMoodObservations?.[room]!==undefined?source.data.plan[room]!.map((_,i)=>i):[])
@@ -1158,6 +1163,7 @@ export function settleMowerSource(s:RuntimeState,rates:RuntimeRates,onPhase?:(ph
   delete source.phaseExecution
   // A completed native phase may release a real reservation. Admit that work before
   // the existing outer-run clock is selected; a next-action query must not discover it late.
+  resumeMowerSourcePreviewRecovery(s,source)
   resumeMowerFailedTasks(s,getMowerSourceRuntime(s).data,queue)
   if(source.baseRunAborted){
    delete source.baseRunAborted
@@ -1191,7 +1197,7 @@ export function nextMowerSourceActionHours(s:RuntimeState,rates?:RuntimeRates):n
  const source=getMowerSourceRuntime(s)
  resumeMowerGroupPredecessors(source)
  if(rates)syncReplacementChecks(s,rates)
- if(!source.execution&&!source.phaseExecution&&resumeMowerPreviewRecovery(source))delete source.runReturn
+ if(!source.execution&&!source.phaseExecution&&resumeMowerSourcePreviewRecovery(s,source))delete source.runReturn
  if(resumeMowerFailedTasks(s,source.data,source.queue)&&!source.execution&&!source.phaseExecution)delete source.runReturn
  source.queue.sort()
  const running=source.execution?.wakeMicros??source.phaseExecution?.wakeMicros??source.runReturn?.wakeMicros

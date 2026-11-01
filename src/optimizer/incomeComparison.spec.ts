@@ -1,12 +1,122 @@
-import {describe,it,expect} from 'vitest'
+import {describe,it,expect,vi} from 'vitest'
 import {createDefaultWorkspace} from '../workbench/defaults'
 import {runScheduleSimulationBridge} from '../workbench/scheduleSimulationBridge'
 import {summarizeIncome,compareIncome,type IncomeCase} from './incomeComparison'
 import { scoreSimulationProduction } from '../simulator/productionScore'
 import { simulateCandidate } from './candidateSimulation'
+import { compileRosterSchedule } from '../scheduler/compileRosterSchedule'
+import type { ScheduleSimulationReport } from '../simulator/scheduleSimulation'
+import * as simulation from '../simulator/scheduleSimulation'
+import { createLedger } from '../simulator/resourceLedger'
+import { createDroneState } from '../simulator/droneTimeline'
 const report=()=>runScheduleSimulationBridge(createDefaultWorkspace(),{sampleHours:1,warmupHours:0,production:{seed:1,droneTarget:'none'}},{idleOperators:[]}).report!
 const cases=():IncomeCase[]=>[1,2].flatMap(seed=>[.25,.125].map(step=>{const c=summarizeIncome(report());return {...c,seed,step,key:`${seed}:${step}`}}))
 const improved=()=>{const c=cases();c.forEach(x=>{x.daily.lmd+=100;x.closing.lmd+=100});return c}
+
+/** A completed-report shape only; this fixture never executes a calendar/H/F. */
+function permanentIncomeReport(policy=true,passive=false):ScheduleSimulationReport {
+ const workspace=createDefaultWorkspace(),operatorId='char_285_medic2'
+ for(const room of Object.values(workspace.mainPlan.facilities)){room.level=0;room.slots=[]}
+ const primary=workspace.mainPlan.facilities[passive?'factory':'room_1_3']
+ primary.level=3;primary.slots=[{occupant:{kind:'operator',operatorId},groupId:passive?null:'自动化',replacements:[]}]
+ workspace.mainPlan.conf.workaholic=policy?[operatorId]:[]
+ const schedule=compileRosterSchedule(workspace,{idleOperators:[]})
+ return {schemaVersion:1,engine:'mower-morale-v1',success:true,elapsedHours:96,observedHours:72,
+  inputs:{schedule,options:{schedulingModel:'mower-alpha',warmupHours:24,sampleHours:72,production:{seed:42,droneTarget:'none',outputMode:'potential'}}},
+  assumptions:{schedulingModel:'mower-alpha',warmupHours:24,sampleHours:72,maxStepHours:.25,warmupModel:'continuous',restingThreshold:.65,
+   operationDurationHours:0,dormAtmosphere:'fixture',singleRecoveryTarget:'fixture'},
+  operators:[{operatorId,operatorName:'Lancet-2',initialMorale:24,finalMorale:0,mainWorkHours:12,substituteWorkHours:0,workHours:12,
+   exhaustedHours:46,restHours:0,idleHours:14,permanentPrimaryOccupancyHours:58,workFraction:1/6,workRestRatio:null}],
+  rooms:[],events:[],segments:[],diagnostics:[],shiftDeferrals:[],
+  production:{success:true,ledger:createLedger({}),sample:{completed:{exp:0,gold:12,orderLmd:1000},opening:{},closing:{},inflows:{},outflows:{},net:{}},
+   materialsConsumed:{},drones:createDroneState(0,200),manufacturing:[],trading:[],events:[],
+   assumptions:{outputMode:'potential',inventoryMode:'unlimited',seed:42,runOrderMode:'ideal',droneTarget:'none',droneReserve:0,
+    collectionIntervalHours:0,orderSnapshotPolicy:'fixture'}},
+ }
+}
+function addWorkaholicRemoval(value:ScheduleSimulationReport):void {
+ value.inputs.schedule.sourceWorkspace.compatibility.backupPlans.push({name:'conditional policy removal',trigger:'True',plan:{},conf:{removed_operators:{workaholic:'Lancet-2'}}})
+}
+
+describe('measured permanent primary income policy (0 new H/F)',()=>{
+ it.each(['idle','rest'] as const)('accepts explicit workaholic primary duty with measured group %s time outside the physical shift',outside=>{
+  const value=permanentIncomeReport(),before=structuredClone(value)
+  if(outside==='rest'){value.operators[0]!.restHours=14;value.operators[0]!.idleHours=0}
+  const calendar=vi.spyOn(simulation,'simulateSchedule').mockImplementation(()=>{throw new Error('No new calendar/H/F')})
+  try{
+   expect(summarizeIncome(value)).toMatchObject({eligible:true,issues:[]})
+   expect(calendar).not.toHaveBeenCalled()
+   expect(value.production).toEqual(before.production)
+  }finally{calendar.mockRestore()}
+ })
+ it.each([undefined,57,72])('retains fatigue with revocable policy when the own-primary coverage counter is %s',counter=>{
+  const value=permanentIncomeReport();addWorkaholicRemoval(value);value.operators[0]!.permanentPrimaryOccupancyHours=counter
+  expect(summarizeIncome(value).issues).toContain('存在疲劳占岗')
+ })
+ it('does not exempt one unmeasured substitute hour when policy can be revoked',()=>{
+  const value=permanentIncomeReport(),op=value.operators[0]!
+  addWorkaholicRemoval(value)
+  op.workHours++;op.substituteWorkHours++;op.idleHours--
+  expect(summarizeIncome(value).issues).toContain('存在疲劳占岗')
+ })
+ it('keeps explicit policy and a unique primary mandatory, including passive auxiliary slots',()=>{
+  expect(summarizeIncome(permanentIncomeReport(false)).issues).toContain('存在疲劳占岗')
+  expect(summarizeIncome(permanentIncomeReport(false,true)).issues).toContain('存在疲劳占岗')
+  const duplicate=permanentIncomeReport(),room=duplicate.inputs.schedule.rooms[0]!
+  room.slots.push({...room.slots[0]!,slotIndex:1})
+  expect(summarizeIncome(duplicate).issues).toContain('存在疲劳占岗')
+ })
+ it('preserves ordinary forced-exhaustion fatigue without inferring workaholic policy',()=>{
+  const value=permanentIncomeReport(false),op=value.operators[0]!,slot=value.inputs.schedule.rooms[0]!.slots[0]!
+  op.operatorId='char_446_aroma';op.operatorName='阿罗玛';slot.primaryOperatorId=op.operatorId
+  value.inputs.schedule.policies.exhaust_require=[op.operatorId];value.inputs.schedule.policies.rest_in_full=[op.operatorId]
+  Object.assign(op,{mainWorkHours:61.188349730641754,workHours:61.188349730641754,exhaustedHours:.771792593382446,
+   restHours:10.038468780026548,idleHours:.0013888891666666667,permanentPrimaryOccupancyHours:0})
+  expect(summarizeIncome(value).issues).toContain('存在疲劳占岗')
+ })
+ it('preserves every unrelated diagnostic and ledger gate after correcting fatigue classification',()=>{
+  const diagnostic=permanentIncomeReport();diagnostic.diagnostics.push({code:'MOWER_MASTERY_PLAN_ASSUMPTION',message:'unchanged scope'})
+  expect(summarizeIncome(diagnostic).issues).toEqual(['MOWER_MASTERY_PLAN_ASSUMPTION：unchanged scope'])
+  const ledger=permanentIncomeReport();ledger.production!.ledger.entries.push({reason:'forged',delta:{gold:3}})
+  expect(summarizeIncome(ledger).eligible).toBe(false)
+  expect(summarizeIncome(ledger).issues).not.toContain('存在疲劳占岗')
+ })
+})
+describe('continuous Mower workaholic income policy (0 new H/F)',()=>{
+ it.each([22,11])('accepts a %s-second primary transition gap with invariant original name permission',seconds=>{
+  const value=permanentIncomeReport();value.operators[0]!.permanentPrimaryOccupancyHours=58-seconds/3600
+  value.inputs.schedule.sourceWorkspace.compatibility.backupPlans=[{name:'primary ownership transition',trigger:'True',plan:{room_1_3:{plans:[{agent:'埃癸斯',replacement:[]}]}},conf:{workaholic:'',removed_operators:{}}}]
+  const before=structuredClone(value)
+  expect(summarizeIncome(value)).toMatchObject({eligible:true,issues:[]})
+  expect(value).toEqual(before)
+ })
+ it.each(['missing-counter','substitute-duty'] as const)('uses the original global permission for %s rather than an own-primary certificate',kind=>{
+  const value=permanentIncomeReport(),op=value.operators[0]!
+  if(kind==='missing-counter')op.permanentPrimaryOccupancyHours=undefined
+  else{op.workHours++;op.substituteWorkHours++;op.idleHours--}
+  expect(summarizeIncome(value)).toMatchObject({eligible:true,issues:[]})
+ })
+ it('keeps a measured physical certificate sufficient when a possible backup can revoke global permission',()=>{
+  const value=permanentIncomeReport();addWorkaholicRemoval(value)
+  expect(summarizeIncome(value)).toMatchObject({eligible:true,issues:[]})
+ })
+ it('permits a globally authorized name without an initial primary while retaining duplicate-primary rejection',()=>{
+  const value=permanentIncomeReport(),workspace=createDefaultWorkspace()
+  for(const room of Object.values(workspace.mainPlan.facilities)){room.level=0;room.slots=[]}
+  workspace.mainPlan.conf.workaholic=['char_285_medic2']
+  workspace.compatibility.backupPlans=[{name:'later position',trigger:'True',plan:{room_1_3:{plans:[{agent:'Lancet-2',replacement:[]}]}}}]
+  value.inputs.schedule=compileRosterSchedule(workspace);value.operators[0]!.permanentPrimaryOccupancyHours=undefined
+  expect(summarizeIncome(value)).toMatchObject({eligible:true,issues:[]})
+ })
+ it('rejects unknown original policy and does not turn global permission into duplicate-position permission',()=>{
+  const unknown=permanentIncomeReport();unknown.operators[0]!.permanentPrimaryOccupancyHours=undefined
+  Reflect.deleteProperty(unknown.inputs.schedule,'sourceWorkspace')
+  expect(summarizeIncome(unknown).issues).toContain('存在疲劳占岗')
+  const duplicate=permanentIncomeReport(),room=duplicate.inputs.schedule.rooms[0]!
+  room.slots.push({...room.slots[0]!,slotIndex:1});duplicate.operators[0]!.permanentPrimaryOccupancyHours=undefined
+  expect(summarizeIncome(duplicate).issues).toContain('存在疲劳占岗')
+ })
+})
 describe('actual net income comparison',()=>{
  it('keeps native condition runtime failures visible without blocking otherwise complete income cases',()=>{
   const workspace=createDefaultWorkspace()

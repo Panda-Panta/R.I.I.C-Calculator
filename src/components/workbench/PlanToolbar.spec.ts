@@ -625,6 +625,17 @@ describe('PlanToolbar.vue', () => {
   })
 
   describe('Abort Auto Generation', () => {
+    it('offers to end optimization and retain the verified roster only when a snapshot is available', async () => {
+      const wrapper = mount(PlanToolbar, { props: { isGeneratingRoster: true, hasVerifiedIncumbent: true } })
+      const button = wrapper.get('[data-test="abort-roster-btn"]')
+      expect(button.text()).toContain('结束优化并保留当前方案')
+      await button.trigger('click')
+      expect(wrapper.emitted('abort-generation')).toHaveLength(1)
+      await wrapper.setProps({ hasVerifiedIncumbent: false })
+      expect(button.text()).toContain('中止排班')
+      expect(button.text()).not.toContain('保留当前方案')
+    })
+
     it('shows abort button when isGeneratingRoster is true and emits abort-generation on click', async () => {
       const wrapper = mount(PlanToolbar, {
         props: { isGeneratingRoster: true },

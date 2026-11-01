@@ -13,7 +13,7 @@ import { generateMolecularCandidates } from './molecularSynthesis'
 import { computeManufacturingRoster, type ComputedRosterCalculation } from './computedManufacturingRoster'
 import { runGlobalPerCapitaReplacement } from './globalPerCapitaReplacement'
 import { preservesFormedCombinations } from './combinationIntegrity'
-import { simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
+import { isQualifiedCandidateSimulation, simulateCandidate, type CandidateSimulationJob, type CandidateSimulationResult, type CandidateSimulationBatch, type CandidateBatchExecutor } from './candidateSimulation'
 export type { CandidateBatchExecutor } from './candidateSimulation'
 import { CandidateSimulationCache } from './candidateSimulationCache'
 import { candidateExecutionOrder } from './candidateExecutionOrder'
@@ -28,6 +28,7 @@ import { compareProductionEfficiencyVectors, productionEfficiencyVector } from '
 import { generateProductionShiftAlternatives } from './jointBackupMainAlternatives'
 import { generateContextualCrewCandidates } from './jointBackupCrewSeeds'
 import { selectHighOutputMainCandidates } from './mainRosterSelection'
+import { mainRosterOptimizationSteps, type MainRosterOptimizationSummary } from './mainRosterOptimization'
 import { jointBackupSearchSteps, type JointBackupSearchResult } from './jointBackupSearch'
 import type { GeneratedBackupDescriptor } from './generatedBackupTypes'
 
@@ -44,6 +45,12 @@ export interface SmartRosterOptions {
   enableDeepSearch?: boolean
   /** Compare bounded jointly generated main/conditional-backup configurations. */
   enableBackupGeneration?: boolean
+  /** Bounded extra main-roster search after the fast, complete initial result. */
+  enableMainOptimization?: boolean
+  /** Internal templates are proposals; original user-configured slots stay locked. */
+  allowFreeCombinations?: boolean
+  optimizationMaxSimulations?: number
+  optimizationTimeBudgetMs?: number
   droneTarget?: 'gold' | 'exp' | 'trading' | 'none'
   droneRoomId?: string
   productionWeights?: ProductionWeights
@@ -56,6 +63,8 @@ export interface SmartRosterProgress {
   totalTrials?: number
   bestScore?: number
   label: string
+  /** Same-input, complete, quality-accepted result available during continued search. */
+  incumbent?: SmartRosterResult
 }
 
 export interface SpecialOperatorSimData {
@@ -87,6 +96,7 @@ export interface SmartRosterResult {
   /** Completed output of the exact returned roster and generation settings. */
   calculationReport?: CalculationReport
   phases: {
+    mainOptimization?: MainRosterOptimizationSummary
     primarySelection?: { scores: { id: string; primaryHourlyScore: number | null }[]; selectedIds: string[] }
     /** Bounds describe the declared manufacturing model, never the full simulation objective. */
     calculation?: ComputedRosterCalculation
@@ -107,7 +117,8 @@ export interface SmartRosterResult {
       swappedCount: number
       logs: string[]
     }
-    jointBackup?: Pick<JointBackupSearchResult, 'generatedCandidates' | 'evaluatedCandidates' | 'selectedCandidateId' | 'improved' | 'candidates'> & { gain: number }
+    jointBackup?: Pick<JointBackupSearchResult, 'generatedCandidates' | 'evaluatedCandidates' | 'selectedCandidateId' | 'improved' | 'candidates' |
+      'simulations' | 'cacheHits' | 'acceptedCandidates' | 'qualityRepaired' | 'termination'> & { gain: number }
   }
 }
 
@@ -147,14 +158,14 @@ function simulationProgress(workspaces: readonly RosterWorkspace[], efficiencies
   return { onComplete: (result: CandidateSimulationResult, index: number) => {
     completed++
     fractions.set(index, 1)
-    if (result.completed && Number.isFinite(result.simScore)) {
+    if (isQualifiedCandidateSimulation(result)) {
       const preference = bestIndex === undefined ? 1 : compareWorkspacePreference(workspaces[index]!, workspaces[bestIndex]!) ||
         compareProductionEfficiencyVectors(efficiencies[index]!, efficiencies[bestIndex]!)
       if (bestIndex === undefined || result.simScore > bestScore! || result.simScore === bestScore && preference > 0) { bestScore = result.simScore; bestIndex = index }
     }
     onProgress?.({ phase: 'simulating', phaseProgress: (offset + [...fractions.values()].reduce((a, b) => a + b, 0)) / total,
       currentTrial: completed, totalTrials: total, bestScore,
-      label: `阶段 2/${stages}: 动态拟真进度 ${completed}/${total}（${result.completed && Number.isFinite(result.simScore) ? `加权产出: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
+      label: `阶段 2/${stages}: 动态拟真进度 ${completed}/${total}（${result.completed && Number.isFinite(result.simScore) ? `${isQualifiedCandidateSimulation(result) ? '加权产出' : '质量待确认，加权产出'}: ${result.simScore.toFixed(1)}` : '未完成，跳过评分'}）` })
   }, onProgress: (progress: ScheduleSimulationProgress, index: number) => {
     fractions.set(index, progress.elapsedHours / progress.totalHours)
     const warmup = progress.phase === 'warmup'
@@ -428,7 +439,7 @@ function* smartRosterSteps(
   const initialResults = yield { jobs, ...simulationProgress(jobs.map(job => job.workspace), efficiencies, stages, onProgress,
     0, jobs.length + Number(Boolean(deferredPrimaryCandidate))) }
   const simulationResults = [...initialResults]
-  if (deferredPrimaryCandidate && !simulationResults.some(summary => summary.completed && Number.isFinite(summary.simScore))) {
+  if (deferredPrimaryCandidate && !simulationResults.some(isQualifiedCandidateSimulation)) {
     const fallback = deferredPrimaryCandidate, job = simulationJob(fallback.workspace)
     const inputKey = cache.key(job), efficiency = productionEfficiencyVector(job.workspace, inventory)
     const fallbackResults = yield { jobs: [job], ...simulationProgress([job.workspace], [efficiency], stages, onProgress, 1, 2) }
@@ -443,11 +454,15 @@ function* smartRosterSteps(
     cache.remember(inputKeys[idx]!, summary)
     candidate.simScore = summary.completed && Number.isFinite(summary.simScore) ? summary.simScore : null
     candidate.diagnostics.push(...summary.diagnostics)
+    const qualityIssues = summary.quality?.issues ?? []
+    if (!isQualifiedCandidateSimulation(summary)) candidate.diagnostics.push(...qualityIssues)
     if (summary.specialOperators) candidate.specialOperators = summary.specialOperators
   }
 
   const completedIds = new Set(simulationResults.flatMap((summary, index) => summary.completed && Number.isFinite(summary.simScore) ? [uniqueCandidates[index]!.id] : []))
-  simCandidates.sort((a, b) => Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
+  const qualifiedIds = new Set(simulationResults.flatMap((summary, index) => isQualifiedCandidateSimulation(summary) ? [uniqueCandidates[index]!.id] : []))
+  simCandidates.sort((a, b) => Number(qualifiedIds.has(b.id)) - Number(qualifiedIds.has(a.id)) ||
+    Number(completedIds.has(b.id)) - Number(completedIds.has(a.id)) ||
     (b.simScore ?? 0) - (a.simScore ?? 0) ||
     ((primaryScores.get(b.id) ?? -Infinity) - (primaryScores.get(a.id) ?? -Infinity)) ||
     compareWorkspacePreference(b.workspace, a.workspace) || compareProductionEfficiencyVectors(efficiencyById.get(b.id)!, efficiencyById.get(a.id)!))
@@ -636,18 +651,36 @@ function* smartRosterSteps(
   let finalGeneratedBackup: GeneratedBackupDescriptor | undefined
   if (options.enableBackupGeneration === true) {
     const plainScore = finalScore
+    const phase = (joint: JointBackupSearchResult): NonNullable<SmartRosterResult['phases']['jointBackup']> => ({
+      generatedCandidates: joint.generatedCandidates, evaluatedCandidates: joint.evaluatedCandidates,
+      selectedCandidateId: joint.selectedCandidateId, improved: joint.improved, candidates: structuredClone(joint.candidates),
+      simulations: joint.simulations, cacheHits: joint.cacheHits, acceptedCandidates: joint.acceptedCandidates,
+      qualityRepaired: joint.qualityRepaired, termination: joint.termination, gain: joint.score - plainScore,
+    })
     const joint = yield* jointBackupSearchSteps({
       primaryCandidates: [{ id: 'verified-plain', workspace: finalWorkspace }, ...uniqueCandidates],
-      entries, inventory, baseline: { workspace: finalWorkspace, score: finalScore },
+      entries, inventory, baseline: { workspace: finalWorkspace, score: finalScore, summary: cache.get(simulationJob(structuredClone(finalWorkspace))) },
       lockedPositions, lockedOperators, cache, makeJob: simulationJob, maxCandidates: 4,
+      maxSimulations: options.optimizationMaxSimulations, timeBudgetMs: options.optimizationTimeBudgetMs,
       onProgress: (completed, total, bestScore) => onProgress?.({ phase: 'searching', phaseProgress: completed / Math.max(1, total),
-        currentTrial: completed, totalTrials: total, bestScore, label: `条件副表联合比较：已完成 ${completed}/${total}，保留完整仿真产出较高的配置…` }),
+        currentTrial: completed, totalTrials: total, bestScore, label: `条件副表联合比较：已完成 ${completed}/${total}，按实际工休与产出保留完整方案…` }),
+      onIncumbent: incumbent => {
+        const summary = cache.get(simulationJob(structuredClone(incumbent.workspace), incumbent.generatedBackup))
+        if (!isQualifiedCandidateSimulation(summary)) return
+        const snapshot: SmartRosterResult = { ...structuredClone(result), status: 'draft',
+          workspace: structuredClone(incumbent.workspace), score: summary.simScore,
+          calculationReport: structuredClone(summary.calculationReport), specialOperators: structuredClone(summary.specialOperators ?? []),
+          diagnostics: [...structuredClone(result.diagnostics), ...structuredClone(incumbent.diagnostics)],
+          phases: { ...structuredClone(result.phases), jointBackup: phase(incumbent) } }
+        onProgress?.({ phase: 'searching', phaseProgress: 0, bestScore: snapshot.score ?? undefined,
+          label: '完整排班已就绪，正在预算内逐份比较条件副表。', incumbent: snapshot })
+      },
     })
     finalWorkspace = joint.workspace; finalScore = joint.score; finalGeneratedBackup = joint.generatedBackup
-    result.phases.jointBackup = { generatedCandidates: joint.generatedCandidates, evaluatedCandidates: joint.evaluatedCandidates,
-      selectedCandidateId: joint.selectedCandidateId, improved: joint.improved, candidates: joint.candidates, gain: finalScore - plainScore }
+    result.phases.jointBackup = phase(joint)
     result.diagnostics.push(...joint.diagnostics)
-    if (joint.improved) result.diagnostics.push({ code: 'GENERATED_BACKUP_SELECTED', message: `联合比较保留了带一张条件副表的排班；同种子完整仿真日均加权产出增加 ${(finalScore - plainScore).toFixed(2)}。` })
+    if (joint.qualityRepaired) result.diagnostics.push({ code: 'GENERATED_BACKUP_QUALITY_REPAIRED', message: '联合比较保留了工休完整性合格的条件副表配置；原基线不满足该门槛，此处不将质量修复视为产出增益。' })
+    else if (joint.improved) result.diagnostics.push({ code: 'GENERATED_BACKUP_SELECTED', message: `联合比较保留了带一张条件副表的排班；同种子完整仿真日均加权产出增加 ${(finalScore - plainScore).toFixed(2)}。` })
   }
 
   // The exported roster must be the one whose score was evaluated. Never fill or rewrite
@@ -671,7 +704,7 @@ function* smartRosterSteps(
   }
   const finalJob = simulationJob(finalWorkspace, finalGeneratedBackup)
   const cachedFinal = cache.get(finalJob)
-  if (finalGeneratedBackup && !cachedFinal?.completed) {
+  if (finalGeneratedBackup && !isQualifiedCandidateSimulation(cachedFinal)) {
     result.workspace = finalWorkspace
     result.diagnostics.push({ code: 'GENERATED_BACKUP_RESULT_UNVERIFIED', message: '最终条件副表配置与已完成的演算输入不一致，未采用该结果。' })
     return result
@@ -702,11 +735,46 @@ function* smartRosterSteps(
   result.workspace = finalWorkspace
   result.score = finalScore
 
+  if (options.enableMainOptimization === true && options.enableBackupGeneration !== true) {
+    let lastConfirmed = structuredClone(result)
+    try {
+    const optimized = yield* mainRosterOptimizationSteps({
+      baseline: result,
+      baselineSummary: cache.get(simulationJob(finalWorkspace)),
+      inventory, userBase: base, lockedPositions, lockedOperators, cache,
+      makeJob: simulationJob,
+      allowFreeCombinations: options.allowFreeCombinations === true,
+      maxSimulations: options.optimizationMaxSimulations,
+      timeBudgetMs: options.optimizationTimeBudgetMs,
+      onIncumbent: report => {
+        lastConfirmed = structuredClone(report)
+        onProgress?.({ phase: 'searching', phaseProgress: 0,
+          bestScore: report.score ?? undefined, label: '完整主班方案已就绪，正在预算内继续优化。', incumbent: report })
+      },
+    })
+    Object.assign(result, optimized)
+    } catch (error) {
+      Object.assign(result, lastConfirmed)
+      result.diagnostics.push({ code: 'MAIN_OPTIMIZATION_FAILED', message: `持续优化未完成，保留最近已完成排班及其同次报告：${error instanceof Error ? error.message : String(error)}` })
+    }
+    finalScore = result.score ?? finalScore
+  } else if (options.enableMainOptimization === true) {
+    result.diagnostics.push({ code: 'MAIN_OPTIMIZATION_BACKUP_UNSUPPORTED', message: '持续主班优化与条件副表实验分别运行，本次保留副表实验结果。' })
+  }
+
+  const selectedEvidence = result.workspace ? cache.get(simulationJob(structuredClone(result.workspace), finalGeneratedBackup)) : undefined
+  const selectedIssues = selectedEvidence?.quality?.issues ?? []
+  const selectedQualified = isQualifiedCandidateSimulation(selectedEvidence)
+  if (!selectedQualified) {
+    result.diagnostics.push({ code: 'MAIN_ROSTER_QUALITY_UNCONFIRMED',
+      message: `排班已完成演算，工休及收益质量仍待确认：${selectedIssues.length ? selectedIssues.join('；') : '缺少同次完整仿真的合格质量证据'}。` })
+  }
   onProgress?.({
     phase: 'done',
     phaseProgress: 1,
-    bestScore: finalScore,
-    label: `一键智能排班已完成，最终加权产出评分：${finalScore.toFixed(1)} 分/日`,
+    bestScore: selectedQualified ? finalScore : undefined,
+    label: selectedQualified ? `一键智能排班已完成，最终加权产出评分：${finalScore.toFixed(1)} 分/日`
+      : `排班草案已生成，质量待确认；本次加权产出：${finalScore.toFixed(1)} 分/日`,
   })
 
   return result

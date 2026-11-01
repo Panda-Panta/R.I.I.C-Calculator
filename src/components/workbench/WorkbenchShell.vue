@@ -79,7 +79,7 @@ const validationResult = computed<ValidationResult>(() => {
   return validateRosterWorkspace(store.workspace)
 })
 
-const { smartRosterConfigModalOpen, generationProgress, handleAutoGenerate, handleConfirmSmartRosterConfig, handleAbortAutoGenerate } = useSmartRosterGeneration(store, session)
+const { smartRosterConfigModalOpen, generationProgress, hasVerifiedIncumbent, handleAutoGenerate, handleConfirmSmartRosterConfig, handleAbortAutoGenerate } = useSmartRosterGeneration(store, session)
 const { calculationBottleneckSummary, calculationConfigOpen, calculationProgress, calculationTiming, calculationSilence, handleCalculate, handleConfirmCalculation, handleAbortCalculation } = useWorkbenchCalculation(store, session, validationResult)
 const { handleInventoryChange, handleInventoryImported } = useWorkbenchPersistence(store, session)
 
@@ -321,6 +321,7 @@ defineExpose({
           :is-valid="validationResult.isValid"
           :is-generating-roster="isGeneratingRoster"
           :generation-progress="generationProgress"
+          :has-verified-incumbent="hasVerifiedIncumbent"
           :is-calculating="isCalculating"
           :calculation-progress="calculationProgress"
           :calculation-timing="calculationTiming"

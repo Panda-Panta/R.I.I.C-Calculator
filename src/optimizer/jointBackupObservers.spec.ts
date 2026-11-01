@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDefaultWorkspace } from '../workbench/defaults'
 import { compileOperatorInventory, fullCatalogIdleInventory } from '../domain/operatorInventory'
 import { resolveOperatorCharId as id } from '../domain/operatorIdentifiers'
 import type { MowerRoomId } from '../domain/roster'
 import { selectJointBackupTriggers } from './jointBackupObservers'
+import * as production from './productionSingletons'
+
+afterEach(() => vi.restoreAllMocks())
 
 function fixture() {
   const workspace = createDefaultWorkspace()
@@ -14,6 +17,10 @@ function fixture() {
     room.slots = names.map(name => ({ occupant: { kind: 'operator' as const, operatorId: id(name) }, groupId: null, replacements: [] }))
   }
   fill('central', ['森蚺'])
+  workspace.mainPlan.facilities.central.slots[0]!.replacements = [id('阿米娅')]
+  const dorm = workspace.mainPlan.facilities.dormitory_1
+  dorm.level = 1
+  dorm.slots = Array.from({ length: 5 }, () => ({ occupant: { kind: 'free' as const }, groupId: null, replacements: [] }))
   fill('room_1_3', ['Lancet-2']); fill('room_2_3', ['Castle-3'])
   fill('room_1_2', ['芬']); fill('room_2_2', ['夜刀'])
   workspace.mainPlan.facilities.room_1_1.type = 'manufacture'
@@ -22,7 +29,7 @@ function fixture() {
   workspace.mainPlan.conf.workaholic = [id('Lancet-2'), id('Castle-3')]
   const other = structuredClone(workspace)
   other.mainPlan.facilities.room_1_1.slots.forEach((slot, i) => { slot.occupant = { kind: 'operator', operatorId: id(['砾', '斑点', '夜烟'][i]!) } })
-  const names = ['森蚺', 'Lancet-2', 'Castle-3', '芬', '夜刀', '温蒂', '异客', '清流', '砾', '斑点', '夜烟']
+  const names = ['森蚺', '阿米娅', 'Lancet-2', 'Castle-3', '芬', '夜刀', '温蒂', '异客', '清流', '砾', '斑点', '夜烟']
   const inventory = compileOperatorInventory(fullCatalogIdleInventory().filter(row => names.some(name => row.operator === id(name))))
   return { candidates: [{ id: 'automation', workspace }, { id: 'ordinary', workspace: other }], inventory }
 }
@@ -51,5 +58,25 @@ describe('joint backup external observers', () => {
     expect(selectJointBackupTriggers(candidates, { valid: false, operators: [], diagnostics: [] })).toEqual([])
     const noProvider = { ...inventory, operators: inventory.operators.filter(operator => operator.charId !== id('森蚺')) }
     expect(selectJointBackupTriggers(candidates, noProvider).flatMap(trigger => trigger.observers.map(observer => observer.operatorId))).not.toContain(id('森蚺'))
+  })
+
+  it('does not infer a dynamic crossover by deleting an observer that cannot take a supported rest shift', () => {
+    const { candidates, inventory } = fixture()
+    for (const candidate of candidates) candidate.workspace.mainPlan.facilities.central.slots[0]!.replacements = []
+    expect(selectJointBackupTriggers(candidates, inventory)).toEqual([])
+  })
+
+  it('reuses identical whole-base contexts across pairs instead of repeatedly scoring them', () => {
+    const { candidates, inventory } = fixture()
+    const repeated = Array.from({ length: 20 }, (_, index) => ({ ...candidates[index % 2]!, id: `copy-${index}` }))
+    const score = vi.spyOn(production, 'productionWorkspaceHourlyScore').mockReturnValue(100)
+    expect(selectJointBackupTriggers(repeated, inventory)).toEqual([])
+    expect(score).toHaveBeenCalledTimes(4)
+  })
+
+  it('does not treat an unknown static context as zero or abort the opt-in search', () => {
+    const { candidates, inventory } = fixture()
+    vi.spyOn(production, 'productionWorkspaceHourlyScore').mockImplementation(() => { throw new Error('unknown static effect') })
+    expect(selectJointBackupTriggers(candidates, inventory)).toEqual([])
   })
 })
