@@ -151,7 +151,7 @@ SOFTWARE.
 
 ## 本地运行
 
-Windows 用户可直接双击 `一键启动.bat`。脚本会在首次运行时自动安装依赖并打开浏览器，关闭脚本窗口即可停止服务。
+Windows 用户可直接双击 `一键启动.bat`。脚本会在首次运行时自动安装依赖并打开 `http://127.0.0.1:4173/`，关闭脚本窗口即可停止服务。启动器适用于普通工作分支和源码归档，无需 Git；运行 `一键启动.bat --check` 可检查运行依赖，不启动服务或浏览器。
 
 也可以在终端中手动运行：
 
@@ -194,6 +194,7 @@ pnpm test
 pnpm audit:data "<GameData目录>/zh_CN/gamedata/excel"
 pnpm build
 node scripts/update-project-structure.mjs --check
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-launcher.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-sync-tools.ps1
 ```
 

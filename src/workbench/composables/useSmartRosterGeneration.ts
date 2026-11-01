@@ -2,6 +2,7 @@ import { onBeforeUnmount, ref, toRaw, watch } from 'vue'
 import { parseOperatorInventory, type OwnedOperatorInput } from '../../domain/operatorInventory'
 import { normalizeProductionWeights } from '../../domain/productionWeights'
 import { runSmartRoster, type SmartRosterProgress, type SmartRosterResult } from '../../optimizer/smartRoster'
+import type { SmartRosterWorkerRequest, SmartRosterWorkerResponse } from '../../optimizer/smartRosterProtocol'
 import { normalizeSmartRosterComparisonOptions, type SmartRosterConfig } from '../settings'
 import type { WorkbenchSession } from '../session'
 import type { useRosterWorkbenchStore } from '../store'
@@ -221,7 +222,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
       if (!isVitest && typeof Worker !== 'undefined') {
         const worker = new Worker(new URL('../../optimizer/smartRosterWorker.ts', import.meta.url), { type: 'module' })
         job.worker = worker
-        worker.onmessage = (event) => {
+        worker.onmessage = (event: MessageEvent<SmartRosterWorkerResponse>) => {
           if (activeJob !== job) return
           if (event.data.type === 'progress') {
             receiveProgress(event.data.progress)
@@ -246,7 +247,7 @@ export function useSmartRosterGeneration(store: ReturnType<typeof useRosterWorkb
           base: baseWorkspace,
           entries: cleanEntries,
           options: runOptions,
-        })
+        } satisfies SmartRosterWorkerRequest)
         return
       }
     } catch {

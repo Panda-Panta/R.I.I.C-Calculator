@@ -8,6 +8,34 @@
 2. 创建源码备份并校验 SHA-256；涉及安装时另备份安装目录。记录备份位置和还原范围。
 3. 在 UPDATE_PLAN.md 写清来源、目标、模块边界、影响矩阵、验证输入及交付标准。多步骤工作按独立路径分给 subagent，主 agent 汇总审查和最终验证。
 
+## 工具入口与输出归属
+
+以下命令从项目根目录执行。源码和长期工具按现有目录维护；每次任务的构建、报告及备份放入独立的 `artifacts/<任务>/`。历史验证输入与记录继续保留在原位置，不作为新任务的默认输出目录。
+
+| 用途 | 入口与输入 | 输出及执行边界 |
+| --- | --- | --- |
+| Windows 源码启动 | 根目录 `一键启动.bat`；Node.js、pnpm 或 Corepack | 首次运行安装项目依赖，随后在 `127.0.0.1:4173` 启动 Vite 并打开浏览器；适用普通分支、detached 检出和源码归档，无需 Git |
+| 启动环境检查 | `一键启动.bat --check` | 检查依赖，缺失时仍会执行首次安装；不启动服务或打开浏览器 |
+| 启动器回归 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-launcher.ps1` | 在 `artifacts/launcher-tests/<随机ID>/` 用独立 PATH 与 stub 验证分支/无 Git、依赖、端口和退出码；只替换测试副本的浏览器执行入口，不启动真实浏览器、服务或安装 |
+| 源码结构索引 | `pnpm structure:update` / `pnpm structure:check` | 前者重建根索引，后者只读核对；目录归属与依赖说明见 `src/README.md` |
+| 固定合成库存诊断 | `pnpm diagnose:roster`；先用 `--help` 查看入口 | 向终端输出短场景观察；`--help` 不启动仿真，完整诊断会运行优化器和生产模拟 |
+| 正式排班基准 | `node scripts/benchmark-auto-roster.mjs --request <JSON> --out <新目录>` | 显式输入及全新输出目录，保存源码/输入哈希、完整结果和计时；支持 `--source-root` 与 `--concurrency`，会运行完整仿真 |
+| 保存报告的工休校准 | `node scripts/benchmark-duty-model.mjs --cases <清单JSON> --out <新目录>` | 读取已保存的配对报告并写入独立结果，不启动新 H 或 F；输入契约见 [自动排班说明](docs/automatic-roster-search.md#工休理论预测与离线校准开发分支) |
+| 技能查询与审计 | `pnpm check:skills` / `pnpm audit:data <GameData excel目录>` | 前者只打印脚本指定角色的技能；后者与固定 GameData 核对完整槽位和阶段，以退出码判定；两者职责不同 |
+| 数据生成与来源合并 | `scripts/import-gamedata.mjs` / `scripts/sync-riic-catalog.mjs` | 导入器写当前工作目录下的 `src/data/operators.generated.json`；跨来源同步接受明确暂存目录。先暂存和审计，再按下节应用 |
+| 发布与安装 | `scripts/pack-release.ps1` / `scripts/sync-tools.ps1` | 涉及构建、程序备份或安装写入；按本文后续交付流程执行，先使用对应 `-ValidateOnly` |
+
+历史诊断工具保留其原输入和参数，以便重放原记录；使用前核对以下固定路径，准备独立副本或正式基准请求，避免把旧证据当成本次结果。
+
+| 历史入口 | 固定输入/输出与副作用 |
+| --- | --- |
+| `benchmark-cpu.mjs`、`profile-candidate-generation.mjs` | 向 `artifacts/cpu-optimization/` 写请求、引擎、报告或 CPU profile；重复运行可覆盖同名结果，前者会运行完整仿真 |
+| `benchmark-neighborhood.mjs`、`profile-neighborhood.mjs` | 读取固定邻域请求或既有基线，向 `validation/neighborhood-performance-2026-10-01/` 写引擎、结果或 profile；保持原日期归属，重复运行可覆盖旧证据 |
+| `prepare-cpu-browser-check.mjs`、`prepare-neighborhood-browser-check.mjs` | 依赖已构建的 `dist/assets` 及上述历史输入，直接向 `dist/` 注入诊断页面、请求与 Worker；后者还运行生成器准备基线。使用独立诊断构建，完成后重新构建正式产物再打包 |
+| `dump_sheet1.py`、`test-audit.spec.ts` | 由 `scratch/mower.xlsx` 生成 `scratch/sheet1_dump.json`，外部布局审计还需原 JSON 输入；`RUN_MOWER_LAYOUT_AUDIT=1` 才运行审计测试，并写 `scratch/2026-09-09-mower-layout-efficiency-audit.md` |
+| `trace-252-shiftrun.ts` | 固定合成 252 场景的命令行追踪，运行排班/计算并向终端输出；属于专项诊断，不作为用户库存的通用验收入口 |
+
+
 ## 实现与联动验证
 
 新机制应拥有独立规则或时间线模块和数值回归，界面调用业务模块。共享类型、计分和技能条件各保留一个实现。保持 WorkbenchShell、calculate 与通用组件的职责范围。
@@ -22,6 +50,7 @@ node node_modules/vitest/vitest.mjs run
 node node_modules/vite/bin/vite.js build --outDir artifacts/<本次更新>/dist
 node scripts/update-project-structure.mjs
 node scripts/update-project-structure.mjs --check
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-launcher.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-sync-tools.ps1
 ```
 

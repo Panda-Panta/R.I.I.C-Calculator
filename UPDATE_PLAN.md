@@ -1,3 +1,17 @@
+# 2026-11-01 结构复查后续优化（实现与核验完成）
+
+- 目标与现状：基于最新 main 936da2c 复查；PR40 已建立清晰分层、窄搜索接口和运行时无环，不重复拆分业务模块。本次修复根启动器仍锁定旧分支/端口的问题，统一自动排班 Worker 的双向类型契约，补清长期脚本入口与输出边界。
+- 影响与非目标：一键启动保持 Node/pnpm 检查、首次安装和 --check，支持普通 main/test/codex、detached 及源码归档；端口与 Vite/README 的 4173 一致。Worker 仅共享纯类型，请求/响应字段、进度、取消、已验快照、错误回退及业务算法保持原契约；不改技能、数值、预算、存储或用户数据，不迁移历史诊断/实验文件。
+- 基线与隔离：原 D:/Project/Arknights/R.I.I.C-Calculator - Codex 的 codex/roster-methods-20261028、tracked clean 与所有未跟踪文件保留。本任务复用原生工作区工具从 936da2c 建立 riic-structure-followup-20261101，专项分支 codex/structure-followup-20261101；共享 test 及其他任务工作树保持原状，不夹带实验算法。
+- 备份：原工程 artifacts/structure-followup-20261101/backup/source-936da2c.zip，2097 个归档项、CRC 通过，SHA256 a0e2fd37394a55aa5119640d4528c83146c238b6844f73f1afcb870bf086071d；原目录完整 Git 状态另存 backup/original-status.txt。
+- 并行分工：structure_audit 独占 src/optimizer/smartRosterProtocol.ts、smartRosterWorker.ts 及其直接测试、src/workbench/composables/useSmartRosterGeneration.ts 及其直接测试；tooling_audit 独占一键启动.bat、启动器回归测试与 DEVELOPMENT_WORKFLOW.md 的脚本入口说明。root 独占本计划、src/README.md、README.md、结构索引生成与整合/Git/验证；不得递归派工、覆盖其他路径或自行同步。
+- 资源与复用：agent-dev-workflow、codebase-design、using-git-worktrees；现有 Worker/composable 测试、架构契约、Vite 4173 配置、结构生成器与安全同步脚本。结构生成器的重复清单扫描暂无性能证据，保持实现；历史 CPU/邻域诊断目录不视为本轮可清理产物。
+- 验收：先复现旧启动器在正常 main/test 分支的拒绝，隔离 stub 检查启动参数/依赖与失败传播、--check 无服务/浏览器启动；Worker 双端类型检查及既有取消/快照/错误/完整结果回归；统一结构/架构、类型及独立前端构建。相关旧业务采用定向检查，不重复昂贵 H/F 长模拟，不将源码检查当真实游戏或原生运行证明。
+- 交付：固定最终候选、独立审查与必要检查后按项目普通 PR 流程交付自有 main；实际合并树核对后才评估安全同步 Tools。纯类型及工程入口修改若不改变程序载荷，则核对后记录无需重复安装；未完成状态如实保留。
+- 实际结果：根启动器移除过时分支/Git前置、统一4173并回传开发服务退出码；新增13项隔离启动回归。Worker请求及四种响应集中到纯类型协议，双方以MessageEvent/satisfies约束，保留旧请求类型导出；两个生产文件的TypeScript编译输出与936da2c逐字一致。新增工具导航说明当前通用入口及历史诊断固定输出，不移动或删除历史文件。
+- 验证：同一最终启动测试对旧脚本12红/1绿，对新脚本13/13通过；真实工作树的一键启动 --check退出0。既有Worker/组合任务测试74项、架构5项通过；app/node类型、生产构建（17.84秒）、结构及diff检查和22文件离线skill完整性检查通过。构建目录1007个文件逐哈希与安装版一致；安装目录另有18原有额外文件，仅列出并保留，不据此删除。
+- 证据与边界：隔离树 artifacts/structure-followup-20261101/worker、integration 与 artifacts/launcher-tests/ 保存原始结果；原目录 artifacts/structure-followup-20261101/ 保存备份及最终报告。未启动真实浏览器/服务/原生程序，不重跑全仓长回归、96h H/F或游戏；skill检查只证明离线包完整性，不声称来源刷新。独立审查、普通PR及只读安装预览按最终报告记录，程序载荷相同则无需重复覆盖安装。
+
 # 2026-11-01 结构复查问题处理（源码及本机文件已交付）
 
 - 用户授权：在本轮只读复查后要求“自行处理”，沿用此前验证后交付main与安全同步Tools的授权，不增加例行审批。目标是修复诊断入口、源码导航及主班优化接口，整理已确认的配置重复和调度公共依赖；不更改技能、数值公式、候选生成顺序、评分/资格、预算语义、存储协议或Worker对外报告。
