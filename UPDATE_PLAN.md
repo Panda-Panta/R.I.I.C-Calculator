@@ -1,4 +1,4 @@
-# 2026-11-01 结构复查问题处理（实现与必要检查完成，交付中）
+# 2026-11-01 结构复查问题处理（源码及本机文件已交付）
 
 - 用户授权：在本轮只读复查后要求“自行处理”，沿用此前验证后交付main与安全同步Tools的授权，不增加例行审批。目标是修复诊断入口、源码导航及主班优化接口，整理已确认的配置重复和调度公共依赖；不更改技能、数值公式、候选生成顺序、评分/资格、预算语义、存储协议或Worker对外报告。
 - 基线与隔离：本worktree原main bfb2119干净，已快进实际主线14ea98edf37a207a77d9de3eccbc1b584737ac72，并复用自有codex/structure-optimization-20261101。共享test为已交付工休批次，不改其他工作树或其未提交内容。
@@ -14,6 +14,11 @@
 - 验证与审查：最终25文件534项通过；只改新增测试两处summary可空访问后，对应60项复验通过，不重复累计。app/node类型检查退出0，独立Vite构建28.90秒/1007文件成功（既有大chunk提示），结构、diff及22文件/63引用离线skill校验通过。三工作包分别由非作者只读审查，无阻塞；A算法主体逐字保全、C130声明保全、B新增14契约先在旧实现通过，原任务/时间/预算/存储与公共Worker协议保持。日志与1842源输入及构建逐文件哈希在本次artifacts的integration/，独立审查与模块冻结记录分别在optimization/workbench/scheduler。
 - 证据边界：本轮覆盖受影响headless调度/生成/Worker/组件及结构契约，未重跑整批96h H/F、全仓长回归或真实游戏/设备验证，未以结构调整声称数值精度或性能提升。游戏数据与skill内容未修改，沿用现有固定来源，不发布或重新生成技能包。
 - 交付：固定候选和构建输入，普通PR晋升main并核对实际树，再按既有脚本ValidateOnly/备份/安全同步D:/Tools/R.I.I.C-Calculator，核管理及保留文件/真实WebView2哈希。分别记录源码、文档、自动云端工作流和安装运行边界；不手工发布新版本。
+
+- 主线交付结果：候选6b40a320bd5256d6c10207a55c363952c4cbc70c经自有普通PR #40合并为f3a91cdb9e6fa8b37c6b689a8d6f16eec93d950f；Vercel预览成功，未绕过保护。非强制快进拉取实际main后，源码树6c340462与候选完全一致，1842个冻结源输入匹配，复用同一1007文件构建。候选备份CRC通过，SHA256 8bcad2053322fb1700dedc71b812450f19a9250b6770842f89b76df7ae8dc02b；共享test及其他工作树未改。
+- 安装交付结果：既有脚本先ValidateOnly后安全同步D:/Tools/R.I.I.C-Calculator；1008载荷、1010管理清单核验，1037旧文件完整备份并回读校验，28原有文件保留，仅清理5旧管理资源。清单SHA256 c8de30718bda9c819e7fda16de05b90b916c0b167b8ff482a605228dfbc4f763；SourceCommit=f3a91cd、SourceHadTrackedChanges=false、NativeWrapperUpdated=false。备份/结果在本worktree artifacts/structure-maintenance-20261101/install/。
+- 数据及云端：真实WebView2的403文件、88468294字节逐哈希保持，原EXE SHA256仍为27b79caee519fa7d455fb14f722ac1cf9b76d9e21d60a6385e00102b3cf29e94；未结束或启动原生程序。Pages运行41296985691成功，自动Release运行41296985643仍in_progress，未视为发行成功。后续只补交付记录，不重建或重复覆盖同一程序；汇总及全部失败/修正证据见本次REPORT.md与verification-summary.json。
+
 
 # 2026-11-01 已验证工休模型晋升主线（整合检查完成，普通PR交付）
 
