@@ -6,7 +6,7 @@ import {mowerWorkingReplacementBlocked,mowerSameGroupPrimaryReplacement,mowerRes
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import {MowerExitError} from './mowerNativeErrors'
 import type {MowerTaskSchedulingOptions} from './mowerTaskScheduling'
-import {MowerOperatorState} from './mowerOperatorState'
+import {MowerOperatorState,restingThresholdFor} from './mowerOperatorState'
 import {MowerDormState,type MowerSchedulingData} from './mowerSchedulingData'
 import {mowerActiveHighRestingCount,mowerAvailableFree,mowerAssignDorm,mowerAssignDormGroup,mowerAverageMood,mowerStandbyCandidates} from './mowerDormAssignment'
 import {planMowerMetadata} from './mowerMetadata'
@@ -170,7 +170,7 @@ function resting(data:MowerSchedulingData,queue:MowerTaskQueue,options:MowerRest
   if(op.multiGroup&&(!op.independentRest||mowerRestingBindingGroups(data,op).length)||op.workaholic||op.isResting()||data.isStandby(op.name)||op.currentRoom==='factory'||op.room==='factory'||options.hasActiveMastery&&[op.room,op.currentRoom].includes('train'))continue
   const mood=moods.get(op.name)!
   if((data.alpha?op.customMoodLimit:op.restMoodLimit)?mood>=op.upperLimit:op.upperLimit-mood<2)continue
-  const threshold=(op.upperLimit-op.lowerLimit)*data.policy.restingThreshold+op.lowerLimit
+  const threshold=(op.upperLimit-op.lowerLimit)*restingThresholdFor(op,data.policy)+op.lowerLimit
   if(op.exhaustRequire||mood>(data.alpha&&op.customMoodLimit?threshold:Math.floor(threshold)))continue
   if(!op.isHigh()){mowerAssignDorm(data,op.name,used);continue}
   if(op.group&&exhaustGroups.has(op.group))continue

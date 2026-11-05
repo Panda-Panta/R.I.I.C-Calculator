@@ -11,8 +11,9 @@ export interface SimulationAssumptions {
   initialMorale: number
   /** Hours from simulation start until major maintenance; omitted means no scheduled window. */
   majorMaintenanceStartHours?: number
-  /** Mower global configuration; absent from the plan JSON. */
+  /** Mower global morale threshold and optional per-binding overrides. */
   restingThreshold?: number
+  groupRestingThresholds?: Record<string, number>
   rescueThreshold?: number
   /** Mower global free_room: release recovered ordinary dorm residents. */
   freeRoom?: boolean

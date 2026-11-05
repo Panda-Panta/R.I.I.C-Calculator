@@ -1,6 +1,7 @@
 import { effectiveMowerDormOrder } from '../domain/mowerDormOrder'
 import {orderMowerRecoveryBeds} from './mowerGlobalDormOrder'
 import {readMowerMoodLimits} from './mowerMoodLimits'
+import { restingThresholdFor } from './mowerOperatorState'
 import { isTradeRunOrderOperator } from '../domain/shiftRunPolicy'
 import { OPERATOR_MAP } from '../domain/operators'
 import { resolveOperatorCharId } from '../domain/operatorIdentifiers'
@@ -117,10 +118,19 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
   const limitedId = mode === 1 ? resolveOperatorCharId('令') : mode === 2 ? resolveOperatorCharId('夕') : undefined
   const restMoodLimits = limitedId && schedule.rooms.some(room => room.slots.some(slot => slot.primaryOperatorId === limitedId || slot.orderedCandidates.includes(limitedId))) ? {[limitedId]:12} : undefined
   const restingThreshold = schedule.assumptions.restingThreshold ?? 0.65
+  const groupRestingThresholds = schedule.assumptions.groupRestingThresholds
+  const sharedPrimaries = new Set<string>()
+  if (groupRestingThresholds) {
+    for (const room of schedule.rooms) for (const slot of room.slots) {
+      if (slot.primaryOperatorId && (slot.groupBindings?.length ?? 0) > 1) sharedPrimaries.add(slot.primaryOperatorId)
+    }
+  }
+  const thresholdPolicy = { restingThreshold, groupRestingThresholds }
   const exhaustedGroups = new Set(positions.filter(p => p.exhaustRequired && p.group).map(p => p.group))
   for (const p of positions) {
     const exhaustGroup = p.group && exhaustedGroups.has(p.group)
-    p.shiftOffThreshold = p.exhaustRequired ? p.lowerLimit : exhaustGroup ? -1 : Math.floor((p.upperLimit! - p.lowerLimit!) * restingThreshold + p.lowerLimit!)
+    const ratio = restingThresholdFor({ group: p.group, multiGroup: sharedPrimaries.has(p.primary) }, thresholdPolicy)
+    p.shiftOffThreshold = p.exhaustRequired ? p.lowerLimit : exhaustGroup ? -1 : Math.floor((p.upperLimit! - p.lowerLimit!) * ratio + p.lowerLimit!)
   }
 
   // Beds from restPools
@@ -185,7 +195,7 @@ export function compiledScheduleToRuntimeConfig(schedule: CompiledSchedule): Run
     mowerSourceRules:{workaholic:sourceList('workaholic'),exhaustRequire:sourceList('exhaust_require'),restInFull:sourceList('rest_in_full'),lowPriority:sourceList('resting_priority'),refreshDrained:sourceList('refresh_drained'),refreshTrading:sourceList('refresh_trading'),lingMode:mode,standby:sourceList('resting_standby'),priorityReplacement:sourceList('resting_priority_replacement'),freeRoomExclusions:sourceList('free_room_exclusions')},
     idleOperators: schedule.assumptions.idleOperators,
     freeBlacklist: [...new Set([...sourceList('free_blacklist'),...sourceList('workaholic')])],
-    mowerPolicy: { groupRestInFullOnMoodGap:schedule.assumptions.groupRestInFullOnMoodGap, groupMoodGapThresholdMinutes:schedule.assumptions.groupMoodGapThresholdMinutes, groupMoodGapMaxExtraWaitHours:schedule.assumptions.groupMoodGapMaxExtraWaitHours, groupMoodGapExclusions:[...(schedule.assumptions.groupMoodGapExclusions??[])], mergeIntervalMinutes:schedule.assumptions.mergeIntervalMinutes, restMoodLimits, restingThreshold, freeRoom: schedule.assumptions.freeRoom ?? false, rescueThreshold: schedule.assumptions.rescueThreshold ?? 0.75, taskBuffers: true, powerPlantCount: schedule.rooms.filter(r => r.type === 'power').length, opeRestingPriority: [...(schedule.policies.ope_resting_priority ?? [])] },
+    mowerPolicy: { groupRestInFullOnMoodGap:schedule.assumptions.groupRestInFullOnMoodGap, groupMoodGapThresholdMinutes:schedule.assumptions.groupMoodGapThresholdMinutes, groupMoodGapMaxExtraWaitHours:schedule.assumptions.groupMoodGapMaxExtraWaitHours, groupMoodGapExclusions:[...(schedule.assumptions.groupMoodGapExclusions??[])], mergeIntervalMinutes:schedule.assumptions.mergeIntervalMinutes, restMoodLimits, restingThreshold, ...(groupRestingThresholds ? { groupRestingThresholds: { ...groupRestingThresholds } } : {}), freeRoom: schedule.assumptions.freeRoom ?? false, rescueThreshold: schedule.assumptions.rescueThreshold ?? 0.75, taskBuffers: true, powerPlantCount: schedule.rooms.filter(r => r.type === 'power').length, opeRestingPriority: [...(schedule.policies.ope_resting_priority ?? [])] },
     positions,
     beds:orderMowerRecoveryBeds(beds,schedule.assumptions.dormOrder??''),
     initialMorale,

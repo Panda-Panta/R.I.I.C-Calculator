@@ -1,3 +1,4 @@
+import {mowerHeldRestGroups} from './mowerBackupGroupTasks'
 import {prepareMowerCorrectionRecovery,refreshMowerDerivedCorrection} from './mowerCorrection'
 import {reconcileMowerRetainedRecovery} from './mowerRetainedRecovery'
 // Port of base_schedule task failure snapshots, Mower alpha 3ad69f15 (MIT).
@@ -64,6 +65,14 @@ export function resumeMowerFailedTasks(state:RuntimeState,data:MowerSchedulingDa
   if(task.replacementCheck)continue
   const failure=task.executionFailure
   if(!failure)continue
+  if(task.waitingForcedRest){
+   const held=mowerHeldRestGroups(data,true)
+   if(task.waitingForcedRest.some(group=>held.has(group)))continue
+   delete task.waitingForcedRest
+   delete task.executionFailure
+   task.executionRetained=true;changed=true
+   continue
+  }
   if((failure.reason.startsWith('组员尚未确认回满心情')||failure.reason.startsWith('需要回满的主班心情尚未满足要求'))&&prepareMowerCorrectionRecovery(data,task,queue.tasks)){
    delete task.executionFailure;task.coordinationDependencyWait=false;task.executionRetained=false;changed=true
    continue

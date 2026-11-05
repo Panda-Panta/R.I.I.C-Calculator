@@ -40,6 +40,7 @@ export interface MowerBackupPlan {
   trigger_timing?: BackupTiming
   trigger: MowerBackupCondition
   task?: Record<string, string[]>
+  group_tasks?: unknown
   plan?: Record<string, MowerBackupPlanFacilityOverride>
   conf?: Record<string, unknown>
 }

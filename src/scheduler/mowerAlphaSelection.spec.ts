@@ -22,7 +22,9 @@ describe('alpha execution boundary native decisions',()=>{
   const selected=['Current','Current','Current','N','Current']
   prepareMowerDormSelection(data,selected,'dormitory_1')
   expect(selected).toEqual(fixture.output)
-  expect(op.depletionRate).toBe(fixture.depletionRateAfter)
+  // alpha.14 base_schedule.py 13031–13072 preserves measured depletion on cancellation.
+  // Keep the older ab0 oracle intact and apply the current execution contract here.
+  expect(op.depletionRate).toBe(input.depletionRate)
   expect(op.currentMood(data.nowMicros)).toBeCloseTo(fixture.predictionAfter,10)
  })
  for(const [i,fixture] of oracle.release.entries())it('identity and recovery deadline '+i,()=>{

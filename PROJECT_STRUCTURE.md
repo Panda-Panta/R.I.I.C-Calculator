@@ -39,7 +39,7 @@
 
 ## 纳入范围
 
-共 898 个索引文件，其中应用 TypeScript/Vue/CSS 文件 315 个，业务测试文件 417 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
+共 902 个索引文件，其中应用 TypeScript/Vue/CSS 文件 318 个，业务测试文件 418 个。纳入 Git 已登记和未忽略的源码路径，排除仅存本地的忽略文件，保证干净检出可重新生成相同索引。大批头像、技能图标等静态资源按目录汇总；`artifacts/`、`validation/`、`release/`、`dist/`、依赖目录、临时实验和 Git 内部文件不作为源码树展开。`validation/` 保存历史输入与核验记录，`artifacts/` 保存本次生成的证据和备份。
 
 ### 根目录管理入口
 
@@ -183,6 +183,7 @@ src/
 │   └── workbench/
 │       ├── BackupGroupEditor.spec.ts
 │       ├── BackupGroupEditor.vue
+│       ├── BackupGroupTasksEditor.vue
 │       ├── BackupPlanEditor.spec.ts
 │       ├── BackupPlanEditor.vue
 │       ├── BackupTaskCapacity.spec.ts
@@ -269,6 +270,7 @@ src/
 │   ├── facilities.ts
 │   ├── gamedataImport.spec.ts
 │   ├── mowerBackupFacilities.ts
+│   ├── mowerBackupGroupTasks.ts
 │   ├── mowerDormOrder.ts
 │   ├── mowerProducts.ts
 │   ├── mowerRosterRules.ts
@@ -629,6 +631,8 @@ src/
 │   ├── mowerBackupDepartureRecovery.ts
 │   ├── mowerBackupFacilities.spec.ts
 │   ├── mowerBackupGroupReturn.spec.ts
+│   ├── mowerBackupGroupTasks.spec.ts
+│   ├── mowerBackupGroupTasks.ts
 │   ├── mowerBackupQueries.ts
 │   ├── mowerBackupRefresh.spec.ts
 │   ├── mowerBackupRefresh.ts

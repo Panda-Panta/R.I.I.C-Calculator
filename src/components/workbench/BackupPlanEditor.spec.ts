@@ -185,6 +185,55 @@ describe('BackupPlanEditor.vue', () => {
     expect(plan.task.dormitory_3?.[0]).toBe('Current')
   })
 
+  it('edits native group tasks without replacing the room tasks or extension fields', async () => {
+    const store = useRosterWorkbenchStore()
+    store.workspace.mainPlan.facilities.room_1_1.slots[0]!.groupId = '主表绑组'
+    const trigger = { left: 'True', operator: 'and', right: 'False' }
+    const plan = {
+      name: '整组休息',
+      trigger,
+      trigger_timing: 'BEFORE_PLANNING',
+      task: { dormitory_1: ['Free'] },
+      group_tasks: [{ group: '主表绑组', mode: 'forced', extension: { keep: [1] } }],
+    }
+    store.workspace.compatibility.backupPlans = [
+      plan,
+      { name: '额外绑组', trigger: 'False', plan: { room_1_1: { plans: [
+        { agent: '芬', group_bindings: [{ group: '副表额外绑组', replacement: ['香草'] }] },
+      ] } } },
+    ]
+    const before = JSON.stringify(store.workspace)
+    const wrapper = mount(BackupPlanEditor)
+    const exposed = wrapper.vm as unknown as { activeDetailTab: string }
+    exposed.activeDetailTab = 'task'
+    await wrapper.vm.$nextTick()
+    expect(JSON.stringify(store.workspace)).toBe(before)
+
+    const select = (id: string) => wrapper.findAllComponents(NSelect).find(item => item.attributes('data-test') === id)!
+    expect(select('backup-group-task-action-0').props('value')).toBe('off')
+    expect(select('add-backup-group-task').props('options')).toEqual([{ label: '副表额外绑组', value: '副表额外绑组' }])
+    select('add-backup-group-task').vm.$emit('update:value', '副表额外绑组')
+    await wrapper.vm.$nextTick()
+    select('backup-group-task-mode-1').vm.$emit('update:value', 'while_active')
+    await wrapper.vm.$nextTick()
+    select('backup-group-task-action-0').vm.$emit('update:value', 'on')
+    await wrapper.vm.$nextTick()
+    expect(select('backup-group-task-mode-0').props('disabled')).toBe(true)
+    expect(store.workspace.compatibility.backupPlans[0]).toEqual({
+      ...plan,
+      group_tasks: [
+        { group: '主表绑组', action: 'on', mode: 'once', extension: { keep: [1] } },
+        { group: '副表额外绑组', action: 'off', mode: 'while_active' },
+      ],
+    })
+    await wrapper.find('[data-test="remove-backup-group-task-0"]').trigger('click')
+    expect(store.workspace.compatibility.backupPlans[0]).toEqual({
+      ...plan,
+      group_tasks: [{ group: '副表额外绑组', action: 'off', mode: 'while_active' }],
+    })
+    wrapper.unmount()
+  })
+
   it('supports conf policy overrides management', async () => {
     const store = useRosterWorkbenchStore()
     store.workspace.compatibility.backupPlans = [

@@ -1,6 +1,7 @@
 import {mowerDormCandidateMood} from './mowerAlphaCandidates'
 import {mowerRetainedTaskReservations} from './mowerRetainedRecovery'
 import {mowerUrgentRecallBlocked} from './mowerUrgentRecovery'
+import {mowerForcedGroupCovers} from './mowerBackupGroupTasks'
 import {alphaPosition,mowerMatchReplacements} from './mowerAlphaDorm'
 import {mowerGroupRecoveryDeadline,mowerRecoveryReady} from './mowerGroupRecovery'
 import {hasObservedFullMood,rescueMoodThreshold,MowerOperatorState} from './mowerOperatorState'
@@ -168,9 +169,17 @@ export function mowerRecallCanSustain(original:MowerSchedulingData,admitted:Mowe
 }
 
 /** Active explicit arrangements and product reservations take precedence over coordination. */
-export function mowerReplacementReservations(data:MowerSchedulingData,tasks:readonly MowerTask[],ownRecovery:readonly string[]=[]):{reservedNames:Set<string>;reservedSlots:Set<string>}{
+export function mowerReplacementReservations(
+ data:MowerSchedulingData,tasks:readonly MowerTask[],ownRecovery:readonly string[]=[],
+ options:{ignoreForcedCovers?:boolean;ownForcedSlot?:string}={},
+):{reservedNames:Set<string>;reservedSlots:Set<string>}{
  const retained=mowerRetainedTaskReservations(data,tasks,undefined,[],ownRecovery)
  const reservedNames=new Set([...data.busyRestingNames,...data.reservedProductReplacements,...retained.names]),reservedSlots=new Set([...data.reservedProductBeds.keys(),...retained.slots])
+ if(!options.ignoreForcedCovers){
+  const forced=mowerForcedGroupCovers(data,options.ownForcedSlot)
+  forced.names.forEach(name=>reservedNames.add(name))
+  forced.slots.forEach(slot=>reservedSlots.add(slot))
+ }
  for(const task of tasks){
   for(const [slot,name] of Object.entries(task.groupShiftExpected??{})){reservedSlots.add(slot);reservedNames.add(name)}
   if(!ownRecovery.length||task.urgentRecoveryRequestNames.length!==ownRecovery.length||!task.urgentRecoveryRequestNames.every(name=>ownRecovery.includes(name))){

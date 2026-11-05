@@ -2,7 +2,7 @@ import {admitMowerDerivedTasks,type MowerDependencyReturnAdmission} from './mowe
 // Port of default plan_metadata and plan_mood_limit_releases, Mower alpha.
 // Source: c6bdbb292fe7fcd84c6dfb66154a12a1a9bc5b88 (MIT, Copyright 2021 Nano).
 import {MOWER_TASK_TYPES as T,MowerTask,toMowerMicros,type MowerTaskQueue,type MowerTaskPlan} from './mowerTaskQueue'
-import {hasRestingMood} from './mowerOperatorState'
+import {hasRestingMood,restingThresholdFor} from './mowerOperatorState'
 import type {MowerSchedulingData,MowerDormState} from './mowerSchedulingData'
 import {generateMowerDormTasks,type MowerDormBatch,type MowerReturnTargets} from './mowerDormTasks'
 import {planMowerAlphaMetadata} from './mowerAlphaMetadata'
@@ -21,7 +21,7 @@ function stableGroupReturnMicros(data:MowerSchedulingData,beds:MowerDormState[])
   const op=data.operators[bed.name]
   if(!op?.isHigh()||op.workaholic||op.group&&data.canStandby(op)||op.exhaustRequire||['dorm','factory','train'].some(room=>op.room.startsWith(room)))continue
   const mood=op.currentMood(data.nowMicros)
-  const threshold=op.restMoodLimit?op.upperLimit:Math.min(op.upperLimit,Math.floor((op.upperLimit-op.lowerLimit)*data.policy.restingThreshold+op.lowerLimit)+.125)
+  const threshold=op.restMoodLimit?op.upperLimit:Math.min(op.upperLimit,Math.floor((op.upperLimit-op.lowerLimit)*restingThresholdFor(op,data.policy)+op.lowerLimit)+.125)
   if(mood>=threshold)continue
   if(bed.timeMicros===undefined||bed.timeMicros<=data.nowMicros||mood>=op.upperLimit){ready=Math.max(ready,data.nowMicros+toMowerMicros(.5));continue}
   const fraction=(threshold-mood)/(op.upperLimit-mood)

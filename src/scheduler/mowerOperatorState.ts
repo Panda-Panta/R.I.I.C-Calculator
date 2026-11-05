@@ -60,8 +60,17 @@ export class MowerOperatorState {
 export function hasObservedFullMood(op:MowerOperatorState|undefined):boolean {return !!op&&op.timeStampMicros!==undefined&&op.mood>=0&&op.mood<=24&&op.mood>=op.upperLimit}
 export function hasRestingMood(op:MowerOperatorState|undefined,nowMicros:number):boolean {return !!op&&op.timeStampMicros!==undefined&&op.mood>=0&&op.mood<=24&&op.currentMood(nowMicros)>=0&&op.currentMood(nowMicros)<=24}
 export const restingMood=(op:MowerOperatorState|undefined,nowMicros:number)=>op&&hasRestingMood(op,nowMicros)?op.currentMood(nowMicros):24
-export interface MowerMoodPolicy {restingThreshold:number;rescueThreshold:number;experimentalDormLogic?:boolean;alpha?:boolean}
-export const rescueMoodThreshold=(op:MowerOperatorState,policy:MowerMoodPolicy)=>op.lowerLimit+(op.upperLimit-op.lowerLimit)*policy.restingThreshold*policy.rescueThreshold
+export interface MowerMoodPolicy {restingThreshold:number;groupRestingThresholds?:Record<string,number>;rescueThreshold:number;experimentalDormLogic?:boolean;alpha?:boolean}
+/** Independent multi-group rest uses the global ratio, regardless of the first binding. */
+export function restingThresholdFor(
+ op:{group?:string;multiGroup?:boolean},
+ policy:Pick<MowerMoodPolicy,'restingThreshold'|'groupRestingThresholds'>,
+):number {
+ const {groupRestingThresholds:thresholds,restingThreshold}=policy
+ return op.group&&!op.multiGroup&&thresholds&&Object.prototype.hasOwnProperty.call(thresholds,op.group)
+  ?thresholds[op.group]!:restingThreshold
+}
+export const rescueMoodThreshold=(op:MowerOperatorState,policy:MowerMoodPolicy)=>op.lowerLimit+(op.upperLimit-op.lowerLimit)*restingThresholdFor(op,policy)*policy.rescueThreshold
 export interface MowerReplacementObservations {mood:(name:string)=>number|undefined;exhausted:(name:string,owner:MowerOperatorState)=>boolean;complete:(name:string)=>boolean}
 export function mowerReplacementCandidates(op:MowerOperatorState,operators:Record<string,MowerOperatorState>,policy:MowerMoodPolicy,nowMicros:number,observations?:MowerReplacementObservations):string[] {
  const complete=(name:string)=>{if(observations)return observations.complete(name);const candidate=operators[name];return !!candidate&&candidate.restMoodLimit&&hasRestingMood(candidate,nowMicros)&&restingMood(candidate,nowMicros)>=candidate.upperLimit}

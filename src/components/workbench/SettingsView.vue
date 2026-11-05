@@ -5,6 +5,7 @@ import OperatorInventoryPanel from './OperatorInventoryPanel.vue'
 import ProductionWeightsEditor from './ProductionWeightsEditor.vue'
 import type { OwnedOperatorInput } from '../../domain/operatorInventory'
 import { DEFAULT_PRODUCTION_WEIGHTS } from '../../domain/productionWeights'
+import { MOWER_MIN_RESTING_THRESHOLD } from '../../scheduler/mowerAdvancedSettings'
 
 import type { SimulationSettings } from '../../workbench/settings'
 export type { SimulationSettings } from '../../workbench/settings'
@@ -46,6 +47,15 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
     [key]: val,
   })
 }
+function updateRestingThreshold(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const ratio = input.valueAsNumber / 100
+  if (!Number.isFinite(ratio) || ratio < MOWER_MIN_RESTING_THRESHOLD || ratio > 1) {
+    input.value = String((settings.value.restingThreshold ?? .65) * 100)
+    return
+  }
+  updateField('restingThreshold', ratio)
+}
 </script>
 
 <template>
@@ -73,7 +83,7 @@ function updateField<K extends keyof SimulationSettings>(key: K, val: Simulation
         </label>
         <label class="control-item">
           <span class="control-label">休息阈值（%）</span>
-          <input class="control-input" data-test="resting-threshold" type="number" min="0" max="100" step="1" :value="(settings.restingThreshold ?? .65) * 100" @input="updateField('restingThreshold', Number(($event.target as HTMLInputElement).value) / 100)" />
+          <input class="control-input" data-test="resting-threshold" type="number" :min="MOWER_MIN_RESTING_THRESHOLD * 100" max="100" step="1" :value="(settings.restingThreshold ?? .65) * 100" @change="updateRestingThreshold" />
         </label>
         <label class="control-item">
           <span class="control-label">急救阈值（%）</span>

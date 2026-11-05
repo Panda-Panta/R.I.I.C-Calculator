@@ -53,10 +53,42 @@ describe('Mower alpha advanced settings', () => {
     const imported = importMowerJson(exportMowerJson(store.workspace))
     expect(imported.compatibility.unrecognizedFields.advanced_settings).toMatchObject({ group_mood_gap_exclusions: ['main', 'typed group'], group_mood_gap_max_extra_wait_hours: 1.5, future: 9 })
   })
+  it('edits native group threshold overrides and restores inheritance when removing a row', async () => {
+    const store = useRosterWorkbenchStore()
+    store.workspace.mainPlan.facilities.room_1_1.slots = [{
+      occupant: { kind: 'operator', operatorId: 'char_123_fang' },
+      groupId: 'main', replacements: [], groupBindings: [{ groupId: 'shared', replacements: [] }],
+    }]
+    store.workspace.compatibility.backupPlans = [{ plan: {
+      room_1_1: { plans: [{ agent: '芬', group: 'backup' }] },
+    } }]
+    store.workspace.compatibility.unrecognizedFields.advanced_settings = {
+      resting_threshold: .55, group_resting_thresholds: { saved: .43 }, future: 9,
+    }
+    const wrapper = mount(PlanAdvancedSettings)
+    const section = wrapper.find('[data-field="group_resting_thresholds"]')
+    const selector = section.findComponent(NSelect)
+    expect(selector.props('options')?.map(option => option.value)).toEqual(['main', 'shared', 'backup'])
+    expect(section.find('[data-threshold-group="saved"]').findComponent(NInputNumber).props('value')).toBe(43)
+    selector.vm.$emit('update:value', 'backup')
+    await wrapper.vm.$nextTick()
+    await section.find('[data-test="add-group-threshold"]').trigger('click')
+    const row = section.find('[data-threshold-group="backup"]')
+    expect(row.findComponent(NInputNumber).props('value')).toBe(55)
+    row.findComponent(NInputNumber).vm.$emit('update:value', 34)
+    expect(row.findComponent(NInputNumber).props('value')).toBe(55)
+    row.findComponent(NInputNumber).vm.$emit('update:value', 72.5)
+    await section.find('[data-threshold-group="saved"] button[aria-label="移除 saved 心情阈值"]').trigger('click')
+    expect(importMowerJson(exportMowerJson(store.workspace)).compatibility.unrecognizedFields.advanced_settings).toEqual({
+      resting_threshold: .55, group_resting_thresholds: { backup: .725 }, future: 9,
+    })
+  })
   it('rejects invalid numeric writes and supports isolation groups without altering unrelated settings', async () => {
     const store = useRosterWorkbenchStore()
     const wrapper = mount(PlanAdvancedSettings)
-    wrapper.find('[data-field="drone_count_limit"]').findComponent(NInputNumber).vm.$emit('update:value', -1)
+    const drone = wrapper.find('[data-field="drone_count_limit"]').findComponent(NInputNumber)
+    expect(drone.props('min')).toBe(20)
+    drone.vm.$emit('update:value', 19)
     expect(store.workspace.compatibility.unrecognizedFields.advanced_settings).toBeUndefined()
     await wrapper.find('[data-test="add-isolation"]').trigger('click')
     wrapper.find('[data-test="isolation-0"]').findComponent(NSelect).vm.$emit('update:value', ['阿米娅', 'Free', '阿米娅', '能天使'])
