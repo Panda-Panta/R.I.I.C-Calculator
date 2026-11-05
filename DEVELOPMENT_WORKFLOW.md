@@ -64,6 +64,8 @@ CI 或本机需要改变测试超时时间时记录原因及实际命令。全�
 
 项目中的 skill 位于 `.codex/skills/arknights-riic-mechanics/`，独立发布目标为 [Panda-Panta/arknights-riic-mechanics](https://github.com/Panda-Panta/arknights-riic-mechanics)。发布包保持 `SKILL.md`、`references/` 和 `scripts/` 的相对结构。检查 YAML frontmatter 的 name/description、所有相对引用、可执行查询和文件哈希，确认离线运行不依赖计算器工作目录。实际发布后记录仓库提交和可安装包的哈希。各 agent 的安装入口可按其目录约定适配；通用格式检查不能代替对所有平台的实际导入测试。
 
+从独立仓库子树生成 skill ZIP 时使用 `git -c core.autocrlf=false archive --format=zip --output=<ZIP> <提交>:skills`，并核对包内载荷与 `package-manifest.json`。子树归档无法沿用根目录 `.gitattributes` 的路径规则，Windows 默认换行转换会破坏已验证的包哈希。
+
 应用经过三方核对的生成结果及规则说明后，运行 `npm run skill:manifest` 重建包清单，再运行 `npm run skill:validate` 和 `node --use-system-ca .codex/skills/arknights-riic-mechanics/scripts/check-freshness.mjs`。重建清单只记录当前文件字节，不代替来源检查或数值回归。主仓库与独立仓库通过 `.gitattributes` 保留 skill 字节，避免 Git 的平台换行转换破坏清单哈希。CI 会检查源码结构、skill 包完整性和回归结果。
 
 ## 源码远程同步

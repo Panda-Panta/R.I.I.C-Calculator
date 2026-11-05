@@ -26,7 +26,11 @@ function tableRows(table) {
     let column = 0
     for (const cell of row.cells) {
       while (rows[rowIndex][column] !== undefined) column++
-      const text = cell.textContent.replace(/\s+/g, ' ').trim()
+      const visible = cell.cloneNode(true)
+      for (const explanation of visible.querySelectorAll('.mc-tooltips > [style]')) {
+        if (explanation.style.display === 'none') explanation.remove()
+      }
+      const text = visible.textContent.replace(/\s+/g, ' ').trim()
       for (let down = 0; down < Math.max(1, cell.rowSpan); down++) {
         rows[rowIndex + down] ??= []
         for (let across = 0; across < Math.max(1, cell.colSpan); across++) rows[rowIndex + down][column + across] = text

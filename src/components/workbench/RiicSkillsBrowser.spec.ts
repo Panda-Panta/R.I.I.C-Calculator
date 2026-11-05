@@ -126,6 +126,39 @@ describe('RiicSkillsBrowser.vue', () => {
     wrapper.unmount()
   })
 
+  it('finds all six v079 operators and displays their complete unlocked-stage records', async () => {
+    const wrapper = mount(RiicSkillsBrowser)
+    try {
+      const input = wrapper.get<HTMLInputElement>('[data-test="search-operator-input"]')
+      for (const [name, stages] of [['塔露拉', 2], ['冻河', 3], ['国度', 3], ['奥尔佳', 2], ['行铃', 2], ['镜匠', 3]] as const) {
+        await input.setValue(name)
+        expect(wrapper.get(`[data-test="op-card-${name}"]`).findAll('.skill-item')).toHaveLength(stages)
+      }
+      await input.setValue('tll')
+      expect(wrapper.find('[data-test="op-card-塔露拉"]').exists()).toBe(true)
+      await input.setValue('dh')
+      expect(wrapper.find('[data-test="op-card-冻河"]').exists()).toBe(true)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('includes Olga in synergy search with the explicit student members', async () => {
+    const wrapper = mount(RiicSkillsBrowser)
+    try {
+      await wrapper.get<HTMLInputElement>('[data-test="search-operator-input"]').setValue('奥尔佳')
+      await wrapper.get('[data-test="synergy-toggle-btn"]').trigger('click')
+      const card = wrapper.get('[data-test="op-card-奥尔佳"]')
+      expect(card.get('.tag-faction').text()).toContain('乌萨斯学生自治团')
+      const members = card.findAll('.popover-op-chip > span').map(member => member.text())
+      expect(members).toHaveLength(6)
+      expect(members).toEqual(expect.arrayContaining(['早露', '凛冬', '真理', '古米', '烈夏', '苦艾']))
+      expect(members).not.toContain('怒潮凛冬')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('shows both recycling skill stages and excludes workshop skills in the recycle tab', async () => {
     const wrapper = mount(RiicSkillsBrowser)
     await wrapper.get('[data-test="tab-RECYCLE"]').trigger('click')

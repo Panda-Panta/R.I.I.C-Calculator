@@ -15,7 +15,7 @@ const expectedEightHours: Record<Runner, { completed: number; special: number; g
   但书: { completed: 4, special: 3, gold: 18, lmd: 9000 },
   龙舌兰: { completed: 4, special: 1, gold: 12, lmd: 6500 },
   佩佩: { completed: 1, special: 1, gold: 0, lmd: 1000 },
-  可露希尔: { completed: 6, special: 6, gold: 12, lmd: 7200 },
+  可露希尔: { completed: 7, special: 7, gold: 14, lmd: 8400 },
   'U-Official': { completed: 4, special: 4, gold: 8, lmd: 4000 },
 }
 
@@ -32,6 +32,7 @@ function compare(runner: Runner) {
   const result = runScheduleSimulationBridge(sameRoster(runner), {
     sampleHours: 8,
     warmupHours: 0,
+    recordSegments: runner === '可露希尔',
     production: { outputMode: 'potential', runOrderMode: 'ideal', droneTarget: 'none', seed: 42 },
   }, { restingThreshold: .65, freeRoom: false, fiammettaFool: false })
   const report = result.report!
@@ -39,6 +40,21 @@ function compare(runner: Runner) {
   const orders = report.production!.events.filter(event => event.type === 'order-completed' && event.roomId === targetRoom)
     .map(event => event.order!)
   expect(orders.length).toBeGreaterThan(0)
+  if (runner === '可露希尔') {
+    // The native roster's changing efficiency supplies seven full 144-minute
+    // orders before eight hours. Check each completion against the duty trace.
+    const baseMinutesDuring = (start: number, end: number) => report.segments.reduce((sum, segment) =>
+      sum + Math.max(0, Math.min(end, segment.end) - Math.max(start, segment.start)) * 60 * segment.efficiencyPercent[targetRoom]! / 100, 0)
+    let previousCompletion = 0
+    for (const order of orders) {
+      expect(order.startedAt).toBeCloseTo(previousCompletion, 8)
+      expect(baseMinutesDuring(order.startedAt, order.completedAt)).toBeCloseTo(144, 6)
+      previousCompletion = order.completedAt
+    }
+    expect(previousCompletion).toBeLessThan(8)
+    expect(baseMinutesDuring(previousCompletion, 8)).toBeLessThan(144)
+    expect(report.production!.events.some(event => event.type === 'trade-drone' && event.roomId === targetRoom)).toBe(false)
+  }
   return orders
 }
 

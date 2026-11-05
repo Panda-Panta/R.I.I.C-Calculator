@@ -62,6 +62,23 @@ describe('recycling integrated production and morale', () => {
     expect(report.production!.recycle!.remainingBaseHours).toBeCloseTo(96 - (1.51 + 47 * 1.2), 6)
   })
 
+  it('uses Dominion personal consumption before exhaustion and then keeps only base conversion', () => {
+    const schedule = scenario(3, ['国度'])
+    const dominion = id('国度')
+    schedule.assumptions.operatorMorale[dominion] = 9
+    schedule.operators[dominion]!.morale = 9
+    const report = simulateSchedule(schedule, {
+      sampleHours: 48, production,
+      operatorInventory: [{ operator: '国度', elitePhase: 0, level: 1 }],
+    })
+    expect(report.success, JSON.stringify(report.diagnostics)).toBe(true)
+    expect(report.operators.find(operator => operator.operatorId === dominion)!.finalMorale).toBe(0)
+    // Nine mood lasts ten hours at 0.9/h. Once exhausted, the 21% worker
+    // contribution ends while the level-three facility continues at 120%.
+    expect(report.rooms.find(room => room.roomId === 'recycle')!.averageEfficiencyPercent).toBeCloseTo((10 * 141 + 38 * 120) / 48, 6)
+    expect(report.production!.recycle!.remainingBaseHours).toBeCloseTo(96 - (10 * 1.41 + 38 * 1.2), 6)
+  })
+
   it('excludes warmup conversions and remains invariant under simulation step subdivision', () => {
     const coarse = simulateSchedule(scenario(1), { warmupHours: 48, sampleHours: 52, maxStepHours: 1, production })
     const fine = simulateSchedule(scenario(1), { warmupHours: 48, sampleHours: 52, maxStepHours: .25, production })

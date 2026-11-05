@@ -1,0 +1,61 @@
+{
+  "kind": "calculator-runtime-regression",
+  "sourceMechanismCommit": "84e3926c0f36045d7baeb1ac050f815b40952d6d",
+  "capturedOn": "2026-11-05",
+  "calculatorBaseCommit": "0ef0007",
+  "input": "validation/mower-backup-2026-09-22/roster.json",
+  "inputSha256": "620e6e62bc7d6f752416e8cd9837dc572a65c29f8b179d67b03495a68b8771b2",
+  "priorFixture": "src/simulator/fixtures/mower-legacy-240h-20261025.json",
+  "profile": {
+    "schedulingModel": "mower-default",
+    "warmupHours": 72,
+    "sampleHours": 168,
+    "warmupModel": "hourly",
+    "recordSegments": true,
+    "maxEvents": 50000,
+    "production": {
+      "outputMode": "potential",
+      "runOrderMode": "ideal",
+      "droneTarget": "exp",
+      "seed": 42
+    },
+    "assumptions": {
+      "restingThreshold": 0.65,
+      "rescueThreshold": 0.75,
+      "fiammettaThreshold": 0.9,
+      "fiammettaFool": false,
+      "freeRoom": false
+    }
+  },
+  "initialConditions": {
+    "fiammettaMorale": 16,
+    "gladiiaMorale": 24
+  },
+  "result": {
+    "success": true,
+    "elapsedHours": 240,
+    "gladiiaExhaustedHours": 0.060105754722222224,
+    "fiammettaCharges": 48,
+    "score82": 109185.71429547023,
+    "gladiiaFinalMorale": 14.398812556725423
+  },
+  "driftEvidence": {
+    "initialMoraleContractCommit": "308ee9e19d69fc95071ea867af8bad5b41861ff5",
+    "historicalFiammettaInitialMorale": 24,
+    "currentFiammettaInitialMorale": 16,
+    "historicalReportGzipSha256": "08169323ba4be81b3551f514dcb885f2eda9633e97719be85ebf0233132b08e8",
+    "historicalReportRawSha256": "06a01b740e84b638106f94f39e08618a16d6dd04277d3237fa324bc63fdbeead",
+    "currentReportRawSha256": "44e8246b36836e33ded7fda5064cf8990580bec0e8fb2519c913fd6ff05724ae",
+    "currentReport": "artifacts/mower-plan-format-20261105/gladiia-diagnosis-20261105/current-report.json.gz",
+    "sampledOperatorCount": 72,
+    "catalogIdleCandidatesBefore": 432,
+    "catalogIdleCandidatesAfter": 438,
+    "newCatalogOperatorsUsed": [],
+    "fatigueInterval": [158.78665351275944, 158.84675926748164],
+    "physicalFatigueHours": 0.060105754722201254,
+    "relatedDeferredGroup": "group:深海",
+    "relatedDeferredAt": 155.47871440594548,
+    "relatedResolvedAt": 158.84800926748173
+  },
+  "boundary": "Local calculation-bridge snapshot with the complete original nine-backup input. The historical capture predates the reviewed first-registration Fiammetta morale contract. The current fatigue duration is independently summed from actual zero-morale work segments during a resolved group deferral. All 72 participating operators match the old capture, and the six added idle candidates never enter occupancy or events. The pre-v079 Release run has the same fatigue difference. Other reviewed scheduling repairs also postdate the historical capture, so the initial-condition drift does not identify one unique cause for every event change."
+}

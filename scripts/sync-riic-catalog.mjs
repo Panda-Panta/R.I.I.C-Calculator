@@ -85,15 +85,27 @@ for (const [id, base] of Object.entries(characters)) {
   for (const [slotIndex, slot] of slots.entries()) for (const skill of slot) {
     const phase = phases[skill.unlock.phase]
     const priorSkill = priorDisplay?.skills.find(value => value.buffId === skill.buffId && value.slot === slotIndex + 1)
+    const termReferences = [...new Set([...skill.description.matchAll(/<+\$(cc\.[^>]+)>/g)].map(match => match[1]))]
+    let synergy = priorSkill?.synergy ?? null
+    if (!priorSkill) {
+      const factions = []
+      for (const termId of termReferences) {
+        const term = constants.termDescriptionDict[termId]
+        if (!term?.description.startsWith('包含以下干员\n')) continue
+        const members = term.description.slice('包含以下干员\n'.length).split(/[、\n]/).map(name => name.trim()).filter(Boolean)
+        factions.push({ name: clean(term.termName), members })
+      }
+      if (factions.length) synergy = { operators: [], factions }
+    }
     const value = { slot: slotIndex + 1, buffId: skill.buffId, buffName: skill.buffName,
       room: roomNames[skill.roomType] ?? skill.roomType, roomCode: skill.roomType,
       phase, level: skill.unlock.level, unlockDesc: phase + (skill.unlock.level > 1 ? ` Lv.${skill.unlock.level}` : ''),
       efficiency: skill.efficiency, buffColor: skill.buffColor, textColor: skill.textColor,
-      description: clean(skill.description), synergy: priorSkill?.synergy ?? null, skillIcon: skill.skillIcon }
+      description: clean(skill.description), synergy, skillIcon: skill.skillIcon }
     display.skills.push(value)
     decodedSkills.push({ ...value, buffCategory: skill.buffCategory, targets: skill.targets,
       targetGroupSortId: skill.targetGroupSortId,
-      termReferences: [...new Set([...skill.description.matchAll(/<+\$(cc\.[^>]+)>/g)].map(match => match[1]))] })
+      termReferences })
   }
   displays.push(display)
   decoded[base.name] = { ...display, skills: decodedSkills, isAlter: operator.isAlter }

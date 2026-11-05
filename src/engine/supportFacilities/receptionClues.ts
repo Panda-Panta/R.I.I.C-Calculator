@@ -92,6 +92,10 @@ export function receptionClueEfficiency(
             bonus += sami ? 5 : skill.buffId === 'meet_spd&sami[100]' ? 15 : 20
           break
         }
+        case 'meet_spd&sami[210]':
+          if (awake.some(peer => peer !== id && identityMatches(peer, 'teamId', 'student')))
+            bonus += 20
+          break
         case 'meet_spd&bd[000]':
         case 'meet_spd&bd[010]':
           if (awake.includes('char_2012_typhon')) bonus += 15
