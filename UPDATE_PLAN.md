@@ -1,4 +1,4 @@
-# 2026-11-05 v079 六名新干员录入（实现与验证完成，待交付）
+# 2026-11-05 v079 六名新干员录入（源码、skill 与本机文件已交付）
 
 - 用户要求录入已核实的六人，范围为塔露拉、冻河、国度、奥尔佳、行铃、镜匠的身份、全部后勤槽位及阶段、检索资源和适用的计算规则。正式 GameData 镜像固定到 `63c7cec73c3858d0ae913f85cc89af3cef4d744f`，版本 v079/79.0.0；本会话已重新提取的本机 v079 五表供独立核对。公开来源、工具箱及 PRTS 证据完成后再应用生成结果。
 - 基线为已交付主线 `0ef00073143ade5ee8dafa188f85eae3329f583d`，原工程的实验工作树保留。本任务复用现有隔离工作树与依赖，在自有 `codex/new-operators-v079-20261105` 开发。源码备份为原工程 `artifacts/new-operators-v079-20261105/backup/source-0ef0007.zip`，2103 项通过 CRC，SHA-256 `00458691c36c2f5998f17fa3f5156217e4f5a5ce51ead28adf03cccf734b8e01`。
@@ -11,6 +11,9 @@
 - 发布前来源脚本保留整体 unknown：工具箱与九名干员页面匹配，Node 的 GameData/Mower 连接失败。补充正常 HTTPS 核对确认 GameData/Mower 当前 HEAD 仍为 `63c7cec`/`a891b811`；修订推进的承曦格雷伊、歌蕾蒂娅五条阶段及相关术语重新核对通过，回收页效率、工位与容量说明仍与规则一致。固定输入及限定来源观察在原工程 `artifacts/new-operators-v079-20261105/source-checks/`，不将限定核对称为整体最新上游等价。
 - 独立后勤 skill 已经普通 [PR #5](https://github.com/Panda-Panta/arknights-riic-mechanics/pull/5) 合并为 `126eddb377e4af62a0cee59b712f28fd65e41bd4`，实际合并树与已审候选一致；23 个有效载荷、68 个相对引用及独立目录六人离线查询通过，package SHA-256 `45bd5827567f56cedeeabcfa4b22a414b352eacef5fa15202c1bd25a3ca0e831`。由实际主线生成的安装 ZIP 位于原工程 `artifacts/new-operators-v079-20261105/arknights-riic-mechanics-v079.zip`，CRC 和包内载荷哈希通过，SHA-256 `a093523f5a2dbea325654182c98cc6ec600fdfb8f03278f4f3a52d70f0fa0658`；子树归档的换行转换修正记入项目流程，尚未声称各 agent 平台均已安装。
 - 交付前补查上一轮 [Release CI](https://github.com/Panda-Panta/R.I.I.C-Calculator/actions/runs/41971659914)：6016 项通过、3 项旧回归失败、1 项跳过。三项均已复现并据独立证据修正测试：工作狂的持续原生许可是既有独立准入证据；可露希尔在 8h 内实际完成 7 单，逐单积分均为 144 基础分钟；旧九副表快照早于菲亚首次登记 16 心情等已合入修正，新增 20261105 版本并保留旧件。疲劳 0.0601057547h 经实际占位/零心情段积分确认，均处于已解除的深海组延后，新六人未参与该场景。没有改业务引擎、容差、事件预算或超时；准入/特殊订单/永久在岗 57 项及原 72h 预热＋168h 采样长测单项通过。最终类型及结构检查通过，随后按普通 PR 交付。
+- 主仓库通过自有 [PR #45](https://github.com/Panda-Panta/R.I.I.C-Calculator/pull/45) 普通合并，候选 `d9bfb570d1f51de40fc223fea6ff8adeba29a3a5` 的源码树为 `913de4a4799d045bc07630977244e6bcd46f497a`。实际主线 `872b2b1c6b7474e9fa5bffe1db74bfda0d7b5685` 已拉取并核对同一源码树，远端 test 已普通快进至该提交。最终构建来自干净已提交候选，输入树与实际主线一致；构建及来源收据在隔离工作树 `artifacts/new-operators-v079-final/`。
+- 安装预览及正式安全同步通过：`D:/Tools/R.I.I.C-Calculator` 的 1022 个管理文件均经 SHA-256 验证，28 个原有非管理文件保持原样，WebView2 用户目录未写入，原生外壳沿用。完整程序备份 `BackupVerified=true`，报告/备份位于隔离工作树 `artifacts/install-sync/new-operators-v079-20261105/`；管理清单 SHA-256 `c9cf05c22b5059224a7e179a257d61c0a02a646d658672f234637fbe000f1053`。实际安装 BUILD-INFO 为版本 `1.1.3`、源码 `872b2b1c6b7474e9fa5bffe1db74bfda0d7b5685`、`SourceHadTrackedChanges=false`，安装文件一致性不等于桌面界面已重新启动或真实游戏实测。
+- 平台结果：候选 Vercel 预览 success；实际主线 [GitHub Pages](https://github.com/Panda-Panta/R.I.I.C-Calculator/actions/runs/41977869669) success。[Release CI](https://github.com/Panda-Panta/R.I.I.C-Calculator/actions/runs/41977869688) 在本次交付核对时仍 in_progress，自动全回归及便携包发布尚未声明完成；本机已使用上述独立验证构建同步。最后交付记录只更新文档，不再次构建程序。
 
 # 2026-11-05 Mower 新版排班格式适配（源码与本机文件已交付）
 
