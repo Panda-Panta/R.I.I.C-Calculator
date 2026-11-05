@@ -33,17 +33,17 @@ describe('owned operator skill stages', () => {
     expect(parseOperatorInventory('砾\n温蒂,二,1').diagnostics.map(d => d.line)).toEqual([1,2])
     expect(parseOperatorInventory('').entries).toEqual([])
   })
-  it('reproduces all 432 maximum snapshots from the full slot catalog without mutation', () => {
+  it('reproduces every maximum snapshot from the full slot catalog without mutation', () => {
     const before = JSON.stringify(OPERATORS)
     const full=compileOperatorInventory(fullCatalogIdleInventory())
     expect(full.valid).toBe(true)
-    expect(full.operators).toHaveLength(432)
+    expect(full.operators).toHaveLength(438)
     expect(full.operators.every(operator=>operator.matchesMaximumSkills)).toBe(true)
     for (const operator of OPERATORS) {
       const max = operator.rarity <= 2 ? [0,30] : operator.rarity === 3 ? [1,55] : [2,70 + (operator.rarity - 4)*10]
       expect(selectUnlockedSkills(operator,max[0]!,max[1]!).map(s => s.buffId),operator.name).toEqual(operator.skills.map(s => s.buffId))
     }
-    expect(OPERATORS).toHaveLength(432)
+    expect(OPERATORS).toHaveLength(438)
     expect(JSON.stringify(OPERATORS)).toBe(before)
   })
 })

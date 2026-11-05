@@ -5,7 +5,7 @@ import {importMowerJson} from '../workbench/compat/mowerJson'
 import {runCalculationBridge} from '../workbench/calculationBridge'
 import {MORALE_EPSILON} from '../scheduler/rosterRuntime'
 
-const baseline=JSON.parse(readFileSync(new URL('./fixtures/mower-legacy-240h-20261025.json',import.meta.url),'utf8'))
+const baseline=JSON.parse(readFileSync(new URL('./fixtures/mower-legacy-240h-20261105.json',import.meta.url),'utf8'))
 
 it('keeps the original nine-backup legacy roster complete with current recovery and retained-task scheduling',async()=>{
  // Let Vitest publish the task before entering the synchronous long simulation.
@@ -25,9 +25,20 @@ it('keeps the original nine-backup legacy roster complete with current recovery 
  expect(result.simulationReport?.elapsedHours).toBe(240)
  const gladiia=result.simulationReport!.operators.find(op=>op.operatorId==='char_474_glady')
  expect(gladiia).toBeDefined()
- // Versioned local runtime snapshot. Historical fatigue goldens are not native
- // oracles; retain their input and compare this exact profile to its current run.
+ const fiammetta=result.simulationReport!.operators.find(op=>op.operatorId==='char_300_phenxi')
+ expect(fiammetta?.initialMorale).toBe(baseline.initialConditions.fiammettaMorale)
+ expect(gladiia!.initialMorale).toBe(baseline.initialConditions.gladiiaMorale)
+ // The previous capture started Fiammetta at 24. This profile uses the reviewed
+ // first-registration value of 16 and retains the older capture as historical evidence.
  expect(Math.abs(gladiia!.exhaustedHours-baseline.result.gladiiaExhaustedHours)).toBeLessThanOrEqual(MORALE_EPSILON)
+ const fatigueSegments=result.simulationReport!.segments.filter(segment=>segment.morale.char_474_glady!<=0
+  &&Object.entries(segment.occupants).some(([position,operator])=>operator==='char_474_glady'&&!position.startsWith('dorm')))
+ const physicalFatigueHours=fatigueSegments.reduce((hours,segment)=>hours+(segment.end-segment.start),0)
+ expect(Math.abs(gladiia!.exhaustedHours-physicalFatigueHours)).toBeLessThanOrEqual(MORALE_EPSILON)
+ expect(fatigueSegments.length).toBeGreaterThan(0)
+ for(const segment of fatigueSegments)expect(result.simulationReport!.shiftDeferrals?.some(deferral=>
+  deferral.operatorIds.includes('char_474_glady')&&deferral.blockedAt<=segment.start
+  &&deferral.resolvedAt!==undefined&&deferral.resolvedAt>=segment.end)).toBe(true)
  expect(result.simulationReport!.events.filter(event=>event.type==='fiammetta')).toHaveLength(baseline.result.fiammettaCharges)
  expect(gladiia!.workHours+gladiia!.exhaustedHours+gladiia!.restHours+gladiia!.idleHours).toBeCloseTo(168,7)
  expect(workspace).toEqual(before)

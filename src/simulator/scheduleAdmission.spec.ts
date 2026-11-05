@@ -7,9 +7,10 @@ import {simulateSchedule} from './scheduleSimulation'
 import {summarizeIncome} from '../optimizer/incomeComparison'
 
 const slot=(name:string,candidates:string[]=[])=>({occupant:{kind:'operator' as const,operatorId:name},groupId:null,replacements:candidates})
-function simulatePermanent(permanent=true){
+function simulatePermanent(permanent=true,revocable=false){
  const w=createDefaultWorkspace();w.mainPlan.facilities.room_1_3.slots=[slot('Lancet-2')]
  if(permanent)w.mainPlan.conf.workaholic=['Lancet-2']
+ if(revocable)w.compatibility.backupPlans=[{name:'revocable permission',trigger:'False',conf:{removed_operators:{workaholic:'Lancet-2'}}}]
  return simulateSchedule(compileRosterSchedule(w,{idleOperators:[],operatorMorale:{[id('Lancet-2')]:0}}),{sampleHours:2,production:{droneTarget:'none',outputMode:'potential'}})
 }
 function deferred(hours:number,recovery=2){
@@ -28,7 +29,13 @@ describe('explicit scheduling admission evidence',()=>{
   expect(summarizeIncome(r).eligible).toBe(true)
   const ordinary=simulatePermanent(false);expect(summarizeIncome(ordinary).issues).toContain('存在疲劳占岗')
   const missingEvidence=simulatePermanent();delete missingEvidence.operators.find(o=>o.operatorId===id('Lancet-2'))!.permanentPrimaryOccupancyHours
-  expect(summarizeIncome(missingEvidence).issues).toContain('存在疲劳占岗')
+  expect(summarizeIncome(missingEvidence).eligible).toBe(true)
+ })
+ it('requires measured occupancy when a backup can revoke the continuous workaholic permission',()=>{
+  const report=simulatePermanent(true,true)
+  expect(summarizeIncome(report).eligible).toBe(true)
+  delete report.operators.find(o=>o.operatorId===id('Lancet-2'))!.permanentPrimaryOccupancyHours
+  expect(summarizeIncome(report).issues).toContain('存在疲劳占岗')
  })
  it.each(['factory','train'] as const)('declares idle auxiliary occupancy for %s',room=>{
   const w=createDefaultWorkspace();w.mainPlan.facilities[room].slots=[slot('特克诺')]

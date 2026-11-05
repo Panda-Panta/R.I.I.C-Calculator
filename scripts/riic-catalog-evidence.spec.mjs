@@ -61,6 +61,15 @@ describe('offline RIIC evidence regeneration', () => {
     expect(verifyPrtsOperator(formatted, response(), 'new').checks).toHaveLength(2)
   })
 
+  it('compares visible tooltip labels while preserving original evidence bytes', () => {
+    const tooltip = '<span class="mc-tooltips"><span>材料转化效率</span><span style="display: none" data-size="350">术语说明与成员名单</span></span>'
+    const bytes = response(table.replaceAll('材料转化效率', tooltip))
+    const result = verifyPrtsOperator(operator, bytes, 'current')
+    expect(result.checks).toHaveLength(2)
+    expect(result.responseSha256).toBe(createHash('sha256').update(bytes).digest('hex'))
+    expect(() => verifyPrtsOperator(operator, response(table.replaceAll('材料转化效率', tooltip).replace('效率</span><span style="display: none"', '速率</span><span style="display: none"')), 'current')).toThrow(/PRTS text/)
+  })
+
   it('matches each skill stage in its own row rather than another skill phase anywhere on the page', () => {
     const changed = { ...operator, slots: [[{ ...operator.slots[0][0], unlock: { phase: 'PHASE_2', level: 1 } }]] }
     expect(() => verifyPrtsOperator(changed, response(), 'new')).toThrow(/PRTS unlock/)

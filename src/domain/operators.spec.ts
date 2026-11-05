@@ -4,14 +4,14 @@ import generated from '../data/operators.generated.json'
 
 describe('normalized RIIC operator data', () => {
   it('contains only selectable operators with at least one RIIC skill', () => {
-    expect(OPERATOR_PROFILE_COUNT).toBe(432)
+    expect(OPERATOR_PROFILE_COUNT).toBe(438)
     expect(factionLabel(OPERATORS.find(op => op.name === '归溟幽灵鲨')!)).toBe('异格者')
     expect(OPERATORS).toHaveLength(OPERATOR_PROFILE_COUNT)
     expect(OPERATORS.every((operator) => operator.skills.length > 0)).toBe(true)
   })
 
   it('keeps the expected highest-stage skill records', () => {
-    expect(OPERATOR_SKILL_COUNT).toBe(760)
+    expect(OPERATOR_SKILL_COUNT).toBe(770)
     expect(OPERATORS.flatMap((operator) => operator.skills)).toHaveLength(OPERATOR_SKILL_COUNT)
   })
 
@@ -22,7 +22,7 @@ describe('normalized RIIC operator data', () => {
   })
 
   it('keeps the verified arkntools overlay and all slot stages', () => {
-    expect(generated.skillStageCount).toBe(929)
+    expect(generated.skillStageCount).toBe(944)
     const aigis = OPERATORS.find((operator) => operator.charId === 'char_4218_aigis')
     expect(aigis?.skills).toEqual(expect.arrayContaining([
       expect.objectContaining({
