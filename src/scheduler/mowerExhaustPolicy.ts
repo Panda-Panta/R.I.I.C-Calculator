@@ -1,6 +1,7 @@
 // Preserve native group exhaustion admission (Mower e6c06a5b1, MIT).
 import type {MowerSchedulingData} from './mowerSchedulingData'
 import {mowerDormCandidateMood} from './mowerAlphaCandidates'
+import {restingThresholdFor} from './mowerOperatorState'
 import {alphaRestingTier} from './mowerAlphaDorm'
 import {MOWER_TASK_TYPES as T,type MowerTask} from './mowerTaskQueue'
 
@@ -15,7 +16,7 @@ export function mowerOrdinaryCoordinationNeeded(data:MowerSchedulingData,names:r
  const eligible=(name:string)=>{
   const op=data.operators[name]
   if(!op||!op.isHigh()||op.multiGroup&&!op.independentRest||op.group&&!data.isGroupShiftAnchor(op)||op.isResting()||data.isStandby(name)||['factory','train'].includes(op.room)||['factory','train'].includes(op.currentRoom)||data.busyRestingNames.has(name)||data.reservedProductReplacements.has(name)||op.exhaustRequire||exhausted.has(op.group)||alphaRestingTier(data,name)===7)return false
-  const mood=mowerDormCandidateMood(data,name),threshold=op.lowerLimit+(op.upperLimit-op.lowerLimit)*data.policy.restingThreshold
+  const mood=mowerDormCandidateMood(data,name),threshold=op.lowerLimit+(op.upperLimit-op.lowerLimit)*restingThresholdFor(op,data.policy)
   return mood!==undefined&&mood<op.upperLimit&&mood<=(op.customMoodLimit?threshold:Math.floor(threshold))&&(op.customMoodLimit||op.upperLimit-mood>=2)
  }
  const units=new Map<string,string[]>()

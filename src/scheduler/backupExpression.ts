@@ -95,7 +95,7 @@ function tokenize(text: string): Token[] {
     if (tokens.length >= 1024) return fail('条件文本超过限制')
     const worker = /^op_data\s*\.\s*operators\b/.exec(rest)
     const attribute = /^\.\s*([A-Za-z_]\w*)/.exec(rest)
-    const query = /^op_data\s*\.\s*(group_min_mood|group_max_mood|facility_has_mastery_plan|facility_is_training|inventory_count|facility_product_count|facility_product_type_count|facility_product|facility_type|facility_operator_count)\b/.exec(rest)
+    const query = /^op_data\s*\.\s*(group_min_mood|group_max_mood|facility_has_mastery_plan|facility_is_training|facility_is_protected|inventory_count|facility_product_count|facility_product_type_count|facility_product|facility_type|facility_operator_count)\b/.exec(rest)
     const external = /^op_data\s*\.\s*(party_time|major_maintenance_remaining_hours)\b/.exec(rest)
     const quoted = quotedLiteral(rest)
     const number = /^(?:0[xX]_?[\da-fA-F](?:_?[\da-fA-F])*|0[oO]_?[0-7](?:_?[0-7])*|0[bB]_?[01](?:_?[01])*|(?:\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?|\.\d(?:_?\d)*)(?:[eE][+-]?\d(?:_?\d)*)?[jJ]?)/.exec(rest)
@@ -381,7 +381,7 @@ export function compileBackupExpression(source: unknown, participants: Set<strin
     usesInventory: tokens.some(token=>token.kind==='query'&&token.member==='inventory_count'),
     usesFacilityProduct: tokens.some(token=>token.kind==='query'&&['facility_product','facility_product_count','facility_product_type_count'].includes(token.member!)),
     usesFacilityObservation:tokens.some(token=>token.kind==='query'&&['facility_type','facility_operator_count'].includes(token.member!)),
-    usesMasteryPlan: tokens.some(token=>token.kind==='query'&&['facility_has_mastery_plan','facility_is_training'].includes(token.member!)),
+    usesMasteryPlan: tokens.some(token=>token.kind==='query'&&['facility_has_mastery_plan','facility_is_training','facility_is_protected'].includes(token.member!)),
     usesCurrentMood: tokens.some(token=>token.kind==='attribute'&&token.member==='current_mood'||token.kind==='query'&&['group_min_mood','group_max_mood'].includes(token.member!)),
   }
 }

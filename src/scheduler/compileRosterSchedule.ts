@@ -1,4 +1,4 @@
-import { mowerAdvancedAssumptions } from './mowerAdvancedSettings'
+import { isMowerGroupRestingThresholds, mowerAdvancedAssumptions } from './mowerAdvancedSettings'
 import {mowerPlanEntries} from './mowerPlanOrder'
 import {readMowerOperatorList} from './mowerBackupConfig'
 import {MOWER_OPERATOR_LIST_FIELDS as LIST_POLICIES} from '../domain/roster'
@@ -56,6 +56,12 @@ export function compileRosterSchedule(workspace: RosterWorkspace, options: Parti
   if (!Number.isFinite(assumptions.mergeIntervalMinutes)) invalid('assumptions.mergeIntervalMinutes', 'merge_interval must be finite')
   if (typeof assumptions.freeRoom !== 'boolean') invalid('assumptions.freeRoom', 'free_room must be boolean')
   if (!Number.isFinite(assumptions.restingThreshold) || assumptions.restingThreshold! < 0 || assumptions.restingThreshold! > 1) invalid('assumptions.restingThreshold', 'Resting threshold must be within 0..1')
+  const groupThresholds = assumptions.groupRestingThresholds
+  if (groupThresholds !== undefined) {
+    if (!isMowerGroupRestingThresholds(groupThresholds)) {
+      invalid('assumptions.groupRestingThresholds', '绑组心情阈值必须为非空绑组名到 0.35–1 的有限数映射')
+    } else assumptions.groupRestingThresholds = { ...groupThresholds }
+  }
   if (!Number.isFinite(assumptions.initialMorale) || assumptions.initialMorale < 0 || assumptions.initialMorale > 24) invalid('assumptions.initialMorale', '初始心情必须为 0–24 的有限数')
   if (!Number.isFinite(assumptions.horizonHours) || assumptions.horizonHours <= 0) invalid('assumptions.horizonHours', '模拟时长必须为正有限数')
   if (!Number.isFinite(assumptions.initialGold) || assumptions.initialGold < 0) invalid('assumptions.initialGold', '初始赤金不能为负数')

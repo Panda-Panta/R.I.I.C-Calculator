@@ -515,6 +515,43 @@ describe('alpha shared group validation', () => {
 
 
 describe('effective backup validation', () => {
+  it('accepts group tasks targeting a primary or extra binding declared across the main and backup tables', () => {
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.dormitory_4.slots = Array.from({length: 5}, () => ({occupant: {kind: 'free'}, groupId: null, replacements: []}))
+    ws.mainPlan.facilities.room_1_1.slots[0] = {
+      occupant: {kind: 'operator', operatorId: 'char_123_fang'},
+      groupId: '主班',
+      replacements: ['char_240_wyvern'],
+    }
+    ws.compatibility.backupPlans = [
+      {name: '绑组任务', trigger: 'False', group_tasks: [{group: '主班'}, {group: '副表额外绑组', action: 'off', mode: 'while_active'}]},
+      {name: '声明额外绑组', trigger: 'False', plan: {room_1_1: {plans: [{
+        agent: '芬', group: '主班', replacement: ['香草'],
+        group_bindings: [{group: '副表额外绑组', replacement: ['翎羽']}],
+      }]}}},
+    ]
+    expect(validateRosterWorkspace(ws).criticalErrors).toEqual([])
+  })
+
+  it.each([
+    [null, '必须为列表'],
+    [[{group: ' 主班 '}], '有效组名'],
+    [[{group: '主班', action: null}], '上下班类型无效'],
+    [[{group: '主班', action: 'on', mode: 'forced'}], '上班任务只执行一次'],
+    [[{group: '主班'}, {group: '主班', mode: 'forced'}], '不能重复'],
+    [[{group: '独立副表分组'}], '组名不存在'],
+  ])('checks the native group task format before calculation: %j', (groupTasks, message) => {
+    const ws = createDefaultWorkspace()
+    ws.mainPlan.facilities.room_1_1.slots[0] = {
+      occupant: {kind: 'operator', operatorId: 'char_123_fang'},
+      groupId: '主班',
+      replacements: ['char_240_wyvern'],
+    }
+    ws.compatibility.unrecognizedFields.backup_groups = [{id: '独立副表分组', name: '独立副表分组', trigger: 'False'}]
+    ws.compatibility.backupPlans = [{name: '无效任务', trigger: 'False', group_tasks: groupTasks}]
+    expect(validateRosterWorkspace(ws).criticalErrors.some(issue => issue.message.includes('副表 无效任务') && issue.message.includes(message))).toBe(true)
+  })
+
   it.each(['conditional', 'default'])('does not treat an unconditional backup in %s as globally reachable', groupId => {
     const ws = createDefaultWorkspace()
     ws.compatibility.unrecognizedFields.backup_groups = [

@@ -35,6 +35,7 @@ function adjustMaintenance(tasks:MowerTask[],delay:number,window:MowerTaskSchedu
  near.forEach((task,index)=>{task.timeMicros=start-(index+1)*1_000_000;task.adjusted=true})
 }
 function mergeDeferredDormSchedules(tasks:MowerTask[]):MowerTask[] {
+ if(tasks.some(task=>task.backupGroupRequest))return tasks
  const mergeable=tasks.filter(task=>[T.SHIFT_OFF,T.SHIFT_ON,T.RE_ORDER].includes(task.type))
  const dormTasks=mergeable.filter(task=>Object.keys(task.plan).some(room=>room.startsWith('dormitory_')))
  if(dormTasks.length<2&&!dormTasks.some(task=>task.type===T.SHIFT_OFF))return tasks

@@ -45,9 +45,9 @@ export function compileMowerBackupQuery(member:string,name?:string):(state:Runti
       return Object.prototype.hasOwnProperty.call(observed,name!)?observed[name!]??null:null
     }
   }
-  if(member==='facility_has_mastery_plan'||member==='facility_is_training'){
+  if(member==='facility_has_mastery_plan'||member==='facility_is_training'||member==='facility_is_protected'){
     if(name!=='train')return fail(`不支持的训练室位置：${name}`)
-    return ()=>false // User contract: no unfinished local plan and no active training.
+    return ()=>false // Local simulation has no pending or active training to protect.
   }
   return state=>{
     const data=state.mowerSource?.data

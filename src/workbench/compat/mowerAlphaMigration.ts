@@ -6,6 +6,14 @@ export function normalizeMowerDormOrder(value: string): string {
   return effectiveMowerDormOrder(value.split(',')).join(',')
 }
 
+/** Mower's plan schema applies the minimum to file settings, not local simulation overrides. */
+export function normalizeMowerFileDroneLimit(value: unknown): number {
+  const limit = typeof value === 'boolean' || typeof value === 'string' && /^[+-]?\d+(?:\.0+)?$/.test(value.trim())
+    ? Number(value) : value
+  if (typeof limit !== 'number' || !Number.isSafeInteger(limit)) throw new Error('高级设置中的无人机使用阈值必须为整数')
+  return Math.max(20, limit)
+}
+
 /** Recognizes direct calls in ordinary Python expressions without evaluating them.
  * String literals/comments are opaque. This is deliberately not a Python interpreter.
  */
@@ -32,6 +40,14 @@ export function migrateMowerAlphaDocument(input: Record<string, unknown>): {
   const warnings: string[] = [], retiredBackupPlans: unknown[] = []
   if (record(document.advanced_settings)) {
     const settings = document.advanced_settings
+    if (typeof settings.resting_threshold === 'number' && settings.resting_threshold < .35) {
+      warnings.push('已保留旧的本地心情阈值，导出到新版 Mower 时最低为 35%')
+    }
+    if ('drone_count_limit' in settings) {
+      const limit = normalizeMowerFileDroneLimit(settings.drone_count_limit)
+      if (limit !== settings.drone_count_limit) warnings.push(`已按 Mower alpha 迁移无人机使用阈值为 ${limit} 架`)
+      settings.drone_count_limit = limit
+    }
     const legacyOrder = settings.dorm_order
     if (typeof legacyOrder === 'string' && legacyOrder) {
       const conf = record(document.conf) ? document.conf : {}

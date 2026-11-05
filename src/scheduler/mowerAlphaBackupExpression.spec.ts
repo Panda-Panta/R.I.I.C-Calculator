@@ -88,3 +88,8 @@ describe('alpha backup group and mastery predicates',()=>{
   expect(expression(`False and op_data.group_min_mood('不存在')`).evaluate(fixture())).toBe(false)
  })
 })
+  it('supports Mower training protection conditions in the local no-training model', () => {
+    expect(expression("op_data.facility_is_protected('train')").evaluate(fixture())).toBe(false)
+    expect(expression("not op_data.facility_is_protected('train')").evaluate(fixture())).toBe(true)
+    expect(() => expression("op_data.facility_is_protected('room_1_1')").evaluate(fixture())).toThrow('不支持的训练室位置')
+  })

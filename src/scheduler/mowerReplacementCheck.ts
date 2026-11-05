@@ -61,7 +61,9 @@ function applies(data:MowerSchedulingData,target:MowerReplacementCheckTarget):bo
 function reservations(data:MowerSchedulingData,queue:MowerTaskQueue,task:MowerTask,options:MowerReplacementCheckOptions){
  const tasks=queue.tasks.filter(other=>other!==task)
  if(options.currentTask&&options.currentTask!==task&&!tasks.includes(options.currentTask))tasks.push(options.currentTask)
- const dorm=mowerDormTaskReservations(data,tasks),retained=mowerReplacementReservations(data,tasks)
+ const target=task.replacementCheck!.target
+ const dorm=mowerDormTaskReservations(data,tasks)
+ const retained=mowerReplacementReservations(data,tasks,[],{ownForcedSlot:alphaPosition(target.room,target.index)})
  for(const name of retained.reservedNames)dorm.names.add(name)
  for(const position of retained.reservedSlots)dorm.slots.add(position)
  // Failed concrete tasks retain their intended work positions as well as dorm admissions.

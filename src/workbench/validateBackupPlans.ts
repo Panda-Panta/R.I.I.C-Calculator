@@ -1,6 +1,7 @@
 import {resolveOperatorCharId} from '../domain/operatorIdentifiers'
 import {parseProduct} from '../domain/mowerProducts'
 import {assertMowerBackupRoomOwners, assertMowerBackupTaskRooms, mowerBackupRoomCapacity, prepareMowerBackupRoom} from '../domain/mowerBackupFacilities'
+import {declaredMowerGroups, readMowerBackupGroupTasks} from '../domain/mowerBackupGroupTasks'
 import {mergeMowerBackupConfig} from '../scheduler/mowerBackupConfig'
 import {readBackupGroups, readBackupMembership, type BackupGroup} from '../scheduler/backupGroups'
 import type {MowerGroupBinding, MowerRoomId, RosterWorkspace} from '../domain/roster'
@@ -18,12 +19,17 @@ export function validateBackupPlans(workspace: RosterWorkspace, validate: (works
   catch (error) {
     return [{code: 'INVALID_CONFIG', severity: 'critical', roomId: 'central', message: error instanceof Error ? error.message : String(error)}]
   }
+  let shiftGroups: ReadonlySet<string> | undefined
   for (const [index, raw] of workspace.compatibility.backupPlans.entries()) {
     const label = record(raw) && typeof raw.name === 'string' ? raw.name : String(index + 1)
     let roomId: MowerRoomId = 'central'
     try {
       if (!record(raw) || raw.plan !== undefined && !record(raw.plan) || raw.conf !== undefined && !record(raw.conf) || raw.task !== undefined && !record(raw.task)) throw new Error('plan/conf/task 格式错误')
       const {groupIds} = readBackupMembership(raw, groups)
+      if (raw.group_tasks !== undefined) {
+        shiftGroups ??= declaredMowerGroups(workspace)
+        readMowerBackupGroupTasks(raw.group_tasks, shiftGroups)
+      }
       const effective: RosterWorkspace = JSON.parse(JSON.stringify(workspace))
       const detachedBackup = effective.compatibility.backupPlans[index]
       effective.compatibility.backupPlans = []

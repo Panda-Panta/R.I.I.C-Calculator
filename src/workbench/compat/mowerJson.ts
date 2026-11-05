@@ -3,7 +3,9 @@ export {parseProduct, serializeProduct} from '../../domain/mowerProducts'
 import { resolveOperatorCharId, restoreOperatorMowerName } from '../../domain/operatorIdentifiers'
 export { resolveOperatorCharId, restoreOperatorMowerName } from '../../domain/operatorIdentifiers'
 import { createDefaultWorkspace } from '../defaults'
-import { migrateMowerAlphaDocument } from './mowerAlphaMigration'
+import { declaredMowerGroups, readMowerBackupGroupTasks } from '../../domain/mowerBackupGroupTasks'
+import { isMowerGroupRestingThresholds, MOWER_MIN_RESTING_THRESHOLD } from '../../scheduler/mowerAdvancedSettings'
+import { migrateMowerAlphaDocument, normalizeMowerFileDroneLimit } from './mowerAlphaMigration'
 import { inferFacilityLevels } from '../levelInference'
 import { hasDormKeeper } from '../facilityState'
 import {
@@ -16,6 +18,28 @@ import {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validateFileGroupThresholds(settings: unknown): void {
+  if (isRecord(settings) && 'group_resting_thresholds' in settings
+    && !isMowerGroupRestingThresholds(settings.group_resting_thresholds)) {
+    throw new Error('高级设置中的绑组心情阈值必须为非空绑组名到 35%–100% 的数值映射')
+  }
+}
+
+function validateDocumentGroupTasks(workspace: RosterWorkspace): void {
+  const backups = workspace.compatibility.backupPlans
+  if (!backups.some(backup => isRecord(backup) && 'group_tasks' in backup)) return
+  const groups = declaredMowerGroups(workspace)
+  backups.forEach((backup, index) => {
+    if (!isRecord(backup)) return
+    try {
+      readMowerBackupGroupTasks(backup.group_tasks, groups)
+    } catch (error) {
+      const name = typeof backup.name === 'string' ? backup.name : `#${index + 1}`
+      throw new Error(`副表 ${name}：${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
 }
 
 /** Native Trigger fields accept expression text inside left, never as the trigger itself.
@@ -62,6 +86,7 @@ export function importMowerJson(text: string): RosterWorkspace {
 
   const migration = migrateMowerAlphaDocument(raw)
   const parsed = migration.document
+  validateFileGroupThresholds(parsed.advanced_settings)
 
   const defaultKey = typeof parsed.default === 'string' && parsed.default.trim()
     ? parsed.default.trim()
@@ -296,6 +321,7 @@ export function importMowerJson(text: string): RosterWorkspace {
     }
   }
 
+  validateDocumentGroupTasks(ws)
   return ws
 }
 
@@ -449,6 +475,16 @@ export function exportMowerJson(workspace: RosterWorkspace): string {
     [defaultKey]: planObj,
   }
   if ('backup_groups' in output) output.backup_groups = exportNativeConditions(output.backup_groups)
+  if (isRecord(output.advanced_settings)) {
+    const settings = { ...output.advanced_settings }
+    validateFileGroupThresholds(settings)
+    if ('drone_count_limit' in settings) settings.drone_count_limit = normalizeMowerFileDroneLimit(settings.drone_count_limit)
+    // Keep the saved local threshold and apply Mower's lower bound only to the exported copy.
+    if (typeof settings.resting_threshold === 'number' && settings.resting_threshold < MOWER_MIN_RESTING_THRESHOLD) {
+      settings.resting_threshold = MOWER_MIN_RESTING_THRESHOLD
+    }
+    output.advanced_settings = settings
+  }
 
   const savedLevels = workspace.compatibility.unrecognizedFields.facility_levels
   const exportedLevels: Record<string, unknown> = isRecord(savedLevels) ? { ...savedLevels } : {}
@@ -472,6 +508,7 @@ export function exportMowerJson(workspace: RosterWorkspace): string {
   }
 
   if (workspace.compatibility.importedHasBackupPlans !== false) {
+    validateDocumentGroupTasks(workspace)
     output.backup_plans = exportNativeConditions(workspace.compatibility.backupPlans || [])
   }
 

@@ -94,6 +94,9 @@
               <span v-if="hasTasks(item.plan)" class="meta-tag meta-task">
                 任务: {{ Object.keys(item.plan.task || {}).length }} 个设施
               </span>
+              <span v-if="Array.isArray(item.plan.group_tasks) && item.plan.group_tasks.length" class="meta-tag meta-task">
+                绑组任务 {{ item.plan.group_tasks.length }} 项
+              </span>
               <span v-if="hasConfOverrides(item.plan)" class="meta-tag meta-conf">
                 包含策略覆盖
               </span>
@@ -335,6 +338,10 @@
                   </p>
                 </div>
 
+                <BackupGroupTasksEditor
+                  :value="activePlan.group_tasks" :groups="shiftGroups" @update:value="setGroupTasks"
+                />
+
                 <!-- Add Facility Task Controller -->
                 <div class="add-task-row">
                   <n-select
@@ -552,9 +559,11 @@ import {
   type SelectOption,
 } from 'naive-ui'
 import { match } from 'pinyin-pro'
+import { declaredMowerGroups } from '../../domain/mowerBackupGroupTasks'
 import { OPERATORS } from '../../domain/operators'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 import BackupGroupEditor from './BackupGroupEditor.vue'
+import BackupGroupTasksEditor from './BackupGroupTasksEditor.vue'
 import { backupGroupsForEditor, backupPlanMembership, normalizeBackupMembership } from '../../workbench/backupGroupHelpers'
 import {
   BACKUP_CONF_FIELDS,
@@ -812,6 +821,11 @@ function appendBuiltCondition(): void {
 }
 
 // Task Facilities Handling
+const shiftGroups = computed(() => declaredMowerGroups(store.workspace))
+function setGroupTasks(groupTasks: unknown[]): void {
+  if (activePlan.value) store.updateBackupPlan(selectedIndex.value, { ...toRaw(activePlan.value), group_tasks: groupTasks })
+}
+
 const taskRooms = computed<string[]>(() => {
   if (!activePlan.value?.task) return []
   return Object.keys(activePlan.value.task)

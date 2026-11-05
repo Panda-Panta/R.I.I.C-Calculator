@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /** Mower alpha PlanAdvancedSettings.vue, MIT, Copyright 2021 Nano. */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NButton, NCheckbox, NForm, NFormItem, NInputNumber, NSelect, NTooltip } from 'naive-ui'
 import { OPERATORS } from '../../domain/operators'
+import { declaredMowerGroups } from '../../domain/mowerBackupGroupTasks'
+import { MOWER_MIN_RESTING_THRESHOLD } from '../../scheduler/mowerAdvancedSettings'
 import { useRosterWorkbenchStore } from '../../workbench/store'
 
 interface Field {
@@ -26,6 +28,7 @@ const settings = computed(() => record(store.workspace.compatibility.unrecognize
 const product = computed(() => record(settings.value.product_switching))
 const enabled = () => product.value.enable === true
 const grandet = () => enabled() && product.value.grandet_mode !== false
+const minRestingPercent = MOWER_MIN_RESTING_THRESHOLD * 100
 const fields: Field[] = [
   { key: 'enable', label: '自动切换产物与订单', initial: false, nested: true, help: '根据副表切换制造产物或贸易站订单类型。推荐提高无人机使用阈值。' },
   { key: 'grandet_mode', label: '葛朗台切产物', initial: true, nested: true, when: enabled, help: '按损耗容限节省无人机，并等待当前一份自然完成。' },
@@ -34,9 +37,9 @@ const fields: Field[] = [
   { key: 'direct_when_drones_insufficient', label: '允许无人机不足时直接切换产物', initial: false, nested: true, when: enabled, help: '开启后可取消制造站当前一份的进度。' },
   { key: 'drone_loss_seconds', label: '葛朗台无人机损耗容限', initial: 30, nested: true, when: grandet, min: 0, max: 180, integer: true, unit: '秒', help: '允许最后一架无人机浪费的加速时间。' },
   { key: 'waiting_seconds', label: '葛朗台切产物缓冲时间', initial: 2, nested: true, when: grandet, min: 0, max: 60, integer: true, unit: '秒' },
-  { key: 'drone_count_limit', label: '无人机使用阈值', initial: 100, min: 0, integer: true, unit: '架' },
+  { key: 'drone_count_limit', label: '无人机使用阈值', initial: 100, min: 20, integer: true, unit: '架' },
   { key: 'drone_interval', label: '无人机加速间隔', initial: 3, min: 0, unit: '小时' },
-  { key: 'resting_threshold', label: '心情阈值', initial: .65, percent: true, min: 50, max: 80, step: 5, unit: '%', help: '2 电站推荐不低于 65%，3 电站推荐不低于 50%。' },
+  { key: 'resting_threshold', label: '心情阈值', initial: .65, percent: true, min: minRestingPercent, max: 100, step: 5, unit: '%', help: '2 电站推荐不低于 65%，3 电站推荐不低于 50%。' },
   { key: 'version_update_resting_threshold', label: '大更新心情阈值', initial: .8, percent: true, min: 50, max: 100, step: 5, unit: '%', exportOnly: true },
   { key: 'version_update_threshold_advance_hours', label: '大更新阈值提前时间', initial: 12, min: 0, max: 168, unit: '小时', exportOnly: true },
   { key: 'free_room', label: '宿舍不养闲人', initial: false, help: '开启后创建满心情清退任务。关闭后仍安排恢复、补床和优先级接管；个人及令夕上限仍生效。' },
@@ -68,23 +71,30 @@ function update(field: Field, next: number | boolean | null): void {
   else patch({ [field.key]: next })
 }
 const gapExclusions = computed<string[]>(() => Array.isArray(settings.value.group_mood_gap_exclusions) ? settings.value.group_mood_gap_exclusions.filter((group): group is string => typeof group === 'string' && !!group.trim()) : [])
-const gapGroupOptions = computed(() => {
-  const names = new Set(gapExclusions.value)
-  const add = (name: unknown) => { if (typeof name === 'string' && name.trim()) names.add(name) }
-  for (const facility of Object.values(store.workspace.mainPlan.facilities)) for (const slot of facility.slots) {
-    add(slot.groupId)
-    slot.groupBindings?.forEach(binding => add(binding.groupId))
-  }
-  for (const backup of store.workspace.compatibility.backupPlans) for (const facility of Object.values(record(record(backup).plan))) {
-    const slots = record(facility).plans
-    if (Array.isArray(slots)) for (const slot of slots) {
-      const value = record(slot); add(value.group)
-      if (Array.isArray(value.group_bindings)) value.group_bindings.forEach(binding => add(record(binding).group))
-    }
-  }
-  return [...names].map(name => ({ label: name, value: name }))
-})
+const declaredGroups = computed(() => [...declaredMowerGroups(store.workspace)].filter(name => name.trim()))
+const gapGroupOptions = computed(() => [...new Set([...gapExclusions.value, ...declaredGroups.value])].map(name => ({ label: name, value: name })))
 function updateGapExclusions(names: string[]): void { patch({ group_mood_gap_exclusions: [...new Set(names.filter(name => typeof name === 'string' && name.trim()))] }) }
+const groupThresholds = computed(() => record(settings.value.group_resting_thresholds))
+const groupThresholdSelection = ref<string | null>(null)
+const groupThresholdOptions = computed(() => declaredGroups.value
+  .filter(name => !Object.prototype.hasOwnProperty.call(groupThresholds.value, name))
+  .map(name => ({ label: name, value: name })))
+function updateGroupThreshold(group: string, percent: number | null): void {
+  if (percent === null || !Number.isFinite(percent) || percent < minRestingPercent || percent > 100) return
+  patch({ group_resting_thresholds: { ...groupThresholds.value, [group]: percent / 100 } })
+}
+function addGroupThreshold(): void {
+  const group = groupThresholdSelection.value
+  if (!group || !groupThresholdOptions.value.some(option => option.value === group)) return
+  const global = settings.value.resting_threshold
+  updateGroupThreshold(group, typeof global === 'number' && global >= MOWER_MIN_RESTING_THRESHOLD && global <= 1 ? global * 100 : 65)
+  groupThresholdSelection.value = null
+}
+function removeGroupThreshold(group: string): void {
+  const next = { ...groupThresholds.value }
+  delete next[group]
+  patch({ group_resting_thresholds: next })
+}
 const isolation = computed<string[][]>(() => Array.isArray(settings.value.dorm_isolation) ? settings.value.dorm_isolation as string[][] : [])
 const favorite = computed(() => typeof settings.value.favorite === 'string' ? settings.value.favorite.split(',').map(name => name.trim()).filter(Boolean) : [])
 const operatorOptions = OPERATORS.map(operator => ({ label: operator.name, value: operator.name }))
@@ -112,6 +122,37 @@ function updateIsolation(index: number, names: string[]): void {
               <span class="help-text">{{ field.help }}</span>
             </n-tooltip>
             <small v-if="field.exportOnly" class="export-only">仅保存并导出至 Mower，本地模拟暂未使用。</small>
+          </div>
+        </n-form-item>
+        <n-form-item v-if="field.key === 'resting_threshold'" label="各绑组心情阈值" data-field="group_resting_thresholds">
+          <div class="isolation-groups">
+            <div v-for="(ratio, group) in groupThresholds" :key="group" class="isolation-row" :data-threshold-group="group">
+              <span class="threshold-name">{{ group }}</span>
+              <n-input-number
+                class="threshold-input"
+                :value="typeof ratio === 'number' && Number.isFinite(ratio) ? Math.round(ratio * 10000) / 100 : null"
+                :min="minRestingPercent"
+                :max="100"
+                :step="5"
+                :aria-label="`${group} 心情阈值`"
+                @update:value="updateGroupThreshold(group, $event)"
+              >
+                <template #suffix>%</template>
+              </n-input-number>
+              <n-button quaternary :aria-label="`移除 ${group} 心情阈值`" @click="removeGroupThreshold(group)">移除</n-button>
+            </div>
+            <div class="isolation-row">
+              <n-select
+                v-model:value="groupThresholdSelection"
+                :options="groupThresholdOptions"
+                aria-label="单独设置心情阈值的绑组"
+                placeholder="选择绑组"
+                filterable
+                clearable
+              />
+              <n-button data-test="add-group-threshold" :disabled="!groupThresholdSelection" @click="addGroupThreshold">添加</n-button>
+            </div>
+            <small>单绑组主班的下班与救急线使用本组阈值。省略组值或多绑组独立下班时沿用全局阈值。</small>
           </div>
         </n-form-item>
         <n-form-item v-if="field.key === 'group_mood_gap_max_extra_wait_hours'" label="延后回班排除组" data-field="group_mood_gap_exclusions">
@@ -151,6 +192,8 @@ function updateIsolation(index: number, names: string[]): void {
 .isolation-groups { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: flex-start; }
 .isolation-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 .isolation-row :deep(.n-select) { flex: 1; min-width: 0; }
+.threshold-name { min-width: 5em; overflow-wrap: anywhere; }
+.threshold-input { width: 115px; }
 @media (max-width: 600px) {
   .advanced-settings :deep(.n-form-item) { display: block; }
   .advanced-settings :deep(.n-form-item-label) { width: auto !important; padding-bottom: 5px; }

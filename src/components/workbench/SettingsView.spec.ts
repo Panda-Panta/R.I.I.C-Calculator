@@ -71,3 +71,20 @@ it('shares imported advanced values and persists edits into the exported plan', 
   expect(JSON.parse(exportMowerJson(store.workspace)).advanced_settings).toEqual({ fia_fool: false, rescue_threshold: .5, future: 7 })
   wrapper.unmount()
 })
+
+it('preserves an older global threshold and only writes valid new Mower values', async () => {
+  const store = useRosterWorkbenchStore()
+  store.workspace.compatibility.unrecognizedFields.advanced_settings = { resting_threshold: .2, future: 7 }
+  const wrapper = mount(SettingsView, { props: { settings }, global: { stubs: { OperatorInventoryPanel: true } } })
+  const input = wrapper.get<HTMLInputElement>('[data-test="resting-threshold"]')
+  expect(input.element.value).toBe('20')
+  expect(input.attributes('min')).toBe('35')
+  await input.setValue('34')
+  expect(input.element.value).toBe('20')
+  expect(wrapper.emitted('update:settings')).toBeUndefined()
+  expect(store.workspace.compatibility.unrecognizedFields.advanced_settings).toEqual({ resting_threshold: .2, future: 7 })
+  await input.setValue('35')
+  expect(wrapper.emitted('update:settings')?.[0]?.[0]).toMatchObject({ restingThreshold: .35 })
+  expect(store.workspace.compatibility.unrecognizedFields.advanced_settings).toEqual({ resting_threshold: .35, future: 7 })
+  wrapper.unmount()
+})

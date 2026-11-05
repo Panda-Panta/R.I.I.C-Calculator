@@ -28,6 +28,58 @@ describe('Mower alpha ab0a4e5 document compatibility', () => {
     expect(save({ backup_plans: backups }).backup_plans).toEqual(backups)
   })
 
+  it('round-trips new group tasks with names declared in main and backup binding columns', () => {
+    const backups = [
+      { name: '整组任务', group_tasks: [
+        { group: '主绑组', action: 'off', mode: 'forced', future: 7 },
+        { group: '附加绑组' },
+        { group: '副表绑组', action: 'on' },
+      ] },
+      { name: '岗位覆盖', plan: { contact: { plans: [{ agent: '絮雨', group: '副表绑组' }] } } },
+    ]
+    const advanced = { group_resting_thresholds: { 主绑组: .35, 附加绑组: 1 }, future_setting: true }
+    const exported = save({
+      plan1: { central: { plans: [{ agent: '阿米娅', group: '主绑组', group_bindings: [{ group: '附加绑组' }] }] } },
+      backup_plans: backups,
+      advanced_settings: advanced,
+    })
+    expect(exported.backup_plans).toEqual(backups)
+    expect(exported.advanced_settings).toEqual(advanced)
+  })
+
+  it.each([
+    { group_tasks: null },
+    { group_tasks: [{ group: '不存在' }] },
+    { group_tasks: [{ group: '主绑组', action: 'on', mode: 'while_active' }] },
+    { group_tasks: [{ group: '主绑组' }, { group: '主绑组', action: 'on' }] },
+  ])('rejects invalid Mower group tasks at import: %j', backup => {
+    expect(() => load({
+      plan1: { central: { plans: [{ agent: '阿米娅', group: '主绑组' }] } },
+      backup_plans: [{ name: '任务', ...backup }],
+    })).toThrow('副表 任务：')
+  })
+
+  it('normalizes the native drone reserve at both file boundaries without rewriting saved state on export', () => {
+    const imported = load({ advanced_settings: { drone_count_limit: 0, future_setting: 9 } })
+    expect(imported.compatibility.migrationWarnings).toContain('已按 Mower alpha 迁移无人机使用阈值为 20 架')
+    expect(JSON.parse(exportMowerJson(imported)).advanced_settings).toEqual({ drone_count_limit: 20, future_setting: 9 })
+    const saved = { drone_count_limit: '19.0' }
+    imported.compatibility.unrecognizedFields.advanced_settings = saved
+    expect(JSON.parse(exportMowerJson(imported)).advanced_settings.drone_count_limit).toBe(20)
+    expect(saved.drone_count_limit).toBe('19.0')
+    expect(save({ advanced_settings: {} }).advanced_settings).toEqual({})
+    expect(() => load({ advanced_settings: { drone_count_limit: 19.5 } })).toThrow('无人机使用阈值必须为整数')
+  })
+
+  it('keeps a legacy global threshold locally and exports the minimum accepted by Mower', () => {
+    const workspace = load({ advanced_settings: { resting_threshold: .2, group_resting_thresholds: { g: .4 } } })
+    expect(JSON.parse(exportMowerJson(workspace)).advanced_settings).toEqual({
+      resting_threshold: .35, group_resting_thresholds: { g: .4 },
+    })
+    expect(workspace.compatibility.unrecognizedFields.advanced_settings).toMatchObject({ resting_threshold: .2 })
+    expect(() => load({ advanced_settings: { group_resting_thresholds: { g: .34 } } })).toThrow('绑组心情阈值')
+  })
+
   it('migrates retired advanced settings while preserving other and unknown settings', () => {
     const exported = save({ advanced_settings: { dorm_order: 'dormitory_3_2,dormitory_2_low,dormitory_3_3', reload_room: 'room_1_1', experimental_dorm_logic: true, refresh_backup_plan_after_mood: true, workshop_low_priority_rest: true, free_room: true, product_switching: { custom: true }, future_setting: 3 } })
     expect(exported.conf.dorm_order).toBe('dormitory_3,dormitory_2_low,dormitory_1,dormitory_2,dormitory_4')

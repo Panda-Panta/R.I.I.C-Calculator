@@ -8,6 +8,7 @@ import {inheritMowerBackupRefreshRules} from './mowerBackupRefresh'
 import {normalizeMowerSharedArrangement,mowerArrangementGroupTransitions,commitMowerGroupShifts} from './mowerSharedGroups'
 // Complete in-memory arrangement replay, Mower alpha b2d9ac8 (MIT).
 import type {MowerSchedulingData} from './mowerSchedulingData'
+import type {MowerBackupGroupTask} from '../domain/mowerBackupGroupTasks'
 import {MowerShiftPreviewError} from './mowerNativeErrors'
 import {simplifyMowerAlphaDormFill} from './mowerAlphaTaskProtection'
 import {mowerAlphaFillPlan,mowerDormTaskReservations} from './mowerAlphaCandidates'
@@ -32,6 +33,7 @@ export interface MowerShiftModel {
  observationNames?:readonly string[]
  conditionObservationNames?:readonly (readonly string[])[]
  explicitTasks?:readonly MowerTaskPlan[]
+ groupTasks?:readonly (readonly MowerBackupGroupTask[])[]
  explicitSlots?(original:boolean[],conditions:boolean[]):ReadonlySet<string>
  /** Recovery retries retain discrete observation for time-dependent conditions. */
  nextConditionWakeMicros?(data:MowerSchedulingData):number|undefined
@@ -210,7 +212,7 @@ export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,q
   task.plan=planMowerDormIsolation(data,task.plan,new Set([...reserved.slots,...task.backupExplicitSlots]),reserved.names);return
  }
  const ordinary=[T.SHIFT_ON,T.SHIFT_OFF,T.EXHAUST_OFF,T.SELF_CORRECTION,T.RE_ORDER,T.FILL_DORM]
- const candidates=queue.tasks.filter(t=>t!==task&&!t.retainsExecution&&!t.arrangementStarted&&!t.exhaustSupport&&!t.urgentRecoveryRequestNames.length&&ordinary.includes(t.type)&&Object.keys(t.plan).length&&t.timeMicros<=data.nowMicros&&!t.strictMoodLimit&&!t.dormRecoveryRestore.length),coalesced:MowerTask[]=[]
+ const candidates=queue.tasks.filter(t=>t!==task&&!t.backupGroupRequest&&!t.retainsExecution&&!t.arrangementStarted&&!t.exhaustSupport&&!t.urgentRecoveryRequestNames.length&&ordinary.includes(t.type)&&Object.keys(t.plan).length&&t.timeMicros<=data.nowMicros&&!t.strictMoodLimit&&!t.dormRecoveryRestore.length),coalesced:MowerTask[]=[]
  let intent=structuredClone(task.backupShiftIntent??task.plan),explicitSlots=new Set(task.backupExplicitSlots)
  const explicitPlan=(plan:MowerTaskPlan,slots:ReadonlySet<string>)=>Object.fromEntries(Object.entries(plan).map(([room,row])=>[room,row.map((name,index)=>slots.has(alphaPosition(room,index))?name:'Current')]))
  for(const queued of [...candidates].sort((a,b)=>a.timeMicros-b.timeMicros)){
@@ -313,7 +315,7 @@ export function prepareMowerShiftCycle(data:MowerSchedulingData,task:MowerTask,q
 export function coalesceMowerBackupTransition(data:MowerSchedulingData,transition:MowerTaskPlan,tasks:MowerTask[]):{plan:MowerTaskPlan;consumed:MowerTask[]}{
  const footprint=(plan:MowerTaskPlan)=>({names:new Set(Object.values(plan).flat().filter(n=>!['Current','Free',''].includes(n))),slots:new Set(Object.entries(plan).flatMap(([r,names])=>names.flatMap((n,i)=>!['Current',''].includes(n)?[alphaPosition(r,i)]:[])))})
  const affected=footprint(transition),consumed:MowerTask[]=[]
- let remaining=tasks.filter(t=>!t.retainsExecution&&!t.arrangementStarted&&!t.exhaustSupport&&!t.urgentRecoveryRequestNames.length&&[T.SHIFT_ON,T.SHIFT_OFF,T.SELF_CORRECTION,T.RE_ORDER,T.NOT_SPECIFIC,T.FILL_DORM].includes(t.type)&&Object.keys(t.plan).length&&Math.min(t.timeMicros,t.arrangementRetryDueMicros??t.timeMicros)<=data.nowMicros+toMowerMicros(1/60)&&!t.strictMoodLimit&&!t.dormRecoveryRestore.length)
+ let remaining=tasks.filter(t=>!t.backupGroupRequest&&!t.retainsExecution&&!t.arrangementStarted&&!t.exhaustSupport&&!t.urgentRecoveryRequestNames.length&&[T.SHIFT_ON,T.SHIFT_OFF,T.SELF_CORRECTION,T.RE_ORDER,T.NOT_SPECIFIC,T.FILL_DORM].includes(t.type)&&Object.keys(t.plan).length&&Math.min(t.timeMicros,t.arrangementRetryDueMicros??t.timeMicros)<=data.nowMicros+toMowerMicros(1/60)&&!t.strictMoodLimit&&!t.dormRecoveryRestore.length)
  while(remaining.length){let matched=false;for(const t of [...remaining]){const f=footprint(t.plan);if(![...f.names].some(n=>affected.names.has(n))&&![...f.slots].some(s=>affected.slots.has(s)))continue;matched=true;consumed.push(t);f.names.forEach(n=>affected.names.add(n));f.slots.forEach(s=>affected.slots.add(s));remaining=remaining.filter(v=>v!==t)}if(!matched)break}
  if(!consumed.length)return {plan:transition,consumed}
  const plan:MowerTaskPlan={}

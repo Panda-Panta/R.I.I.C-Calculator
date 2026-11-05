@@ -1,4 +1,5 @@
 import {mowerDormCandidateMood} from './mowerDormMood'
+import type {MowerBackupGroupTask} from '../domain/mowerBackupGroupTasks'
 import {isTradeRunOrderOperator} from '../domain/shiftRunPolicy'
 import {mowerRestingBindingGroups,mowerSharedReplacements,mowerSameGroupPrimaryReplacement} from './mowerSharedGroups'
 // Decision state for the pinned Mower port. Reservations do not imply physical occupancy.
@@ -11,6 +12,7 @@ export class MowerDormState {
  reset(){this.name='';this.timeMicros=undefined}
 }
 export interface MowerSchedulingDataOptions {
+ backupGroupTasks?:readonly (readonly MowerBackupGroupTask[])[]
  backupExplicitTasks?:readonly MowerTaskPlan[]
  adjustForRunOrders?:boolean
  dormIsolation?:string[][]
@@ -30,6 +32,7 @@ export interface MowerSchedulingDataOptions {
  reservedProductReplacements?:Set<string>;reservedProductBeds?:Map<string,string>;emergencyDormAgents?:Set<string>
 }
 export class MowerSchedulingData {
+ backupGroupTasks:readonly (readonly MowerBackupGroupTask[])[]
  backupExplicitTasks:readonly MowerTaskPlan[]
  adjustForRunOrders:boolean|undefined
  /** Runtime uses October 3 alpha; frozen September fixtures retain their source contract. */
@@ -51,6 +54,7 @@ export class MowerSchedulingData {
  unregisteredIdleNames:string[];dormMoodEstimates:Map<string,[number,number]>;idleDormSearchExhausted:boolean;idleDormSearchStoppedAtMicros:number|undefined
  reservedProductReplacements:Set<string>;reservedProductBeds:Map<string,string>;emergencyDormAgents:Set<string>
  constructor(o:MowerSchedulingDataOptions){
+  this.backupGroupTasks=o.backupGroupTasks??[]
   this.backupExplicitTasks=o.backupExplicitTasks??[]
   this.dormIsolation=(o.dormIsolation??[]).map(group=>[...group])
   this.adjustForRunOrders=o.adjustForRunOrders
@@ -58,6 +62,7 @@ export class MowerSchedulingData {
   this.standbyNames=o.standbyNames??[];Object.values(o.operators).forEach(op=>{op.alpha=this.alpha})
   this.plan=o.plan;this.operators=o.operators;this.dorms=o.dorms;this.nowMicros=o.nowMicros;this.partyTime=o.partyTime;this.runOrderRooms=o.runOrderRooms??{}
   this.policy={restingThreshold:.65,rescueThreshold:.75,experimentalDormLogic:false,...o.policy,alpha:this.alpha}
+  if(o.policy?.groupRestingThresholds)this.policy.groupRestingThresholds={...o.policy.groupRestingThresholds}
   this.freeRoom=o.freeRoom??false;this.powerPlantCount=o.powerPlantCount??2;this.planConditions=o.planConditions??[];this.backupGroup=o.backupGroup??'default'
   this.urgentRecoverySupporters=Object.fromEntries(Object.entries(o.urgentRecoverySupporters??{}).map(([name,supporters])=>[name,[...supporters]]))
   this.groupRecoveryReturnMicros={...o.groupRecoveryReturnMicros}

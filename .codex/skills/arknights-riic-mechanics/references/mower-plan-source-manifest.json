@@ -3,6 +3,25 @@
   "checkedAt": "2026-10-14T00:37:17.872Z",
   "scope": "Verified PR10 reuse and bounded drone capacity, skill stage caps, minimum-rest anchors, caller options and dorm-order supplements; no full latest Mower parity claim.",
   "gameDataCommit": "17759cc8cdf37388414145d16262a3a06f3ab25e",
+  "planFormat20261105": {
+    "checkedAt": "2026-11-05",
+    "releaseTag": "v4.1.6-alpha.14",
+    "releaseCommit": "fc5579ad6e2f0a460ad6038246a537bd9ea8a277",
+    "alphaCommit": "a891b8110ec57d26b67287c492aad85ab7e964fc",
+    "repository": "https://github.com/ArkMowers/arknights-mower",
+    "scope": "Plan document, grouped tasks, group resting thresholds, training protection query and QR format. File hashes are for alphaCommit.",
+    "sha256": {
+      "arknights_mower/utils/config/plan.py": "f7ff7195e4ede2b015a21dcf6a9308f8cddb601254b7e2fc919d62386d2124ab",
+      "arknights_mower/utils/config/plan_advanced.py": "12685b7335b40af9d6426056f42e3e0bca6614107d81ea2cc63b657564722837",
+      "arknights_mower/utils/config/conf.py": "9735b1cb77f1038f9497dc256e88579a1d4be273052dca398954ec028bd0cf42",
+      "arknights_mower/utils/backup_group_tasks.py": "32eb385ca710e348352bd3ff967841c4843cfa1e3b8d1f37758e5f817c2f77d9",
+      "arknights_mower/utils/operators.py": "4f51f06001ac02c2176f454760391d59d3d4c0d07a7f5bf3c8a9c7636d4fc387",
+      "arknights_mower/utils/qrcode.py": "bbc651da3714dda1419bcd63c29db937d5e689ce47503f65a576345e17983147",
+      "server.py": "b7a90f3178bd0e8db68373a67380984d87436f244568cff631ca4b2fad636e5b",
+      "ui/src/stores/plan.js": "5fc94e9e571c44906d188f5f681a489bf4608eae93f85bc2fb34c2ff165fa843",
+      "ui/src/components/TaskDialog.vue": "c16485370fb7d91c4895ba9b065474a64ff8566b2c2e0f986a96130e2b52cdc6"
+    }
+  },
   "mower": {
     "repository": "ArkMowers/arknights-mower",
     "branch": "alpha",
